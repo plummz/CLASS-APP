@@ -1,0 +1,309 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+const cors = require('cors');
+const multer = require('multer');
+const { Server } = require('socket.io');
+
+const ADMIN_USERNAME = 'Marquillero';
+const ADMIN_PASSWORD = '120524';
+const DATA_PATH = path.join(__dirname, 'data.json');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const PORT = process.env.PORT || 3000;
+
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+function loadData() {
+  if (!fs.existsSync(DATA_PATH)) {
+    fs.writeFileSync(DATA_PATH, JSON.stringify({ users: [], chatHistory: { group: [], todo: [], private: {} } }, null, 2));
+  }
+  try {
+    return JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
+  } catch (error) {
+    console.error('Error loading data.json:', error);
+    return { users: [], chatHistory: { group: [], todo: [], private: {} } };
+  }
+}
+
+function saveData(data) {
+  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+
+const upload = multer({ dest: UPLOAD_DIR });
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname)));
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+let state = loadData();
+
+function safeUsers() {
+  return state.users.map((user) => ({
+    username: user.username,
+    displayName: user.displayName,
+    birthday: user.birthday,
+    address: user.address,
+    github: user.github,
+    email: user.email,
+    note: user.note,
+    online: user.online,
+    avatar: user.avatar || '',
+  }));
+}
+
+function getPrivateKey(userA, userB) {
+  return [userA, userB].sort().join('||');
+}
+
+function getHistory(chat, target) {
+  if (chat === 'group') return state.chatHistory.group;
+  if (chat === 'todo') return state.chatHistory.todo;
+  if (chat === 'private') {
+    const key = getPrivateKey(target.userA, target.userB);
+    return state.chatHistory.private[key] || [];
+  }
+  return [];
+}
+
+function findUser(username) {
+  return state.users.find((user) => user.username.toLowerCase() === username.toLowerCase());
+}
+
+function createUser(username) {
+  const user = {
+    username,
+    displayName: username,
+    birthday: 'Unknown',
+    address: 'Unknown',
+    github: '',
+    email: '',
+    note: 'New user profile',
+    online: false,
+    avatar: '',
+  };
+  state.users.push(user);
+  saveData(state);
+  return user;
+}
+
+function updatePresence(username, online) {
+  const user = findUser(username);
+  if (!user) return;
+  user.online = online;
+  saveData(state);
+  io.emit('users', safeUsers());
+}
+
+function emitMessage(chat, target, message) {
+  const payload = { chat, target, message };
+  if (chat === 'private') {
+    const room = getPrivateKey(target.userA, target.userB);
+    io.to(room).emit('message', payload);
+    return;
+  }
+  io.to(chat).emit('message', payload);
+}
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+  if (username === ADMIN_USERNAME && password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid admin password' });
+  }
+  let user = findUser(username);
+  if (!user) {
+    user = createUser(username);
+  }
+  user.online = true;
+  saveData(state);
+  io.emit('users', safeUsers());
+  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: user.username === ADMIN_USERNAME });
+});
+
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+  let user = findUser(username);
+  if (user) {
+    return res.status(400).json({ error: 'Username already exists' });
+  }
+  user = createUser(username);
+  user.online = true;
+  saveData(state);
+  io.emit('users', safeUsers());
+  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false });
+});
+
+app.get('/api/users', (req, res) => {
+  res.json(safeUsers());
+});
+
+app.get('/api/messages', (req, res) => {
+  const { chat, target } = req.query;
+  if (!chat) return res.status(400).json({ error: 'chat query required' });
+  if (chat === 'private') {
+    if (!target) return res.status(400).json({ error: 'target required for private chat' });
+    const [userA, userB] = target.split('||');
+    return res.json(getHistory('private', { userA, userB }));
+  }
+  return res.json(getHistory(chat));
+});
+
+app.post('/api/messages', (req, res) => {
+  const { chat, sender, text, target, attachment } = req.body;
+  if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });
+  const message = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sender,
+    text: text || '',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    pinned: false,
+    edited: false,
+    deletedFor: [],
+    attachment: attachment || null,
+    type: 'message',
+  };
+  if (chat === 'private') {
+    if (!target) return res.status(400).json({ error: 'target required for private chat' });
+    const [userA, userB] = target.split('||');
+    const key = getPrivateKey(userA, userB);
+    state.chatHistory.private[key] = state.chatHistory.private[key] || [];
+    state.chatHistory.private[key].push(message);
+    saveData(state);
+    emitMessage(chat, { userA, userB }, message);
+    return res.json(message);
+  }
+  state.chatHistory[chat] = state.chatHistory[chat] || [];
+  state.chatHistory[chat].push(message);
+  saveData(state);
+  emitMessage(chat, null, message);
+  res.json(message);
+});
+
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'File required' });
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: fileUrl });
+});
+
+app.put('/api/users/:username', (req, res) => {
+  const username = req.params.username;
+  const user = findUser(username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  Object.assign(user, req.body);
+  saveData(state);
+  io.emit('users', safeUsers());
+  res.json(user);
+});
+
+app.put('/api/messages/:id', (req, res) => {
+  const { text, pinned } = req.body;
+  const id = req.params.id;
+  const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
+  Object.values(state.chatHistory.private).forEach((room) => room.forEach((message) => allMessages.push(message)));
+  const message = allMessages.find((msg) => msg.id === id);
+  if (!message) return res.status(404).json({ error: 'Message not found' });
+  if (typeof text === 'string') {
+    message.text = text;
+    message.edited = true;
+  }
+  if (typeof pinned === 'boolean') {
+    message.pinned = pinned;
+  }
+  saveData(state);
+  io.emit('messageUpdated', message);
+  res.json(message);
+});
+
+app.delete('/api/messages/:id', (req, res) => {
+  const id = req.params.id;
+  const removeFrom = (array) => {
+    const idx = array.findIndex((msg) => msg.id === id);
+    if (idx !== -1) array.splice(idx, 1);
+  };
+  removeFrom(state.chatHistory.group);
+  removeFrom(state.chatHistory.todo);
+  Object.values(state.chatHistory.private).forEach(removeFrom);
+  saveData(state);
+  io.emit('messageDeleted', { id });
+  res.json({ success: true });
+});
+
+io.on('connection', (socket) => {
+  socket.on('identify', (user) => {
+    socket.data.username = user.username;
+    socket.join('group');
+    socket.join('todo');
+    if (user.username) {
+      const existing = findUser(user.username);
+      if (existing) {
+        existing.online = true;
+        saveData(state);
+      }
+      io.emit('users', safeUsers());
+    }
+  });
+
+  socket.on('joinChat', ({ chat, target, user }) => {
+    if (!chat) return;
+    socket.join(chat === 'private' ? getPrivateKey(user.username, target) : chat);
+  });
+
+  socket.on('sendMessage', ({ chat, target, sender, text, attachment }) => {
+    const message = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sender,
+      text: text || '',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      pinned: false,
+      edited: false,
+      deletedFor: [],
+      attachment: attachment || null,
+      type: 'message',
+    };
+    if (chat === 'private') {
+      const [userA, userB] = target.split('||');
+      const key = getPrivateKey(userA, userB);
+      state.chatHistory.private[key] = state.chatHistory.private[key] || [];
+      state.chatHistory.private[key].push(message);
+      saveData(state);
+      io.to(key).emit('message', { chat, target: { userA, userB }, message });
+      return;
+    }
+    state.chatHistory[chat] = state.chatHistory[chat] || [];
+    state.chatHistory[chat].push(message);
+    saveData(state);
+    io.to(chat).emit('message', { chat, message });
+  });
+
+  socket.on('updateProfile', (payload) => {
+    const user = findUser(payload.username);
+    if (!user) return;
+    Object.assign(user, payload);
+    saveData(state);
+    io.emit('users', safeUsers());
+  });
+
+  socket.on('disconnect', () => {
+    const username = socket.data.username;
+    if (username) {
+      updatePresence(username, false);
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});

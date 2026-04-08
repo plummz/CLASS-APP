@@ -107,6 +107,13 @@
       </div>
     </div>
  
+    <div class="nav-item" data-page="users" onclick="goToPage('users')">
+      <span class="nav-icon" data-page="users">👥</span>
+      <div class="nav-text">
+        <span class="nav-label">Users</span>
+      </div>
+    </div>
+ 
     <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
       <span class="nav-icon" data-page="calendar">📅</span>
       <div class="nav-text">
@@ -201,19 +208,38 @@
     <div class="chat-container">
       <div class="chat-sidebar">
         <div class="chat-list">
-          <div class="chat-item" onclick="openChat('private')">Private Chat</div>
           <div class="chat-item" onclick="openChat('group')">Group Chat</div>
           <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
+          <div class="chat-section-label">Private Contacts</div>
+          <div id="chat-user-list" class="chat-user-list"></div>
         </div>
       </div>
       <div class="chat-main">
+        <div class="chat-header" id="chat-header">Select a chat</div>
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
           <input type="text" id="message-input" placeholder="Type a message...">
-          <input type="file" id="media-upload" accept="image/*,video/*,application/pdf">
+          <label class="attachment-label" for="attachment-input">Attach</label>
+          <input type="file" id="attachment-input" accept="*/*">
+          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
           <button onclick="sendMessage()">Send</button>
         </div>
       </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 5.5: USER DIRECTORY
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-users">
+    <div class="page-header">
+      <h1 class="page-title">User Directory</h1>
+    </div>
+    <div class="section-label">Profile cards, online status, and private chat access</div>
+    <div class="user-grid" id="user-grid"></div>
+    <div class="profile-panel" id="profile-panel">
+      <button class="close-profile" onclick="closeProfile()">×</button>
+      <div id="profile-details"></div>
     </div>
   </div>
  
@@ -257,6 +283,7 @@
   <div id="live-clock"></div>
  
   <!-- JavaScript -->
+  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
  
 </body>

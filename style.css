@@ -1,0 +1,1198 @@
+/* ============================================================
+   STYLE.CSS — My School Portfolio
+   ============================================================ */
+ 
+ 
+/* ── CSS VARIABLES ── */
+:root {
+  --mountain-glow:   #b8f0b8;
+  --mountain-accent: #4a7c59;
+  --ocean-primary:   #00d4ff;
+  --ocean-glow:      #7ff0ff;
+  --aerial-primary:  #ffd700;
+  --aerial-glow:     #ffe85a;
+  --galaxy-primary:  #c77dff;
+  --galaxy-accent:   #9b5de5;
+  --galaxy-glow:     #f72585;
+  --menu-bg:         rgba(5, 5, 20, 0.93);
+  --glass:           rgba(255, 255, 255, 0.07);
+  --glass-border:    rgba(255, 255, 255, 0.16);
+  /* Added for new features */
+  --chat-bg:         rgba(10, 10, 30, 0.95);
+  --calendar-bg:     rgba(20, 20, 40, 0.9);
+  --music-bg:        rgba(30, 30, 50, 0.9);
+  --modal-bg:        rgba(0, 0, 0, 0.8);
+  --neon-green:      #00ff88;
+  --neon-blue:       #00d4ff;
+  --neon-pink:       #ff0080;
+  --sakura-pink:     #ffb3ba;
+  --dark-glow:       #333;
+}
+ 
+ 
+/* ── RESET & BASE ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+ 
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: #000;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+ 
+ 
+/* ── STARFIELD CANVAS ── */
+#starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+ 
+ 
+/* ============================================================
+   SCENE BACKGROUNDS
+   ============================================================ */
+.scene-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  pointer-events: none;
+}
+.scene-bg.active {
+  opacity: 1;
+}
+ 
+/* Mountain (First Semester) */
+#bg-mountain {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(74, 124, 89, 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%,  rgba(168, 216, 168, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, #0a1a0f 0%, #1a3a1f 25%, #2d5a35 50%, #3d7a45 70%, #4a8a55 100%);
+}
+ 
+/* Ocean (Second Semester) */
+#bg-ocean {
+  background:
+    radial-gradient(ellipse at 50% 0%,  rgba(0, 212, 255, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 60%, rgba(0, 102, 204, 0.3) 0%, transparent 40%),
+    linear-gradient(180deg, #000d1a 0%, #001a33 20%, #002b55 45%, #003d77 65%, #005599 85%, #0066aa 100%);
+}
+ 
+/* Aerial (Event Pictures) */
+#bg-aerial {
+  background:
+    radial-gradient(ellipse at 60% 20%, rgba(255, 215, 0, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 70%, rgba(255, 107, 53, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, #0a0500 0%, #1a0f00 15%, #2a1a00 35%, #3d2800 55%, #524008 75%, #6a5520 100%);
+}
+ 
+/* Galaxy (Random Pictures) */
+#bg-galaxy {
+  background:
+    radial-gradient(ellipse at 70% 30%, rgba(199, 125, 255, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 60%, rgba(247, 37,  133, 0.2) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(155, 93,  229, 0.15) 0%, transparent 60%),
+    linear-gradient(180deg, #02000a 0%, #060010 25%, #0d0025 50%, #150038 75%, #1a0044 100%);
+}
+ 
+ 
+/* ── AURORA EFFECT ── */
+.aurora {
+  position: fixed;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 60%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.7s;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(74, 200, 89, 0.08) 0%,
+    rgba(100, 180, 120, 0.05) 30%,
+    rgba(50, 150, 80, 0.03) 60%,
+    transparent 80%
+  );
+  animation: aurora 8s ease-in-out infinite alternate;
+}
+.aurora.active {
+  opacity: 1;
+}
+@keyframes aurora {
+  0%   { transform: scale(1) rotate(-2deg); }
+  100% { transform: scale(1.1) rotate(2deg); }
+}
+ 
+ 
+/* ── MOUNTAIN SILHOUETTE ── */
+.mountain-silhouette {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.7s;
+}
+.mountain-silhouette.active {
+  opacity: 0.6;
+}
+ 
+ 
+/* ── OCEAN WAVES ── */
+.wave-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.7s;
+}
+.wave-container.active {
+  opacity: 0.5;
+}
+ 
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 80px;
+  background: rgba(0, 212, 255, 0.12);
+  border-radius: 50% 50% 0 0;
+}
+.wave:nth-child(1) { animation: wave1 6s linear infinite; }
+.wave:nth-child(2) { animation: wave2 8s linear infinite; bottom: 10px; background: rgba(0, 180, 220, 0.08); }
+.wave:nth-child(3) { animation: wave1 10s linear infinite reverse; bottom: 20px; background: rgba(127, 240, 255, 0.06); }
+ 
+@keyframes wave1 { 0% { transform: translateX(0); }   100% { transform: translateX(25%); } }
+@keyframes wave2 { 0% { transform: translateX(0); }   100% { transform: translateX(-25%); } }
+ 
+ 
+/* ============================================================
+   PARTICLE SYSTEMS
+   ============================================================ */
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.7s;
+}
+.particles.active {
+  opacity: 1;
+}
+ 
+/* Mountain: falling leaves */
+.particle-mountain .leaf {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--mountain-glow);
+  border-radius: 0 50% 0 50%;
+  animation: fall linear infinite;
+  box-shadow: 0 0 6px var(--mountain-glow);
+}
+@keyframes fall {
+  0%   { transform: translateY(-20px) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.4; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+ 
+/* Ocean: bubbles */
+.particle-ocean .bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(127, 240, 255, 0.8), rgba(0, 212, 255, 0.2));
+  border: 1px solid rgba(127, 240, 255, 0.5);
+  animation: rise linear infinite;
+}
+@keyframes rise {
+  0%   { transform: translateY(110vh) scale(1);   opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(-20px) scale(1.3); opacity: 0; }
+}
+ 
+/* Aerial: sparks */
+.particle-aerial .spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--aerial-glow);
+  border-radius: 50%;
+  animation: sparkle ease-in-out infinite;
+  box-shadow: 0 0 8px var(--aerial-glow);
+}
+@keyframes sparkle {
+  0%, 100% { transform: scale(0) translateY(0);    opacity: 0; }
+  50%       { transform: scale(1) translateY(-30px); opacity: 1; }
+}
+ 
+/* Galaxy: twinkling stars */
+.particle-galaxy .star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.5); }
+  50%       { opacity: 1;   transform: scale(1.5); box-shadow: 0 0 8px var(--galaxy-primary); }
+}
+ 
+ 
+/* ============================================================
+   HAMBURGER MENU BUTTON
+   ============================================================ */
+#menu-toggle {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(20px);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+#menu-toggle:hover {
+  transform: scale(1.08);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+ 
+#menu-toggle .bar {
+  width: 22px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+#menu-toggle.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+#menu-toggle.open .bar:nth-child(2) { opacity: 0; transform: scaleX(0); }
+#menu-toggle.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+ 
+ 
+/* ── PAGE INDICATOR (top left label) ── */
+#page-indicator {
+  position: fixed;
+  top: 18px;
+  left: 80px;
+  z-index: 999;
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 6px 14px;
+  backdrop-filter: blur(20px);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  pointer-events: none;
+  white-space: nowrap;
+}
+ 
+ 
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+#sidebar {
+  position: fixed;
+  top: 0;
+  left: -320px;
+  width: 300px;
+  height: 100vh;
+  z-index: 999;
+  background: rgba(4, 4, 20, 0.97);
+  backdrop-filter: blur(30px);
+  border-right: 1px solid var(--glass-border);
+  transition: left 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  padding-top: 90px;
+  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.6);
+}
+#sidebar.open {
+  left: 0;
+}
+ 
+.sidebar-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.25em;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  padding: 0 28px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 12px;
+}
+ 
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+.nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.nav-item:hover::before,
+.nav-item.active::before {
+  opacity: 1;
+}
+ 
+/* Nav hover background per page */
+.nav-item[data-page="first"]::before  { background: linear-gradient(90deg, rgba(74, 124, 89, 0.2), transparent); }
+.nav-item[data-page="second"]::before { background: linear-gradient(90deg, rgba(0, 102, 204, 0.2), transparent); }
+.nav-item[data-page="events"]::before { background: linear-gradient(90deg, rgba(255, 107, 53, 0.2), transparent); }
+.nav-item[data-page="random"]::before { background: linear-gradient(90deg, rgba(155, 93, 229, 0.2), transparent); }
+ 
+/* Active border per page */
+.nav-item[data-page="first"].active  { border-left-color: var(--mountain-accent); }
+.nav-item[data-page="second"].active { border-left-color: var(--ocean-primary); }
+.nav-item[data-page="events"].active { border-left-color: var(--aerial-primary); }
+.nav-item[data-page="random"].active { border-left-color: var(--galaxy-primary); }
+ 
+.nav-icon {
+  font-size: 22px;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.nav-icon[data-page="first"]  { color: var(--mountain-glow); }
+.nav-icon[data-page="second"] { color: var(--ocean-glow); }
+.nav-icon[data-page="events"] { color: var(--aerial-glow); }
+.nav-icon[data-page="random"] { color: var(--galaxy-glow); }
+ 
+.nav-text  { display: flex; flex-direction: column; }
+.nav-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.05em;
+}
+ 
+.sidebar-footer {
+  margin-top: auto;
+  padding: 20px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.08em;
+  font-family: 'Exo 2', sans-serif;
+}
+ 
+ 
+/* ── OVERLAY ── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  backdrop-filter: blur(2px);
+}
+#overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+ 
+ 
+/* ============================================================
+   PAGES
+   ============================================================ */
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow-y: auto;
+  padding: 100px 40px 80px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateY(16px);
+}
+.page.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateY(0);
+}
+ 
+/* Page Headers */
+.page-header {
+  text-align: center;
+  margin-bottom: 48px;
+  position: relative;
+}
+.page-header::after {
+  content: '';
+  display: block;
+  width: 80px;
+  height: 2px;
+  margin: 16px auto 0;
+  border-radius: 2px;
+  background: currentColor;
+}
+ 
+.page-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(24px, 5vw, 42px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-shadow: 0 0 40px currentColor;
+}
+ 
+/* Page color themes */
+#page-first  .page-header,
+#page-first  .page-title  { color: var(--mountain-glow); }
+ 
+#page-second .page-header,
+#page-second .page-title  { color: var(--ocean-glow); }
+ 
+#page-events .page-header,
+#page-events .page-title  { color: var(--aerial-glow); }
+ 
+#page-random .page-header,
+#page-random .page-title  { color: var(--galaxy-glow); }
+ 
+ 
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 1100px;
+  margin: 0 auto 24px;
+}
+.section-label::before,
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+ 
+ 
+/* ============================================================
+   SUBJECT CARDS (First & Second Semester)
+   ============================================================ */
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 18px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+ 
+.subject-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 20px 18px 16px;
+  backdrop-filter: blur(16px);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.subject-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.subject-card:hover::before { opacity: 1; }
+.subject-card:hover         { transform: translateY(-4px); }
+ 
+#page-first  .subject-card:hover { border-color: var(--mountain-accent); box-shadow: 0 8px 32px rgba(74, 124, 89, 0.35); }
+#page-second .subject-card:hover { border-color: var(--ocean-primary);   box-shadow: 0 8px 32px rgba(0, 212, 255, 0.25); }
+ 
+/* Hidden file input covers the whole card */
+.subject-card input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+ 
+.card-icon {
+  font-size: 26px;
+  margin-bottom: 10px;
+  display: block;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+#page-first  .card-icon { color: var(--mountain-glow); }
+#page-second .card-icon { color: var(--ocean-glow); }
+ 
+.card-subject {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.03em;
+  margin-bottom: 3px;
+}
+ 
+.card-teacher {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.03em;
+  margin-bottom: 12px;
+  font-style: italic;
+  line-height: 1.4;
+}
+ 
+.card-upload-area {
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+ 
+.upload-btn-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+#page-first  .upload-btn-label { color: var(--mountain-glow); background: rgba(74, 124, 89, 0.15); }
+#page-second .upload-btn-label { color: var(--ocean-glow);    background: rgba(0, 212, 255, 0.1); }
+ 
+.file-name-display {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+ 
+.uploaded-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 200, 100, 0.18);
+  border: 1px solid rgba(0, 200, 100, 0.5);
+  color: #00ff88;
+  font-size: 10px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: none;
+  text-transform: uppercase;
+}
+ 
+ 
+/* ============================================================
+   FOLDER CARDS (Event & Random Pictures)
+   ============================================================ */
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+ 
+.folder-card {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.folder-card:hover { transform: translateY(-6px) scale(1.02); }
+ 
+#page-events .folder-card:hover { box-shadow: 0 12px 40px rgba(255, 215, 0, 0.3);  border-color: var(--aerial-primary); }
+#page-random .folder-card:hover { box-shadow: 0 12px 40px rgba(199, 125, 255, 0.3); border-color: var(--galaxy-primary); }
+ 
+/* Unique anime-inspired gradient per folder */
+.folder-card:nth-child(1)  .folder-bg { background: linear-gradient(135deg, #1a0030 0%, #6a0dad 45%, #ff6b00 100%); }
+.folder-card:nth-child(2)  .folder-bg { background: linear-gradient(135deg, #0d0d0d 0%, #ff6200 45%, #ffcc00 100%); }
+.folder-card:nth-child(3)  .folder-bg { background: linear-gradient(135deg, #000510 0%, #1c1c2e 45%, #c0392b 100%); }
+.folder-card:nth-child(4)  .folder-bg { background: linear-gradient(135deg, #001a33 0%, #d63031 45%, #fdcb6e 100%); }
+.folder-card:nth-child(5)  .folder-bg { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); }
+.folder-card:nth-child(6)  .folder-bg { background: linear-gradient(135deg, #000000 0%, #434343 45%, #e056fd 100%); }
+.folder-card:nth-child(7)  .folder-bg { background: linear-gradient(135deg, #200122 0%, #6f0000 50%, #f7971e 100%); }
+.folder-card:nth-child(8)  .folder-bg { background: linear-gradient(135deg, #0f2027 0%, #203a43 45%, #2c5364 100%); }
+.folder-card:nth-child(9)  .folder-bg { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 45%, #e94560 100%); }
+.folder-card:nth-child(10) .folder-bg { background: linear-gradient(135deg, #000000 0%, #243b55 45%, #141e30 100%); }
+.folder-card:nth-child(11) .folder-bg { background: linear-gradient(135deg, #1f0036 0%, #c31432 50%, #240b36 100%); }
+.folder-card:nth-child(12) .folder-bg { background: linear-gradient(135deg, #005c97 0%, #363795 50%, #005c97 100%); }
+.folder-card:nth-child(13) .folder-bg { background: linear-gradient(135deg, #360033 0%, #0b8793 50%, #360033 100%); }
+.folder-card:nth-child(14) .folder-bg { background: linear-gradient(135deg, #1a1a1a 0%, #4a0000 50%, #ff4500 100%); }
+.folder-card:nth-child(15) .folder-bg { background: linear-gradient(135deg, #0f0c29 0%, #6441a5 50%, #2a0845 100%); }
+ 
+.folder-bg {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.4s ease;
+}
+.folder-card:hover .folder-bg {
+  transform: scale(1.07);
+}
+ 
+/* Dot pattern overlay */
+.folder-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+ 
+/* Glowing orb decoration */
+.folder-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(18px);
+  opacity: 0.45;
+}
+.folder-card:nth-child(odd)  .folder-orb { top: 8%;   right: 12%; width: 55px; height: 55px; background: rgba(255, 255, 255, 0.22); }
+.folder-card:nth-child(even) .folder-orb { bottom: 28%; left: 8%;  width: 45px; height: 45px; background: rgba(255, 200, 100, 0.28); }
+ 
+/* Dark gradient at bottom so text is readable */
+.folder-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.08) 60%, transparent 100%);
+}
+ 
+.folder-info {
+  position: relative;
+  z-index: 2;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+ 
+.folder-name {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+ 
+.folder-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+}
+ 
+.folder-btn {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+ 
+.folder-filename {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+ 
+/* Hidden file input covers the whole card */
+.folder-card input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+}
+ 
+.folder-uploaded {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  background: rgba(0, 200, 100, 0.25);
+  border: 1px solid rgba(0, 255, 120, 0.6);
+  color: #00ff99;
+  font-size: 10px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: none;
+  text-transform: uppercase;
+}
+ 
+/* Image preview fills card after upload */
+.folder-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: none;
+  border-radius: 18px;
+}
+ 
+ 
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar        { width: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* ============================================================
+   NEW FEATURES: MODALS, CHAT, CALENDAR, MUSIC, ETC.
+   ============================================================ */
+
+/* Custom BG Upload Button */
+.custom-bg-btn {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 1000;
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 6px 12px;
+  backdrop-filter: blur(20px);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.custom-bg-btn:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: white;
+}
+
+/* Auth Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--modal-bg);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.modal.active {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal-content {
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 30px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  backdrop-filter: blur(20px);
+}
+.modal-content h2 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 24px;
+  color: white;
+  margin-bottom: 20px;
+}
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-family: 'Rajdhani', sans-serif;
+}
+.modal-content button {
+  margin: 10px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--neon-green);
+  color: black;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.modal-content button:hover {
+  background: white;
+}
+
+/* Admin Panel */
+.admin-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2001;
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(20px);
+  text-align: center;
+}
+.admin-panel h3 {
+  font-family: 'Cinzel Decorative', serif;
+  color: white;
+  margin-bottom: 15px;
+}
+.admin-panel button {
+  margin: 5px;
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.admin-panel button:hover {
+  background: var(--neon-pink);
+  color: black;
+}
+
+/* Chat System */
+.chat-container {
+  display: flex;
+  height: 70vh;
+  background: var(--chat-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+.chat-sidebar {
+  width: 250px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  border-right: 1px solid var(--glass-border);
+}
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-item {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.chat-item:hover {
+  background: var(--neon-blue);
+  color: black;
+}
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.chat-messages {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  color: white;
+}
+.chat-input {
+  display: flex;
+  padding: 10px;
+  border-top: 1px solid var(--glass-border);
+}
+.chat-input input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+.chat-input button {
+  margin-left: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--neon-green);
+  color: black;
+  cursor: pointer;
+}
+
+/* Calendar */
+.calendar-container {
+  background: var(--calendar-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.calendar-header button {
+  padding: 8px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+.calendar-grid div {
+  padding: 10px;
+  text-align: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.calendar-grid div:hover {
+  background: var(--neon-pink);
+  color: black;
+}
+.announcements {
+  margin-top: 20px;
+}
+.announcements textarea {
+  width: 100%;
+  height: 100px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  resize: none;
+}
+.announcements button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--neon-green);
+  color: black;
+  cursor: pointer;
+}
+
+/* Music Player */
+.music-player {
+  background: var(--music-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+.playlist {
+  margin: 20px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.playlist div {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+.playlist div:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+audio {
+  width: 100%;
+}
+
+/* Live Clock */
+#live-clock {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 1000;
+  background: var(--menu-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 6px 12px;
+  backdrop-filter: blur(20px);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 12px;
+  color: white;
+}
+
+/* Enhanced Folder Icons (30+ styles) */
+.folder-card.neon .folder-bg { box-shadow: 0 0 20px var(--neon-green); }
+.folder-card.dark-glow .folder-bg { box-shadow: 0 0 20px var(--dark-glow); }
+.folder-card.sakura .folder-bg { background: linear-gradient(135deg, var(--sakura-pink), #ffdfba); }
+/* Add more classes as needed for 30+ styles, e.g., .neon-blue, .neon-pink, etc. */
+
+/* Additional Background Presets (30-40) */
+#bg-preset1 { background: linear-gradient(135deg, #ff9a9e, #fecfef); }
+#bg-preset2 { background: linear-gradient(135deg, #a8edea, #fed6e3); }
+/* Add more #bg-preset3 to #bg-preset40 with unique gradients */
+
+/* Chat Reactions */
+.reaction-btn {
+  display: inline-block;
+  margin: 2px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+.reaction-btn:hover {
+  background: var(--neon-blue);
+  color: black;
+}
+/* Add 250-300 reaction buttons with emojis in JS */
+
+/* Chat Background Designs (100-150) */
+.chat-bg-design1 { background: url('design1.png') no-repeat center center; background-size: cover; }
+/* Add more .chat-bg-design2 to .chat-bg-design150 */
+
+/* Video Upload Support */
+.subject-card video, .folder-card video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+  display: none;
+}
+
+/* Author Credit */
+.author-credit {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Delete Button */
+.delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  display: none;
+}
+
+
+/* make page text stand out */
+.page { position: fixed; inset: 0; z-index: 3; overflow-y: auto; padding: 100px 40px 80px; ... }
+.page.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+

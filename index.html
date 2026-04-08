@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My School Portfolio</title>
+ 
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+ 
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1b3d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My School Portfolio">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+  <button id="install-btn" class="install-btn" style="display:none;">
+  Install App
+</button>
+ 
+  <!-- ── SCENE BACKGROUNDS ── -->
+  <div id="bg-mountain" class="scene-bg active"></div>
+  <div id="bg-ocean"    class="scene-bg"></div>
+  <div id="bg-aerial"   class="scene-bg"></div>
+  <div id="bg-galaxy"   class="scene-bg"></div>
+  <!-- Added custom background upload -->
+  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
+  <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
+ 
+  <!-- ── AURORA EFFECT ── -->
+  <div class="aurora active" id="aurora"></div>
+ 
+  <!-- ── STARFIELD CANVAS ── -->
+  <canvas id="starfield"></canvas>
+ 
+  <!-- ── MOUNTAIN SILHOUETTE ── -->
+  <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
+    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
+  </svg>
+ 
+  <!-- ── OCEAN WAVES ── -->
+  <div class="wave-container" id="wave-container">
+    <div class="wave"></div>
+    <div class="wave"></div>
+    <div class="wave"></div>
+  </div>
+ 
+  <!-- ── PARTICLES ── -->
+  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-ocean"    id="particles-ocean"></div>
+  <div class="particles particle-aerial"   id="particles-aerial"></div>
+  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
+ 
+  <!-- ── HAMBURGER MENU BUTTON ── -->
+  <button id="menu-toggle" aria-label="Toggle menu">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </button>
+ 
+  <!-- ── PAGE INDICATOR ── -->
+  <div id="page-indicator">⛰️ First Semester</div>
+ 
+  <!-- ── SIDEBAR NAVIGATION ── -->
+  <nav id="sidebar">
+    <div class="sidebar-title">My Portfolio</div>
+ 
+    <div class="nav-item active" data-page="first" onclick="goToPage('first')">
+      <span class="nav-icon" data-page="first">⛰️</span>
+      <div class="nav-text">
+        <span class="nav-label">First Semester</span>
+      </div>
+    </div>
+ 
+    <div class="nav-item" data-page="second" onclick="goToPage('second')">
+      <span class="nav-icon" data-page="second">🌊</span>
+      <div class="nav-text">
+        <span class="nav-label">Second Semester</span>
+      </div>
+    </div>
+ 
+    <div class="nav-item" data-page="events" onclick="goToPage('events')">
+      <span class="nav-icon" data-page="events">🛩️</span>
+      <div class="nav-text">
+        <span class="nav-label">Event Pictures</span>
+      </div>
+    </div>
+ 
+    <div class="nav-item" data-page="random" onclick="goToPage('random')">
+      <span class="nav-icon" data-page="random">🌌</span>
+      <div class="nav-text">
+        <span class="nav-label">Random Pictures</span>
+      </div>
+    </div>
+ 
+    <!-- Added nav items for new features -->
+    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
+      <span class="nav-icon" data-page="chat">💬</span>
+      <div class="nav-text">
+        <span class="nav-label">Chat</span>
+      </div>
+    </div>
+ 
+    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
+      <span class="nav-icon" data-page="calendar">📅</span>
+      <div class="nav-text">
+        <span class="nav-label">Calendar</span>
+      </div>
+    </div>
+ 
+    <div class="nav-item" data-page="music" onclick="goToPage('music')">
+      <span class="nav-icon" data-page="music">🎵</span>
+      <div class="nav-text">
+        <span class="nav-label">Music</span>
+      </div>
+    </div>
+ 
+    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
+  </nav>
+ 
+  <!-- ── OVERLAY (closes sidebar when clicked) ── -->
+  <div id="overlay" onclick="closeMenu()"></div>
+ 
+  <!-- ── LOGIN/REGISTRATION MODAL ── -->
+  <div id="auth-modal" class="modal">
+    <div class="modal-content">
+      <h2>Login / Register</h2>
+      <input type="text" id="username" placeholder="Surname (Username)">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <button onclick="register()">Register</button>
+      <button onclick="closeModal()">Close</button>
+    </div>
+  </div>
+ 
+  <!-- ── ADMIN PANEL ── -->
+  <div id="admin-panel" class="admin-panel" style="display:none;">
+    <h3>Admin Controls</h3>
+    <button onclick="blockUser()">Block User</button>
+    <button onclick="moderateFiles()">Moderate Files</button>
+    <button onclick="closeAdminPanel()">Close</button>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 1: FIRST SEMESTER
+  ══════════════════════════════════════════ -->
+  <div class="page active" id="page-first">
+    <div class="page-header">
+      <h1 class="page-title">First Semester</h1>
+    </div>
+    <div class="section-label">Upload PDF for each subject (Video support added)</div>
+    <div class="upload-grid" id="grid-first"></div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 2: SECOND SEMESTER
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-second">
+    <div class="page-header">
+      <h1 class="page-title">Second Semester</h1>
+    </div>
+    <div class="section-label">Upload PDF for each subject (Video support added)</div>
+    <div class="upload-grid" id="grid-second"></div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 3: EVENT PICTURES
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-events">
+    <div class="page-header">
+      <h1 class="page-title">Event Pictures</h1>
+    </div>
+    <div class="section-label">Upload a photo for each event folder (Author credit shown)</div>
+    <div class="folder-grid" id="grid-events"></div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 4: RANDOM PICTURES
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-random">
+    <div class="page-header">
+      <h1 class="page-title">Random Pictures</h1>
+    </div>
+    <div class="section-label">Upload any image to each folder (Author credit shown)</div>
+    <div class="folder-grid" id="grid-random"></div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 5: CHAT SYSTEM
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-chat">
+    <div class="page-header">
+      <h1 class="page-title">Chat</h1>
+    </div>
+    <div class="chat-container">
+      <div class="chat-sidebar">
+        <div class="chat-list">
+          <div class="chat-item" onclick="openChat('private')">Private Chat</div>
+          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
+          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
+        </div>
+      </div>
+      <div class="chat-main">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+          <input type="text" id="message-input" placeholder="Type a message...">
+          <input type="file" id="media-upload" accept="image/*,video/*,application/pdf">
+          <button onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 6: CALENDAR
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-calendar">
+    <div class="page-header">
+      <h1 class="page-title">Calendar</h1>
+    </div>
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <button onclick="prevMonth()">Prev</button>
+        <h2 id="month-year">April 2026</h2>
+        <button onclick="nextMonth()">Next</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+    <div class="announcements">
+      <h3>Weekly Announcements</h3>
+      <textarea id="announcement-note" placeholder="Add notes..."></textarea>
+      <button onclick="saveAnnouncement()">Save</button>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════════════
+       PAGE 7: MUSIC PLAYER
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-music">
+    <div class="page-header">
+      <h1 class="page-title">Music / Study Folder</h1>
+    </div>
+    <div class="music-player">
+      <input type="file" id="music-upload" accept="audio/*" multiple>
+      <div class="playlist" id="playlist"></div>
+      <audio id="audio-player" controls></audio>
+    </div>
+  </div>
+ 
+  <!-- ── LIVE CLOCK ── -->
+  <div id="live-clock"></div>
+ 
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+ 
+</body>
+</html>

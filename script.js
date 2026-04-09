@@ -251,7 +251,7 @@ const users = [
   },
 ];
 
-const SERVER_BASE = '';
+const SERVER_BASE = 'https://class-app-y67k.onrender.com';
 let socket = null;
 let currentUser = null;
 let isAdmin = false;
@@ -291,7 +291,7 @@ function saveSession() {
 
 function initSocket() {
   if (socket) return;
-  socket = io();
+  socket = io('https://class-app-y67k.onrender.com');
 
   socket.on('connect', () => {
     if (currentUser) {

@@ -54,6 +54,31 @@ body {
 }
  
  
+/* ── INSTALL BUTTON ── */
+.install-btn {
+  position: fixed;
+  bottom: 1.2rem;
+  right: 1.2rem;
+  z-index: 9999;
+  padding: 0.65rem 1.4rem;
+  background: linear-gradient(135deg, #0b1b3d, #1a3a7a);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  border-radius: 2rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.3), 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.install-btn:hover {
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.6), 0 4px 20px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+
 /* ============================================================
    SCENE BACKGROUNDS
    ============================================================ */

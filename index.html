@@ -322,14 +322,34 @@
 
   // 3. AUTH STATE MONITOR (The "Security Guard")
   onAuthStateChanged(auth, (user) => {
+    const allPages = document.querySelectorAll('.page');
+    const authModal = document.getElementById('auth-modal');
+    const logoutNav = document.getElementById('nav-logout');
+
     if (user) {
-      if(logoutBtn) logoutBtn.style.display = 'flex'; 
-      console.log("Logged in as:", user.email);
+      // USER IS LOGGED IN: Show the app
+      console.log("Welcome:", user.email);
+      if(logoutNav) logoutNav.style.display = 'flex';
+      
+      // Ensure the "First Semester" page is visible
+      goToPage('first'); 
     } else {
-      if(logoutBtn) logoutBtn.style.display = 'none';
+      // USER IS LOGGED OUT: Hide everything and force Login
+      console.log("No user detected. Locking app...");
+      
+      if(logoutNav) logoutNav.style.display = 'none';
+      
+      // Hide all content pages
+      allPages.forEach(page => page.classList.remove('active'));
+      
+      // Open the login modal automatically
+      if (typeof openModal === "function") {
+        openModal(); 
+      } else {
+        authModal.style.display = 'flex'; // Fallback if openModal isn't defined
+      }
     }
   });
-
   // 4. LOGIN LOGIC
   if (loginBtn) {
     loginBtn.addEventListener('click', async () => {

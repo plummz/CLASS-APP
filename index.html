@@ -352,15 +352,25 @@
     }
   });
   
-  // 4. LOGIN LOGIC
+  // 4. LOGIN LOGIC (Updated)
   if (loginBtn) {
     loginBtn.addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        alert("Success! Welcome back.");
-        closeModal();
+        
+        // 1. Close the modal first
+        if(typeof closeModal === "function") closeModal();
+        
+        // 2. FORCE the page to display content immediately
+        if (typeof goToPage === "function") {
+          goToPage('first'); // This triggers your CSS to show the cards
+        } else {
+          document.getElementById('page-first').classList.add('active');
+        }
+        
+        console.log("Login successful and page triggered.");
       } catch (error) {
         errorMsg.style.display = 'block';
         errorMsg.innerText = error.message;

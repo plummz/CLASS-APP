@@ -127,7 +127,14 @@
         <span class="nav-label">Music</span>
       </div>
     </div>
- 
+
+    <div class="nav-item" id="nav-logout" style="display:none;" onclick="handleLogout()">
+      <span class="nav-icon">🚪</span>
+      <div class="nav-text">
+        <span class="nav-label">Log Out</span>
+      </div>
+    </div>
+    
     <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
   </nav>
  
@@ -332,6 +339,34 @@
       errorMsg.innerText = error.message;
     }
   });
+
+  import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const logoutBtn = document.getElementById('nav-logout');
+
+  // MONITOR AUTH STATE (This runs automatically)
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // User is signed in
+      logoutBtn.style.display = 'flex'; // Show logout button
+      console.log("Logged in as:", user.email);
+    } else {
+      // User is signed out
+      logoutBtn.style.display = 'none'; // Hide logout button
+    }
+  });
+
+  // LOGOUT FUNCTION
+  window.handleLogout = async () => {
+    try {
+      await signOut(auth);
+      alert("You have been logged out.");
+      location.reload(); // Refresh to clear any user data from the screen
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  };
+  
 </script>
   
 </body>

@@ -135,14 +135,23 @@
   <div id="overlay" onclick="closeMenu()"></div>
  
   <!-- ── LOGIN/REGISTRATION MODAL ── -->
-  <div id="auth-modal" class="modal">
-    <div class="modal-content">
-      <h2>Login / Register</h2>
-      <input type="text" id="username" placeholder="Surname (Username)">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="login()">Login</button>
-      <button onclick="register()">Register</button>
-      <button onclick="closeModal()">Close</button>
+ <div id="auth-modal" class="modal">
+    <div class="modal-content login-container">
+      <h2>Class App Portal</h2>
+      <div class="input-group">
+        <input type="email" id="loginEmail" placeholder="School Email" required>
+      </div>
+      <div class="input-group">
+        <input type="password" id="loginPassword" placeholder="Password" required>
+      </div>
+      
+      <div class="auth-buttons">
+        <button class="btn-login" id="btnLogin">Sign In</button>
+        <button class="btn-register" id="btnRegister">Create Account</button>
+      </div>
+      
+      <p id="errorMessage" class="error-msg">Invalid email or password.</p>
+      <button class="btn-close" onclick="closeModal()">Maybe Later</button>
     </div>
   </div>
  
@@ -289,18 +298,40 @@
   <script type="module" src="firebase-config.js"></script>
 
 <script type="module">
-    import { saveToDatabase } from './firebase-config.js';
+  import { auth } from './firebase-config.js';
+  import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // TEST: This will automatically send a message to your Firebase Console
-    async function testConnection() {
-        await saveToDatabase("system_logs", {
-            message: "App is connected to Firebase!",
-            timestamp: new Date().toISOString()
-        });
-        console.log("Check your Firebase Console now!");
+  const loginBtn = document.getElementById('btnLogin');
+  const registerBtn = document.getElementById('btnRegister');
+  const errorMsg = document.getElementById('errorMessage');
+
+  // LOGIN LOGIC
+  loginBtn.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      alert("Success! Welcome back.");
+      closeModal();
+    } catch (error) {
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = error.message;
     }
+  });
 
-    testConnection();
+  // REGISTER LOGIC
+  registerBtn.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      alert("Account Created! You are now logged in.");
+      closeModal();
+    } catch (error) {
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = error.message;
+    }
+  });
 </script>
   
 </body>

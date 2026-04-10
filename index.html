@@ -128,7 +128,7 @@
       </div>
     </div>
 
-    <div class="nav-item" id="nav-logout" style="display:none;" onclick="handleLogout()">
+    <div class="nav-item" id="nav-logout" style="display:flex;" onclick="handleLogout()">
       <span class="nav-icon">🚪</span>
       <div class="nav-text">
         <span class="nav-label">Log Out</span>
@@ -305,68 +305,73 @@
   <script type="module" src="firebase-config.js"></script>
 
 <script type="module">
+  // 1. ALL IMPORTS AT THE TOP
   import { auth } from './firebase-config.js';
-  import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+  // 2. DEFINE YOUR BUTTONS
   const loginBtn = document.getElementById('btnLogin');
   const registerBtn = document.getElementById('btnRegister');
   const errorMsg = document.getElementById('errorMessage');
-
-  // LOGIN LOGIC
-  loginBtn.addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("Success! Welcome back.");
-      closeModal();
-    } catch (error) {
-      errorMsg.style.display = 'block';
-      errorMsg.innerText = error.message;
-    }
-  });
-
-  // REGISTER LOGIC
-  registerBtn.addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      alert("Account Created! You are now logged in.");
-      closeModal();
-    } catch (error) {
-      errorMsg.style.display = 'block';
-      errorMsg.innerText = error.message;
-    }
-  });
-
-  import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
   const logoutBtn = document.getElementById('nav-logout');
 
-  // MONITOR AUTH STATE (This runs automatically)
+  // 3. AUTH STATE MONITOR (The "Security Guard")
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      // User is signed in
-      logoutBtn.style.display = 'flex'; // Show logout button
+      if(logoutBtn) logoutBtn.style.display = 'flex'; 
       console.log("Logged in as:", user.email);
     } else {
-      // User is signed out
-      logoutBtn.style.display = 'none'; // Hide logout button
+      if(logoutBtn) logoutBtn.style.display = 'none';
     }
   });
 
-  // LOGOUT FUNCTION
+  // 4. LOGIN LOGIC
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert("Success! Welcome back.");
+        closeModal();
+      } catch (error) {
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = error.message;
+      }
+    });
+  }
+
+  // 5. REGISTER LOGIC
+  if (registerBtn) {
+    registerBtn.addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert("Account Created! You are now logged in.");
+        closeModal();
+      } catch (error) {
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = error.message;
+      }
+    });
+  }
+
+  // 6. LOGOUT FUNCTION (Global for the sidebar button)
   window.handleLogout = async () => {
     try {
       await signOut(auth);
       alert("You have been logged out.");
-      location.reload(); // Refresh to clear any user data from the screen
+      location.reload(); 
     } catch (error) {
       console.error("Logout Error:", error);
     }
   };
-  
 </script>
   
 </body>

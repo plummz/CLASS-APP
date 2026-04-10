@@ -321,33 +321,33 @@
   const logoutBtn = document.getElementById('nav-logout');
 
   // 3. AUTH STATE MONITOR (The "Security Guard")
- onAuthStateChanged(auth, (user) => {
-    const allPages = document.querySelectorAll('.page');
+ nAuthStateChanged(auth, (user) => {
     const authModal = document.getElementById('auth-modal');
     const logoutNav = document.getElementById('nav-logout');
+    const firstPage = document.getElementById('page-first');
 
     if (user) {
-      // USER IS LOGGED IN
-      console.log("Active session:", user.email);
+      console.log("LOGIN SUCCESS: ", user.email);
+      
+      // 1. Hide the login box
+      if(authModal) authModal.style.display = 'none';
+      
+      // 2. Show the logout button in sidebar
       if(logoutNav) logoutNav.style.display = 'flex';
       
-      // Show the content again
-      document.getElementById('page-first').classList.add('active');
+      // 3. Make sure the First Semester page is visible
+      if(firstPage) firstPage.classList.add('active');
+
     } else {
-      // USER IS LOGGED OUT
-      console.log("Locked. Showing login...");
+      console.log("LOGGED OUT: Locking App");
       
       if(logoutNav) logoutNav.style.display = 'none';
       
-      // 1. Hide all pages
-      allPages.forEach(page => page.classList.remove('active'));
+      // Hide all pages
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       
-      // 2. FORCE the modal to appear
-      if(authModal) {
-        authModal.style.display = 'flex'; // This forces the "Glass" box to show
-        authModal.style.opacity = '1';
-        authModal.style.pointerEvents = 'auto';
-      }
+      // Show the login box
+      if(authModal) authModal.style.display = 'flex';
     }
   });
   

@@ -285,6 +285,23 @@
   <!-- JavaScript -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
- 
+
+  <script type="module" src="firebase-config.js"></script>
+
+<script type="module">
+    import { saveToDatabase } from './firebase-config.js';
+
+    // TEST: This will automatically send a message to your Firebase Console
+    async function testConnection() {
+        await saveToDatabase("system_logs", {
+            message: "App is connected to Firebase!",
+            timestamp: new Date().toISOString()
+        });
+        console.log("Check your Firebase Console now!");
+    }
+
+    testConnection();
+</script>
+  
 </body>
 </html>

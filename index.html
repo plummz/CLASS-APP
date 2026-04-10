@@ -326,36 +326,29 @@
     const logoutNav = document.getElementById('nav-logout');
 
     if (user) {
-      console.log("🔓 ACCESS GRANTED: ", user.email);
+      console.log("🔓 ACCESS GRANTED");
+      if(authModal) authModal.style.display = 'none'; // Hide login portal
+      if(logoutNav) logoutNav.style.display = 'flex'; // Show logout button
       
-      // 1. Hide the login box immediately
-      if(authModal) {
-        authModal.style.display = 'none';
-        authModal.style.opacity = '0';
-        authModal.style.pointerEvents = 'none';
-      }
-      
-      // 2. Show the logout button
-      if(logoutNav) logoutNav.style.display = 'flex';
-      
-      // 3. FORCE the page to switch to First Semester
-      // This calls your existing function from script.js
+      // Show the actual content
       if (typeof goToPage === "function") {
         goToPage('first');
       } else {
-        // Fallback if goToPage isn't found
         document.getElementById('page-first').classList.add('active');
       }
-
     } else {
       console.log("🔒 APP LOCKED");
-      if(logoutNav) logoutNav.style.display = 'none';
+      if(logoutNav) logoutNav.style.display = 'none'; // Hide logout button
       
-      // Hide all pages
+      // 1. Clear all active pages (This causes the blank screen you see)
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       
-      // Show login box
-      if(authModal) authModal.style.display = 'flex';
+      // 2. FORCE the login portal to show up
+      if(authModal) {
+        authModal.style.display = 'flex'; 
+        authModal.style.opacity = '1';
+        authModal.style.visibility = 'visible';
+      }
     }
   });
   

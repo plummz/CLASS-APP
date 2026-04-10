@@ -330,15 +330,22 @@
       if(authModal) authModal.style.display = 'none'; // Hide login portal
       if(logoutNav) logoutNav.style.display = 'flex'; // Show logout button
       
-      // Show the actual content
+  // --- ADD THIS PART BELOW ---
+      // 1. Force the first page to become visible immediately
       if (typeof goToPage === "function") {
-        goToPage('first');
+        goToPage('first'); 
       } else {
-        document.getElementById('page-first').classList.add('active');
+        // Fallback: manually add the 'active' class if script.js isn't ready
+        const firstPage = document.getElementById('page-first');
+        if(firstPage) firstPage.classList.add('active');
+        
+        // Update the top label so it doesn't just stay blank
+        const indicator = document.getElementById('page-indicator');
+        if(indicator) indicator.innerText = "⛰️ First Semester";
       }
-    } else {
-      console.log("🔒 APP LOCKED");
-      if(logoutNav) logoutNav.style.display = 'none'; // Hide logout button
+      
+      console.log("Login successful and page triggered.");
+  }
       
       // 1. Clear all active pages (This causes the blank screen you see)
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -364,11 +371,22 @@
         if(typeof closeModal === "function") closeModal();
         
         // 2. FORCE the page to display content immediately
-        if (typeof goToPage === "function") {
-          goToPage('first'); // This triggers your CSS to show the cards
-        } else {
-          document.getElementById('page-first').classList.add('active');
-        }
+if (typeof goToPage === "function") {
+    console.log("Using goToPage to unlock...");
+    goToPage('first');
+} else {
+    console.log("goToPage not found, manual unlock triggered.");
+    // --- MANUAL OVERRIDE ---
+    // Hide all pages first
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // Show the first semester page
+    const firstPage = document.getElementById('page-first');
+    if(firstPage) firstPage.classList.add('active');
+    
+    // Update the indicator manually
+    const indicator = document.getElementById('page-indicator');
+    if(indicator) indicator.innerText = "⛰️ First Semester";
+}
         
         console.log("Login successful and page triggered.");
       } catch (error) {

@@ -1629,6 +1629,21 @@ audio {
 #nav-logout:hover {
     background: rgba(255, 77, 77, 0.2); /* Soft red glow on hover */
 }
-#nav-logout .nav-label {
-    color: #ff6b6b; /* Reddish text to indicate exit */
+#nav-logout {
+    display: flex !important; /* Forces it to show */
+    cursor: pointer;
+    margin-top: auto; /* Pushes the logout button to the very bottom of the sidebar */
+    padding-bottom: 20px;
 }
+
+#nav-logout .nav-label {
+    color: #ff6b6b !important; /* Makes the text red so it's easy to spot */
+}
+
+#sidebar {
+    height: 100%;
+    overflow-y: auto; /* This allows you to scroll if you add too many items */
+    display: flex;
+    flex-direction: column;
+}
+

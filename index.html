@@ -321,32 +321,40 @@
   const logoutBtn = document.getElementById('nav-logout');
 
   // 3. AUTH STATE MONITOR (The "Security Guard")
- nAuthStateChanged(auth, (user) => {
+ onAuthStateChanged(auth, (user) => {
     const authModal = document.getElementById('auth-modal');
     const logoutNav = document.getElementById('nav-logout');
-    const firstPage = document.getElementById('page-first');
 
     if (user) {
-      console.log("LOGIN SUCCESS: ", user.email);
+      console.log("🔓 ACCESS GRANTED: ", user.email);
       
-      // 1. Hide the login box
-      if(authModal) authModal.style.display = 'none';
+      // 1. Hide the login box immediately
+      if(authModal) {
+        authModal.style.display = 'none';
+        authModal.style.opacity = '0';
+        authModal.style.pointerEvents = 'none';
+      }
       
-      // 2. Show the logout button in sidebar
+      // 2. Show the logout button
       if(logoutNav) logoutNav.style.display = 'flex';
       
-      // 3. Make sure the First Semester page is visible
-      if(firstPage) firstPage.classList.add('active');
+      // 3. FORCE the page to switch to First Semester
+      // This calls your existing function from script.js
+      if (typeof goToPage === "function") {
+        goToPage('first');
+      } else {
+        // Fallback if goToPage isn't found
+        document.getElementById('page-first').classList.add('active');
+      }
 
     } else {
-      console.log("LOGGED OUT: Locking App");
-      
+      console.log("🔒 APP LOCKED");
       if(logoutNav) logoutNav.style.display = 'none';
       
       // Hide all pages
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       
-      // Show the login box
+      // Show login box
       if(authModal) authModal.style.display = 'flex';
     }
   });

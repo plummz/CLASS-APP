@@ -1625,3 +1625,10 @@ audio {
   text-decoration: underline;
   font-size: 0.8em;
 }
+
+#nav-logout:hover {
+    background: rgba(255, 77, 77, 0.2); /* Soft red glow on hover */
+}
+#nav-logout .nav-label {
+    color: #ff6b6b; /* Reddish text to indicate exit */
+}

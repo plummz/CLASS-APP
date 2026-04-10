@@ -1647,3 +1647,7 @@ audio {
     flex-direction: column;
 }
 
+#auth-modal {
+    z-index: 10000 !important; /* Ensures it sits on top of the mountains */
+    background: rgba(0, 0, 0, 0.7); /* Dims the background so the portal pops */
+}

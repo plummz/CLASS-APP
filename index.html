@@ -301,6 +301,8 @@
       <input type="file" id="music-upload" accept="audio/*" multiple>
       <div class="playlist" id="playlist"></div>
       <audio id="audio-player" controls></audio>
+      <audio controls onplay="window.startVisualizer(this)">
+    </audio>
     </div>
 
     <div id="visualizer-container" style="display: flex; justify-content: center; margin: 30px 0;">

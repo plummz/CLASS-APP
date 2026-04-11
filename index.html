@@ -17,7 +17,9 @@
 </head>
 <body>
 
-  <button id="install-btn" class="install-btn" style="display:none;">Install App</button>
+  <button id="install-btn" class="install-btn" style="display:none;">
+    Install App
+  </button>
  
   <div id="bg-mountain" class="scene-bg active"></div>
   <div id="bg-ocean"    class="scene-bg"></div>
@@ -59,71 +61,89 @@
  
     <div class="nav-item active" data-page="first" onclick="goToPage('first')">
       <span class="nav-icon" data-page="first">⛰️</span>
-      <div class="nav-text"><span class="nav-label">First Semester</span></div>
+      <div class="nav-text">
+        <span class="nav-label">First Semester</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="second" onclick="goToPage('second')">
       <span class="nav-icon" data-page="second">🌊</span>
-      <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Second Semester</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="events" onclick="goToPage('events')">
       <span class="nav-icon" data-page="events">🛩️</span>
-      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Event Pictures</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="random" onclick="goToPage('random')">
       <span class="nav-icon" data-page="random">🌌</span>
-      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Random Pictures</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
       <span class="nav-icon" data-page="chat">💬</span>
-      <div class="nav-text"><span class="nav-label">Chat</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Chat</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="users" onclick="goToPage('users')">
       <span class="nav-icon" data-page="users">👥</span>
-      <div class="nav-text"><span class="nav-label">Users</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Users</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
       <span class="nav-icon" data-page="calendar">📅</span>
-      <div class="nav-text"><span class="nav-label">Calendar</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Calendar</span>
+      </div>
     </div>
  
     <div class="nav-item" data-page="music" onclick="goToPage('music')">
       <span class="nav-icon" data-page="music">🎵</span>
-      <div class="nav-text"><span class="nav-label">Music</span></div>
+      <div class="nav-text">
+        <span class="nav-label">Music</span>
+      </div>
     </div>
 
     <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
       <span class="nav-icon">🚪</span>
-      <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
+      <div class="nav-text">
+        <span class="nav-label" style="color: #ff6b6b;">Log Out</span>
+      </div>
     </div>
-   
+    
     <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
   </nav>
  
   <div id="overlay" onclick="closeMenu()"></div>
  
-  <div id="auth-modal" style="display: flex; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; pointer-events: auto;">
-    <div class="modal-content login-container" style="background: #1a1a2e; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; z-index: 1000000; pointer-events: auto;">
-      <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Cinzel Decorative', serif;">CLASS APP PORTAL</h2>
+  <div id="auth-modal" style="display: flex; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
+    <div class="modal-content login-container" style="z-index: 1000000; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; box-shadow: 0 0 30px rgba(0,255,136,0.2); width: 90%; max-width: 400px;">
+      <h2 style="color: white; text-align: center; margin-bottom: 25px; font-family: 'Cinzel Decorative', serif; letter-spacing: 2px;">CLASS APP PORTAL</h2>
       <div class="input-group">
-        <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none;">
       </div>
       <div class="input-group">
-        <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none;">
       </div>
-     
+      
       <div class="auth-buttons" style="display: flex; gap: 10px;">
-        <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
-        <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
+        <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; color: #0b1b3d;">Sign In</button>
+        <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; color: #0b1b3d;">Create Account</button>
       </div>
-     
-      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px;">Invalid email or password.</p>
-      <button class="btn-close" onclick="closeModal()" style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px; border-radius: 8px; cursor: pointer;">Maybe Later</button>
+      
+      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px; font-size: 14px;">Invalid email or password.</p>
+      <button class="btn-close" onclick="closeModal()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px; border-radius: 8px; cursor: pointer;">Maybe Later</button>
     </div>
   </div>
  
@@ -135,34 +155,47 @@
   </div>
  
   <div class="page active" id="page-first">
-    <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">Upload PDF for each subject</div>
+    <div class="page-header">
+      <h1 class="page-title">First Semester</h1>
+    </div>
+    <div class="section-label">Upload PDF for each subject (Video support added)</div>
     <div class="upload-grid" id="grid-first"></div>
   </div>
  
   <div class="page" id="page-second">
-    <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
-    <div class="section-label">Upload PDF for each subject</div>
+    <div class="page-header">
+      <h1 class="page-title">Second Semester</h1>
+    </div>
+    <div class="section-label">Upload PDF for each subject (Video support added)</div>
     <div class="upload-grid" id="grid-second"></div>
   </div>
  
   <div class="page" id="page-events">
-    <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">Event Pictures</h1>
+    </div>
+    <div class="section-label">Upload a photo for each event folder (Author credit shown)</div>
     <div class="folder-grid" id="grid-events"></div>
   </div>
  
   <div class="page" id="page-random">
-    <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">Random Pictures</h1>
+    </div>
+    <div class="section-label">Upload any image to each folder (Author credit shown)</div>
     <div class="folder-grid" id="grid-random"></div>
   </div>
  
   <div class="page" id="page-chat">
-    <div class="page-header"><h1 class="page-title">Chat</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">Chat</h1>
+    </div>
     <div class="chat-container">
       <div class="chat-sidebar">
         <div class="chat-list">
           <div class="chat-item" onclick="openChat('group')">Group Chat</div>
           <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
+          <div class="chat-section-label">Private Contacts</div>
           <div id="chat-user-list" class="chat-user-list"></div>
         </div>
       </div>
@@ -171,19 +204,31 @@
         <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
           <input type="text" id="message-input" placeholder="Type a message...">
+          <label class="attachment-label" for="attachment-input">Attach</label>
+          <input type="file" id="attachment-input" accept="*/*">
+          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
           <button onclick="sendMessage()">Send</button>
         </div>
       </div>
     </div>
   </div>
-
+ 
   <div class="page" id="page-users">
-    <div class="page-header"><h1 class="page-title">User Directory</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">User Directory</h1>
+    </div>
+    <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-grid" id="user-grid"></div>
+    <div class="profile-panel" id="profile-panel">
+      <button class="close-profile" onclick="closeProfile()">×</button>
+      <div id="profile-details"></div>
+    </div>
   </div>
  
   <div class="page" id="page-calendar">
-    <div class="page-header"><h1 class="page-title">Calendar</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">Calendar</h1>
+    </div>
     <div class="calendar-container">
       <div class="calendar-header">
         <button onclick="prevMonth()">Prev</button>
@@ -192,22 +237,35 @@
       </div>
       <div class="calendar-grid" id="calendar-grid"></div>
     </div>
+    <div class="announcements">
+      <h3>Weekly Announcements</h3>
+      <textarea id="announcement-note" placeholder="Add notes..."></textarea>
+      <button onclick="saveAnnouncement()">Save</button>
+    </div>
   </div>
  
   <div class="page" id="page-music">
-    <div class="page-header"><h1 class="page-title">Music / Study Folder</h1></div>
-    <div style="margin-bottom: 20px;">
+    <div class="page-header">
+      <h1 class="page-title">Music / Study Folder</h1>
+    </div>
+    
+   <div style="margin-bottom: 20px;">
         <button onclick="createMusicFolder()" class="btn-create" style="background: #00ff88; color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
             + New Music Folder
         </button>
     </div>
+    
     <div id="folder-grid" class="upload-grid"></div>
+    
     <div class="music-player">
+      <input type="file" id="music-upload" accept="audio/*" multiple>
+      <div class="playlist" id="playlist"></div>
       <audio id="audio-player" controls onplay="window.startVisualizer(this)"></audio>
-      <div id="visualizer-container" style="display: flex; justify-content: center; margin: 30px 0;">
-        <div id="dancing-speaker" style="width: 100px; height: 100px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 20px #00ff88; transition: transform 0.05s ease;">
-            <div style="width: 40px; height: 40px; background: #1a1a2e; border-radius: 50%; margin: 30px auto;"></div>
-        </div>
+    </div>
+
+    <div id="visualizer-container" style="display: flex; justify-content: center; margin: 30px 0;">
+      <div id="dancing-speaker" style="width: 100px; height: 100px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 20px #00ff88; transition: transform 0.05s ease;">
+          <div style="width: 40px; height: 40px; background: #1a1a2e; border-radius: 50%; margin: 30px auto;"></div>
       </div>
     </div>
   </div>
@@ -223,25 +281,40 @@
     import { auth, db } from './firebase-config.js';
     import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // --- AUTH LOGIC ---
+    // 1. AUTHENTICATION HANDLER
     onAuthStateChanged(auth, (user) => {
       const authModal = document.getElementById('auth-modal');
       const logoutNav = document.getElementById('nav-logout');
       if (user) {
-        authModal.style.display = 'none';
-        logoutNav.style.display = 'flex';
+        if(authModal) authModal.style.display = 'none';
+        if(logoutNav) logoutNav.style.display = 'flex';
         window.loadFolders(); 
       } else {
-        authModal.style.display = 'flex';
-        logoutNav.style.display = 'none';
+        if(authModal) authModal.style.display = 'flex';
+        if(logoutNav) logoutNav.style.display = 'none';
       }
     });
 
+    // Sign In Button
     document.getElementById('btnLogin').onclick = async () => {
       const email = document.getElementById('loginEmail').value;
       const pw = document.getElementById('loginPassword').value;
+      const errorMsg = document.getElementById('errorMessage');
       try {
         await signInWithEmailAndPassword(auth, email, pw);
+      } catch (e) {
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = e.message;
+      }
+    };
+
+    // Register Button
+    document.getElementById('btnRegister').onclick = async () => {
+      const email = document.getElementById('loginEmail').value;
+      const pw = document.getElementById('loginPassword').value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, pw);
+        alert("Account Created Successfully!");
       } catch (e) {
         const errorMsg = document.getElementById('errorMessage');
         errorMsg.style.display = 'block';
@@ -249,23 +322,13 @@
       }
     };
 
-    document.getElementById('btnRegister').onclick = async () => {
-      const email = document.getElementById('loginEmail').value;
-      const pw = document.getElementById('loginPassword').value;
-      try {
-        await createUserWithEmailAndPassword(auth, email, pw);
-        alert("Account Created!");
-      } catch (e) {
-        alert(e.message);
-      }
-    };
-
+    // Logout Function
     window.handleLogout = async () => {
       await signOut(auth);
       location.reload(); 
     };
 
-    // --- MUSIC FOLDER SYSTEM ---
+    // 2. MUSIC FOLDER SYSTEM
     window.createMusicFolder = async () => {
       const folderName = prompt("Enter new folder name:");
       if (!folderName) return;
@@ -276,37 +339,41 @@
           timestamp: serverTimestamp()
         });
         window.loadFolders(); 
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Error creating folder:", e); }
     };
 
     window.loadFolders = async () => {
       const grid = document.getElementById('folder-grid');
       if (!grid || !auth.currentUser) return;
-      const q = query(collection(db, "folders"), where("createdBy", "==", auth.currentUser.uid));
-      const snapshot = await getDocs(q);
-      grid.innerHTML = ""; 
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const id = docSnap.id;
-        grid.innerHTML += `
-          <div class="subject-card" style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; position: relative;">
-            <button onclick="renameFolder('${id}', '${data.name}', event)" style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer;">✏️</button>
-            <div style="font-size:40px;">📁</div>
-            <div style="color:white; font-weight:bold;">${data.name}</div>
-          </div>`;
-      });
+      try {
+        const q = query(collection(db, "folders"), where("createdBy", "==", auth.currentUser.uid));
+        const snapshot = await getDocs(q);
+        grid.innerHTML = ""; 
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+          grid.innerHTML += `
+            <div class="subject-card" style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; position: relative;">
+              <button onclick="renameFolder('${id}', '${data.name}', event)" style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
+              <div style="font-size:40px;">📁</div>
+              <div style="color:white; font-weight:bold; margin-top:5px;">${data.name}</div>
+            </div>`;
+        });
+      } catch (e) { console.error("Error loading folders:", e); }
     };
 
     window.renameFolder = async (folderId, oldName, event) => {
       event.stopPropagation(); 
-      const newName = prompt("Rename folder:", oldName);
+      const newName = prompt("Rename your folder:", oldName);
       if (newName && newName !== oldName) {
-        await updateDoc(doc(db, "folders", folderId), { name: newName });
-        window.loadFolders(); 
+        try {
+          await updateDoc(doc(db, "folders", folderId), { name: newName });
+          window.loadFolders(); 
+        } catch (e) { console.error("Rename Error:", e); }
       }
     };
 
-    // --- VISUALIZER ---
+    // 3. MUSIC VISUALIZER
     window.startVisualizer = (audioElement) => {
       if (!window.audioCtx) {
         window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -315,30 +382,70 @@
         source.connect(window.analyser);
         window.analyser.connect(window.audioCtx.destination);
       }
-      const dataArray = new Uint8Array(window.analyser.frequencyBinCount);
+      const bufferLength = window.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
       const speaker = document.getElementById('dancing-speaker');
-      function animate() {
-        requestAnimationFrame(animate);
+
+      function animatePulse() {
+        requestAnimationFrame(animatePulse);
         window.analyser.getByteFrequencyData(dataArray);
         let bass = dataArray.slice(0, 10).reduce((a, b) => a + b) / 10;
-        speaker.style.transform = `scale(${1 + (bass / 255)})`;
+        const scale = 1 + (bass / 255) * 0.8; 
+        if (speaker) speaker.style.transform = `scale(${scale})`;
       }
-      animate();
+      animatePulse();
     };
+
+    // 4. CHAT SYSTEM INTEGRATION
+    window.sendPrivateMessage = async () => {
+      const input = document.getElementById('private-chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      try {
+        await addDoc(collection(db, "messages"), {
+          text: msg,
+          senderId: auth.currentUser.uid,
+          senderEmail: auth.currentUser.email,
+          timestamp: serverTimestamp()
+        });
+        input.value = ""; 
+      } catch (e) { console.error("Chat Error:", e); }
+    };
+
+    const qMessages = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+    onSnapshot(qMessages, (snapshot) => {
+      const display = document.getElementById('private-messages-display');
+      if (!display) return;
+      display.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const isMe = auth.currentUser && data.senderId === auth.currentUser.uid;
+        display.innerHTML += `
+          <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; background: ${isMe ? '#00ff88' : '#333'}; color: ${isMe ? 'black' : 'white'}; padding: 8px 12px; border-radius: 15px; max-width: 80%; margin-bottom:5px;">
+            ${data.text}
+          </div>`;
+      });
+      display.scrollTop = display.scrollHeight;
+    });
   </script>
 
-  <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 2000;">💬</div>
+  <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
+      💬
+  </div>
 
-  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 2000; overflow: hidden;">
+  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 2000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
       <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-weight: bold;">Private Messenger</span>
-          <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer;">×</button>
+          <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer; font-size: 20px;">×</button>
       </div>
-      <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; background: #0b0b1a;"></div>
-      <div style="padding: 10px; display: flex; background: #16213e;">
-          <input type="text" id="private-chat-input" placeholder="Aa" style="flex: 1; padding: 10px; border-radius: 20px; border: none; background: #1a1a2e; color: white;">
-          <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; margin-left: 5px;">🚀</button>
+      <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0b0b1a; color: white;">
+          <p style="color: gray; font-size: 12px; text-align: center;">Messages will appear here...</p>
+      </div>
+      <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
+          <input type="text" id="private-chat-input" placeholder="Aa" style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
+          <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
       </div>
   </div>
+   
 </body>
 </html>

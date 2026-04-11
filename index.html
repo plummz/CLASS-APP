@@ -317,138 +317,182 @@
 
 <script type="module">
   // 1. ALL IMPORTS
-  
   import { 
-  collection, 
-  addDoc, 
-  getDocs,     
-  query,        
-  where,        
-  onSnapshot,   
-  orderBy,     
-  serverTimestamp, 
-  doc, 
-  updateDoc 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    collection, addDoc, getDocs, query, where, onSnapshot, 
+    orderBy, serverTimestamp, doc, updateDoc 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   
-  import { auth } from './firebase-config.js';
+  import { auth, db } from './firebase-config.js';
   import { 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
+    signInWithEmailAndPassword, createUserWithEmailAndPassword, 
+    signOut, onAuthStateChanged 
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  // 2. DEFINE ELEMENTS
+  // --- 2. MUSIC FOLDER SYSTEM ---
+  window.createMusicFolder = async () => {
+    console.log("Folder button clicked!");
+    const folderName = prompt("Enter new folder name:");
+    if (!folderName) return;
+
+    try {
+      await addDoc(collection(db, "folders"), {
+        name: folderName,
+        createdBy: auth.currentUser.uid,
+        timestamp: serverTimestamp()
+      });
+      alert("Folder saved to Firebase!");
+      window.loadFolders(); 
+    } catch (e) {
+      console.error("Error:", e);
+      alert("Error saving folder. Check console.");
+    }
+  };
+
+  window.loadFolders = async () => {
+    const grid = document.getElementById('folder-grid');
+    if (!grid) return;
+    grid.innerHTML = "<p style='color:white; padding:20px;'>Loading folders...</p>";
+
+    const qMessages = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+onSnapshot(qMessages, (snapshot) => {
+    const display = document.getElementById('private-messages-display');
+    if (!display) return;
+    display.innerHTML = ""; // Clear "Messages will appear here"
+    
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        const isMe = data.senderId === auth.currentUser.uid;
+        display.innerHTML += `
+            <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; 
+                        background: ${isMe ? '#00ff88' : '#333'}; 
+                        color: ${isMe ? 'black' : 'white'}; 
+                        padding: 8px 12px; border-radius: 15px; max-width: 80%;">
+                ${data.text}
+            </div>`;
+    });
+    display.scrollTop = display.scrollHeight; // Auto-scroll to bottom
+});
+
+    try {
+      const q = query(
+        collection(db, "folders"), 
+        where("createdBy", "==", auth.currentUser.uid)
+      );
+      
+      const snapshot = await getDocs(q);
+      grid.innerHTML = ""; 
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        grid.innerHTML += `
+          <div class="subject-card" style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px;">
+            <div style="font-size:40px;">📁</div>
+            <div style="color:white; font-weight:bold; margin-top:5px;">${data.name}</div>
+          </div>`;
+      });
+    } catch (e) {
+      console.error("Load Error:", e);
+    }
+  };
+
+  // --- 3. PRIVATE MESSENGER SYSTEM ---
+  window.toggleChatWindow = () => {
+    const win = document.getElementById('chat-window');
+    const isHidden = win.style.display === 'none' || win.style.display === '';
+    win.style.display = isHidden ? 'flex' : 'none';
+  };
+
+  window.sendPrivateMessage = async () => {
+    const input = document.getElementById('private-chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    try {
+      await addDoc(collection(db, "messages"), {
+        text: msg,
+        senderId: auth.currentUser.uid,
+        senderEmail: auth.currentUser.email,
+        timestamp: serverTimestamp()
+      });
+      input.value = ""; 
+      console.log("Message sent!");
+    } catch (e) {
+      console.error("Chat Error:", e);
+    }
+  };
+
+  // --- 4. AUTH & NAVIGATION ---
   const loginBtn = document.getElementById('btnLogin');
   const registerBtn = document.getElementById('btnRegister');
   const errorMsg = document.getElementById('errorMessage');
   const authModal = document.getElementById('auth-modal');
   const logoutNav = document.getElementById('nav-logout');
 
-  // 3. AUTH STATE MONITOR (The "Security Guard")
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log("🔓 ACCESS GRANTED");
-
-      if (typeof loadFolders === "function") loadFolders();
-      
-      // UI Cleanup
-      if(authModal) {
-        authModal.style.display = 'none';
-        authModal.style.pointerEvents = 'none';
-      }
+      window.loadFolders(); 
+      if(authModal) authModal.style.display = 'none';
       if(logoutNav) logoutNav.style.display = 'flex';
-      
-      // Trigger Navigation to First Semester
-      if (typeof goToPage === "function") {
-        goToPage('first'); 
-      } else {
-        // Fallback: manual override if script.js isn't ready
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        const firstPage = document.getElementById('page-first');
-        if(firstPage) firstPage.classList.add('active');
-        const indicator = document.getElementById('page-indicator');
-        if(indicator) indicator.innerText = "⛰️ First Semester";
-      }
-      console.log("Login successful and page triggered.");
-
+      if (typeof goToPage === "function") goToPage('first'); 
     } else {
-      // THIS IS THE "LOGGED OUT" STATE
       console.log("🔒 APP LOCKED");
       if(logoutNav) logoutNav.style.display = 'none';
-      
-      // Hide all content pages
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      
-      // Force the login portal to show up
-      if(authModal) {
-        authModal.style.display = 'flex'; 
-        authModal.style.opacity = '1';
-        authModal.style.visibility = 'visible';
-        authModal.style.pointerEvents = 'auto';
-      }
+      if(authModal) authModal.style.display = 'flex';
     }
   });
-  
-  // 4. LOGIN LOGIC
+
   if (loginBtn) {
     loginBtn.addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
+      const pw = document.getElementById('loginPassword').value;
       try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // We don't need extra code here; the "Security Guard" above handles the UI change
-      } catch (error) {
-        if(errorMsg) {
-          errorMsg.style.display = 'block';
-          errorMsg.innerText = error.message;
-        }
+        await signInWithEmailAndPassword(auth, email, pw);
+      } catch (e) {
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = e.message;
       }
     });
   }
 
-  // 5. REGISTER LOGIC
   if (registerBtn) {
     registerBtn.addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
+      const pw = document.getElementById('loginPassword').value;
       try {
-        await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, email, pw);
         alert("Account Created!");
-      } catch (error) {
-        if(errorMsg) {
-          errorMsg.style.display = 'block';
-          errorMsg.innerText = error.message;
-        }
+      } catch (e) {
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = e.message;
       }
     });
   }
 
-  // 6. LOGOUT FUNCTION (Global for sidebar button)
   window.handleLogout = async () => {
     try {
       await signOut(auth);
       location.reload(); 
-    } catch (error) {
-      console.error("Logout Error:", error);
+    } catch (e) {
+      console.error("Logout Error:", e);
     }
   };
 </script>
-  
+
 <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
     💬
 </div>
 
 <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 2000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
     <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center;">
-        <span id="chat-with-name" style="font-weight: bold;">Private Messenger</span>
+        <span style="font-weight: bold;">Private Messenger</span>
         <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer; font-size: 20px;">×</button>
     </div>
-    <div id="chat-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0b0b1a;">
-        </div>
+    <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0b0b1a; color: white;">
+        <p style="color: gray; font-size: 12px; text-align: center;">Messages will appear here...</p>
+    </div>
     <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
-        <input type="text" id="chat-input" placeholder="Aa" style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
+        <input type="text" id="private-chat-input" placeholder="Aa" style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
         <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
     </div>
 </div>

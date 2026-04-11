@@ -434,6 +434,40 @@ onSnapshot(qMessages, (snapshot) => {
     }
   };
 
+  window.startVisualizer = (audioElement) => {
+      if (!window.audioCtx) {
+          window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          window.analyser = window.audioCtx.createAnalyser();
+          
+          const source = window.audioCtx.createMediaElementSource(audioElement);
+          source.connect(window.analyser);
+          window.analyser.connect(window.audioCtx.destination);
+          
+          window.analyser.fftSize = 256;
+      }
+
+      const bufferLength = window.analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const speaker = document.getElementById('dancing-speaker');
+
+      function animatePulse() {
+          requestAnimationFrame(animatePulse);
+          window.analyser.getByteFrequencyData(dataArray);
+
+          let bass = 0;
+          for (let i = 0; i < 10; i++) {
+              bass += dataArray[i];
+          }
+          bass = bass / 10;
+
+          const scale = 1 + (bass / 255) * 0.8; 
+          if (speaker) {
+              speaker.style.transform = `scale(${scale})`;
+          }
+      }
+      animatePulse();
+  };
+
   // --- 4. AUTH & NAVIGATION ---
   const loginBtn = document.getElementById('btnLogin');
   const registerBtn = document.getElementById('btnRegister');

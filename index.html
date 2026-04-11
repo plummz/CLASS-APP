@@ -338,7 +338,6 @@
 
   // --- 2. MUSIC FOLDER SYSTEM ---
   window.createMusicFolder = async () => {
-    console.log("Folder button clicked!");
     const folderName = prompt("Enter new folder name:");
     if (!folderName) return;
 
@@ -348,45 +347,17 @@
         createdBy: auth.currentUser.uid,
         timestamp: serverTimestamp()
       });
-      alert("Folder saved to Firebase!");
+      alert("Folder saved!");
       window.loadFolders(); 
     } catch (e) {
       console.error("Error:", e);
-      alert("Error saving folder. Check console.");
     }
   };
 
-  grid.innerHTML += `
-  <div class="subject-card" 
-       onclick="openMusicFolder('${folderId}', '${data.name}')" 
-       style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; position: relative;">
-    
-    <button onclick="renameFolder('${folderId}', '${data.name}', event)" 
-            style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
-
-    <div style="font-size:40px;">📁</div>
-    <div style="color:white; font-weight:bold; margin-top:5px;">${data.name}</div>
-  </div>`;
-
-    const qMessages = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-onSnapshot(qMessages, (snapshot) => {
-    const display = document.getElementById('private-messages-display');
-    if (!display) return;
-    display.innerHTML = ""; // Clear "Messages will appear here"
-    
-    snapshot.forEach((doc) => {
-        const data = doc.data();
-        const isMe = data.senderId === auth.currentUser.uid;
-        display.innerHTML += `
-            <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; 
-                        background: ${isMe ? '#00ff88' : '#333'}; 
-                        color: ${isMe ? 'black' : 'white'}; 
-                        padding: 8px 12px; border-radius: 15px; max-width: 80%;">
-                ${data.text}
-            </div>`;
-    });
-    display.scrollTop = display.scrollHeight; // Auto-scroll to bottom
-});
+  window.loadFolders = async () => {
+    const grid = document.getElementById('folder-grid');
+    if (!grid || !auth.currentUser) return;
+    grid.innerHTML = "<p style='color:white; padding:20px;'>Loading folders...</p>";
 
     try {
       const q = query(
@@ -397,10 +368,18 @@ onSnapshot(qMessages, (snapshot) => {
       const snapshot = await getDocs(q);
       grid.innerHTML = ""; 
       
-      snapshot.forEach(doc => {
-        const data = doc.data();
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const folderId = docSnap.id;
+        
         grid.innerHTML += `
-          <div class="subject-card" style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px;">
+          <div class="subject-card" 
+               onclick="alert('Opening ${data.name}...')"
+               style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; position: relative;">
+            
+            <button onclick="renameFolder('${folderId}', '${data.name}', event)" 
+                    style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
+
             <div style="font-size:40px;">📁</div>
             <div style="color:white; font-weight:bold; margin-top:5px;">${data.name}</div>
           </div>`;
@@ -410,11 +389,24 @@ onSnapshot(qMessages, (snapshot) => {
     }
   };
 
+  window.renameFolder = async (folderId, oldName, event) => {
+    event.stopPropagation(); 
+    const newName = prompt("Rename your folder:", oldName);
+    if (!newName || newName === oldName) return;
+
+    try {
+        const folderRef = doc(db, "folders", folderId);
+        await updateDoc(folderRef, { name: newName });
+        window.loadFolders(); 
+    } catch (e) {
+        console.error("Rename Error:", e);
+    }
+  };
+
   // --- 3. PRIVATE MESSENGER SYSTEM ---
   window.toggleChatWindow = () => {
     const win = document.getElementById('chat-window');
-    const isHidden = win.style.display === 'none' || win.style.display === '';
-    win.style.display = isHidden ? 'flex' : 'none';
+    win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
   };
 
   window.sendPrivateMessage = async () => {
@@ -430,24 +422,41 @@ onSnapshot(qMessages, (snapshot) => {
         timestamp: serverTimestamp()
       });
       input.value = ""; 
-      console.log("Message sent!");
     } catch (e) {
       console.error("Chat Error:", e);
     }
   };
 
+  // Real-time listener for messages
+  const qMessages = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+  onSnapshot(qMessages, (snapshot) => {
+    const display = document.getElementById('private-messages-display');
+    if (!display) return;
+    display.innerHTML = "";
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        const isMe = auth.currentUser && data.senderId === auth.currentUser.uid;
+        display.innerHTML += `
+            <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; 
+                        background: ${isMe ? '#00ff88' : '#333'}; 
+                        color: ${isMe ? 'black' : 'white'}; 
+                        padding: 8px 12px; border-radius: 15px; max-width: 80%; margin-bottom:5px;">
+                ${data.text}
+            </div>`;
+    });
+    display.scrollTop = display.scrollHeight;
+  });
+
+  // --- VISUALIZER ---
   window.startVisualizer = (audioElement) => {
       if (!window.audioCtx) {
           window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           window.analyser = window.audioCtx.createAnalyser();
-          
           const source = window.audioCtx.createMediaElementSource(audioElement);
           source.connect(window.analyser);
           window.analyser.connect(window.audioCtx.destination);
-          
           window.analyser.fftSize = 256;
       }
-
       const bufferLength = window.analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       const speaker = document.getElementById('dancing-speaker');
@@ -455,94 +464,58 @@ onSnapshot(qMessages, (snapshot) => {
       function animatePulse() {
           requestAnimationFrame(animatePulse);
           window.analyser.getByteFrequencyData(dataArray);
-
           let bass = 0;
-          for (let i = 0; i < 10; i++) {
-              bass += dataArray[i];
-          }
+          for (let i = 0; i < 10; i++) { bass += dataArray[i]; }
           bass = bass / 10;
-
           const scale = 1 + (bass / 255) * 0.8; 
-          if (speaker) {
-              speaker.style.transform = `scale(${scale})`;
-          }
+          if (speaker) speaker.style.transform = `scale(${scale})`;
       }
       animatePulse();
   };
 
   // --- 4. AUTH & NAVIGATION ---
-  const loginBtn = document.getElementById('btnLogin');
-  const registerBtn = document.getElementById('btnRegister');
-  const errorMsg = document.getElementById('errorMessage');
-  const authModal = document.getElementById('auth-modal');
-  const logoutNav = document.getElementById('nav-logout');
-
   onAuthStateChanged(auth, (user) => {
+    const authModal = document.getElementById('auth-modal');
+    const logoutNav = document.getElementById('nav-logout');
     if (user) {
-      console.log("🔓 ACCESS GRANTED");
       window.loadFolders(); 
       if(authModal) authModal.style.display = 'none';
       if(logoutNav) logoutNav.style.display = 'flex';
-      if (typeof goToPage === "function") goToPage('first'); 
     } else {
-      console.log("🔒 APP LOCKED");
       if(logoutNav) logoutNav.style.display = 'none';
       if(authModal) authModal.style.display = 'flex';
     }
   });
 
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async () => {
-      const email = document.getElementById('loginEmail').value;
-      const pw = document.getElementById('loginPassword').value;
-      try {
-        await signInWithEmailAndPassword(auth, email, pw);
-      } catch (e) {
-        errorMsg.style.display = 'block';
-        errorMsg.innerText = e.message;
-      }
-    });
-  }
+  document.getElementById('btnLogin')?.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const pw = document.getElementById('loginPassword').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, pw);
+    } catch (e) {
+      const errorMsg = document.getElementById('errorMessage');
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = e.message;
+    }
+  });
 
-  if (registerBtn) {
-    registerBtn.addEventListener('click', async () => {
-      const email = document.getElementById('loginEmail').value;
-      const pw = document.getElementById('loginPassword').value;
-      try {
-        await createUserWithEmailAndPassword(auth, email, pw);
-        alert("Account Created!");
-      } catch (e) {
-        errorMsg.style.display = 'block';
-        errorMsg.innerText = e.message;
-      }
-    });
-  }
+  document.getElementById('btnRegister')?.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const pw = document.getElementById('loginPassword').value;
+    try {
+      await createUserWithEmailAndPassword(auth, email, pw);
+      alert("Account Created!");
+    } catch (e) {
+      const errorMsg = document.getElementById('errorMessage');
+      errorMsg.style.display = 'block';
+      errorMsg.innerText = e.message;
+    }
+  });
 
   window.handleLogout = async () => {
-    try {
-      await signOut(auth);
-      location.reload(); 
-    } catch (e) {
-      console.error("Logout Error:", e);
-    }
+    await signOut(auth);
+    location.reload(); 
   };
-
-  window.renameFolder = async (folderId, oldName, event) => {
-    // This stops the click from opening the folder accidentally
-    event.stopPropagation(); 
-
-    const newName = prompt("Rename your folder:", oldName);
-    if (!newName || newName === oldName) return;
-
-    try {
-        const folderRef = doc(db, "folders", folderId);
-        await updateDoc(folderRef, { name: newName });
-        alert("Folder renamed!");
-        window.loadFolders(); // Refresh the screen
-    } catch (e) {
-        console.error("Rename Error:", e);
-    }
-};
 </script>
 
 <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">

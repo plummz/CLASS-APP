@@ -106,7 +106,7 @@
  
   <div id="overlay" onclick="closeMenu()"></div>
  
-  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
+  <div id="auth-modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
     <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1);">
       <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
       <div class="input-group">
@@ -206,7 +206,7 @@
     </div>
     <div class="music-player" style="text-align: center; background: rgba(0,0,0,0.6); padding: 30px; border-radius: 20px;">
       <h3 id="now-playing-text" style="color: #00ff88; margin-bottom: 20px;">Select a track from a folder to play</h3>
-      <audio id="audio-player" controls crossorigin="anonymous" style="width: 100%;"></audio>
+      <audio id="audio-player" controls crossorigin="anonymous" style="width: 100%;" onplay="startVisualizer(this)"></audio>
       <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:30px;">
         <div id="dancing-speaker" style="width:140px; height:140px; background:#00ff88; border-radius:50%; box-shadow:0 0 40px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
           <div style="width:60px; height:60px; background:#1a1a2e; border-radius:50%;"></div>
@@ -239,6 +239,7 @@
   </div>
 
   <div id="live-clock"></div>
+
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="script.js"></script>
 

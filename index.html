@@ -40,7 +40,7 @@
     <div class="wave"></div><div class="wave"></div><div class="wave"></div>
   </div>
  
-  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-mountain active" id="particles-mountain"></div>
   <div class="particles particle-ocean"    id="particles-ocean"></div>
   <div class="particles particle-aerial"   id="particles-aerial"></div>
   <div class="particles particle-galaxy"   id="particles-galaxy"></div>
@@ -104,50 +104,56 @@
     <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
   </nav>
  
-  <div id="overlay" onclick="closeMenu()"></div>
- 
-  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
-    <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1);">
+  <div id="overlay"></div>
+
+  <div id="auth-modal" class="modal">
+    <div class="modal-content login-container">
       <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
       <div class="input-group">
-        <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="text" id="username" placeholder="Username" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
       </div>
       <div class="input-group">
-        <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="password" id="password" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
       </div>
       <div class="auth-buttons" style="display: flex; gap: 10px;">
-        <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
-        <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
+        <button class="btn-login" onclick="login()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
+        <button class="btn-register" onclick="register()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
       </div>
-      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px;"></p>
     </div>
+  </div>
+
+  <div id="admin-panel" class="admin-panel" style="display:none;">
+    <h3>Admin Controls</h3>
+    <button onclick="blockUser()">Block User</button>
+    <button onclick="moderateFiles()">Moderate Files</button>
+    <button onclick="closeAdminPanel()">Close</button>
   </div>
  
   <div class="page active" id="page-first">
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT (VIDEO SUPPORT ADDED)</div>
+    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
-  <div class="page" id="page-second" style="display:none;">
+  <div class="page" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
     <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
     <div class="upload-grid" id="grid-second"></div>
   </div>
 
-  <div class="page" id="page-events" style="display:none;">
+  <div class="page" id="page-events">
     <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
     <div class="section-label">Upload a photo for each event folder</div>
     <div class="folder-grid" id="grid-events"></div>
   </div>
   
-  <div class="page" id="page-random" style="display:none;">
+  <div class="page" id="page-random">
     <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
     <div class="section-label">Upload any image to each folder</div>
     <div class="folder-grid" id="grid-random"></div>
   </div>
 
-  <div class="page" id="page-chat" style="display:none;">
+  <div class="page" id="page-chat">
     <div class="page-header"><h1 class="page-title">Chat</h1></div>
     <div class="chat-container">
       <div class="chat-sidebar">
@@ -172,7 +178,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-users" style="display:none;">
+  <div class="page" id="page-users">
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
     <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-grid" id="user-grid"></div>
@@ -182,7 +188,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-calendar" style="display:none;">
+  <div class="page" id="page-calendar">
     <div class="page-header"><h1 class="page-title">Calendar</h1></div>
     <div class="calendar-container">
       <div class="calendar-header">
@@ -199,233 +205,25 @@
     </div>
   </div>
 
-  <div class="page" id="page-music" style="display:none;">
-    <div class="page-header"><h1 class="page-title">MUSIC / STUDY FOLDER</h1></div>
-    <button onclick="createMusicFolder()" class="btn-create" style="background:#00ff88; color:black; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold; margin-bottom:20px;">+ New Music Folder</button>
-    <div id="folder-grid" class="upload-grid"></div>
-    <div class="music-player-container" style="background:#16213e; padding:25px; border-radius:15px; margin-top:30px;">
-      <h3 style="margin-top:0; color:#00ff88; text-align:center;">Now Playing</h3>
-      <p id="now-playing-text" style="color:gray; font-size:14px; text-align:center; margin-bottom:15px;">Select a track to play</p>
-      <audio id="audio-player" controls style="width: 100%;" onplay="window.startVisualizer(this)"></audio>
-    </div>
-    <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:20px;">
-      <div id="dancing-speaker" style="width:120px; height:120px; background:#00ff88; border-radius:50%; box-shadow:0 0 30px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
-        <div style="width:50px; height:50px; background:#1a1a2e; border-radius:50%;"></div>
+  <div class="page" id="page-music">
+    <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
+    <div class="music-player">
+      <input type="file" id="music-upload" multiple accept="audio/*" style="margin-bottom: 20px; color: white;">
+      <div class="playlist" id="playlist"></div>
+      <audio id="audio-player" controls onplay="startVisualizer(this)"></audio>
+      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:20px;">
+        <div id="dancing-speaker" style="width:120px; height:120px; background:#00ff88; border-radius:50%; box-shadow:0 0 30px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
+          <div style="width:50px; height:50px; background:#1a1a2e; border-radius:50%;"></div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <div id="folder-view-modal" style="display:none; position:fixed; z-index:15000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; backdrop-filter:blur(10px); pointer-events:auto;">
-    <div style="background:#1a1a2e; width:90%; max-width:600px; padding:30px; border-radius:20px; position:relative; max-height:85vh; display:flex; flex-direction:column; z-index:15001; pointer-events:auto;">
-      <button onclick="closeFolderView()" style="position:absolute; top:15px; right:15px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">&times;</button>
-      <h2 id="folder-view-title" style="margin-top:0; color:#00ff88; font-family:'Cinzel Decorative';">Folder Name</h2>
-      <div style="background:#16213e; padding:20px; border-radius:12px; margin-bottom:20px;">
-        <input type="file" id="folder-specific-upload" multiple style="color:white; width:100%; margin-bottom:15px;">
-        <button id="upload-btn-storage" style="background:#00ff88; color:#0b1b3d; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">Upload to Cloud</button>
-        <div id="upload-status" style="color:#00ff88; font-size:13px; margin-top:10px; text-align:center;"></div>
-      </div>
-      <div id="folder-file-list" style="flex:1; overflow-y:auto; background:rgba(255,255,255,0.05); border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:12px;"></div>
     </div>
   </div>
 
   <div id="live-clock"></div>
+
+  <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
  
   <script src="script.js"></script>
-  
-  <script type="module" src="firebase-config.js"></script>
-  <script type="module">
-    import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-    import { auth, db, storage } from './firebase-config.js';
-    import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    window.currentFolderId = null;
-
-    // --- AUTH LOGIC ---
-    onAuthStateChanged(auth, (user) => {
-        const modal = document.getElementById('auth-modal');
-        const logout = document.getElementById('nav-logout');
-        if (user) {
-            modal.style.display = 'none';
-            if(logout) logout.style.display = 'flex';
-            if (typeof window.loadFolders === 'function') window.loadFolders(); 
-        } else {
-            modal.style.display = 'flex';
-        }
-    });
-
-    document.getElementById('btnLogin').onclick = async () => {
-        const e = document.getElementById('loginEmail').value;
-        const p = document.getElementById('loginPassword').value;
-        try { await signInWithEmailAndPassword(auth, e, p); } 
-        catch (err) { document.getElementById('errorMessage').innerText = err.message; document.getElementById('errorMessage').style.display = 'block'; }
-    };
-
-    document.getElementById('btnRegister').onclick = async () => {
-        const e = document.getElementById('loginEmail').value;
-        const p = document.getElementById('loginPassword').value;
-        try { await createUserWithEmailAndPassword(auth, e, p); alert("Account Created!"); } 
-        catch (err) { document.getElementById('errorMessage').innerText = err.message; document.getElementById('errorMessage').style.display = 'block'; }
-    };
-
-    window.handleLogout = () => signOut(auth).then(() => location.reload());
-
-    // --- CLOUD STORAGE UPLOAD ---
-    document.getElementById('upload-btn-storage').onclick = async () => {
-        const fileInput = document.getElementById('folder-specific-upload');
-        const status = document.getElementById('upload-status');
-        const files = fileInput.files;
-        if (!files.length || !window.currentFolderId) return;
-
-        status.innerText = "Uploading to Cloud...";
-        for (const file of files) {
-            const sRef = ref(storage, `uploads/${auth.currentUser.uid}/${window.currentFolderId}/${file.name}`);
-            try {
-                const snap = await uploadBytes(sRef, file);
-                const url = await getDownloadURL(snap.ref);
-                await addDoc(collection(db, "folder_files"), {
-                    folderId: window.currentFolderId,
-                    fileName: file.name,
-                    fileUrl: url,
-                    uid: auth.currentUser.uid,
-                    timestamp: serverTimestamp()
-                });
-            } catch (e) { console.error(e); }
-        }
-        status.innerText = "Upload Complete!";
-        fileInput.value = "";
-        window.loadFilesInFolder();
-    };
-
-    // --- MUSIC FOLDERS & BROWSE BUTTON HOOKS ---
-    window.createMusicFolder = async () => {
-        const n = prompt("New Folder Name:");
-        if (n) await addDoc(collection(db, "folders"), { name: n, uid: auth.currentUser.uid, timestamp: serverTimestamp() });
-        window.loadFolders();
-    };
-
-    window.loadFolders = async () => {
-        const grid = document.getElementById('folder-grid');
-        if (!grid || !auth.currentUser) return;
-        const q = query(collection(db, "folders"), where("uid", "==", auth.currentUser.uid));
-        const snap = await getDocs(q);
-        grid.innerHTML = "";
-        snap.forEach(d => {
-            grid.innerHTML += `<div class="subject-card" onclick="window.openFolderView('${d.id}', '${d.data().name}')" style="cursor:pointer; border:1px solid #00ff88; padding:15px; border-radius:10px; text-align:center;">
-                <div style="font-size:30px;">📁</div><div style="color:white; font-weight:bold; margin-top:5px;">${d.data().name}</div></div>`;
-        });
-    };
-
-    // This ensures your BROWSE buttons trigger correctly
-    window.openFolderView = (id, name) => {
-        window.currentFolderId = id;
-        document.getElementById('folder-view-title').innerText = name;
-        document.getElementById('folder-view-modal').style.display = 'flex';
-        window.loadFilesInFolder();
-    };
-    // Also mapping to openSubjectFolder to match your script.js output
-    window.openSubjectFolder = (name) => {
-        window.openFolderView(name, name);
-    };
-
-    window.closeFolderView = () => {
-        document.getElementById('folder-view-modal').style.display = 'none';
-        document.getElementById('upload-status').innerText = "";
-    };
-
-    window.loadFilesInFolder = async () => {
-        const list = document.getElementById('folder-file-list');
-        list.innerHTML = "Fetching files from cloud...";
-        const q = query(collection(db, "folder_files"), where("folderId", "==", window.currentFolderId));
-        const snap = await getDocs(q);
-        list.innerHTML = "";
-        snap.forEach(d => {
-            const f = d.data();
-            const safeName = f.fileName.replace(/'/g, "\\'");
-            list.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:10px; background:rgba(255,255,255,0.1); padding:10px; border-radius:5px;">
-                <span style="color:white; font-size:12px; word-break: break-all; margin-right: 10px;">📄 ${f.fileName}</span>
-                <button onclick="window.playMedia('${f.fileUrl}', '${safeName}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold; min-width: 80px;">Play/Open</button></div>`;
-        });
-    };
-
-    window.playMedia = (url, name) => {
-        const player = document.getElementById('audio-player');
-        if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-            player.src = url;
-            player.play();
-            document.getElementById('now-playing-text').innerText = "Playing: " + name;
-        } else {
-            window.open(url, '_blank');
-        }
-    };
-
-    window.startVisualizer = (audio) => {
-        if (!window.audioCtx) {
-            window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            window.analyser = window.audioCtx.createAnalyser();
-            const src = window.audioCtx.createMediaElementSource(audio);
-            src.connect(window.analyser);
-            window.analyser.connect(window.audioCtx.destination);
-        }
-        const data = new Uint8Array(window.analyser.frequencyBinCount);
-        const speaker = document.getElementById('dancing-speaker');
-        function loop() {
-            requestAnimationFrame(loop);
-            window.analyser.getByteFrequencyData(data);
-            const avg = data.slice(0, 10).reduce((a, b) => a + b) / 10;
-            speaker.style.transform = `scale(${1 + (avg / 255)})`;
-        }
-        loop();
-    };
-
-    // --- FLOATING CHAT FIREBASE LOGIC ---
-    window.toggleChatWindow = () => {
-        const win = document.getElementById('chat-window');
-        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
-    };
-
-    window.sendPrivateMessage = async () => {
-        const input = document.getElementById('private-chat-input');
-        const msg = input.value.trim();
-        if (!msg || !auth.currentUser) return;
-        try {
-            await addDoc(collection(db, "messages"), {
-                text: msg,
-                uid: auth.currentUser.uid,
-                email: auth.currentUser.email,
-                timestamp: serverTimestamp()
-            });
-            input.value = "";
-        } catch(e) { console.error(e); }
-    };
-
-    onSnapshot(query(collection(db, "messages"), orderBy("timestamp", "asc")), (snap) => {
-        const display = document.getElementById('private-messages-display');
-        if(!display) return;
-        display.innerHTML = "";
-        snap.forEach(d => {
-            const data = d.data();
-            const isMe = auth.currentUser && data.uid === auth.currentUser.uid;
-            display.innerHTML += `<div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; background: ${isMe ? '#00ff88' : '#333'}; color: ${isMe ? '#0b0b1a' : 'white'}; padding: 10px; border-radius: 12px; font-size:14px; max-width:80%; margin-bottom: 5px;">${data.text}</div>`;
-        });
-        display.scrollTop = display.scrollHeight;
-    });
-  </script>
-
-  <div id="chat-bauble" onclick="window.toggleChatWindow()" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000; box-shadow:0 4px 15px rgba(0,0,0,0.3);">💬</div>
-  
-  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 21000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-weight:bold;">Private Chat</span>
-        <button onclick="window.toggleChatWindow()" style="background:none; border:none; color:white; font-size: 20px; cursor:pointer;">&times;</button>
-    </div>
-    <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; background: #0b0b1a; display: flex; flex-direction: column;">
-        <p style="color: gray; font-size: 12px; text-align: center;">Messages will appear here...</p>
-    </div>
-    <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
-        <input type="text" id="private-chat-input" placeholder="Message..." style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
-        <button onclick="window.sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
-    </div>
-  </div>
 </body>
 </html>

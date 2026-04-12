@@ -241,6 +241,7 @@ function fetchAndRenderFiles() {
     }).catch(err => console.error(err));
 }
 
+// NEW: Upload directly to Firebase Storage with correct content type metadata
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
@@ -248,23 +249,32 @@ window.uploadFileToFolderAPI = async function() {
     const file = input.files[0];
     
     if(!file) return customAlert("Please select a file first.");
-    if(status) status.innerText = "Uploading to server...";
+    if(status) status.innerText = "Uploading to Firebase Cloud...";
     
-    const form = new FormData();
-    form.append('file', file);
-
     try {
-        const uploadRes = await fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form });
-        if(!uploadRes.ok) throw new Error("File upload failed");
-        const uploadedData = await uploadRes.json();
+        // Dynamically import Firebase to keep global scope safe
+        const { storage } = await import('./firebase-config.js');
+        const { ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+        
+        // Generate a unique path for the file in Firebase Storage
+        const uniqueName = Date.now() + '-' + file.name;
+        const storageRef = ref(storage, `folders/${currentFolderContext.id}/${uniqueName}`);
+        
+        // This is the magic line that fixes the text/code bug for PDFs and Images
+        const metadata = { contentType: file.type };
+        
+        // Upload to Firebase
+        const snapshot = await uploadBytes(storageRef, file, metadata);
+        const downloadURL = await getDownloadURL(snapshot.ref);
 
+        // Save the metadata to your Render database so it shows up in your folder
         await apiFetch('/api/files', {
             method: 'POST',
             body: JSON.stringify({
                 folderId: currentFolderContext.id,
-                name: uploadedData.name,
-                url: uploadedData.url,
-                type: uploadedData.type,
+                name: file.name,
+                url: downloadURL, // Firebase gives us a full HTTPS url here
+                type: file.type,
                 uploader: currentUser.username
             })
         });
@@ -275,11 +285,12 @@ window.uploadFileToFolderAPI = async function() {
         
     } catch(e) {
         if(status) status.innerText = "Error: " + e.message;
+        console.error(e);
     }
 };
 
 window.deleteFileAPI = function(fileId) {
-    customConfirm("Delete this file?", function() {
+    customConfirm("Delete this file from the directory?", function() {
         apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
         .then(() => fetchAndRenderFiles())
         .catch(err => customAlert(err.message));
@@ -287,7 +298,8 @@ window.deleteFileAPI = function(fileId) {
 };
 
 window.playOrOpenFileAPI = function(url, name) {
-    const fullUrl = SERVER_BASE + url; 
+    // FIX: Support both old Render files (relative URL) and new Firebase files (absolute HTTP URL)
+    const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
     if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
@@ -548,9 +560,6 @@ function renderChatUsersList() {
     });
 }
 
-/* ============================================================
-   USER PROFILE MODAL, EDIT, & DELETE LOGIC (RESTORED)
-   ============================================================ */
 window.openUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
@@ -573,17 +582,15 @@ window.openUserProfile = function(username) {
       <button class="btn-primary flex-1" onclick="openChat('private', '${profile.username}')">Message</button>
   `;
 
-  // Edit Profile button (if viewing own profile)
   if (isMine) {
     html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
   }
   
-  // Admin Delete User button (if Admin viewing someone else)
   if (isAdmin && !isMine) {
     html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
   }
 
-  html += `</div>`; // Close the btn group
+  html += `</div>`; 
   
   details.innerHTML = html;
   profilePanel.classList.add('active');
@@ -663,14 +670,13 @@ window.saveProfileEdits = function(username) {
     .catch((err) => customAlert(err.message));
 };
 
-// NEW: Admin Delete User Function
 window.deleteUserAPI = function(username) {
     customConfirm(`Are you sure you want to completely delete ${username} from the application?`, function() {
         apiFetch(`/api/users/${username}`, { method: 'DELETE' })
         .then(() => {
             customAlert(`${username} has been deleted.`);
             closeProfile();
-            fetchUsers(); // Refresh the user directory immediately
+            fetchUsers();
         })
         .catch(err => customAlert(err.message));
     });
@@ -754,7 +760,8 @@ function renderMessages() {
       info.textContent = `Attachment: ${message.attachment.name}`;
       attach.appendChild(info);
       
-      const fullUrl = SERVER_BASE + message.attachment.url;
+      // FIX: Support both old Render files and new Firebase absolute URLs in chat
+      const fullUrl = message.attachment.url.startsWith('http') ? message.attachment.url : SERVER_BASE + message.attachment.url;
       
       if (message.attachment.type.startsWith('image/')) {
         const img = document.createElement('img');
@@ -831,14 +838,24 @@ window.sendMessage = function() {
     .catch((err) => customAlert('Upload failed: ' + err.message));
 };
 
-function uploadChatAttachment(file) {
-  const form = new FormData();
-  form.append('file', file);
-  return fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form })
-    .then((res) => {
-      if (!res.ok) throw new Error('Upload failed');
-      return res.json();
-    });
+// NEW: Chat attachments also upload to Firebase Storage with correct metadata
+async function uploadChatAttachment(file) {
+    const { storage } = await import('./firebase-config.js');
+    const { ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+    
+    const uniqueName = Date.now() + '-' + file.name;
+    const storageRef = ref(storage, `chat-attachments/${uniqueName}`);
+    const metadata = { contentType: file.type };
+    
+    const snapshot = await uploadBytes(storageRef, file, metadata);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    
+    return {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        url: downloadURL 
+    };
 }
 
 function editChatMessage(id) {
@@ -1021,7 +1038,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const storedUser = loadSession();
   if (storedUser) {
     currentUser = storedUser;
-    // FIX: Restore Admin rights on page refresh
     isAdmin = (currentUser.username === 'Marquillero');
     establishSession();
   } else {

@@ -4,252 +4,115 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My School Portfolio</title>
- 
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b1b3d">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 
-  <button id="install-btn" class="install-btn" style="display:none;">Install App</button>
- 
   <div id="bg-mountain" class="scene-bg active"></div>
   <div id="bg-ocean"    class="scene-bg"></div>
   <div id="bg-aerial"   class="scene-bg"></div>
   <div id="bg-galaxy"   class="scene-bg"></div>
   
-  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
-  <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
- 
   <div class="aurora active" id="aurora"></div>
   <canvas id="starfield"></canvas>
- 
   <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
     <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
   </svg>
- 
-  <div class="wave-container" id="wave-container">
-    <div class="wave"></div><div class="wave"></div><div class="wave"></div>
-  </div>
- 
+  <div class="wave-container" id="wave-container"><div class="wave"></div><div class="wave"></div><div class="wave"></div></div>
   <div class="particles particle-mountain active" id="particles-mountain"></div>
-  <div class="particles particle-ocean"    id="particles-ocean"></div>
-  <div class="particles particle-aerial"   id="particles-aerial"></div>
-  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
+  <div class="particles particle-ocean" id="particles-ocean"></div>
+  <div class="particles particle-aerial" id="particles-aerial"></div>
+  <div class="particles particle-galaxy" id="particles-galaxy"></div>
  
-  <button id="menu-toggle" aria-label="Toggle menu">
-    <div class="bar"></div>
-    <div class="bar"></div>
-    <div class="bar"></div>
+  <button id="menu-toggle" aria-label="Toggle menu" onclick="window.toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:2001; background:none; border:none; cursor:pointer;">
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
   </button>
  
-  <div id="page-indicator">⛰️ First Semester</div>
+  <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:2000;">⛰️ First Semester</div>
  
   <nav id="sidebar">
     <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
- 
-    <div class="nav-item active" data-page="first" onclick="goToPage('first')">
-      <span class="nav-icon">⛰️</span>
-      <div class="nav-text"><span class="nav-label">First Semester</span></div>
-    </div>
-    <div class="nav-item" data-page="second" onclick="goToPage('second')">
-      <span class="nav-icon">🌊</span>
-      <div class="nav-text"><span class="nav-label">Second Semester</span></div>
-    </div>
-    <div class="nav-item" data-page="events" onclick="goToPage('events')">
-      <span class="nav-icon">🛩️</span>
-      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
-    </div>
-    <div class="nav-item" data-page="random" onclick="goToPage('random')">
-      <span class="nav-icon">🌌</span>
-      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
-    </div>
-    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
-      <span class="nav-icon">💬</span>
-      <div class="nav-text"><span class="nav-label">Chat</span></div>
-    </div>
-    <div class="nav-item" data-page="users" onclick="goToPage('users')">
-      <span class="nav-icon">👥</span>
-      <div class="nav-text"><span class="nav-label">Users</span></div>
-    </div>
-    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
-      <span class="nav-icon">📅</span>
-      <div class="nav-text"><span class="nav-label">Calendar</span></div>
-    </div>
-    <div class="nav-item" data-page="music" onclick="goToPage('music')">
-      <span class="nav-icon">🎵</span>
-      <div class="nav-text"><span class="nav-label">Music</span></div>
-    </div>
-
-    <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
-      <span class="nav-icon">🚪</span>
-      <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
-    </div>
-    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
+    <div class="nav-item active" onclick="window.goToPage('first')"><span class="nav-icon">⛰️</span><div class="nav-text">First Semester</div></div>
+    <div class="nav-item" onclick="window.goToPage('second')"><span class="nav-icon">🌊</span><div class="nav-text">Second Semester</div></div>
+    <div class="nav-item" onclick="window.goToPage('events')"><span class="nav-icon">🛩️</span><div class="nav-text">Event Pictures</div></div>
+    <div class="nav-item" onclick="window.goToPage('random')"><span class="nav-icon">🌌</span><div class="nav-text">Random Pictures</div></div>
+    <div class="nav-item" onclick="window.goToPage('chat')"><span class="nav-icon">💬</span><div class="nav-text">Chat</div></div>
+    <div class="nav-item" onclick="window.goToPage('users')"><span class="nav-icon">👥</span><div class="nav-text">Users</div></div>
+    <div class="nav-item" onclick="window.goToPage('calendar')"><span class="nav-icon">📅</span><div class="nav-text">Calendar</div></div>
+    <div class="nav-item" onclick="window.goToPage('music')"><span class="nav-icon">🎵</span><div class="nav-text">Music</div></div>
+    <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()"><span class="nav-icon">🚪</span><div class="nav-text" style="color: #ff6b6b;">Log Out</div></div>
   </nav>
+  <div id="overlay" onclick="window.closeMenu()"></div>
  
-  <div id="overlay" onclick="closeMenu()"></div>
- 
-  <div id="auth-modal" class="modal">
-    <div class="modal-content login-container">
-      <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
-      <div class="input-group">
-        <input type="text" id="username" placeholder="Username" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
-      </div>
-      <div class="input-group">
-        <input type="password" id="password" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
-      </div>
-      <div class="auth-buttons" style="display: flex; gap: 10px;">
-        <button class="btn-login" onclick="login()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
-        <button class="btn-register" onclick="register()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
+  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center;">
+    <div class="modal-content" style="background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px;">
+      <h2 style="color: white; text-align: center;">CLASS APP</h2>
+      <input type="text" id="username" placeholder="Username" style="width: 100%; padding: 12px; margin-bottom: 15px;">
+      <input type="password" id="password" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 10px;">
+        <button onclick="login()" style="flex: 1; padding: 12px; background: #00ff88; font-weight: bold;">Sign In</button>
+        <button onclick="register()" style="flex: 1; padding: 12px; background: #00ff88; font-weight: bold;">Register</button>
       </div>
     </div>
   </div>
-
-  <div id="admin-panel" class="admin-panel" style="display:none;">
-    <h3>Admin Controls</h3>
-    <button onclick="blockUser()">Block User</button>
-    <button onclick="moderateFiles()">Moderate Files</button>
-    <button onclick="closeAdminPanel()">Close</button>
-  </div>
  
-  <div class="page active" id="page-first">
-    <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
-    <div class="upload-grid" id="grid-first"></div>
-  </div>
+  <div class="page active" id="page-first"><h1 class="page-title">First Semester</h1><div class="upload-grid" id="grid-first"></div></div>
+  <div class="page" id="page-second" style="display:none;"><h1 class="page-title">Second Semester</h1><div class="upload-grid" id="grid-second"></div></div>
+  <div class="page" id="page-events" style="display:none;"><h1 class="page-title">Event Pictures</h1><div class="folder-grid" id="grid-events"></div></div>
+  <div class="page" id="page-random" style="display:none;"><h1 class="page-title">Random Pictures</h1><div class="folder-grid" id="grid-random"></div></div>
+  <div class="page" id="page-users" style="display:none;"><h1 class="page-title">User Directory</h1><div class="user-grid" id="user-grid"></div></div>
+  <div class="page" id="page-calendar" style="display:none;"><h1 class="page-title">Calendar</h1><div class="calendar-grid" id="calendar-grid"></div></div>
 
-  <div class="page" id="page-second">
-    <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
-    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
-    <div class="upload-grid" id="grid-second"></div>
-  </div>
-
-  <div class="page" id="page-events">
-    <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
-    <div class="section-label">CLICK TO VIEW EVENT FOLDERS</div>
-    <div class="folder-grid" id="grid-events"></div>
-  </div>
-  
-  <div class="page" id="page-random">
-    <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
-    <div class="section-label">CLICK TO VIEW RANDOM FOLDERS</div>
-    <div class="folder-grid" id="grid-random"></div>
-  </div>
-
-  <div class="page" id="page-chat">
-    <div class="page-header"><h1 class="page-title">Chat</h1></div>
+  <div class="page" id="page-chat" style="display:none;">
+    <h1 class="page-title">Chat</h1>
     <div class="chat-container">
-      <div class="chat-sidebar">
-        <div class="chat-list">
-          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
-          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
-          <div class="chat-section-label">Private Contacts</div>
-          <div id="chat-user-list" class="chat-user-list"></div>
-        </div>
-      </div>
-      <div class="chat-main">
-        <div class="chat-header" id="chat-header">Select a chat</div>
-        <div class="chat-messages" id="chat-messages"></div>
-        <div class="chat-input">
-          <input type="text" id="message-input" placeholder="Type a message...">
-          <label class="attachment-label" for="attachment-input">Attach</label>
-          <input type="file" id="attachment-input" accept="*/*">
-          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
-          <button onclick="sendMessage()">Send</button>
-        </div>
+      <div class="chat-main" style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px;">
+        <div id="chat-messages" style="height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+        <input type="text" id="message-input" placeholder="Type a message..." style="width: 70%; padding: 10px;">
+        <button onclick="sendMessage()" style="padding: 10px; background: #00ff88;">Send</button>
       </div>
     </div>
   </div>
 
-  <div class="page" id="page-users">
-    <div class="page-header"><h1 class="page-title">User Directory</h1></div>
-    <div class="section-label">Profile cards, online status, and private chat access</div>
-    <div class="user-grid" id="user-grid"></div>
-    <div class="profile-panel" id="profile-panel">
-      <button class="close-profile" onclick="closeProfile()">×</button>
-      <div id="profile-details"></div>
-    </div>
-  </div>
-
-  <div class="page" id="page-calendar">
-    <div class="page-header"><h1 class="page-title">Calendar</h1></div>
-    <div class="calendar-container">
-      <div class="calendar-header">
-        <button onclick="prevMonth()">Prev</button>
-        <h2 id="month-year">April 2026</h2>
-        <button onclick="nextMonth()">Next</button>
-      </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-    </div>
-    <div class="announcements">
-      <h3>Weekly Announcements</h3>
-      <textarea id="announcement-note" placeholder="Add notes..."></textarea>
-      <button onclick="saveAnnouncement()">Save</button>
-    </div>
-  </div>
-
-  <div class="page" id="page-music">
-    <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
-    <div class="section-label">CREATE FOLDERS TO ORGANIZE YOUR MUSIC</div>
-    
-    <div style="text-align: center; margin-bottom: 30px;">
-        <button onclick="openFolderExplorer('Music Hub')" class="btn-primary" style="padding: 15px 30px; font-size: 18px;">Open Music Folders</button>
-    </div>
-
-    <div class="music-player" style="text-align: center; background: rgba(0,0,0,0.6); padding: 30px; border-radius: 20px;">
-      <h3 id="now-playing-text" style="color: #00ff88; margin-bottom: 20px;">Select a track to play</h3>
-      <audio id="audio-player" controls crossorigin="anonymous" onplay="window.startVisualizer(this)" style="width: 100%;"></audio>
-      
-      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:30px;">
-        <div id="dancing-speaker" style="width:140px; height:140px; background:#00ff88; border-radius:50%; box-shadow:0 0 40px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
-          <div style="width:60px; height:60px; background:#1a1a2e; border-radius:50%;"></div>
-        </div>
+  <div class="page" id="page-music" style="display:none;">
+    <h1 class="page-title">MUSIC HUB</h1>
+    <button onclick="window.openFolderModal('Music')" style="background:#00ff88; font-weight:bold; padding:10px 20px; cursor:pointer;">Manage Music Folders</button>
+    <div style="background:#16213e; padding:25px; border-radius:15px; margin-top:30px; text-align:center;">
+      <h3 id="now-playing-text" style="color:#00ff88;">Select a track</h3>
+      <audio id="audio-player" controls crossorigin="anonymous" style="width: 100%;" onplay="window.startVisualizer(this)"></audio>
+      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:20px;">
+        <div id="dancing-speaker" style="width:120px; height:120px; background:#00ff88; border-radius:50%; transition:transform 0.05s ease;"></div>
       </div>
     </div>
   </div>
 
-
-  <div id="folder-explorer-modal" class="modal">
-    <div class="modal-content" style="max-width: 800px; width: 95%; background: #1a1a2e; text-align: left;">
-      <button onclick="closeModal('folder-explorer-modal')" style="float: right; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-      <h2 id="folder-explorer-title" style="color: #00ff88; margin-bottom: 20px; font-family: 'Cinzel Decorative';">Subject Folders</h2>
-      
-      <button onclick="createFolder()" class="btn-primary" style="margin-bottom: 20px;">+ New Folder</button>
-      
-      <div id="folder-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-height: 50vh; overflow-y: auto; padding-right: 10px;">
-        </div>
+  <div id="folder-modal" style="display:none; position:fixed; z-index:15000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
+    <div style="background:#1a1a2e; width:90%; max-width:600px; padding:30px; border-radius:20px;">
+      <button onclick="document.getElementById('folder-modal').style.display='none'" style="float:right; font-size:24px; background:none; color:white; border:none;">&times;</button>
+      <h2 id="folder-modal-title" style="color:#00ff88;">Folders</h2>
+      <button onclick="window.createNewFolder()" style="background:#00ff88; padding:8px 15px; margin-bottom: 15px; cursor:pointer;">+ Create Folder</button>
+      <div id="folder-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;"></div>
     </div>
   </div>
 
-  <div id="file-explorer-modal" class="modal">
-    <div class="modal-content" style="max-width: 800px; width: 95%; background: #1a1a2e; text-align: left;">
-      <button onclick="closeModal('file-explorer-modal')" style="float: right; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-      <button onclick="backToFolders()" style="float: left; background: transparent; color: #00ff88; border: none; font-size: 14px; cursor: pointer; padding: 5px;">&larr; Back to Folders</button>
-      
-      <h2 id="file-explorer-title" style="color: #00d4ff; margin-bottom: 20px; margin-top: 30px; font-family: 'Cinzel Decorative'; text-align: center;">Folder Name</h2>
-      
-      <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
-         <input type="file" id="file-upload-input" style="color: white; width: 100%; max-width: 300px;">
-         <button onclick="uploadFileToFolder()" class="btn-primary" style="margin-left: 10px;">Upload File</button>
-         <div id="file-upload-status" style="color: #00ff88; font-size: 12px; margin-top: 10px;"></div>
-      </div>
-      
-      <div id="file-list-container" style="max-height: 40vh; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
-        </div>
+  <div id="file-modal" style="display:none; position:fixed; z-index:16000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
+    <div style="background:#1a1a2e; width:90%; max-width:600px; padding:30px; border-radius:20px;">
+      <button onclick="document.getElementById('file-modal').style.display='none'" style="float:right; font-size:24px; background:none; color:white; border:none;">&times;</button>
+      <h2 id="file-modal-title" style="color:#00d4ff;">Files</h2>
+      <input type="file" id="file-upload" style="color:white; margin-bottom:10px;">
+      <button onclick="window.uploadFile()" style="background:#00d4ff; padding:8px 15px; cursor:pointer;">Upload</button>
+      <div id="file-list" style="margin-top: 20px; max-height:300px; overflow-y:auto; color:white;"></div>
     </div>
   </div>
 
-  <div id="live-clock"></div>
+  <div id="chat-bauble" onclick="window.goToPage('chat')" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000;">💬</div>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="script.js"></script>
-
 </body>
 </html>

@@ -1,451 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My School Portfolio</title>
- 
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
- 
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b1b3d">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My School Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
-  <button id="install-btn" class="install-btn" style="display:none;">
-    Install App
-  </button>
- 
-  <div id="bg-mountain" class="scene-bg active"></div>
-  <div id="bg-ocean"    class="scene-bg"></div>
-  <div id="bg-aerial"   class="scene-bg"></div>
-  <div id="bg-galaxy"   class="scene-bg"></div>
-  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
-  <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
- 
-  <div class="aurora active" id="aurora"></div>
- 
-  <canvas id="starfield"></canvas>
- 
-  <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
-    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
-  </svg>
- 
-  <div class="wave-container" id="wave-container">
-    <div class="wave"></div>
-    <div class="wave"></div>
-    <div class="wave"></div>
-  </div>
- 
-  <div class="particles particle-mountain" id="particles-mountain"></div>
-  <div class="particles particle-ocean"    id="particles-ocean"></div>
-  <div class="particles particle-aerial"   id="particles-aerial"></div>
-  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
- 
-  <button id="menu-toggle" aria-label="Toggle menu">
-    <div class="bar"></div>
-    <div class="bar"></div>
-    <div class="bar"></div>
-  </button>
- 
-  <div id="page-indicator">⛰️ First Semester</div>
- 
-  <nav id="sidebar">
-    <div class="sidebar-title">My Portfolio</div>
- 
-    <div class="nav-item active" data-page="first" onclick="goToPage('first')">
-      <span class="nav-icon" data-page="first">⛰️</span>
-      <div class="nav-text">
-        <span class="nav-label">First Semester</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="second" onclick="goToPage('second')">
-      <span class="nav-icon" data-page="second">🌊</span>
-      <div class="nav-text">
-        <span class="nav-label">Second Semester</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="events" onclick="goToPage('events')">
-      <span class="nav-icon" data-page="events">🛩️</span>
-      <div class="nav-text">
-        <span class="nav-label">Event Pictures</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="random" onclick="goToPage('random')">
-      <span class="nav-icon" data-page="random">🌌</span>
-      <div class="nav-text">
-        <span class="nav-label">Random Pictures</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
-      <span class="nav-icon" data-page="chat">💬</span>
-      <div class="nav-text">
-        <span class="nav-label">Chat</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="users" onclick="goToPage('users')">
-      <span class="nav-icon" data-page="users">👥</span>
-      <div class="nav-text">
-        <span class="nav-label">Users</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
-      <span class="nav-icon" data-page="calendar">📅</span>
-      <div class="nav-text">
-        <span class="nav-label">Calendar</span>
-      </div>
-    </div>
- 
-    <div class="nav-item" data-page="music" onclick="goToPage('music')">
-      <span class="nav-icon" data-page="music">🎵</span>
-      <div class="nav-text">
-        <span class="nav-label">Music</span>
-      </div>
-    </div>
+    <div id="bg-mountain" class="scene-bg active"></div>
+    <div id="bg-ocean" class="scene-bg"></div>
+    <div class="aurora active" id="aurora"></div>
+    <canvas id="starfield"></canvas>
 
-    <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
-      <span class="nav-icon">🚪</span>
-      <div class="nav-text">
-        <span class="nav-label" style="color: #ff6b6b;">Log Out</span>
-      </div>
-    </div>
-    
-    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
-  </nav>
- 
-  <div id="overlay" onclick="closeMenu()"></div>
- 
-  <div id="auth-modal" style="display: flex; position: fixed; z-index: 999999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
-    <div class="modal-content login-container" style="z-index: 1000000; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; box-shadow: 0 0 30px rgba(0,255,136,0.2); width: 90%; max-width: 400px;">
-      <h2 style="color: white; text-align: center; margin-bottom: 25px; font-family: 'Cinzel Decorative', serif; letter-spacing: 2px;">CLASS APP PORTAL</h2>
-      <div class="input-group">
-        <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none;">
-      </div>
-      <div class="input-group">
-        <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; outline: none;">
-      </div>
-      
-      <div class="auth-buttons" style="display: flex; gap: 10px;">
-        <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; color: #0b1b3d;">Sign In</button>
-        <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; color: #0b1b3d;">Create Account</button>
-      </div>
-      
-      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px; font-size: 14px;">Invalid email or password.</p>
-      <button class="btn-close" onclick="closeModal()" style="width: 100%; margin-top: 20px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px; border-radius: 8px; cursor: pointer;">Maybe Later</button>
-    </div>
-  </div>
- 
-  <div id="admin-panel" class="admin-panel" style="display:none;">
-    <h3>Admin Controls</h3>
-    <button onclick="blockUser()">Block User</button>
-    <button onclick="moderateFiles()">Moderate Files</button>
-    <button onclick="closeAdminPanel()">Close</button>
-  </div>
- 
-  <div class="page active" id="page-first">
-    <div class="page-header">
-      <h1 class="page-title">First Semester</h1>
-    </div>
-    <div class="section-label">Upload PDF for each subject (Video support added)</div>
-    <div class="upload-grid" id="grid-first"></div>
-  </div>
- 
-  <div class="page" id="page-second">
-    <div class="page-header">
-      <h1 class="page-title">Second Semester</h1>
-    </div>
-    <div class="section-label">Upload PDF for each subject (Video support added)</div>
-    <div class="upload-grid" id="grid-second"></div>
-  </div>
- 
-  <div class="page" id="page-events">
-    <div class="page-header">
-      <h1 class="page-title">Event Pictures</h1>
-    </div>
-    <div class="section-label">Upload a photo for each event folder (Author credit shown)</div>
-    <div class="folder-grid" id="grid-events"></div>
-  </div>
- 
-  <div class="page" id="page-random">
-    <div class="page-header">
-      <h1 class="page-title">Random Pictures</h1>
-    </div>
-    <div class="section-label">Upload any image to each folder (Author credit shown)</div>
-    <div class="folder-grid" id="grid-random"></div>
-  </div>
- 
-  <div class="page" id="page-chat">
-    <div class="page-header">
-      <h1 class="page-title">Chat</h1>
-    </div>
-    <div class="chat-container">
-      <div class="chat-sidebar">
-        <div class="chat-list">
-          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
-          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
-          <div class="chat-section-label">Private Contacts</div>
-          <div id="chat-user-list" class="chat-user-list"></div>
+    <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
+    <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">UPLOAD CUSTOM BG</label>
+
+    <button id="menu-toggle" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:1001; background:none; border:none; cursor:pointer;">
+        <div style="width:30px; height:3px; background:white; margin:6px 0;"></div>
+        <div style="width:30px; height:3px; background:white; margin:6px 0;"></div>
+        <div style="width:30px; height:3px; background:white; margin:6px 0;"></div>
+    </button>
+    <div id="page-indicator" style="position:fixed; top:20px; left:70px; font-weight:bold; font-size:18px; z-index:1000;">⛰️ FIRST SEMESTER</div>
+
+    <nav id="sidebar">
+        <h2 class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">PORTFOLIO</h2>
+        <div class="nav-item" onclick="goToPage('first')">⛰️ First Semester</div>
+        <div class="nav-item" onclick="goToPage('second')">🌊 Second Semester</div>
+        <div class="nav-item" onclick="goToPage('events')">🛩️ Events</div>
+        <div class="nav-item" onclick="goToPage('chat-page')">💬 Chat Page</div>
+        <div class="nav-item" onclick="goToPage('music')">🎵 Music Hub</div>
+        <div class="nav-item" id="nav-logout" style="display:none;" onclick="handleLogout()">🚪 Log Out</div>
+    </nav>
+
+    <div id="overlay" onclick="toggleMenu()" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; display:none;"></div>
+
+    <div id="auth-modal" class="login-overlay">
+        <div class="modal-content login-box">
+            <h2 style="font-family: 'Cinzel Decorative'; text-align: center; color: white;">CLASS APP</h2>
+            <input type="email" id="loginEmail" placeholder="Email" class="login-input">
+            <input type="password" id="loginPassword" placeholder="Password" class="login-input">
+            <button id="btnLogin" class="btn-primary" style="width: 100%; margin-top: 10px;">SIGN IN</button>
+            <button id="btnRegister" class="btn-secondary" style="width: 100%; margin-top: 10px;">REGISTER</button>
+            <p id="errorMessage" style="color: #ff6b6b; font-size: 12px; text-align: center; display: none;"></p>
         </div>
-      </div>
-      <div class="chat-main">
-        <div class="chat-header" id="chat-header">Select a chat</div>
-        <div class="chat-messages" id="chat-messages"></div>
-        <div class="chat-input">
-          <input type="text" id="message-input" placeholder="Type a message...">
-          <label class="attachment-label" for="attachment-input">Attach</label>
-          <input type="file" id="attachment-input" accept="*/*">
-          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
-          <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="page active" id="page-first">
+        <h1 class="page-title">First Semester Subjects</h1>
+        <div class="upload-grid">
+            <div class="subject-card" style="cursor:default;"><h3>Math 0</h3><p>Sir Jason Saludes</p><input type="file" class="pdf-up"></div>
+            <div class="subject-card" style="cursor:default;"><h3>English</h3><p>Sir Wilbert</p><input type="file" class="pdf-up"></div>
+            <div class="subject-card" style="cursor:default;"><h3>Pathfit 1</h3><p>Sir Mariano</p><input type="file" class="pdf-up"></div>
+            <div class="subject-card" style="cursor:default;"><h3>SS 1</h3><p>Maam Bing</p><input type="file" class="pdf-up"></div>
+            <div class="subject-card" style="cursor:default;"><h3>ITCC 111</h3><p>Maam Krystal</p><input type="file" class="pdf-up"></div>
         </div>
-      </div>
-    </div>
-  </div>
- 
-  <div class="page" id="page-users">
-    <div class="page-header">
-      <h1 class="page-title">User Directory</h1>
-    </div>
-    <div class="section-label">Profile cards, online status, and private chat access</div>
-    <div class="user-grid" id="user-grid"></div>
-    <div class="profile-panel" id="profile-panel">
-      <button class="close-profile" onclick="closeProfile()">×</button>
-      <div id="profile-details"></div>
-    </div>
-  </div>
- 
-  <div class="page" id="page-calendar">
-    <div class="page-header">
-      <h1 class="page-title">Calendar</h1>
-    </div>
-    <div class="calendar-container">
-      <div class="calendar-header">
-        <button onclick="prevMonth()">Prev</button>
-        <h2 id="month-year">April 2026</h2>
-        <button onclick="nextMonth()">Next</button>
-      </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-    </div>
-    <div class="announcements">
-      <h3>Weekly Announcements</h3>
-      <textarea id="announcement-note" placeholder="Add notes..."></textarea>
-      <button onclick="saveAnnouncement()">Save</button>
-    </div>
-  </div>
- 
-  <div class="page" id="page-music">
-    <div class="page-header">
-      <h1 class="page-title">Music / Study Folder</h1>
-    </div>
-    
-   <div style="margin-bottom: 20px;">
-        <button onclick="createMusicFolder()" class="btn-create" style="background: #00ff88; color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
-            + New Music Folder
-        </button>
-    </div>
-    
-    <div id="folder-grid" class="upload-grid"></div>
-    
-    <div class="music-player">
-      <input type="file" id="music-upload" accept="audio/*" multiple>
-      <div class="playlist" id="playlist"></div>
-      <audio id="audio-player" controls onplay="window.startVisualizer(this)"></audio>
     </div>
 
-    <div id="visualizer-container" style="display: flex; justify-content: center; margin: 30px 0;">
-      <div id="dancing-speaker" style="width: 100px; height: 100px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 20px #00ff88; transition: transform 0.05s ease;">
-          <div style="width: 40px; height: 40px; background: #1a1a2e; border-radius: 50%; margin: 30px auto;"></div>
-      </div>
+    <div class="page" id="page-second">
+        <h1 class="page-title">Second Semester Subjects</h1>
+        <div class="upload-grid">
+            </div>
     </div>
-  </div>
 
-  <div id="live-clock"></div>
- 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
-  <script type="module" src="firebase-config.js"></script>
+    <div class="page" id="page-events">
+        <h1 class="page-title">Event Pictures</h1>
+        <div class="upload-grid">
+            </div>
+    </div>
 
-  <script type="module">
-    import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { auth, db } from './firebase-config.js';
-    import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    <div class="page" id="page-chat-page">
+        <h1 class="page-title">Chat Room</h1>
+        <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 15px;">
+            <p>Select the floating chat bubble on the bottom right to start messaging!</p>
+        </div>
+    </div>
 
-    // 1. AUTHENTICATION HANDLER
-    onAuthStateChanged(auth, (user) => {
-      const authModal = document.getElementById('auth-modal');
-      const logoutNav = document.getElementById('nav-logout');
-      if (user) {
-        if(authModal) authModal.style.display = 'none';
-        if(logoutNav) logoutNav.style.display = 'flex';
-        window.loadFolders(); 
-      } else {
-        if(authModal) authModal.style.display = 'flex';
-        if(logoutNav) logoutNav.style.display = 'none';
-      }
-    });
+    <div class="page" id="page-music">
+        <h1 class="page-title">MUSIC / STUDY FOLDER</h1>
+        <button onclick="createMusicFolder()" class="btn-primary">+ New Folder</button>
+        
+        <div id="folder-grid" class="upload-grid"></div>
+        
+        <div class="music-player-box">
+            <h3 style="margin-top: 0; color: #00ff88;">Now Playing</h3>
+            <audio id="audio-player" controls style="width: 100%;" onplay="window.startVisualizer(this)"></audio>
+            <p id="now-playing-text" style="color: gray; font-size: 14px; margin-top: 10px;">Select a file from inside a folder to play.</p>
+        </div>
 
-    // Sign In Button
-    document.getElementById('btnLogin').onclick = async () => {
-      const email = document.getElementById('loginEmail').value;
-      const pw = document.getElementById('loginPassword').value;
-      const errorMsg = document.getElementById('errorMessage');
-      try {
-        await signInWithEmailAndPassword(auth, email, pw);
-      } catch (e) {
-        errorMsg.style.display = 'block';
-        errorMsg.innerText = e.message;
-      }
-    };
+        <div id="visualizer-container">
+            <div id="dancing-speaker"><div style="width: 40px; height: 40px; background: #1a1a2e; border-radius: 50%;"></div></div>
+        </div>
+    </div>
 
-    // Register Button
-    document.getElementById('btnRegister').onclick = async () => {
-      const email = document.getElementById('loginEmail').value;
-      const pw = document.getElementById('loginPassword').value;
-      try {
-        await createUserWithEmailAndPassword(auth, email, pw);
-        alert("Account Created Successfully!");
-      } catch (e) {
-        const errorMsg = document.getElementById('errorMessage');
-        errorMsg.style.display = 'block';
-        errorMsg.innerText = e.message;
-      }
-    };
+    <div id="folder-view-modal" class="folder-modal-overlay">
+        <div class="folder-modal-content">
+            <button onclick="closeFolderView()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; font-size: 28px; cursor: pointer;">&times;</button>
+            <h2 id="folder-view-title" style="margin-top: 0; color: #00ff88; font-family: 'Cinzel Decorative';">Folder Name</h2>
+            
+            <div class="folder-upload-area">
+                <label style="color: gray; font-size: 12px; display: block; margin-bottom: 5px;">Upload a file to this folder:</label>
+                <input type="file" id="folder-specific-upload" multiple style="color: white; width: 100%; margin-bottom: 10px;">
+                <button onclick="uploadFilesToFolder()" class="btn-primary">Save Files</button>
+            </div>
 
-    // Logout Function
-    window.handleLogout = async () => {
-      await signOut(auth);
-      location.reload(); 
-    };
+            <h3 style="margin: 0 0 10px 0; font-size: 16px;">Files in <span id="folder-view-subtitle">Folder</span></h3>
+            <div id="folder-file-list" class="file-list-area">
+                </div>
+        </div>
+    </div>
 
-    // 2. MUSIC FOLDER SYSTEM
-    window.createMusicFolder = async () => {
-      const folderName = prompt("Enter new folder name:");
-      if (!folderName) return;
-      try {
-        await addDoc(collection(db, "folders"), {
-          name: folderName,
-          createdBy: auth.currentUser.uid,
-          timestamp: serverTimestamp()
+    <div id="chat-bauble" onclick="toggleChatWindow()">💬</div>
+    <div id="chat-window">
+        <div style="background: #0f3460; padding: 15px; display: flex; justify-content: space-between;">
+            <span style="font-weight: bold;">Private Chat</span>
+            <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; font-size: 20px; cursor: pointer;">×</button>
+        </div>
+        <div id="private-messages-display" style="flex:1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
+        <div style="padding: 10px; display: flex; background: #16213e;">
+            <input type="text" id="private-chat-input" placeholder="Aa" style="flex:1; padding: 10px; border-radius: 20px; border:none; background: #1a1a2e; color: white; outline: none;">
+            <button onclick="sendPrivateMessage()" style="background: #00ff88; border:none; width: 40px; height: 40px; border-radius: 50%; margin-left: 5px; cursor: pointer;">🚀</button>
+        </div>
+    </div>
+
+    <div id="live-clock"></div>
+
+    <script src="script.js"></script>
+    <script type="module">
+        import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { auth, db } from './firebase-config.js';
+        import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // State Variables
+        window.currentFolderId = null;
+        window.currentFolderName = "";
+
+        // UI Nav Logic
+        window.toggleMenu = () => {
+            const sb = document.getElementById('sidebar');
+            const ol = document.getElementById('overlay');
+            if(sb.style.left === '0px') {
+                sb.style.left = '-280px';
+                ol.style.display = 'none';
+            } else {
+                sb.style.left = '0px';
+                ol.style.display = 'block';
+            }
+        };
+
+        window.goToPage = (pageId) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + pageId).classList.add('active');
+            document.getElementById('page-indicator').innerText = pageId.toUpperCase();
+            window.toggleMenu();
+        };
+
+        window.toggleChatWindow = () => {
+            const chatWin = document.getElementById('chat-window');
+            chatWin.style.display = (chatWin.style.display === 'none' || chatWin.style.display === '') ? 'flex' : 'none';
+        };
+
+        // Auth handling
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('auth-modal').style.display = 'none';
+                document.getElementById('nav-logout').style.display = 'flex';
+                window.loadFolders();
+            } else {
+                document.getElementById('auth-modal').style.display = 'flex';
+                document.getElementById('nav-logout').style.display = 'none';
+            }
         });
-        window.loadFolders(); 
-      } catch (e) { console.error("Error creating folder:", e); }
-    };
 
-    window.loadFolders = async () => {
-      const grid = document.getElementById('folder-grid');
-      if (!grid || !auth.currentUser) return;
-      try {
-        const q = query(collection(db, "folders"), where("createdBy", "==", auth.currentUser.uid));
-        const snapshot = await getDocs(q);
-        grid.innerHTML = ""; 
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          const id = docSnap.id;
-          grid.innerHTML += `
-            <div class="subject-card" style="cursor:pointer; text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; position: relative;">
-              <button onclick="renameFolder('${id}', '${data.name}', event)" style="position:absolute; top:5px; right:5px; background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
-              <div style="font-size:40px;">📁</div>
-              <div style="color:white; font-weight:bold; margin-top:5px;">${data.name}</div>
-            </div>`;
+        document.getElementById('btnLogin').onclick = async () => {
+            const e = document.getElementById('loginEmail').value;
+            const p = document.getElementById('loginPassword').value;
+            try { await signInWithEmailAndPassword(auth, e, p); } 
+            catch(err) { 
+                const emsg = document.getElementById('errorMessage');
+                emsg.innerText = err.message;
+                emsg.style.display = 'block';
+            }
+        };
+
+        document.getElementById('btnRegister').onclick = async () => {
+            const e = document.getElementById('loginEmail').value;
+            const p = document.getElementById('loginPassword').value;
+            try { await createUserWithEmailAndPassword(auth, e, p); alert("Account Created!"); } 
+            catch(err) { 
+                const emsg = document.getElementById('errorMessage');
+                emsg.innerText = err.message;
+                emsg.style.display = 'block';
+            }
+        };
+
+        window.handleLogout = () => signOut(auth).then(() => location.reload());
+
+        // --- FOLDER SYSTEM (CREATE & RENAME) ---
+        window.createMusicFolder = async () => {
+            const n = prompt("Folder name:");
+            if (!n || !auth.currentUser) return;
+            try {
+                await addDoc(collection(db, "folders"), { name: n, uid: auth.currentUser.uid, timestamp: serverTimestamp() });
+                window.loadFolders();
+            } catch(e) { console.error("Error", e); }
+        };
+
+        window.loadFolders = async () => {
+            const grid = document.getElementById('folder-grid');
+            if (!auth.currentUser || !grid) return;
+            try {
+                const q = query(collection(db, "folders"), where("uid", "==", auth.currentUser.uid));
+                const s = await getDocs(q);
+                grid.innerHTML = "";
+                s.forEach(d => {
+                    const data = d.data();
+                    const id = d.id;
+                    grid.innerHTML += `
+                    <div class="subject-card" onclick="openFolderView('${id}', '${data.name}')" style="position: relative;">
+                        <button onclick="renameFolder('${id}', '${data.name}', event)" style="position:absolute; top:10px; right:10px; background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
+                        <div style="font-size:50px;">📁</div>
+                        <div style="color:white; font-weight:bold; margin-top:10px;">${data.name}</div>
+                    </div>`;
+                });
+            } catch(e) { console.error("Load Folders Error", e); }
+        };
+
+        window.renameFolder = async (id, oldName, event) => {
+            event.stopPropagation();
+            const newName = prompt("Rename folder:", oldName);
+            if (newName && newName !== oldName) {
+                await updateDoc(doc(db, "folders", id), { name: newName });
+                window.loadFolders();
+            }
+        };
+
+        // --- NEW: INSIDE FOLDER VIEW LOGIC ---
+        window.openFolderView = (id, name) => {
+            window.currentFolderId = id;
+            window.currentFolderName = name;
+            
+            document.getElementById('folder-view-title').innerText = name;
+            document.getElementById('folder-view-subtitle').innerText = name;
+            document.getElementById('folder-view-modal').style.display = 'flex';
+            
+            loadFilesInFolder(); 
+        };
+
+        window.closeFolderView = () => {
+            document.getElementById('folder-view-modal').style.display = 'none';
+            window.currentFolderId = null;
+            document.getElementById('folder-specific-upload').value = ""; 
+        };
+
+        window.uploadFilesToFolder = async () => {
+            if(!window.currentFolderId) return;
+            const fileInput = document.getElementById('folder-specific-upload');
+            const files = fileInput.files;
+            
+            if(files.length === 0) {
+                alert("Please choose a file first.");
+                return;
+            }
+
+            for(let i=0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    await addDoc(collection(db, "folder_files"), {
+                        folderId: window.currentFolderId,
+                        fileName: file.name,
+                        fileType: file.type,
+                        uid: auth.currentUser.uid,
+                        timestamp: serverTimestamp()
+                    });
+                } catch(e) { console.error("Save file error", e); }
+            }
+            
+            alert("Files Saved to Folder!");
+            fileInput.value = ""; 
+            loadFilesInFolder(); 
+        };
+
+        window.loadFilesInFolder = async () => {
+            const listDiv = document.getElementById('folder-file-list');
+            listDiv.innerHTML = "<p style='color:gray;'>Loading files...</p>";
+            
+            try {
+                const q = query(collection(db, "folder_files"), where("folderId", "==", window.currentFolderId));
+                const snap = await getDocs(q);
+                listDiv.innerHTML = "";
+                
+                if(snap.empty) {
+                    listDiv.innerHTML = "<p style='color:gray; text-align:center;'>This folder is empty.</p>";
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const data = d.data();
+                    listDiv.innerHTML += `
+                    <div class="file-item">
+                        <span style="color: white; font-size: 14px;">📄 ${data.fileName}</span>
+                        <div>
+                            <button onclick="playSavedAudio('${data.fileName}')" class="btn-primary" style="padding: 5px 10px;">Play</button>
+                            <button onclick="deleteFile('${d.id}')" style="background:#ff6b6b; color: white; border:none; padding:5px; border-radius:5px; cursor:pointer;">🗑️</button>
+                        </div>
+                    </div>`;
+                });
+            } catch(e) { console.error(e); }
+        };
+
+        window.deleteFile = async (docId) => {
+            if(confirm("Delete this file?")) {
+                await deleteDoc(doc(db, "folder_files", docId));
+                loadFilesInFolder();
+            }
+        };
+
+        window.playSavedAudio = (fileName) => {
+            document.getElementById('now-playing-text').innerText = "Simulating: " + fileName;
+            alert("To hear '" + fileName + "', ensure it is selected in your device.");
+            window.closeFolderView();
+        };
+
+        // --- VISUALIZER ---
+        window.startVisualizer = (audioElement) => {
+            if (!window.audioCtx) {
+                window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                window.analyser = window.audioCtx.createAnalyser();
+                const src = window.audioCtx.createMediaElementSource(audioElement);
+                src.connect(window.analyser);
+                window.analyser.connect(window.audioCtx.destination);
+            }
+            const data = new Uint8Array(window.analyser.frequencyBinCount);
+            const speaker = document.getElementById('dancing-speaker');
+            function loop() {
+                requestAnimationFrame(loop);
+                window.analyser.getByteFrequencyData(data);
+                const bass = data.slice(0, 10).reduce((a, b) => a + b) / 10;
+                speaker.style.transform = `scale(${1 + (bass / 255)})`;
+            }
+            loop();
+        };
+
+        // --- FIREBASE PRIVATE CHAT ---
+        window.sendPrivateMessage = async () => {
+            const input = document.getElementById('private-chat-input');
+            if(!input.value.trim() || !auth.currentUser) return;
+            try {
+                await addDoc(collection(db, "messages"), {
+                    text: input.value,
+                    uid: auth.currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+                input.value = "";
+            } catch(e) { console.error(e); }
+        };
+
+        onSnapshot(query(collection(db, "messages"), orderBy("timestamp", "asc")), (snap) => {
+            const display = document.getElementById('private-messages-display');
+            if(!display) return;
+            display.innerHTML = "";
+            snap.forEach(d => {
+                const data = d.data();
+                const isMe = auth.currentUser && data.uid === auth.currentUser.uid;
+                display.innerHTML += `<div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; background: ${isMe ? '#00ff88' : '#333'}; color: ${isMe ? '#0b0b1a' : 'white'}; padding: 10px; border-radius: 12px; font-size:14px; max-width:80%;">${data.text}</div>`;
+            });
+            display.scrollTop = display.scrollHeight;
         });
-      } catch (e) { console.error("Error loading folders:", e); }
-    };
-
-    window.renameFolder = async (folderId, oldName, event) => {
-      event.stopPropagation(); 
-      const newName = prompt("Rename your folder:", oldName);
-      if (newName && newName !== oldName) {
-        try {
-          await updateDoc(doc(db, "folders", folderId), { name: newName });
-          window.loadFolders(); 
-        } catch (e) { console.error("Rename Error:", e); }
-      }
-    };
-
-    // 3. MUSIC VISUALIZER
-    window.startVisualizer = (audioElement) => {
-      if (!window.audioCtx) {
-        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        window.analyser = window.audioCtx.createAnalyser();
-        const source = window.audioCtx.createMediaElementSource(audioElement);
-        source.connect(window.analyser);
-        window.analyser.connect(window.audioCtx.destination);
-      }
-      const bufferLength = window.analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      const speaker = document.getElementById('dancing-speaker');
-
-      function animatePulse() {
-        requestAnimationFrame(animatePulse);
-        window.analyser.getByteFrequencyData(dataArray);
-        let bass = dataArray.slice(0, 10).reduce((a, b) => a + b) / 10;
-        const scale = 1 + (bass / 255) * 0.8; 
-        if (speaker) speaker.style.transform = `scale(${scale})`;
-      }
-      animatePulse();
-    };
-
-    // 4. CHAT SYSTEM INTEGRATION
-    window.sendPrivateMessage = async () => {
-      const input = document.getElementById('private-chat-input');
-      const msg = input.value.trim();
-      if (!msg) return;
-      try {
-        await addDoc(collection(db, "messages"), {
-          text: msg,
-          senderId: auth.currentUser.uid,
-          senderEmail: auth.currentUser.email,
-          timestamp: serverTimestamp()
-        });
-        input.value = ""; 
-      } catch (e) { console.error("Chat Error:", e); }
-    };
-
-    const qMessages = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-    onSnapshot(qMessages, (snapshot) => {
-      const display = document.getElementById('private-messages-display');
-      if (!display) return;
-      display.innerHTML = "";
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const isMe = auth.currentUser && data.senderId === auth.currentUser.uid;
-        display.innerHTML += `
-          <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; background: ${isMe ? '#00ff88' : '#333'}; color: ${isMe ? 'black' : 'white'}; padding: 8px 12px; border-radius: 15px; max-width: 80%; margin-bottom:5px;">
-            ${data.text}
-          </div>`;
-      });
-      display.scrollTop = display.scrollHeight;
-    });
-  </script>
-
-  <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
-      💬
-  </div>
-
-  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 2000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-      <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: bold;">Private Messenger</span>
-          <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer; font-size: 20px;">×</button>
-      </div>
-      <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0b0b1a; color: white;">
-          <p style="color: gray; font-size: 12px; text-align: center;">Messages will appear here...</p>
-      </div>
-      <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
-          <input type="text" id="private-chat-input" placeholder="Aa" style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
-          <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
-      </div>
-  </div>
-   
+    </script>
 </body>
 </html>

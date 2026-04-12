@@ -1,12 +1,43 @@
 /* ============================================================
    SCRIPT.JS — My School Portfolio
    ============================================================ */
- 
- 
+
+/* ============================================================
+   CUSTOM MODALS (Replaces prompt/alert/confirm for PWA support)
+   ============================================================ */
+window.customAlert = function(text) {
+    document.getElementById('alert-text').innerText = text;
+    document.getElementById('custom-alert-modal').style.display = 'flex';
+};
+
+window.customPrompt = function(title, callback, defaultValue = '') {
+    const modal = document.getElementById('custom-prompt-modal');
+    const inputEl = document.getElementById('prompt-input');
+    document.getElementById('prompt-title').innerText = title;
+    inputEl.value = defaultValue;
+    modal.style.display = 'flex';
+    inputEl.focus();
+
+    document.getElementById('prompt-submit').onclick = function() {
+        modal.style.display = 'none';
+        callback(inputEl.value.trim());
+    };
+};
+
+window.customConfirm = function(text, callback) {
+    document.getElementById('confirm-text').innerText = text;
+    const modal = document.getElementById('custom-confirm-modal');
+    modal.style.display = 'flex';
+    
+    document.getElementById('confirm-yes').onclick = function() {
+        modal.style.display = 'none';
+        callback();
+    };
+};
+
 /* ============================================================
    DATA — Subjects & Teachers
    ============================================================ */
- 
 const firstSem = [
   { code: "Math 0",    teacher: "Sir Jason Saludes",          icon: "📐" },
   { code: "English +", teacher: "Sir Winbert Abrenica",       icon: "📖" },
@@ -32,14 +63,12 @@ const secondSem = [
   { code: "NSTP 2",   teacher: "",                           icon: "🎗️"  },
 ];
  
-const eventCount  = 15; // Number of event folders
-const randomCount = 10; // Number of random folders
- 
+const eventCount  = 15;
+const randomCount = 10;
  
 /* ============================================================
-   BUILD SUBJECT CARDS (Modified to open Folders)
+   BUILD SUBJECT CARDS (Opens Folders)
    ============================================================ */
- 
 function buildSubjectCards(gridId, subjects) {
   const grid = document.getElementById(gridId);
   if (!grid) return;
@@ -49,7 +78,6 @@ function buildSubjectCards(gridId, subjects) {
     const card = document.createElement('div');
     card.className = 'subject-card';
     card.style.cursor = 'pointer';
-    // NEW: Clicking the card opens the Folder Explorer
     card.onclick = () => window.openFolderExplorer(subject.code);
  
     card.innerHTML = `
@@ -64,829 +92,48 @@ function buildSubjectCards(gridId, subjects) {
   });
 }
 
-// KEPT YOUR OLD LOGIC JUST IN CASE YOU NEED TO REVERT
-function handlePDF(input, gridId, index) {
-  const file = input.files[0];
-  if (!file) return;
- 
-  // Show filename (truncated if too long)
-  const nameEl = document.getElementById(`fname-${gridId}-${index}`);
-  nameEl.textContent = file.name.length > 22 ? file.name.slice(0, 20) + '…' : file.name;
- 
-  // Show the uploaded badge
-  document.getElementById(`badge-${gridId}-${index}`).style.display = 'block';
- 
-  // Show author credit
-  const authorEl = document.getElementById(`author-${gridId}-${index}`);
-  authorEl.textContent = `Uploaded by: ${currentUser?.username || 'Anonymous'}`;
- 
-  // If video, show preview
-  if (file.type.startsWith('video/')) {
-    const video = document.createElement('video');
-    video.src = URL.createObjectURL(file);
-    video.controls = true;
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.objectFit = 'cover';
-    input.closest('.subject-card').appendChild(video);
-  }
-
-  if (typeof bounce === 'function') bounce(input.closest('.subject-card'));
-}
-
-function deleteFile(gridId, index) {
-  document.getElementById(`fname-${gridId}-${index}`).textContent = 'No file chosen';
-  document.getElementById(`badge-${gridId}-${index}`).style.display = 'none';
-  document.getElementById(`author-${gridId}-${index}`).textContent = '';
-  const card = document.getElementById(`fname-${gridId}-${index}`).closest('.subject-card');
-  const video = card.querySelector('video');
-  if (video) video.remove();
-  card.querySelector('input[type="file"]').value = '';
-}
-
-
-/* ============================================================
-   BUILD FOLDER CARDS (Modified to open Folders)
-   ============================================================ */
- 
 function buildFolderCards(gridId, count, prefix = "Folder") {
   const grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = '';
  
-  for (let i = 0; i < count; i++) {
+  for (let i = 1; i <= count; i++) {
     const card = document.createElement('div');
     card.className = 'folder-card';
     card.style.cursor = 'pointer';
-    // NEW: Clicking the card opens the Folder Explorer
-    card.onclick = () => window.openFolderExplorer(`${prefix} ${i + 1}`);
+    card.onclick = () => window.openFolderExplorer(`${prefix} ${i}`);
  
     card.innerHTML = `
       <div class="folder-bg"></div>
-      <div class="folder-pattern"></div>
-      <div class="folder-orb"></div>
       <div class="folder-overlay"></div>
       <div class="folder-info">
-        <div class="folder-name">${prefix} ${i + 1}</div>
-        <div style="font-size: 10px; color: #00d4ff; margin-top: 5px;">View Contents</div>
+        <div class="folder-name">${prefix} ${i}</div>
+        <div style="font-size: 10px; color: #00d4ff; margin-top: 5px;">View Folders</div>
       </div>
     `;
     grid.appendChild(card);
   }
 }
 
-// KEPT YOUR OLD LOGIC JUST IN CASE YOU NEED TO REVERT
-function handleFolder(input, gridId, index) {
-  const file = input.files[0];
-  if (!file) return;
- 
-  const nameEl = document.getElementById(`ffname-${gridId}-${index}`);
-  nameEl.textContent = file.name.length > 20 ? file.name.slice(0, 18) + '…' : file.name;
-  document.getElementById(`fbadge-${gridId}-${index}`).style.display = 'block';
-  const authorEl = document.getElementById(`fauthor-${gridId}-${index}`);
-  authorEl.textContent = `Uploaded by: ${currentUser?.username || 'Anonymous'}`;
- 
-  const imgPreview = document.getElementById(`fprev-${gridId}-${index}`);
-  const vidPreview = document.getElementById(`fvid-${gridId}-${index}`);
-  if (file.type.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      imgPreview.src = e.target.result;
-      imgPreview.style.display = 'block';
-      vidPreview.style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  } else if (file.type.startsWith('video/')) {
-    vidPreview.src = URL.createObjectURL(file);
-    vidPreview.style.display = 'block';
-    imgPreview.style.display = 'none';
-  }
-  if (typeof bounce === 'function') bounce(input.closest('.folder-card'));
-}
-
-function deleteFolderFile(gridId, index) {
-  document.getElementById(`ffname-${gridId}-${index}`).textContent = 'No file chosen';
-  document.getElementById(`fbadge-${gridId}-${index}`).style.display = 'none';
-  document.getElementById(`fauthor-${gridId}-${index}`).textContent = '';
-  document.getElementById(`fprev-${gridId}-${index}`).style.display = 'none';
-  document.getElementById(`fvid-${gridId}-${index}`).style.display = 'none';
-  const card = document.getElementById(`ffname-${gridId}-${index}`).closest('.folder-card');
-  card.querySelector('input[type="file"]').value = '';
-}
-
-
 /* ============================================================
-   NEW FEATURES: AUTH, ADMIN, CHAT, CALENDAR, MUSIC, ETC.
+   FOLDER & FILE EXPLORER LOGIC 
    ============================================================ */
+let currentParentContext = null; 
+let currentFolderContext = null; 
 
-let users = [];
-
-const SERVER_BASE = 'https://class-app-y67k.onrender.com';
-let socket = null;
-let currentUser = null;
-let isAdmin = false;
-const adminUsername = 'Marquillero';
-const adminPassword = '120524';
-let chatHistory = { group: [], todo: [], private: {} };
-let currentChat = { type: 'group', target: null };
-
-function apiFetch(path, options = {}) {
-  return fetch(`${SERVER_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  }).then(async (res) => {
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || res.statusText);
-    return body;
-  });
-}
-
-function loadSession() {
-  const stored = localStorage.getItem('classAppUser');
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
-}
-
-function saveSession() {
-  if (currentUser) {
-    localStorage.setItem('classAppUser', JSON.stringify(currentUser));
-  } else {
-    localStorage.removeItem('classAppUser');
-  }
-}
-
-function initSocket() {
-  if (socket) return;
-  socket = io('https://class-app-y67k.onrender.com');
-
-  socket.on('connect', () => {
-    if (currentUser) {
-      socket.emit('identify', { username: currentUser.username });
-      socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null, user: currentUser });
-    }
-  });
-
-  socket.on('users', (payload) => {
-    users = payload;
-    renderUserDirectory();
-    renderChatUsersList();
-  });
-
-  socket.on('message', ({ chat, target, message }) => {
-    if (chat === 'private') {
-      const key = getPrivateKey(target.userA, target.userB);
-      chatHistory.private[key] = chatHistory.private[key] || [];
-      chatHistory.private[key].push(message);
-      if (currentChat.type === 'private' && getPrivateKey(currentUser.username, currentChat.target) === key) {
-        renderMessages();
-      }
-      return;
-    }
-    chatHistory[chat] = chatHistory[chat] || [];
-    chatHistory[chat].push(message);
-    if (currentChat.type === chat) renderMessages();
-  });
-
-  socket.on('messageUpdated', (message) => {
-    const history = getAllMessages();
-    const found = history.find((msg) => msg.id === message.id);
-    if (found) {
-      Object.assign(found, message);
-      renderMessages();
-    }
-  });
-
-  socket.on('messageDeleted', ({ id }) => {
-    const history = getAllMessages();
-    const index = history.findIndex((message) => message.id === id);
-    if (index !== -1) {
-      history.splice(index, 1);
-      renderMessages();
-    }
-  });
-}
-
-function getAllMessages() {
-  return [
-    ...(chatHistory.group || []),
-    ...(chatHistory.todo || []),
-    ...Object.values(chatHistory.private || {}).flat(),
-  ];
-}
-
-function getPrivateKey(userA, userB) {
-  return [userA, userB].sort().join('||');
-}
-
-window.login = function() {
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value.trim();
-  if (!username || !password) {
-    alert('Enter username and password');
-    return;
-  }
-  apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) })
-    .then((data) => {
-      currentUser = data.user;
-      isAdmin = data.isAdmin;
-      saveSession();
-      establishSession();
-    })
-    .catch((err) => alert(err.message));
-}
-
-window.register = function() {
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value.trim();
-  if (!username || !password) {
-    alert('Enter username and password');
-    return;
-  }
-  apiFetch('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) })
-    .then((data) => {
-      currentUser = data.user;
-      isAdmin = data.isAdmin;
-      saveSession();
-      establishSession();
-    })
-    .catch((err) => alert(err.message));
-}
-
-window.handleLogout = function() {
-    currentUser = null;
-    saveSession();
-    location.reload();
-};
-
-function closeModal() {
-  const authModal = document.getElementById('auth-modal');
-  if(authModal) authModal.classList.remove('active');
-}
-
-function establishSession() {
-  closeModal();
-  const adminPanel = document.getElementById('admin-panel');
-  if (adminPanel) adminPanel.style.display = isAdmin ? 'block' : 'none';
-  const navLogout = document.getElementById('nav-logout');
-  if (navLogout) navLogout.style.display = 'flex';
-  
-  renderUserDirectory();
-  renderChatUsersList();
-  updateChatHeader();
-  initSocket();
-  fetchUsers();
-  fetchMessages(currentChat.type, currentChat.target);
-}
-
-function fetchUsers() {
-  apiFetch('/api/users')
-    .then((data) => {
-      users = data;
-      renderUserDirectory();
-      renderChatUsersList();
-    })
-    .catch((err) => console.warn(err.message));
-}
-
-function fetchMessages(chat, target = null) {
-  if (!chat) return;
-  const query = new URLSearchParams({ chat });
-  if (chat === 'private' && target) {
-    query.set('target', getPrivateKey(currentUser.username, target));
-  }
-  apiFetch(`/api/messages?${query.toString()}`)
-    .then((messages) => {
-      if (chat === 'private') {
-        const key = getPrivateKey(currentUser.username, target);
-        chatHistory.private[key] = messages;
-      } else {
-        chatHistory[chat] = messages;
-      }
-      renderMessages();
-    })
-    .catch((err) => console.warn(err.message));
-}
-
-function renderUserDirectory() {
-  const grid = document.getElementById('user-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  users.forEach((user) => {
-    const card = document.createElement('div');
-    card.className = 'user-card';
-    card.innerHTML = `
-      <div class="user-card-top">
-        <div>
-          <div class="user-name">${user.displayName}</div>
-          <div class="user-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
-        </div>
-        <button class="user-view-btn" onclick="openUserProfile('${user.username}')">Profile</button>
-      </div>
-      <div class="user-meta">GitHub: ${user.github || '—'}</div>
-      <div class="user-meta">Email: ${user.email || '—'}</div>
-      <div class="user-note">${user.note || ''}</div>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-function renderChatUsersList() {
-  const list = document.getElementById('chat-user-list');
-  if (!list) return;
-  list.innerHTML = '';
-  users
-    .filter((user) => currentUser ? user.username !== currentUser.username : true)
-    .forEach((user) => {
-      const item = document.createElement('div');
-      item.className = 'chat-user-item';
-      item.innerHTML = `
-        <div>
-          <div class="chat-user-name">${user.displayName}</div>
-          <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
-        </div>
-        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer;">Chat</button>
-      `;
-      list.appendChild(item);
-    });
-}
-
-function updateChatHeader() {
-  const header = document.getElementById('chat-header');
-  if (!header) return;
-  if (currentChat.type === 'group') {
-    header.textContent = 'Group Chat';
-  } else if (currentChat.type === 'todo') {
-    header.textContent = 'To-Do Group';
-  } else if (currentChat.type === 'private' && currentChat.target) {
-    header.textContent = `Private Chat with ${currentChat.target}`;
-  } else {
-    header.textContent = 'Select a chat';
-  }
-}
-
-window.openChat = function(type, target = null) {
-  currentChat = { type, target };
-  updateChatHeader();
-  if (socket && currentUser) {
-    socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, target) : null, user: currentUser });
-  }
-  fetchMessages(type, target);
-};
-
-function getCurrentHistory() {
-  if (currentChat.type === 'group') return chatHistory.group || [];
-  if (currentChat.type === 'todo') return chatHistory.todo || [];
-  if (currentChat.type === 'private') return chatHistory.private[getPrivateKey(currentUser.username, currentChat.target)] || [];
-  return [];
-}
-
-function renderMessages() {
-  const container = document.getElementById('chat-messages');
-  if (!container) return;
-  container.innerHTML = '';
-  const history = getCurrentHistory();
-  const visibleMessages = history.filter((message) => !message.deletedFor || !message.deletedFor.includes(currentUser?.username));
-  if (!visibleMessages.length) {
-    container.innerHTML = '<p class="empty-chat">No messages yet.</p>';
-    return;
-  }
-  const pinned = visibleMessages.filter((message) => message.pinned);
-  const normal = visibleMessages.filter((message) => !message.pinned);
-  pinned.concat(normal).forEach((message) => {
-    if (message.type === 'system') {
-      const sysDiv = document.createElement('div');
-      sysDiv.className = 'chat-system-message';
-      sysDiv.textContent = message.text;
-      container.appendChild(sysDiv);
-      return;
-    }
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `chat-message${message.pinned ? ' message-pinned' : ''}`;
-    const senderLine = document.createElement('div');
-    senderLine.innerHTML = `
-      <span class="chat-sender">${message.sender}</span>
-      <span class="chat-time">${message.time}</span>
-      ${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}
-    `;
-    msgDiv.appendChild(senderLine);
-    const textLine = document.createElement('div');
-    textLine.className = 'chat-text';
-    textLine.textContent = message.text;
-    msgDiv.appendChild(textLine);
-    if (message.attachment) {
-      const attach = document.createElement('div');
-      attach.className = 'chat-attachment';
-      const info = document.createElement('div');
-      info.textContent = `Attachment: ${message.attachment.name}`;
-      attach.appendChild(info);
-      if (message.attachment.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.src = SERVER_BASE + message.attachment.url;
-        img.alt = message.attachment.name;
-        img.style.maxWidth = '200px';
-        attach.appendChild(img);
-      } else if (message.attachment.type.startsWith('video/')) {
-        const video = document.createElement('video');
-        video.src = SERVER_BASE + message.attachment.url;
-        video.controls = true;
-        video.style.maxWidth = '250px';
-        attach.appendChild(video);
-      } else {
-        const link = document.createElement('a');
-        link.className = 'chat-attachment-link';
-        link.href = SERVER_BASE + message.attachment.url;
-        link.download = message.attachment.name;
-        link.textContent = `Download ${message.attachment.name}`;
-        attach.appendChild(link);
-      }
-      msgDiv.appendChild(attach);
-    }
-    const actions = document.createElement('div');
-    actions.className = 'chat-actions';
-    const pinButton = document.createElement('button');
-    pinButton.className = 'chat-action-button';
-    pinButton.textContent = message.pinned ? 'Unpin' : 'Pin';
-    pinButton.onclick = () => togglePinMessage(message.id, !message.pinned);
-    actions.appendChild(pinButton);
-    const bumpButton = document.createElement('button');
-    bumpButton.className = 'chat-action-button';
-    bumpButton.textContent = 'Bump';
-    bumpButton.onclick = () => bumpMessage(message.id);
-    actions.appendChild(bumpButton);
-    if (currentUser && message.sender === currentUser.username) {
-      const editButton = document.createElement('button');
-      editButton.className = 'chat-action-button';
-      editButton.textContent = 'Edit';
-      editButton.onclick = () => editChatMessage(message.id);
-      actions.appendChild(editButton);
-      const deleteEverywhere = document.createElement('button');
-      deleteEverywhere.className = 'chat-action-button';
-      deleteEverywhere.textContent = 'Delete Everyone';
-      deleteEverywhere.onclick = () => deleteMessageForEveryone(message.id);
-      actions.appendChild(deleteEverywhere);
-    }
-    const deleteMeButton = document.createElement('button');
-    deleteMeButton.className = 'chat-action-button';
-    deleteMeButton.textContent = 'Delete for Me';
-    deleteMeButton.onclick = () => deleteMessageForMe(message.id);
-    actions.appendChild(deleteMeButton);
-    msgDiv.appendChild(actions);
-    container.appendChild(msgDiv);
-  });
-  container.scrollTop = container.scrollHeight;
-}
-
-window.sendMessage = function() {
-  const input = document.getElementById('message-input');
-  const attachmentInput = document.getElementById('attachment-input');
-  const text = input.value.trim();
-  const file = attachmentInput.files[0];
-  if (!text && !file) return;
-  if (!currentUser) return alert('Please login first to send messages.');
-  if (currentChat.type === 'private' && !currentChat.target) return alert('Select a private contact first.');
-
-  const uploadPromise = file ? uploadAttachment(file) : Promise.resolve(null);
-  uploadPromise
-    .then((attachment) => {
-      if (socket) {
-        socket.emit('sendMessage', {
-          chat: currentChat.type,
-          target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null,
-          sender: currentUser.username,
-          text,
-          attachment,
-        });
-      }
-      input.value = '';
-      attachmentInput.value = '';
-      const selected = document.getElementById('attachment-selected');
-      if(selected) selected.textContent = 'No file chosen';
-    })
-    .catch((err) => alert('Upload failed: ' + err.message));
-}
-
-function uploadAttachment(file) {
-  const form = new FormData();
-  form.append('file', file);
-  return fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form })
-    .then((res) => {
-      if (!res.ok) throw new Error('Upload failed');
-      return res.json();
-    })
-    .then((data) => data);
-}
-
-function togglePinMessage(id, pin) {
-  apiFetch(`/api/messages/${id}`, { method: 'PUT', body: JSON.stringify({ pinned: pin }) })
-    .then(() => fetchMessages(currentChat.type, currentChat.target))
-    .catch((err) => alert(err.message));
-}
-
-function editChatMessage(id) {
-  const message = findMessageById(id);
-  if (!message) return;
-  if (message.sender !== currentUser?.username) {
-    alert('You can only edit your own messages.');
-    return;
-  }
-  const updated = prompt('Edit your message:', message.text);
-  if (updated === null) return;
-  apiFetch(`/api/messages/${id}`, { method: 'PUT', body: JSON.stringify({ text: updated }) })
-    .then(() => fetchMessages(currentChat.type, currentChat.target))
-    .catch((err) => alert(err.message));
-}
-
-function deleteMessageForMe(id) {
-  const message = findMessageById(id);
-  if (!message) return;
-  if (!message.deletedFor) message.deletedFor = [];
-  if (currentUser && !message.deletedFor.includes(currentUser.username)) {
-    message.deletedFor.push(currentUser.username);
-  }
-  renderMessages();
-}
-
-function deleteMessageForEveryone(id) {
-  const message = findMessageById(id);
-  if (!message) return;
-  if (message.sender !== currentUser?.username && !isAdmin) {
-    alert('Only the sender or admin can delete for everyone.');
-    return;
-  }
-  if(!confirm("Delete for everyone?")) return;
-  fetch(`${SERVER_BASE}/api/messages/${id}`, { method: 'DELETE' })
-    .then((res) => res.json())
-    .then(() => fetchMessages(currentChat.type, currentChat.target))
-    .catch((err) => alert(err.message));
-}
-
-function bumpMessage(id) {
-  if (!currentUser) return;
-  const bumpText = `${currentUser.displayName || currentUser.username} bumped the chat.`;
-  if (socket) {
-    socket.emit('sendMessage', {
-      chat: currentChat.type,
-      target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null,
-      sender: 'System',
-      text: bumpText,
-      attachment: null,
-    });
-  }
-}
-
-function findMessageById(id) {
-  const history = getCurrentHistory();
-  return history.find((message) => message.id === id);
-}
-
-window.openUserProfile = function(username) {
-  const profile = users.find((user) => user.username === username);
-  if (!profile) return;
-  const profilePanel = document.getElementById('profile-panel');
-  const details = document.getElementById('profile-details');
-  if (!profilePanel || !details) return;
-  const isMine = currentUser?.username === profile.username;
-  details.innerHTML = `
-    <h2>${profile.displayName}</h2>
-    <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
-    <div class="profile-row"><strong>Birthday:</strong> ${profile.birthday}</div>
-    <div class="profile-row"><strong>Address:</strong> ${profile.address}</div>
-    <div class="profile-row"><strong>GitHub:</strong> ${profile.github || '—'}</div>
-    <div class="profile-row"><strong>Email:</strong> ${profile.email || '—'}</div>
-    <div class="profile-row"><strong>Note:</strong> ${profile.note || 'No additional note.'}</div>
-    <div class="profile-actions">
-      <button onclick="openChat('private', '${profile.username}')">Message</button>
-      ${isMine ? `<button onclick="editUserProfile('${profile.username}')">Edit Profile</button>` : ''}
-    </div>
-  `;
-  profilePanel.classList.add('active');
-}
-
-window.editUserProfile = function(username) {
-  const profile = users.find((user) => user.username === username);
-  if (!profile) return;
-  const details = document.getElementById('profile-details');
-  if (!details) return;
-  details.innerHTML = `
-    <h2>Edit Profile</h2>
-    <div class="profile-row"><strong>Display Name:</strong> <input id="profile-displayName" value="${profile.displayName}"></div>
-    <div class="profile-row"><strong>Birthday:</strong> <input id="profile-birthday" value="${profile.birthday}"></div>
-    <div class="profile-row"><strong>Address:</strong> <input id="profile-address" value="${profile.address}"></div>
-    <div class="profile-row"><strong>GitHub:</strong> <input id="profile-github" value="${profile.github}"></div>
-    <div class="profile-row"><strong>Email:</strong> <input id="profile-email" value="${profile.email}"></div>
-    <div class="profile-row"><strong>Note:</strong> <textarea id="profile-note">${profile.note}</textarea></div>
-    <div class="profile-actions">
-      <button onclick="saveProfileEdits('${profile.username}')">Save</button>
-      <button onclick="openUserProfile('${profile.username}')">Cancel</button>
-    </div>
-  `;
-}
-
-window.saveProfileEdits = function(username) {
-  const profile = users.find((user) => user.username === username);
-  if (!profile) return;
-  const payload = {
-    displayName: document.getElementById('profile-displayName').value.trim(),
-    birthday: document.getElementById('profile-birthday').value.trim(),
-    address: document.getElementById('profile-address').value.trim(),
-    github: document.getElementById('profile-github').value.trim(),
-    email: document.getElementById('profile-email').value.trim(),
-    note: document.getElementById('profile-note').value.trim(),
-  };
-  apiFetch(`/api/users/${username}`, { method: 'PUT', body: JSON.stringify(payload) })
-    .then(() => {
-      fetchUsers();
-      openUserProfile(username);
-    })
-    .catch((err) => alert(err.message));
-}
-
-window.closeProfile = function() {
-  document.getElementById('profile-panel').classList.remove('active');
-}
-
-window.blockUser = function() { alert('User blocked'); }
-window.moderateFiles = function() { alert('Files moderated'); }
-window.closeAdminPanel = function() { document.getElementById('admin-panel').style.display = 'none'; }
-
-// Calendar
-let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
-
-function renderCalendar() {
-  const grid = document.getElementById('calendar-grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  for (let i = 0; i < firstDay; i++) {
-    grid.appendChild(document.createElement('div'));
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dayDiv = document.createElement('div');
-    dayDiv.textContent = day;
-    dayDiv.onclick = () => addNote(day);
-    grid.appendChild(dayDiv);
-  }
-  const monthEl = document.getElementById('month-year');
-  if(monthEl) monthEl.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
-}
-
-window.prevMonth = function() {
-  currentMonth--;
-  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-  renderCalendar();
-}
-
-window.nextMonth = function() {
-  currentMonth++;
-  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-  renderCalendar();
-}
-
-window.addNote = function(day) {
-  const note = prompt('Add note:');
-  if (note) alert(`Note added for ${day}: ${note}`);
-}
-
-window.saveAnnouncement = function() {
-  const note = document.getElementById('announcement-note').value;
-  alert('Announcement saved');
-}
-
-// Live Clock
-function updateClock() {
-  const now = new Date();
-  const clk = document.getElementById('live-clock');
-  if(clk) clk.textContent = now.toLocaleTimeString();
-}
-setInterval(updateClock, 1000);
-
-// Custom BG Upload
-function handleCustomBgUpload(file) {
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  if (file.type.startsWith('image/')) {
-    document.body.style.backgroundImage = `url(${url})`;
-  } else if (file.type.startsWith('video/')) {
-    const video = document.createElement('video');
-    video.src = url;
-    video.autoplay = true;
-    video.loop = true;
-    video.muted = true;
-    video.style.position = 'fixed';
-    video.style.zIndex = '-1';
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.objectFit = 'cover';
-    document.body.appendChild(video);
-  }
-}
-
-// Update pageConfig for new pages
-const pageConfig = {
-  first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
-  second:   { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🌊 Second Semester' },
-  events:   { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '🛩️ Event Pictures' },
-  random:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🌌 Random Pictures' },
-  chat:     { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '💬 Chat' },  
-  users:    { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '👥 User Directory' },  
-  calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
-  music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
-};
-
-let currentPage = 'first';
-
-window.goToPage = function(pageName) {
-  if (pageName === currentPage) {
-    const pageEl = document.getElementById('page-' + pageName);
-    if(pageEl) pageEl.scrollTop = 0;
-    closeMenu();
-    return;
-  }
-
-  const old = pageConfig[currentPage];
-  const oldPage = document.getElementById('page-' + currentPage);
-  if(oldPage) oldPage.classList.remove('active');
-  document.getElementById(old.bg).classList.remove('active');
-  document.getElementById(old.particles).classList.remove('active');
-  if (old.wave) document.getElementById('wave-container').classList.remove('active');
-  if (old.mountain) document.getElementById('mountain-svg').classList.remove('active');
-  if (old.aurora) document.getElementById('aurora').classList.remove('active');
-
-  currentPage = pageName;
-  const cfg = pageConfig[pageName];
-  const newPage = document.getElementById('page-' + pageName);
-  if(newPage) newPage.classList.add('active');
-  document.getElementById(cfg.bg).classList.add('active');
-  document.getElementById(cfg.particles).classList.add('active');
-  if (cfg.wave) document.getElementById('wave-container').classList.add('active');
-  if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
-  if (cfg.aurora) document.getElementById('aurora').classList.add('active');
-
-  const ind = document.getElementById('page-indicator');
-  if(ind) ind.textContent = cfg.label;
-  if(newPage) newPage.scrollTop = 0;
-
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.toggle('active', item.dataset.page === pageName);
-  });
-
-  closeMenu();
-}
-
-window.toggleMenu = function() {
-  document.getElementById('menu-toggle').classList.toggle('open');
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('active');
-}
-
-window.closeMenu = function() {
-  document.getElementById('menu-toggle').classList.remove('open');
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('active');
-}
-
-let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) installBtn.style.display = 'block';
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) installBtn.style.display = 'none';
-});
-
-/* ============================================================
-   NEW API FOR FOLDERS AND FILES (REPLACED FIREBASE)
-   ============================================================ */
-
-let currentParentContext = null;
-let currentFolderContext = null;
-
-function closeFolderModal(modalId) {
+window.closeFolderModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'none';
 }
 
-function openFolderModalObj(modalId) {
+window.openFolderModalObj = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'flex';
 }
 
 window.openFolderExplorer = function(parentName) {
     currentParentContext = parentName;
-    const title = document.getElementById('folder-explorer-title');
-    if(title) title.innerText = `${parentName} Folders`;
+    document.getElementById('folder-explorer-title').innerText = `${parentName} Folders`;
     fetchAndRenderFolders();
     openFolderModalObj('folder-explorer-modal');
 };
@@ -904,19 +151,17 @@ function fetchAndRenderFolders() {
 
         folders.forEach(f => {
             const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
-            
             grid.innerHTML += `
             <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; display: flex; flex-direction: column;">
-                <div onclick="openFileExplorer('${f.id}', '${f.name}')" style="cursor:pointer; flex: 1; text-align: center;">
+                <div onclick="window.openFileExplorer('${f.id}', '${f.name}')" style="cursor:pointer; flex: 1; text-align: center;">
                     <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
                     <div style="color: white; font-weight: bold; font-family: 'Exo 2'; font-size: 16px; word-wrap: break-word;">${f.name}</div>
                     <div style="color: gray; font-size: 10px; margin-top: 5px;">By: ${f.owner}</div>
                 </div>
-                
                 ${isOwner ? `
                 <div style="display: flex; gap: 5px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <button onclick="renameFolderAPI('${f.id}', '${f.name}')" style="flex:1; background: transparent; color: #00d4ff; border: 1px solid #00d4ff; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Rename</button>
-                    <button onclick="deleteFolderAPI('${f.id}')" style="flex:1; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Delete</button>
+                    <button onclick="window.renameFolderAPI('${f.id}', '${f.name}')" style="flex:1; background: transparent; color: #00d4ff; border: 1px solid #00d4ff; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Rename</button>
+                    <button onclick="window.deleteFolderAPI('${f.id}')" style="flex:1; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Delete</button>
                 </div>
                 ` : ''}
             </div>
@@ -927,38 +172,36 @@ function fetchAndRenderFolders() {
 }
 
 window.createFolderAPI = function() {
-    if(!currentUser) return alert("Please log in to create a folder.");
-    const name = prompt("Enter new folder name:");
-    if(!name) return;
-
-    apiFetch('/api/folders', {
-        method: 'POST',
-        body: JSON.stringify({ parent: currentParentContext, name: name, owner: currentUser.username })
-    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+    if(!currentUser) return customAlert("Please log in to create a folder.");
+    customPrompt("Enter new folder name:", function(name) {
+        if(!name) return;
+        apiFetch('/api/folders', {
+            method: 'POST',
+            body: JSON.stringify({ parent: currentParentContext, name: name, owner: currentUser.username })
+        }).then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+    });
 };
 
 window.renameFolderAPI = function(id, oldName) {
-    const newName = prompt("Enter new name for folder:", oldName);
-    if(!newName || newName === oldName) return;
-
-    apiFetch(`/api/folders/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: newName })
-    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+    customPrompt("Enter new name for folder:", function(newName) {
+        if(!newName || newName === oldName) return;
+        apiFetch(`/api/folders/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: newName })
+        }).then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+    }, oldName);
 };
 
 window.deleteFolderAPI = function(id) {
-    if(!confirm("Are you sure? This will delete the folder AND all files inside it forever.")) return;
-    
-    apiFetch(`/api/folders/${id}`, { method: 'DELETE' })
-    .then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+    customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", function() {
+        apiFetch(`/api/folders/${id}`, { method: 'DELETE' })
+        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+    });
 };
-
 
 window.openFileExplorer = function(folderId, folderName) {
     currentFolderContext = { id: folderId, name: folderName };
-    const title = document.getElementById('file-explorer-title');
-    if(title) title.innerText = `${currentParentContext} / ${folderName}`;
+    document.getElementById('file-explorer-title').innerText = `${currentParentContext} / ${folderName}`;
     closeFolderModal('folder-explorer-modal');
     fetchAndRenderFiles();
     openFolderModalObj('file-explorer-modal');
@@ -979,11 +222,9 @@ function fetchAndRenderFiles() {
             list.innerHTML = '<p style="color: gray; text-align: center;">Folder is empty.</p>';
             return;
         }
-
         files.forEach(f => {
             const isOwner = currentUser && (f.uploader === currentUser.username || isAdmin);
             const safeName = f.name.replace(/'/g, "\\'");
-
             list.innerHTML += `
             <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
                 <div style="flex: 1; overflow: hidden;">
@@ -991,8 +232,8 @@ function fetchAndRenderFiles() {
                     <div style="color: gray; font-size: 11px;">Uploaded by: ${f.uploader}</div>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button onclick="playOrOpenFileAPI('${f.url}', '${safeName}')" style="background:#00ff88; color:black; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">Open</button>
-                    ${isOwner ? `<button onclick="deleteFileAPI('${f.id}')" style="background: #ff6b6b; color: black; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Delete</button>` : ''}
+                    <button onclick="window.playOrOpenFileAPI('${f.url}', '${safeName}')" style="background:#00ff88; color:black; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">Open</button>
+                    ${isOwner ? `<button onclick="window.deleteFileAPI('${f.id}')" style="background: #ff6b6b; color: black; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Delete</button>` : ''}
                 </div>
             </div>
             `;
@@ -1001,13 +242,12 @@ function fetchAndRenderFiles() {
 }
 
 window.uploadFileToFolderAPI = async function() {
-    if(!currentUser) return alert("Log in to upload files.");
+    if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
     const status = document.getElementById('file-upload-status');
     const file = input.files[0];
     
-    if(!file) return alert("Please select a file first.");
-
+    if(!file) return customAlert("Please select a file first.");
     if(status) status.innerText = "Uploading to server...";
     
     const form = new FormData();
@@ -1039,10 +279,11 @@ window.uploadFileToFolderAPI = async function() {
 };
 
 window.deleteFileAPI = function(fileId) {
-    if(!confirm("Delete this file?")) return;
-    apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
-    .then(() => fetchAndRenderFiles())
-    .catch(err => alert(err.message));
+    customConfirm("Delete this file?", function() {
+        apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
+        .then(() => fetchAndRenderFiles())
+        .catch(err => customAlert(err.message));
+    });
 };
 
 window.playOrOpenFileAPI = function(url, name) {
@@ -1086,11 +327,526 @@ window.startVisualizer = (audioElement) => {
   loop();
 };
 
-window.toggleChatWindow = () => {
-    const win = document.getElementById('chat-window');
-    if(win) win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+
+/* ============================================================
+   EXISTING FEATURES: AUTH, ADMIN, CHAT, CALENDAR
+   ============================================================ */
+let users = [];
+const SERVER_BASE = 'https://class-app-y67k.onrender.com';
+let socket = null;
+let currentUser = null;
+let isAdmin = false;
+let chatHistory = { group: [], todo: [], private: {} };
+let currentChat = { type: 'group', target: null };
+
+function apiFetch(path, options = {}) {
+  return fetch(`${SERVER_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  }).then(async (res) => {
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || res.statusText);
+    return body;
+  });
+}
+
+function loadSession() {
+  const stored = localStorage.getItem('classAppUser');
+  if (!stored) return null;
+  try { return JSON.parse(stored); } catch { return null; }
+}
+
+function saveSession() {
+  if (currentUser) { localStorage.setItem('classAppUser', JSON.stringify(currentUser)); } 
+  else { localStorage.removeItem('classAppUser'); }
+}
+
+function initSocket() {
+  if (socket) return;
+  socket = io(SERVER_BASE);
+
+  socket.on('connect', () => {
+    if (currentUser) {
+      socket.emit('identify', { username: currentUser.username });
+      socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null, user: currentUser });
+    }
+  });
+
+  socket.on('users', (payload) => {
+    users = payload;
+    renderUserDirectory();
+    renderChatUsersList();
+  });
+
+  socket.on('message', ({ chat, target, message }) => {
+    if (chat === 'private') {
+      const key = getPrivateKey(target.userA, target.userB);
+      chatHistory.private[key] = chatHistory.private[key] || [];
+      chatHistory.private[key].push(message);
+      if (currentChat.type === 'private' && getPrivateKey(currentUser.username, currentChat.target) === key) {
+        renderMessages();
+      }
+      return;
+    }
+    chatHistory[chat] = chatHistory[chat] || [];
+    chatHistory[chat].push(message);
+    if (currentChat.type === chat) renderMessages();
+  });
+
+  socket.on('messageUpdated', (message) => {
+    const history = getAllMessages();
+    const found = history.find((msg) => msg.id === message.id);
+    if (found) { Object.assign(found, message); renderMessages(); }
+  });
+
+  socket.on('messageDeleted', ({ id }) => {
+    const history = getAllMessages();
+    const index = history.findIndex((message) => message.id === id);
+    if (index !== -1) { history.splice(index, 1); renderMessages(); }
+  });
+}
+
+function getPrivateKey(userA, userB) {
+    return [userA, userB].sort().join('||');
+}
+
+function getAllMessages() {
+  return [
+    ...(chatHistory.group || []),
+    ...(chatHistory.todo || []),
+    ...Object.values(chatHistory.private || {}).flat(),
+  ];
+}
+
+window.login = function() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if (!username || !password) return customAlert('Enter username and password');
+  
+  document.getElementById('errorMessage').style.display = 'none';
+
+  apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) })
+    .then((data) => {
+      currentUser = data.user;
+      isAdmin = data.isAdmin;
+      saveSession();
+      establishSession();
+    })
+    .catch((err) => {
+      document.getElementById('errorMessage').innerText = err.message;
+      document.getElementById('errorMessage').style.display = 'block';
+    });
 };
 
+window.register = function() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if (!username || !password) return customAlert('Enter username and password');
+  
+  document.getElementById('errorMessage').style.display = 'none';
+
+  apiFetch('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) })
+    .then((data) => {
+      currentUser = data.user;
+      isAdmin = data.isAdmin;
+      saveSession();
+      establishSession();
+    })
+    .catch((err) => {
+      document.getElementById('errorMessage').innerText = err.message;
+      document.getElementById('errorMessage').style.display = 'block';
+    });
+};
+
+window.handleLogout = function() {
+    currentUser = null;
+    saveSession();
+    location.reload();
+};
+
+function establishSession() {
+  const authModal = document.getElementById('auth-modal');
+  if(authModal) authModal.classList.remove('active');
+  
+  const navLogout = document.getElementById('nav-logout');
+  if(navLogout) navLogout.style.display = 'flex';
+
+  renderUserDirectory();
+  renderChatUsersList();
+  updateChatHeader();
+  initSocket();
+  fetchUsers();
+  fetchMessages(currentChat.type, currentChat.target);
+}
+
+function fetchUsers() {
+  apiFetch('/api/users')
+    .then((data) => {
+      users = data;
+      renderUserDirectory();
+      renderChatUsersList();
+    }).catch((err) => console.warn(err.message));
+}
+
+function fetchMessages(chat, target = null) {
+  if (!chat) return;
+  const query = new URLSearchParams({ chat });
+  if (chat === 'private' && target) query.set('target', getPrivateKey(currentUser.username, target));
+  
+  apiFetch(`/api/messages?${query.toString()}`)
+    .then((messages) => {
+      if (chat === 'private') {
+        const key = getPrivateKey(currentUser.username, target);
+        chatHistory.private[key] = messages;
+      } else {
+        chatHistory[chat] = messages;
+      }
+      renderMessages();
+    }).catch((err) => console.warn(err.message));
+}
+
+function renderUserDirectory() {
+  const grid = document.getElementById('user-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  users.forEach((user) => {
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.innerHTML = `
+      <div class="user-card-top">
+        <div>
+          <div class="user-name">${user.displayName}</div>
+          <div class="user-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
+        </div>
+        <button class="user-view-btn" onclick="openUserProfile('${user.username}')">Profile</button>
+      </div>
+      <div class="user-meta">GitHub: ${user.github || '—'}</div>
+      <div class="user-meta">Email: ${user.email || '—'}</div>
+      <div class="user-note">${user.note}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderChatUsersList() {
+  const list = document.getElementById('chat-user-list');
+  if (!list) return;
+  list.innerHTML = '';
+  users
+    .filter((user) => currentUser ? user.username !== currentUser.username : true)
+    .forEach((user) => {
+      const item = document.createElement('div');
+      item.className = 'chat-user-item';
+      item.innerHTML = `
+        <div>
+          <div class="chat-user-name">${user.displayName}</div>
+          <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
+        </div>
+        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer;">Chat</button>
+      `;
+      list.appendChild(item);
+    });
+}
+
+function updateChatHeader() {
+  const header = document.getElementById('chat-header');
+  if (!header) return;
+  if (currentChat.type === 'group') header.textContent = 'Group Chat';
+  else if (currentChat.type === 'todo') header.textContent = 'To-Do Group';
+  else if (currentChat.type === 'private' && currentChat.target) header.textContent = `Private Chat: ${currentChat.target}`;
+  else header.textContent = 'Select a chat';
+}
+
+window.openChat = function(type, target = null) {
+  currentChat = { type, target };
+  updateChatHeader();
+  if (socket && currentUser) {
+    socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, target) : null, user: currentUser });
+  }
+  fetchMessages(type, target);
+};
+
+function getCurrentHistory() {
+  if (currentChat.type === 'group') return chatHistory.group || [];
+  if (currentChat.type === 'todo') return chatHistory.todo || [];
+  if (currentChat.type === 'private') return chatHistory.private[getPrivateKey(currentUser.username, currentChat.target)] || [];
+  return [];
+}
+
+function renderMessages() {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.innerHTML = '';
+  const history = getCurrentHistory();
+  const visibleMessages = history.filter((message) => !message.deletedFor || !message.deletedFor.includes(currentUser?.username));
+  
+  if (!visibleMessages.length) {
+    container.innerHTML = '<p class="empty-chat">No messages yet.</p>';
+    return;
+  }
+  
+  const pinned = visibleMessages.filter((message) => message.pinned);
+  const normal = visibleMessages.filter((message) => !message.pinned);
+  
+  pinned.concat(normal).forEach((message) => {
+    if (message.type === 'system') {
+      const sysDiv = document.createElement('div');
+      sysDiv.className = 'chat-system-message';
+      sysDiv.textContent = message.text;
+      container.appendChild(sysDiv);
+      return;
+    }
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-message${message.pinned ? ' message-pinned' : ''}`;
+    
+    const senderLine = document.createElement('div');
+    senderLine.innerHTML = `
+      <span class="chat-sender">${message.sender}</span>
+      <span class="chat-time">${message.time}</span>
+      ${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}
+    `;
+    msgDiv.appendChild(senderLine);
+    
+    const textLine = document.createElement('div');
+    textLine.className = 'chat-text';
+    textLine.textContent = message.text;
+    msgDiv.appendChild(textLine);
+    
+    if (message.attachment) {
+      const attach = document.createElement('div');
+      attach.className = 'chat-attachment';
+      const info = document.createElement('div');
+      info.textContent = `Attachment: ${message.attachment.name}`;
+      attach.appendChild(info);
+      
+      const fullUrl = SERVER_BASE + message.attachment.url;
+      
+      if (message.attachment.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = fullUrl;
+        img.style.maxWidth = '200px';
+        attach.appendChild(img);
+      } else if (message.attachment.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = fullUrl;
+        video.controls = true;
+        video.style.maxWidth = '250px';
+        attach.appendChild(video);
+      } else {
+        const link = document.createElement('a');
+        link.className = 'chat-attachment-link';
+        link.href = fullUrl;
+        link.target = '_blank';
+        link.textContent = `Download`;
+        attach.appendChild(link);
+      }
+      msgDiv.appendChild(attach);
+    }
+    
+    const actions = document.createElement('div');
+    actions.className = 'chat-actions';
+    
+    if (currentUser && message.sender === currentUser.username) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'chat-action-button';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => editChatMessage(message.id);
+        actions.appendChild(editBtn);
+        
+        const delAllBtn = document.createElement('button');
+        delAllBtn.className = 'chat-action-button';
+        delAllBtn.textContent = 'Delete All';
+        delAllBtn.onclick = () => deleteMessageForEveryone(message.id);
+        actions.appendChild(delAllBtn);
+    }
+    msgDiv.appendChild(actions);
+    container.appendChild(msgDiv);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+window.sendMessage = function() {
+  const input = document.getElementById('message-input');
+  const attachmentInput = document.getElementById('attachment-input');
+  const text = input.value.trim();
+  const file = attachmentInput.files[0];
+  
+  if (!text && !file) return;
+  if (!currentUser) return customAlert('Please login first.');
+  if (currentChat.type === 'private' && !currentChat.target) return customAlert('Select a private contact.');
+
+  const uploadPromise = file ? uploadChatAttachment(file) : Promise.resolve(null);
+  
+  uploadPromise
+    .then((attachment) => {
+      if (socket) {
+        socket.emit('sendMessage', {
+          chat: currentChat.type,
+          target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null,
+          sender: currentUser.username,
+          text,
+          attachment,
+        });
+      }
+      input.value = '';
+      attachmentInput.value = '';
+      const lbl = document.getElementById('attachment-selected');
+      if(lbl) lbl.textContent = 'No file chosen';
+    })
+    .catch((err) => customAlert('Upload failed: ' + err.message));
+};
+
+function uploadChatAttachment(file) {
+  const form = new FormData();
+  form.append('file', file);
+  return fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form })
+    .then((res) => {
+      if (!res.ok) throw new Error('Upload failed');
+      return res.json();
+    });
+}
+
+function editChatMessage(id) {
+  const message = getCurrentHistory().find(m => m.id === id);
+  if (!message) return;
+  customPrompt('Edit your message:', function(updated) {
+      if (updated === null) return;
+      apiFetch(`/api/messages/${id}`, { method: 'PUT', body: JSON.stringify({ text: updated }) })
+        .then(() => fetchMessages(currentChat.type, currentChat.target))
+        .catch((err) => customAlert(err.message));
+  }, message.text);
+}
+
+function deleteMessageForEveryone(id) {
+  customConfirm("Delete for everyone?", function() {
+      fetch(`${SERVER_BASE}/api/messages/${id}`, { method: 'DELETE' })
+        .then(() => fetchMessages(currentChat.type, currentChat.target))
+        .catch((err) => customAlert(err.message));
+  });
+}
+
+/* ============================================================
+   UI & NAVIGATION LOGIC
+   ============================================================ */
+const pageConfig = {
+  first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
+  second:   { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🌊 Second Semester' },
+  events:   { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '🛩️ Event Pictures' },
+  random:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🌌 Random Pictures' },
+  chat:     { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '💬 Chat' },  
+  users:    { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '👥 User Directory' },  
+  calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
+  music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
+};
+
+let currentPage = 'first';
+
+window.goToPage = function(pageName) {
+  if (pageName === currentPage) {
+    const p = document.getElementById('page-' + pageName);
+    if(p) p.scrollTop = 0;
+    closeMenu();
+    return;
+  }
+
+  const old = pageConfig[currentPage];
+  const oldPage = document.getElementById('page-' + currentPage);
+  if(oldPage) oldPage.classList.remove('active');
+  
+  document.getElementById(old.bg).classList.remove('active');
+  document.getElementById(old.particles).classList.remove('active');
+  if (old.wave) document.getElementById('wave-container').classList.remove('active');
+  if (old.mountain) document.getElementById('mountain-svg').classList.remove('active');
+  if (old.aurora) document.getElementById('aurora').classList.remove('active');
+
+  currentPage = pageName;
+  const cfg = pageConfig[pageName];
+  const newPage = document.getElementById('page-' + pageName);
+  
+  if(newPage) newPage.classList.add('active');
+  document.getElementById(cfg.bg).classList.add('active');
+  document.getElementById(cfg.particles).classList.add('active');
+  if (cfg.wave) document.getElementById('wave-container').classList.add('active');
+  if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
+  if (cfg.aurora) document.getElementById('aurora').classList.add('active');
+
+  document.getElementById('page-indicator').textContent = cfg.label;
+  if(newPage) newPage.scrollTop = 0;
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName);
+  });
+
+  closeMenu();
+};
+
+window.toggleMenu = function() {
+  document.getElementById('menu-toggle').classList.toggle('open');
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('active');
+};
+
+window.closeMenu = function() {
+  document.getElementById('menu-toggle').classList.remove('open');
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+};
+
+// Calendar Base
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+
+function renderCalendar() {
+  const grid = document.getElementById('calendar-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDiv = document.createElement('div');
+    dayDiv.textContent = day;
+    dayDiv.onclick = () => window.addNote(day);
+    grid.appendChild(dayDiv);
+  }
+  const title = document.getElementById('month-year');
+  if(title) title.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
+}
+
+window.prevMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
+window.nextMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
+
+window.addNote = function(day) {
+    customPrompt('Add note:', function(note) {
+        if(note) customAlert(`Note added for ${day}: ${note}`);
+    });
+};
+
+function updateClock() {
+  const now = new Date();
+  const el = document.getElementById('live-clock');
+  if(el) el.textContent = now.toLocaleTimeString();
+}
+setInterval(updateClock, 1000);
+
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn) installBtn.style.display = 'block';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn) installBtn.style.display = 'none';
+});
+
+/* ============================================================
+   INITIALIZATION (RESTORED EXACTLY FOR MENU TO WORK)
+   ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
   if (installBtn) {
@@ -1123,6 +879,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if(selectedLabel) selectedLabel.textContent = attachmentInput.files[0]?.name || 'No file chosen';
     });
   }
+
+  // RESTORED: Menu button event listener
+  const menuToggle = document.getElementById('menu-toggle');
+  if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
   const storedUser = loadSession();
   if (storedUser) {

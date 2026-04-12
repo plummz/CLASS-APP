@@ -96,7 +96,7 @@
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
 
-    <div class="nav-item" id="nav-logout" onclick="handleLogout()">
+    <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">
       <span class="nav-icon">🚪</span>
       <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
@@ -129,25 +129,25 @@
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
-  <div class="page hidden" id="page-second">
+  <div class="page" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-second"></div>
   </div>
 
-  <div class="page hidden" id="page-events">
+  <div class="page" id="page-events">
     <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
     <div class="section-label">CLICK TO VIEW EVENT FOLDERS</div>
     <div class="folder-grid" id="grid-events"></div>
   </div>
   
-  <div class="page hidden" id="page-random">
+  <div class="page" id="page-random">
     <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
     <div class="section-label">CLICK TO VIEW RANDOM FOLDERS</div>
     <div class="folder-grid" id="grid-random"></div>
   </div>
 
-  <div class="page hidden" id="page-chat">
+  <div class="page" id="page-chat">
     <div class="page-header"><h1 class="page-title">Chat</h1></div>
     <div class="chat-container">
       <div class="chat-sidebar">
@@ -172,7 +172,7 @@
     </div>
   </div>
 
-  <div class="page hidden" id="page-users">
+  <div class="page" id="page-users">
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
     <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-grid" id="user-grid"></div>
@@ -182,7 +182,7 @@
     </div>
   </div>
 
-  <div class="page hidden" id="page-calendar">
+  <div class="page" id="page-calendar">
     <div class="page-header"><h1 class="page-title">Calendar</h1></div>
     <div class="calendar-container">
       <div class="calendar-header">
@@ -199,7 +199,7 @@
     </div>
   </div>
 
-  <div class="page hidden" id="page-music">
+  <div class="page" id="page-music">
     <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
     <div class="music-manage-container">
         <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>

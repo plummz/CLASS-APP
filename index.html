@@ -25,7 +25,7 @@
     <div id="bg-galaxy"   class="scene-bg"></div>
     
     <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
-    <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
+    <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
  
     <div class="aurora active" id="aurora"></div>
  
@@ -47,16 +47,16 @@
     <div class="particles particle-aerial"   id="particles-aerial"></div>
     <div class="particles particle-galaxy"   id="particles-galaxy"></div>
  
-    <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()">
+    <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:1001; background:none; border:none; cursor:pointer;">
         <div class="bar"></div>
         <div class="bar"></div>
         <div class="bar"></div>
     </button>
  
-    <div id="page-indicator">⛰️ First Semester</div>
+    <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:1000;">⛰️ First Semester</div>
  
     <nav id="sidebar">
-        <div class="sidebar-title">My Portfolio</div>
+        <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
  
         <div class="nav-item active" data-page="first" onclick="goToPage('first')">
             <span class="nav-icon">⛰️</span>
@@ -117,7 +117,6 @@
             <div class="input-group">
                 <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
             </div>
-            
             <div class="auth-buttons" style="display: flex; gap: 10px;">
                 <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
                 <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
@@ -156,11 +155,36 @@
                 <button class="browse-btn" onclick="openSubjectFolder('SS 1')">BROWSE</button>
             </div>
             <div class="subject-card">
+                <span class="subject-icon">📐</span>
+                <h3>Math 0</h3>
+                <p>Sir Jason Saludes</p>
+                <button class="browse-btn" onclick="openSubjectFolder('Math 0-2')">BROWSE</button>
+            </div>
+            <div class="subject-card">
+                <span class="subject-icon">📖</span>
+                <h3>English +</h3>
+                <p>Sir Winbert Abrenica</p>
+                <button class="browse-btn" onclick="openSubjectFolder('English Plus-2')">BROWSE</button>
+            </div>
+            <div class="subject-card">
+                <span class="subject-icon">✏️</span>
+                <h3>English 1</h3>
+                <p>Maam Lovely Joy Salas</p>
+                <button class="browse-btn" onclick="openSubjectFolder('English 1-2')">BROWSE</button>
+            </div>
+            <div class="subject-card">
                 <span class="subject-icon">🏃</span>
                 <h3>Pathfit 1</h3>
                 <p>Sir Mariana Bayana</p>
                 <button class="browse-btn" onclick="openSubjectFolder('Pathfit 1')">BROWSE</button>
             </div>
+        </div>
+    </div>
+
+    <div class="page" id="page-second" style="display:none;">
+        <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
+        <div class="section-label">Upload your second semester files here.</div>
+        <div class="upload-grid">
             <div class="subject-card">
                 <span class="subject-icon">💻</span>
                 <h3>ITCC 111</h3>
@@ -227,14 +251,11 @@
         // MENU SYSTEM
         window.toggleMenu = () => {
             const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('overlay');
             sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
         };
 
         window.closeMenu = () => {
             document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('overlay').classList.remove('active');
         };
 
         window.goToPage = (pageId) => {
@@ -339,7 +360,6 @@
             }
         };
 
-        // AUDIO VISUALIZER
         window.startVisualizer = (audio) => {
             if (!window.audioCtx) {
                 window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();

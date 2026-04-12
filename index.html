@@ -45,11 +45,13 @@
   <div class="particles particle-aerial"   id="particles-aerial"></div>
   <div class="particles particle-galaxy"   id="particles-galaxy"></div>
  
-  <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:2001; background:none; border:none; cursor:pointer;">
-    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  <button id="menu-toggle" aria-label="Toggle menu">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
   </button>
  
-  <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:2000;">⛰️ First Semester</div>
+  <div id="page-indicator">⛰️ First Semester</div>
  
   <nav id="sidebar">
     <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
@@ -104,7 +106,7 @@
   <div id="overlay" onclick="closeMenu()"></div>
  
   <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
-    <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1);">
+    <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto;">
       <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
       <div class="input-group">
         <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
@@ -122,7 +124,7 @@
  
   <div class="page active" id="page-first">
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT (VIDEO SUPPORT ADDED)</div>
+    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
@@ -176,7 +178,7 @@
   
   <script type="module" src="firebase-config.js"></script>
   <script type="module">
-    import { collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { auth, db, storage } from './firebase-config.js';
     import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -315,16 +317,57 @@
         }
         loop();
     };
+
+    // --- RESTORED CHAT JAVASCRIPT ---
+    window.toggleChatWindow = () => {
+        const win = document.getElementById('chat-window');
+        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+    };
+
+    window.sendPrivateMessage = async () => {
+        const input = document.getElementById('private-chat-input');
+        const msg = input.value.trim();
+        if (!msg || !auth.currentUser) return;
+        try {
+            await addDoc(collection(db, "messages"), {
+                text: msg,
+                uid: auth.currentUser.uid,
+                email: auth.currentUser.email,
+                timestamp: serverTimestamp()
+            });
+            input.value = "";
+        } catch(e) { console.error(e); }
+    };
+
+    // Load Chat Messages
+    onSnapshot(query(collection(db, "messages"), orderBy("timestamp", "asc")), (snap) => {
+        const display = document.getElementById('private-messages-display');
+        if(!display) return;
+        display.innerHTML = "";
+        snap.forEach(d => {
+            const data = d.data();
+            const isMe = auth.currentUser && data.uid === auth.currentUser.uid;
+            display.innerHTML += `<div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; background: ${isMe ? '#00ff88' : '#333'}; color: ${isMe ? '#0b0b1a' : 'white'}; padding: 10px; border-radius: 12px; font-size:14px; max-width:80%; margin-bottom: 5px;">${data.text}</div>`;
+        });
+        display.scrollTop = display.scrollHeight;
+    });
+
   </script>
 
   <div id="chat-bauble" onclick="toggleChatWindow()" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000; box-shadow:0 4px 15px rgba(0,0,0,0.3);">💬</div>
   
-  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 21000; overflow: hidden;">
-    <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between;">
+  <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 21000; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight:bold;">Private Chat</span>
-        <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer;">&times;</button>
+        <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; font-size: 20px; cursor:pointer;">&times;</button>
     </div>
-    <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; background: #0b0b1a; color: white;">Coming soon...</div>
+    <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; background: #0b0b1a; display: flex; flex-direction: column;">
+        <p style="color: gray; font-size: 12px; text-align: center;">Messages will appear here...</p>
+    </div>
+    <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
+        <input type="text" id="private-chat-input" placeholder="Message..." style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
+        <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
+    </div>
   </div>
 </body>
 </html>

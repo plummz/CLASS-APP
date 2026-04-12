@@ -542,7 +542,7 @@ function renderChatUsersList() {
           <div class="chat-user-name">${user.displayName}</div>
           <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
-        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer;">Chat</button>
+        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
       list.appendChild(item);
     });
@@ -578,7 +578,7 @@ window.openUserProfile = function(username) {
     html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
   }
   
-  // NEW: Admin Delete User button (if Admin viewing someone else)
+  // Admin Delete User button (if Admin viewing someone else)
   if (isAdmin && !isMine) {
     html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
   }
@@ -1021,6 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const storedUser = loadSession();
   if (storedUser) {
     currentUser = storedUser;
+    // FIX: Restore Admin rights on page refresh
+    isAdmin = (currentUser.username === 'Marquillero');
     establishSession();
   } else {
     const modal = document.getElementById('auth-modal');

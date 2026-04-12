@@ -2,6 +2,11 @@
    SCRIPT.JS — My School Portfolio
    ============================================================ */
  
+ 
+/* ============================================================
+   DATA — Subjects & Teachers
+   ============================================================ */
+ 
 const firstSem = [
   { code: "Math 0",    teacher: "Sir Jason Saludes",          icon: "📐" },
   { code: "English +", teacher: "Sir Winbert Abrenica",       icon: "📖" },
@@ -27,21 +32,25 @@ const secondSem = [
   { code: "NSTP 2",   teacher: "",                           icon: "🎗️"  },
 ];
  
-const eventCount  = 15;
-const randomCount = 10;
+const eventCount  = 15; // Number of event folders
+const randomCount = 10; // Number of random folders
+ 
  
 /* ============================================================
-   BUILD SUBJECT CARDS (MODIFIED TO OPEN FOLDERS)
+   BUILD SUBJECT CARDS (Modified to open Folders)
    ============================================================ */
  
 function buildSubjectCards(gridId, subjects) {
   const grid = document.getElementById(gridId);
+  if (!grid) return;
   grid.innerHTML = '';
+ 
   subjects.forEach((subject) => {
     const card = document.createElement('div');
     card.className = 'subject-card';
     card.style.cursor = 'pointer';
-    card.onclick = () => openFolderExplorer(subject.code);
+    // NEW: Clicking the card opens the Folder Explorer
+    card.onclick = () => window.openFolderExplorer(subject.code);
  
     card.innerHTML = `
       <span class="card-icon">${subject.icon}</span>
@@ -55,21 +64,70 @@ function buildSubjectCards(gridId, subjects) {
   });
 }
 
-function buildFolderCards(gridId, count) {
+// KEPT YOUR OLD LOGIC JUST IN CASE YOU NEED TO REVERT
+function handlePDF(input, gridId, index) {
+  const file = input.files[0];
+  if (!file) return;
+ 
+  // Show filename (truncated if too long)
+  const nameEl = document.getElementById(`fname-${gridId}-${index}`);
+  nameEl.textContent = file.name.length > 22 ? file.name.slice(0, 20) + '…' : file.name;
+ 
+  // Show the uploaded badge
+  document.getElementById(`badge-${gridId}-${index}`).style.display = 'block';
+ 
+  // Show author credit
+  const authorEl = document.getElementById(`author-${gridId}-${index}`);
+  authorEl.textContent = `Uploaded by: ${currentUser?.username || 'Anonymous'}`;
+ 
+  // If video, show preview
+  if (file.type.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(file);
+    video.controls = true;
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.objectFit = 'cover';
+    input.closest('.subject-card').appendChild(video);
+  }
+
+  if (typeof bounce === 'function') bounce(input.closest('.subject-card'));
+}
+
+function deleteFile(gridId, index) {
+  document.getElementById(`fname-${gridId}-${index}`).textContent = 'No file chosen';
+  document.getElementById(`badge-${gridId}-${index}`).style.display = 'none';
+  document.getElementById(`author-${gridId}-${index}`).textContent = '';
+  const card = document.getElementById(`fname-${gridId}-${index}`).closest('.subject-card');
+  const video = card.querySelector('video');
+  if (video) video.remove();
+  card.querySelector('input[type="file"]').value = '';
+}
+
+
+/* ============================================================
+   BUILD FOLDER CARDS (Modified to open Folders)
+   ============================================================ */
+ 
+function buildFolderCards(gridId, count, prefix = "Folder") {
   const grid = document.getElementById(gridId);
+  if (!grid) return;
   grid.innerHTML = '';
+ 
   for (let i = 0; i < count; i++) {
     const card = document.createElement('div');
     card.className = 'folder-card';
     card.style.cursor = 'pointer';
-    card.onclick = () => openFolderExplorer(`Folder ${i + 1}`);
+    // NEW: Clicking the card opens the Folder Explorer
+    card.onclick = () => window.openFolderExplorer(`${prefix} ${i + 1}`);
  
     card.innerHTML = `
       <div class="folder-bg"></div>
       <div class="folder-pattern"></div>
+      <div class="folder-orb"></div>
       <div class="folder-overlay"></div>
       <div class="folder-info">
-        <div class="folder-name">Folder ${i + 1}</div>
+        <div class="folder-name">${prefix} ${i + 1}</div>
         <div style="font-size: 10px; color: #00d4ff; margin-top: 5px;">View Contents</div>
       </div>
     `;
@@ -77,194 +135,52 @@ function buildFolderCards(gridId, count) {
   }
 }
 
-/* ============================================================
-   FOLDER & FILE EXPLORER LOGIC
-   ============================================================ */
-let currentParentContext = null;
-let currentFolderContext = null;
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
-}
-
-window.openFolderExplorer = function(parentName) {
-    currentParentContext = parentName;
-    document.getElementById('folder-explorer-title').innerText = `${parentName} Folders`;
-    fetchAndRenderFolders();
-    openModal('folder-explorer-modal');
-};
-
-function fetchAndRenderFolders() {
-    apiFetch(`/api/folders?parent=${encodeURIComponent(currentParentContext)}`)
-    .then(folders => {
-        const grid = document.getElementById('folder-grid');
-        grid.innerHTML = '';
-        if(folders.length === 0) {
-            grid.innerHTML = '<p style="color: gray; font-size: 14px;">No folders yet. Create one!</p>';
-            return;
-        }
-        folders.forEach(f => {
-            const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
-            grid.innerHTML += `
-            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; display: flex; flex-direction: column;">
-                <div onclick="openFileExplorer('${f.id}', '${f.name}')" style="cursor:pointer; flex: 1; text-align: center;">
-                    <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
-                    <div style="color: white; font-weight: bold; font-family: 'Exo 2'; font-size: 16px; word-wrap: break-word;">${f.name}</div>
-                    <div style="color: gray; font-size: 10px; margin-top: 5px;">By: ${f.owner}</div>
-                </div>
-                ${isOwner ? `
-                <div style="display: flex; gap: 5px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <button onclick="renameFolder('${f.id}', '${f.name}')" style="flex:1; background: transparent; color: #00d4ff; border: 1px solid #00d4ff; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Rename</button>
-                    <button onclick="deleteFolder('${f.id}')" style="flex:1; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Delete</button>
-                </div>` : ''}
-            </div>`;
-        });
-    }).catch(err => console.error(err));
-}
-
-window.createFolder = function() {
-    if(!currentUser) return alert("Log in to create a folder.");
-    const name = prompt("Enter new folder name:");
-    if(!name) return;
-    apiFetch('/api/folders', {
-        method: 'POST',
-        body: JSON.stringify({ parent: currentParentContext, name: name, owner: currentUser.username })
-    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
-};
-
-window.renameFolder = function(id, oldName) {
-    const newName = prompt("Rename to:", oldName);
-    if(!newName || newName === oldName) return;
-    apiFetch(`/api/folders/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: newName })
-    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
-};
-
-window.deleteFolder = function(id) {
-    if(!confirm("Delete this folder and all its files?")) return;
-    apiFetch(`/api/folders/${id}`, { method: 'DELETE' })
-    .then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
-};
-
-window.openFileExplorer = function(folderId, folderName) {
-    currentFolderContext = { id: folderId, name: folderName };
-    document.getElementById('file-explorer-title').innerText = `${currentParentContext} / ${folderName}`;
-    closeModal('folder-explorer-modal');
-    fetchAndRenderFiles();
-    openModal('file-explorer-modal');
-};
-
-window.backToFolders = function() {
-    closeModal('file-explorer-modal');
-    openModal('folder-explorer-modal');
-};
-
-function fetchAndRenderFiles() {
-    apiFetch(`/api/files?folderId=${currentFolderContext.id}`)
-    .then(files => {
-        const list = document.getElementById('file-list-container');
-        list.innerHTML = '';
-        if(files.length === 0) {
-            list.innerHTML = '<p style="color: gray; text-align: center;">Folder is empty.</p>';
-            return;
-        }
-        files.forEach(f => {
-            const isOwner = currentUser && (f.uploader === currentUser.username || isAdmin);
-            const safeName = f.name.replace(/'/g, "\\'");
-            list.innerHTML += `
-            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                <div style="flex: 1; overflow: hidden;">
-                    <div style="color: white; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${f.name}</div>
-                    <div style="color: gray; font-size: 11px;">By: ${f.uploader}</div>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="playOrOpenFile('${f.url}', '${safeName}')" style="background:#00ff88; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px; color:black;">Open</button>
-                    ${isOwner ? `<button onclick="deleteFileAPI('${f.id}')" style="background: #ff6b6b; color: black; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Delete</button>` : ''}
-                </div>
-            </div>`;
-        });
-    }).catch(err => console.error(err));
-}
-
-window.uploadFileToFolder = async function() {
-    if(!currentUser) return alert("Log in to upload files.");
-    const input = document.getElementById('file-upload-input');
-    const status = document.getElementById('file-upload-status');
-    const file = input.files[0];
-    if(!file) return alert("Please select a file first.");
-
-    status.innerText = "Uploading...";
-    const form = new FormData();
-    form.append('file', file);
-    try {
-        const uploadRes = await fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form });
-        if(!uploadRes.ok) throw new Error("File upload failed");
-        const uploadedData = await uploadRes.json();
-        await apiFetch('/api/files', {
-            method: 'POST',
-            body: JSON.stringify({
-                folderId: currentFolderContext.id,
-                name: uploadedData.name,
-                url: uploadedData.url,
-                type: uploadedData.type,
-                uploader: currentUser.username
-            })
-        });
-        status.innerText = "Upload Complete!";
-        input.value = "";
-        fetchAndRenderFiles();
-    } catch(e) { status.innerText = "Error: " + e.message; }
-};
-
-window.deleteFileAPI = function(fileId) {
-    if(!confirm("Delete this file?")) return;
-    apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
-    .then(() => fetchAndRenderFiles()).catch(err => alert(err.message));
-};
-
-window.playOrOpenFile = function(url, name) {
-    const fullUrl = SERVER_BASE + url;
-    const player = document.getElementById('audio-player');
-    if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-        player.src = fullUrl;
-        player.play();
-        document.getElementById('now-playing-text').innerText = "Playing: " + name;
-        if(currentPage !== 'music') goToPage('music');
-        closeModal('file-explorer-modal');
-    } else {
-        window.open(fullUrl, '_blank');
-    }
-};
-
-window.startVisualizer = (audioElement) => {
-  if (!window.audioCtx) {
-    window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    window.analyser = window.audioCtx.createAnalyser();
-    const source = window.audioCtx.createMediaElementSource(audioElement);
-    source.connect(window.analyser);
-    window.analyser.connect(window.audioCtx.destination);
+// KEPT YOUR OLD LOGIC JUST IN CASE YOU NEED TO REVERT
+function handleFolder(input, gridId, index) {
+  const file = input.files[0];
+  if (!file) return;
+ 
+  const nameEl = document.getElementById(`ffname-${gridId}-${index}`);
+  nameEl.textContent = file.name.length > 20 ? file.name.slice(0, 18) + '…' : file.name;
+  document.getElementById(`fbadge-${gridId}-${index}`).style.display = 'block';
+  const authorEl = document.getElementById(`fauthor-${gridId}-${index}`);
+  authorEl.textContent = `Uploaded by: ${currentUser?.username || 'Anonymous'}`;
+ 
+  const imgPreview = document.getElementById(`fprev-${gridId}-${index}`);
+  const vidPreview = document.getElementById(`fvid-${gridId}-${index}`);
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imgPreview.src = e.target.result;
+      imgPreview.style.display = 'block';
+      vidPreview.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  } else if (file.type.startsWith('video/')) {
+    vidPreview.src = URL.createObjectURL(file);
+    vidPreview.style.display = 'block';
+    imgPreview.style.display = 'none';
   }
-  const data = new Uint8Array(window.analyser.frequencyBinCount);
-  const speaker = document.getElementById('dancing-speaker');
-  function loop() {
-    requestAnimationFrame(loop);
-    window.analyser.getByteFrequencyData(data);
-    const bass = data.slice(0, 10).reduce((a, b) => a + b) / 10;
-    speaker.style.transform = `scale(${1 + (bass / 255)})`;
-  }
-  loop();
-};
+  if (typeof bounce === 'function') bounce(input.closest('.folder-card'));
+}
+
+function deleteFolderFile(gridId, index) {
+  document.getElementById(`ffname-${gridId}-${index}`).textContent = 'No file chosen';
+  document.getElementById(`fbadge-${gridId}-${index}`).style.display = 'none';
+  document.getElementById(`fauthor-${gridId}-${index}`).textContent = '';
+  document.getElementById(`fprev-${gridId}-${index}`).style.display = 'none';
+  document.getElementById(`fvid-${gridId}-${index}`).style.display = 'none';
+  const card = document.getElementById(`ffname-${gridId}-${index}`).closest('.folder-card');
+  card.querySelector('input[type="file"]').value = '';
+}
 
 
 /* ============================================================
-   EXISTING FEATURES: AUTH, ADMIN, CHAT, CALENDAR
+   NEW FEATURES: AUTH, ADMIN, CHAT, CALENDAR, MUSIC, ETC.
    ============================================================ */
 
 let users = [];
+
 const SERVER_BASE = 'https://class-app-y67k.onrender.com';
 let socket = null;
 let currentUser = null;
@@ -354,10 +270,6 @@ function initSocket() {
   });
 }
 
-function getPrivateKey(userA, userB) {
-  return [userA, userB].sort().join('||');
-}
-
 function getAllMessages() {
   return [
     ...(chatHistory.group || []),
@@ -366,7 +278,11 @@ function getAllMessages() {
   ];
 }
 
-function login() {
+function getPrivateKey(userA, userB) {
+  return [userA, userB].sort().join('||');
+}
+
+window.login = function() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   if (!username || !password) {
@@ -383,7 +299,7 @@ function login() {
     .catch((err) => alert(err.message));
 }
 
-function register() {
+window.register = function() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   if (!username || !password) {
@@ -400,9 +316,24 @@ function register() {
     .catch((err) => alert(err.message));
 }
 
+window.handleLogout = function() {
+    currentUser = null;
+    saveSession();
+    location.reload();
+};
+
+function closeModal() {
+  const authModal = document.getElementById('auth-modal');
+  if(authModal) authModal.classList.remove('active');
+}
+
 function establishSession() {
-  document.getElementById('auth-modal').classList.remove('active');
-  document.getElementById('admin-panel').style.display = isAdmin ? 'block' : 'none';
+  closeModal();
+  const adminPanel = document.getElementById('admin-panel');
+  if (adminPanel) adminPanel.style.display = isAdmin ? 'block' : 'none';
+  const navLogout = document.getElementById('nav-logout');
+  if (navLogout) navLogout.style.display = 'flex';
+  
   renderUserDirectory();
   renderChatUsersList();
   updateChatHeader();
@@ -457,7 +388,7 @@ function renderUserDirectory() {
       </div>
       <div class="user-meta">GitHub: ${user.github || '—'}</div>
       <div class="user-meta">Email: ${user.email || '—'}</div>
-      <div class="user-note">${user.note}</div>
+      <div class="user-note">${user.note || ''}</div>
     `;
     grid.appendChild(card);
   });
@@ -477,7 +408,7 @@ function renderChatUsersList() {
           <div class="chat-user-name">${user.displayName}</div>
           <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
-        <button onclick="openChat('private', '${user.username}')">Open</button>
+        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer;">Chat</button>
       `;
       list.appendChild(item);
     });
@@ -497,14 +428,14 @@ function updateChatHeader() {
   }
 }
 
-function openChat(type, target = null) {
+window.openChat = function(type, target = null) {
   currentChat = { type, target };
   updateChatHeader();
   if (socket && currentUser) {
     socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, target) : null, user: currentUser });
   }
   fetchMessages(type, target);
-}
+};
 
 function getCurrentHistory() {
   if (currentChat.type === 'group') return chatHistory.group || [];
@@ -556,11 +487,13 @@ function renderMessages() {
         const img = document.createElement('img');
         img.src = SERVER_BASE + message.attachment.url;
         img.alt = message.attachment.name;
+        img.style.maxWidth = '200px';
         attach.appendChild(img);
       } else if (message.attachment.type.startsWith('video/')) {
         const video = document.createElement('video');
         video.src = SERVER_BASE + message.attachment.url;
         video.controls = true;
+        video.style.maxWidth = '250px';
         attach.appendChild(video);
       } else {
         const link = document.createElement('a');
@@ -607,23 +540,15 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-function sendMessage() {
+window.sendMessage = function() {
   const input = document.getElementById('message-input');
   const attachmentInput = document.getElementById('attachment-input');
   const text = input.value.trim();
   const file = attachmentInput.files[0];
-  if (!text && !file) {
-    alert('Enter a message or attach a file.');
-    return;
-  }
-  if (!currentUser) {
-    alert('Please login first to send messages.');
-    return;
-  }
-  if (currentChat.type === 'private' && !currentChat.target) {
-    alert('Select a private contact first.');
-    return;
-  }
+  if (!text && !file) return;
+  if (!currentUser) return alert('Please login first to send messages.');
+  if (currentChat.type === 'private' && !currentChat.target) return alert('Select a private contact first.');
+
   const uploadPromise = file ? uploadAttachment(file) : Promise.resolve(null);
   uploadPromise
     .then((attachment) => {
@@ -638,7 +563,8 @@ function sendMessage() {
       }
       input.value = '';
       attachmentInput.value = '';
-      document.getElementById('attachment-selected').textContent = 'No file chosen';
+      const selected = document.getElementById('attachment-selected');
+      if(selected) selected.textContent = 'No file chosen';
     })
     .catch((err) => alert('Upload failed: ' + err.message));
 }
@@ -691,6 +617,7 @@ function deleteMessageForEveryone(id) {
     alert('Only the sender or admin can delete for everyone.');
     return;
   }
+  if(!confirm("Delete for everyone?")) return;
   fetch(`${SERVER_BASE}/api/messages/${id}`, { method: 'DELETE' })
     .then((res) => res.json())
     .then(() => fetchMessages(currentChat.type, currentChat.target))
@@ -716,7 +643,7 @@ function findMessageById(id) {
   return history.find((message) => message.id === id);
 }
 
-function openUserProfile(username) {
+window.openUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
   const profilePanel = document.getElementById('profile-panel');
@@ -739,7 +666,7 @@ function openUserProfile(username) {
   profilePanel.classList.add('active');
 }
 
-function editUserProfile(username) {
+window.editUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
   const details = document.getElementById('profile-details');
@@ -759,7 +686,7 @@ function editUserProfile(username) {
   `;
 }
 
-function saveProfileEdits(username) {
+window.saveProfileEdits = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
   const payload = {
@@ -778,21 +705,13 @@ function saveProfileEdits(username) {
     .catch((err) => alert(err.message));
 }
 
-function closeProfile() {
+window.closeProfile = function() {
   document.getElementById('profile-panel').classList.remove('active');
 }
 
-function blockUser() {
-  alert('User blocked');
-}
-
-function moderateFiles() {
-  alert('Files moderated');
-}
-
-function closeAdminPanel() {
-  document.getElementById('admin-panel').style.display = 'none';
-}
+window.blockUser = function() { alert('User blocked'); }
+window.moderateFiles = function() { alert('Files moderated'); }
+window.closeAdminPanel = function() { document.getElementById('admin-panel').style.display = 'none'; }
 
 // Calendar
 let currentMonth = new Date().getMonth();
@@ -800,6 +719,7 @@ let currentYear = new Date().getFullYear();
 
 function renderCalendar() {
   const grid = document.getElementById('calendar-grid');
+  if(!grid) return;
   grid.innerHTML = '';
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -812,35 +732,28 @@ function renderCalendar() {
     dayDiv.onclick = () => addNote(day);
     grid.appendChild(dayDiv);
   }
-  document.getElementById('month-year').textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
+  const monthEl = document.getElementById('month-year');
+  if(monthEl) monthEl.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
 }
 
-function prevMonth() {
+window.prevMonth = function() {
   currentMonth--;
-  if (currentMonth < 0) {
-    currentMonth = 11;
-    currentYear--;
-  }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
   renderCalendar();
 }
 
-function nextMonth() {
+window.nextMonth = function() {
   currentMonth++;
-  if (currentMonth > 11) {
-    currentMonth = 0;
-    currentYear++;
-  }
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   renderCalendar();
 }
 
-function addNote(day) {
+window.addNote = function(day) {
   const note = prompt('Add note:');
-  if (note) {
-    alert(`Note added for ${day}: ${note}`);
-  }
+  if (note) alert(`Note added for ${day}: ${note}`);
 }
 
-function saveAnnouncement() {
+window.saveAnnouncement = function() {
   const note = document.getElementById('announcement-note').value;
   alert('Announcement saved');
 }
@@ -848,7 +761,8 @@ function saveAnnouncement() {
 // Live Clock
 function updateClock() {
   const now = new Date();
-  document.getElementById('live-clock').textContent = now.toLocaleTimeString();
+  const clk = document.getElementById('live-clock');
+  if(clk) clk.textContent = now.toLocaleTimeString();
 }
 setInterval(updateClock, 1000);
 
@@ -873,49 +787,6 @@ function handleCustomBgUpload(file) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const storedUser = loadSession();
-  if (storedUser) {
-    currentUser = storedUser;
-  }
-
-  buildSubjectCards('grid-first', firstSem);
-  buildSubjectCards('grid-second', secondSem);
-  buildFolderCards('grid-events', eventCount);
-  buildFolderCards('grid-random', randomCount);
-
-  const menuToggle = document.getElementById('menu-toggle');
-  if (menuToggle) menuToggle.addEventListener('click', toggleMenu);
-
-  const customBgUpload = document.getElementById('custom-bg-upload');
-  if (customBgUpload) {
-    customBgUpload.addEventListener('change', function() {
-      handleCustomBgUpload(this.files[0]);
-    });
-  }
-
-  const attachmentInput = document.getElementById('attachment-input');
-  if (attachmentInput) {
-    attachmentInput.addEventListener('change', () => {
-      const selectedLabel = document.getElementById('attachment-selected');
-      selectedLabel.textContent = attachmentInput.files[0]?.name || 'No file chosen';
-    });
-  }
-
-  if (currentUser) {
-    establishSession();
-  } else {
-    renderUserDirectory();
-    renderChatUsersList();
-    updateChatHeader();
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) authModal.classList.add('active');
-  }
-
-  renderCalendar();
-  updateClock();
-});
-
 // Update pageConfig for new pages
 const pageConfig = {
   first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
@@ -930,15 +801,17 @@ const pageConfig = {
 
 let currentPage = 'first';
 
-function goToPage(pageName) {
+window.goToPage = function(pageName) {
   if (pageName === currentPage) {
-    document.getElementById('page-' + pageName).scrollTop = 0;
+    const pageEl = document.getElementById('page-' + pageName);
+    if(pageEl) pageEl.scrollTop = 0;
     closeMenu();
     return;
   }
 
   const old = pageConfig[currentPage];
-  document.getElementById('page-' + currentPage).classList.remove('active');
+  const oldPage = document.getElementById('page-' + currentPage);
+  if(oldPage) oldPage.classList.remove('active');
   document.getElementById(old.bg).classList.remove('active');
   document.getElementById(old.particles).classList.remove('active');
   if (old.wave) document.getElementById('wave-container').classList.remove('active');
@@ -947,15 +820,17 @@ function goToPage(pageName) {
 
   currentPage = pageName;
   const cfg = pageConfig[pageName];
-  document.getElementById('page-' + pageName).classList.add('active');
+  const newPage = document.getElementById('page-' + pageName);
+  if(newPage) newPage.classList.add('active');
   document.getElementById(cfg.bg).classList.add('active');
   document.getElementById(cfg.particles).classList.add('active');
   if (cfg.wave) document.getElementById('wave-container').classList.add('active');
   if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
   if (cfg.aurora) document.getElementById('aurora').classList.add('active');
 
-  document.getElementById('page-indicator').textContent = cfg.label;
-  document.getElementById('page-' + pageName).scrollTop = 0;
+  const ind = document.getElementById('page-indicator');
+  if(ind) ind.textContent = cfg.label;
+  if(newPage) newPage.scrollTop = 0;
 
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.dataset.page === pageName);
@@ -964,13 +839,13 @@ function goToPage(pageName) {
   closeMenu();
 }
 
-function toggleMenu() {
+window.toggleMenu = function() {
   document.getElementById('menu-toggle').classList.toggle('open');
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('active');
 }
 
-function closeMenu() {
+window.closeMenu = function() {
   document.getElementById('menu-toggle').classList.remove('open');
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('active');
@@ -991,9 +866,278 @@ window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
 });
 
-// Added handleLogout to the global scope since HTML uses onclick="handleLogout()"
-window.handleLogout = function() {
-    currentUser = null;
-    saveSession();
-    location.reload();
+/* ============================================================
+   NEW API FOR FOLDERS AND FILES (REPLACED FIREBASE)
+   ============================================================ */
+
+let currentParentContext = null;
+let currentFolderContext = null;
+
+function closeFolderModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) modal.style.display = 'none';
+}
+
+function openFolderModalObj(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) modal.style.display = 'flex';
+}
+
+window.openFolderExplorer = function(parentName) {
+    currentParentContext = parentName;
+    const title = document.getElementById('folder-explorer-title');
+    if(title) title.innerText = `${parentName} Folders`;
+    fetchAndRenderFolders();
+    openFolderModalObj('folder-explorer-modal');
 };
+
+function fetchAndRenderFolders() {
+    apiFetch(`/api/folders?parent=${encodeURIComponent(currentParentContext)}`)
+    .then(folders => {
+        const grid = document.getElementById('folder-grid-modal');
+        if(!grid) return;
+        grid.innerHTML = '';
+        if(folders.length === 0) {
+            grid.innerHTML = '<p style="color: gray; font-size: 14px;">No folders yet. Create one!</p>';
+            return;
+        }
+
+        folders.forEach(f => {
+            const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
+            
+            grid.innerHTML += `
+            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; display: flex; flex-direction: column;">
+                <div onclick="openFileExplorer('${f.id}', '${f.name}')" style="cursor:pointer; flex: 1; text-align: center;">
+                    <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
+                    <div style="color: white; font-weight: bold; font-family: 'Exo 2'; font-size: 16px; word-wrap: break-word;">${f.name}</div>
+                    <div style="color: gray; font-size: 10px; margin-top: 5px;">By: ${f.owner}</div>
+                </div>
+                
+                ${isOwner ? `
+                <div style="display: flex; gap: 5px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <button onclick="renameFolderAPI('${f.id}', '${f.name}')" style="flex:1; background: transparent; color: #00d4ff; border: 1px solid #00d4ff; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Rename</button>
+                    <button onclick="deleteFolderAPI('${f.id}')" style="flex:1; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Delete</button>
+                </div>
+                ` : ''}
+            </div>
+            `;
+        });
+    })
+    .catch(err => console.error("Folder fetch error:", err));
+}
+
+window.createFolderAPI = function() {
+    if(!currentUser) return alert("Please log in to create a folder.");
+    const name = prompt("Enter new folder name:");
+    if(!name) return;
+
+    apiFetch('/api/folders', {
+        method: 'POST',
+        body: JSON.stringify({ parent: currentParentContext, name: name, owner: currentUser.username })
+    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+};
+
+window.renameFolderAPI = function(id, oldName) {
+    const newName = prompt("Enter new name for folder:", oldName);
+    if(!newName || newName === oldName) return;
+
+    apiFetch(`/api/folders/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newName })
+    }).then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+};
+
+window.deleteFolderAPI = function(id) {
+    if(!confirm("Are you sure? This will delete the folder AND all files inside it forever.")) return;
+    
+    apiFetch(`/api/folders/${id}`, { method: 'DELETE' })
+    .then(() => fetchAndRenderFolders()).catch(err => alert(err.message));
+};
+
+
+window.openFileExplorer = function(folderId, folderName) {
+    currentFolderContext = { id: folderId, name: folderName };
+    const title = document.getElementById('file-explorer-title');
+    if(title) title.innerText = `${currentParentContext} / ${folderName}`;
+    closeFolderModal('folder-explorer-modal');
+    fetchAndRenderFiles();
+    openFolderModalObj('file-explorer-modal');
+};
+
+window.backToFoldersAPI = function() {
+    closeFolderModal('file-explorer-modal');
+    openFolderModalObj('folder-explorer-modal');
+};
+
+function fetchAndRenderFiles() {
+    apiFetch(`/api/files?folderId=${currentFolderContext.id}`)
+    .then(files => {
+        const list = document.getElementById('file-list-container');
+        if(!list) return;
+        list.innerHTML = '';
+        if(files.length === 0) {
+            list.innerHTML = '<p style="color: gray; text-align: center;">Folder is empty.</p>';
+            return;
+        }
+
+        files.forEach(f => {
+            const isOwner = currentUser && (f.uploader === currentUser.username || isAdmin);
+            const safeName = f.name.replace(/'/g, "\\'");
+
+            list.innerHTML += `
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                <div style="flex: 1; overflow: hidden;">
+                    <div style="color: white; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${f.name}</div>
+                    <div style="color: gray; font-size: 11px;">Uploaded by: ${f.uploader}</div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="playOrOpenFileAPI('${f.url}', '${safeName}')" style="background:#00ff88; color:black; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">Open</button>
+                    ${isOwner ? `<button onclick="deleteFileAPI('${f.id}')" style="background: #ff6b6b; color: black; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Delete</button>` : ''}
+                </div>
+            </div>
+            `;
+        });
+    }).catch(err => console.error(err));
+}
+
+window.uploadFileToFolderAPI = async function() {
+    if(!currentUser) return alert("Log in to upload files.");
+    const input = document.getElementById('file-upload-input');
+    const status = document.getElementById('file-upload-status');
+    const file = input.files[0];
+    
+    if(!file) return alert("Please select a file first.");
+
+    if(status) status.innerText = "Uploading to server...";
+    
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+        const uploadRes = await fetch(`${SERVER_BASE}/api/upload`, { method: 'POST', body: form });
+        if(!uploadRes.ok) throw new Error("File upload failed");
+        const uploadedData = await uploadRes.json();
+
+        await apiFetch('/api/files', {
+            method: 'POST',
+            body: JSON.stringify({
+                folderId: currentFolderContext.id,
+                name: uploadedData.name,
+                url: uploadedData.url,
+                type: uploadedData.type,
+                uploader: currentUser.username
+            })
+        });
+
+        if(status) status.innerText = "Upload Complete!";
+        input.value = "";
+        fetchAndRenderFiles();
+        
+    } catch(e) {
+        if(status) status.innerText = "Error: " + e.message;
+    }
+};
+
+window.deleteFileAPI = function(fileId) {
+    if(!confirm("Delete this file?")) return;
+    apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
+    .then(() => fetchAndRenderFiles())
+    .catch(err => alert(err.message));
+};
+
+window.playOrOpenFileAPI = function(url, name) {
+    const fullUrl = SERVER_BASE + url; 
+    const player = document.getElementById('audio-player');
+    
+    if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
+        if(player) {
+            player.src = fullUrl;
+            player.play();
+        }
+        const text = document.getElementById('now-playing-text');
+        if(text) text.innerText = "Playing: " + name;
+        
+        if(currentPage !== 'music') window.goToPage('music');
+        closeFolderModal('file-explorer-modal');
+        
+    } else {
+        window.open(fullUrl, '_blank');
+    }
+};
+
+window.startVisualizer = (audioElement) => {
+  if (!window.audioCtx) {
+    window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    window.analyser = window.audioCtx.createAnalyser();
+    const source = window.audioCtx.createMediaElementSource(audioElement);
+    source.connect(window.analyser);
+    window.analyser.connect(window.audioCtx.destination);
+  }
+  
+  const data = new Uint8Array(window.analyser.frequencyBinCount);
+  const speaker = document.getElementById('dancing-speaker');
+  
+  function loop() {
+    requestAnimationFrame(loop);
+    window.analyser.getByteFrequencyData(data);
+    const bass = data.slice(0, 10).reduce((a, b) => a + b) / 10;
+    if(speaker) speaker.style.transform = `scale(${1 + (bass / 255)})`;
+  }
+  loop();
+};
+
+window.toggleChatWindow = () => {
+    const win = document.getElementById('chat-window');
+    if(win) win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const installBtn = document.getElementById('install-btn');
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch((err) => {
+      console.warn('Service Worker registration failed:', err);
+    });
+  }
+
+  const customBgUpload = document.getElementById('custom-bg-upload');
+  if (customBgUpload) {
+    customBgUpload.addEventListener('change', function() {
+      handleCustomBgUpload(this.files[0]);
+    });
+  }
+
+  const attachmentInput = document.getElementById('attachment-input');
+  if (attachmentInput) {
+    attachmentInput.addEventListener('change', () => {
+      const selectedLabel = document.getElementById('attachment-selected');
+      if(selectedLabel) selectedLabel.textContent = attachmentInput.files[0]?.name || 'No file chosen';
+    });
+  }
+
+  const storedUser = loadSession();
+  if (storedUser) {
+    currentUser = storedUser;
+    establishSession();
+  } else {
+    const modal = document.getElementById('auth-modal');
+    if(modal) modal.classList.add('active');
+  }
+
+  buildSubjectCards('grid-first', firstSem);
+  buildSubjectCards('grid-second', secondSem);
+  buildFolderCards('grid-events', eventCount, 'Event');
+  buildFolderCards('grid-random', randomCount, 'Random');
+
+  renderCalendar();
+  updateClock();
+});

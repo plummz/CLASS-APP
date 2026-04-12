@@ -18,13 +18,17 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {
-    fs.writeFileSync(DATA_PATH, JSON.stringify({ users: [], chatHistory: { group: [], todo: [], private: {} } }, null, 2));
+    fs.writeFileSync(DATA_PATH, JSON.stringify({ users: [], chatHistory: { group: [], todo: [], private: {} }, folders: [], files: [] }, null, 2));
   }
   try {
-    return JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
+    const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
+    // Ensure arrays exist if migrating from old data format
+    if (!data.folders) data.folders = [];
+    if (!data.files) data.files = [];
+    return data;
   } catch (error) {
     console.error('Error loading data.json:', error);
-    return { users: [], chatHistory: { group: [], todo: [], private: {} } };
+    return { users: [], chatHistory: { group: [], todo: [], private: {} }, folders: [], files: [] };
   }
 }
 
@@ -45,6 +49,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 
 let state = loadData();
 
+// --- USER & CHAT LOGIC ---
 function safeUsers() {
   return state.users.map((user) => ({
     username: user.username,
@@ -114,16 +119,10 @@ function emitMessage(chat, target, message) {
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
-  }
-  if (username === ADMIN_USERNAME && password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Invalid admin password' });
-  }
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  if (username === ADMIN_USERNAME && password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid admin password' });
   let user = findUser(username);
-  if (!user) {
-    user = createUser(username);
-  }
+  if (!user) user = createUser(username);
   user.online = true;
   saveData(state);
   io.emit('users', safeUsers());
@@ -132,75 +131,19 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
-  }
-  let user = findUser(username);
-  if (user) {
-    return res.status(400).json({ error: 'Username already exists' });
-  }
-  user = createUser(username);
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  if (findUser(username)) return res.status(400).json({ error: 'Username already exists' });
+  const user = createUser(username);
   user.online = true;
   saveData(state);
   io.emit('users', safeUsers());
   res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false });
 });
 
-app.get('/api/users', (req, res) => {
-  res.json(safeUsers());
-});
-
-app.get('/api/messages', (req, res) => {
-  const { chat, target } = req.query;
-  if (!chat) return res.status(400).json({ error: 'chat query required' });
-  if (chat === 'private') {
-    if (!target) return res.status(400).json({ error: 'target required for private chat' });
-    const [userA, userB] = target.split('||');
-    return res.json(getHistory('private', { userA, userB }));
-  }
-  return res.json(getHistory(chat));
-});
-
-app.post('/api/messages', (req, res) => {
-  const { chat, sender, text, target, attachment } = req.body;
-  if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });
-  const message = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    sender,
-    text: text || '',
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    pinned: false,
-    edited: false,
-    deletedFor: [],
-    attachment: attachment || null,
-    type: 'message',
-  };
-  if (chat === 'private') {
-    if (!target) return res.status(400).json({ error: 'target required for private chat' });
-    const [userA, userB] = target.split('||');
-    const key = getPrivateKey(userA, userB);
-    state.chatHistory.private[key] = state.chatHistory.private[key] || [];
-    state.chatHistory.private[key].push(message);
-    saveData(state);
-    emitMessage(chat, { userA, userB }, message);
-    return res.json(message);
-  }
-  state.chatHistory[chat] = state.chatHistory[chat] || [];
-  state.chatHistory[chat].push(message);
-  saveData(state);
-  emitMessage(chat, null, message);
-  res.json(message);
-});
-
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'File required' });
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: fileUrl });
-});
+app.get('/api/users', (req, res) => res.json(safeUsers()));
 
 app.put('/api/users/:username', (req, res) => {
-  const username = req.params.username;
-  const user = findUser(username);
+  const user = findUser(req.params.username);
   if (!user) return res.status(404).json({ error: 'User not found' });
   Object.assign(user, req.body);
   saveData(state);
@@ -208,23 +151,16 @@ app.put('/api/users/:username', (req, res) => {
   res.json(user);
 });
 
-app.put('/api/messages/:id', (req, res) => {
-  const { text, pinned } = req.body;
-  const id = req.params.id;
-  const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
-  Object.values(state.chatHistory.private).forEach((room) => room.forEach((message) => allMessages.push(message)));
-  const message = allMessages.find((msg) => msg.id === id);
-  if (!message) return res.status(404).json({ error: 'Message not found' });
-  if (typeof text === 'string') {
-    message.text = text;
-    message.edited = true;
+// --- CHAT ENDPOINTS ---
+app.get('/api/messages', (req, res) => {
+  const { chat, target } = req.query;
+  if (!chat) return res.status(400).json({ error: 'chat query required' });
+  if (chat === 'private') {
+    if (!target) return res.status(400).json({ error: 'target required' });
+    const [userA, userB] = target.split('||');
+    return res.json(getHistory('private', { userA, userB }));
   }
-  if (typeof pinned === 'boolean') {
-    message.pinned = pinned;
-  }
-  saveData(state);
-  io.emit('messageUpdated', message);
-  res.json(message);
+  return res.json(getHistory(chat));
 });
 
 app.delete('/api/messages/:id', (req, res) => {
@@ -241,19 +177,84 @@ app.delete('/api/messages/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// --- FOLDERS & FILES API ---
+app.get('/api/folders', (req, res) => {
+  const { parent } = req.query; // parent = Subject name or 'Music'
+  res.json(state.folders.filter(f => f.parent === parent));
+});
+
+app.post('/api/folders', (req, res) => {
+  const folder = { 
+    id: Date.now().toString(), 
+    parent: req.body.parent, 
+    name: req.body.name, 
+    owner: req.body.owner,
+    createdAt: new Date().toISOString()
+  };
+  state.folders.push(folder);
+  saveData(state);
+  res.json(folder);
+});
+
+app.put('/api/folders/:id', (req, res) => {
+  const folder = state.folders.find(f => f.id === req.params.id);
+  if (!folder) return res.status(404).json({ error: 'Folder not found' });
+  folder.name = req.body.name;
+  saveData(state);
+  res.json(folder);
+});
+
+app.delete('/api/folders/:id', (req, res) => {
+  state.folders = state.folders.filter(f => f.id !== req.params.id);
+  state.files = state.files.filter(f => f.folderId !== req.params.id); // Delete files inside
+  saveData(state);
+  res.json({ success: true });
+});
+
+// Fetch files in a folder
+app.get('/api/files', (req, res) => {
+  const { folderId } = req.query;
+  res.json(state.files.filter(f => f.folderId === folderId));
+});
+
+// Save file metadata after upload
+app.post('/api/files', (req, res) => {
+  const fileData = {
+    id: Date.now().toString(),
+    folderId: req.body.folderId,
+    name: req.body.name,
+    url: req.body.url,
+    type: req.body.type,
+    uploader: req.body.uploader,
+    createdAt: new Date().toISOString()
+  };
+  state.files.push(fileData);
+  saveData(state);
+  res.json(fileData);
+});
+
+app.delete('/api/files/:id', (req, res) => {
+  state.files = state.files.filter(f => f.id !== req.params.id);
+  saveData(state);
+  res.json({ success: true });
+});
+
+// File Upload Route (Multer)
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'File required' });
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: fileUrl });
+});
+
+// --- SOCKET.IO ---
 io.on('connection', (socket) => {
   socket.on('identify', (user) => {
     socket.data.username = user.username;
     socket.join('group');
     socket.join('todo');
-    if (user.username) {
-      const existing = findUser(user.username);
-      if (existing) {
-        existing.online = true;
-        saveData(state);
-      }
-      io.emit('users', safeUsers());
-    }
+    const existing = findUser(user.username);
+    if (existing) { existing.online = true; saveData(state); }
+    io.emit('users', safeUsers());
   });
 
   socket.on('joinChat', ({ chat, target, user }) => {
@@ -264,14 +265,9 @@ io.on('connection', (socket) => {
   socket.on('sendMessage', ({ chat, target, sender, text, attachment }) => {
     const message = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sender,
-      text: text || '',
+      sender, text: text || '',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      pinned: false,
-      edited: false,
-      deletedFor: [],
-      attachment: attachment || null,
-      type: 'message',
+      pinned: false, edited: false, deletedFor: [], attachment: attachment || null, type: 'message',
     };
     if (chat === 'private') {
       const [userA, userB] = target.split('||');
@@ -288,19 +284,8 @@ io.on('connection', (socket) => {
     io.to(chat).emit('message', { chat, message });
   });
 
-  socket.on('updateProfile', (payload) => {
-    const user = findUser(payload.username);
-    if (!user) return;
-    Object.assign(user, payload);
-    saveData(state);
-    io.emit('users', safeUsers());
-  });
-
   socket.on('disconnect', () => {
-    const username = socket.data.username;
-    if (username) {
-      updatePresence(username, false);
-    }
+    if (socket.data.username) updatePresence(socket.data.username, false);
   });
 });
 

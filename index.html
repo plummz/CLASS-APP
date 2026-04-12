@@ -6,7 +6,6 @@
   <title>My School Portfolio</title>
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
- 
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
@@ -28,7 +27,6 @@
   <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
  
   <div class="aurora active" id="aurora"></div>
- 
   <canvas id="starfield"></canvas>
  
   <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -60,37 +58,30 @@
       <span class="nav-icon">⛰️</span>
       <div class="nav-text"><span class="nav-label">First Semester</span></div>
     </div>
- 
     <div class="nav-item" data-page="second" onclick="goToPage('second')">
       <span class="nav-icon">🌊</span>
       <div class="nav-text"><span class="nav-label">Second Semester</span></div>
     </div>
- 
     <div class="nav-item" data-page="events" onclick="goToPage('events')">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
     </div>
- 
     <div class="nav-item" data-page="random" onclick="goToPage('random')">
       <span class="nav-icon">🌌</span>
       <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
     </div>
- 
     <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
       <span class="nav-icon">💬</span>
       <div class="nav-text"><span class="nav-label">Chat</span></div>
     </div>
- 
     <div class="nav-item" data-page="users" onclick="goToPage('users')">
       <span class="nav-icon">👥</span>
       <div class="nav-text"><span class="nav-label">Users</span></div>
     </div>
- 
     <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
       <span class="nav-icon">📅</span>
       <div class="nav-text"><span class="nav-label">Calendar</span></div>
     </div>
- 
     <div class="nav-item" data-page="music" onclick="goToPage('music')">
       <span class="nav-icon">🎵</span>
       <div class="nav-text"><span class="nav-label">Music</span></div>
@@ -100,12 +91,11 @@
       <span class="nav-icon">🚪</span>
       <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
     </div>
-    
     <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
   </nav>
  
-  <div id="overlay"></div>
-
+  <div id="overlay" onclick="closeMenu()"></div>
+ 
   <div id="auth-modal" class="modal">
     <div class="modal-content login-container">
       <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
@@ -131,25 +121,25 @@
  
   <div class="page active" id="page-first">
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
   <div class="page" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
-    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-second"></div>
   </div>
 
   <div class="page" id="page-events">
     <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
-    <div class="section-label">Upload a photo for each event folder</div>
+    <div class="section-label">CLICK TO VIEW EVENT FOLDERS</div>
     <div class="folder-grid" id="grid-events"></div>
   </div>
   
   <div class="page" id="page-random">
     <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
-    <div class="section-label">Upload any image to each folder</div>
+    <div class="section-label">CLICK TO VIEW RANDOM FOLDERS</div>
     <div class="folder-grid" id="grid-random"></div>
   </div>
 
@@ -207,22 +197,58 @@
 
   <div class="page" id="page-music">
     <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
-    <div class="music-player">
-      <input type="file" id="music-upload" multiple accept="audio/*" style="margin-bottom: 20px; color: white;">
-      <div class="playlist" id="playlist"></div>
-      <audio id="audio-player" controls onplay="startVisualizer(this)"></audio>
-      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:20px;">
-        <div id="dancing-speaker" style="width:120px; height:120px; background:#00ff88; border-radius:50%; box-shadow:0 0 30px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
-          <div style="width:50px; height:50px; background:#1a1a2e; border-radius:50%;"></div>
+    <div class="section-label">CREATE FOLDERS TO ORGANIZE YOUR MUSIC</div>
+    
+    <div style="text-align: center; margin-bottom: 30px;">
+        <button onclick="openFolderExplorer('Music Hub')" class="btn-primary" style="padding: 15px 30px; font-size: 18px;">Open Music Folders</button>
+    </div>
+
+    <div class="music-player" style="text-align: center; background: rgba(0,0,0,0.6); padding: 30px; border-radius: 20px;">
+      <h3 id="now-playing-text" style="color: #00ff88; margin-bottom: 20px;">Select a track to play</h3>
+      <audio id="audio-player" controls crossorigin="anonymous" onplay="window.startVisualizer(this)" style="width: 100%;"></audio>
+      
+      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:30px;">
+        <div id="dancing-speaker" style="width:140px; height:140px; background:#00ff88; border-radius:50%; box-shadow:0 0 40px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
+          <div style="width:60px; height:60px; background:#1a1a2e; border-radius:50%;"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <div id="folder-explorer-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px; width: 95%; background: #1a1a2e; text-align: left;">
+      <button onclick="closeModal('folder-explorer-modal')" style="float: right; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+      <h2 id="folder-explorer-title" style="color: #00ff88; margin-bottom: 20px; font-family: 'Cinzel Decorative';">Subject Folders</h2>
+      
+      <button onclick="createFolder()" class="btn-primary" style="margin-bottom: 20px;">+ New Folder</button>
+      
+      <div id="folder-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-height: 50vh; overflow-y: auto; padding-right: 10px;">
+        </div>
+    </div>
+  </div>
+
+  <div id="file-explorer-modal" class="modal">
+    <div class="modal-content" style="max-width: 800px; width: 95%; background: #1a1a2e; text-align: left;">
+      <button onclick="closeModal('file-explorer-modal')" style="float: right; background: transparent; color: white; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+      <button onclick="backToFolders()" style="float: left; background: transparent; color: #00ff88; border: none; font-size: 14px; cursor: pointer; padding: 5px;">&larr; Back to Folders</button>
+      
+      <h2 id="file-explorer-title" style="color: #00d4ff; margin-bottom: 20px; margin-top: 30px; font-family: 'Cinzel Decorative'; text-align: center;">Folder Name</h2>
+      
+      <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+         <input type="file" id="file-upload-input" style="color: white; width: 100%; max-width: 300px;">
+         <button onclick="uploadFileToFolder()" class="btn-primary" style="margin-left: 10px;">Upload File</button>
+         <div id="file-upload-status" style="color: #00ff88; font-size: 12px; margin-top: 10px;"></div>
+      </div>
+      
+      <div id="file-list-container" style="max-height: 40vh; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
+        </div>
     </div>
   </div>
 
   <div id="live-clock"></div>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
- 
   <script src="script.js"></script>
 
 </body>

@@ -241,7 +241,9 @@ function fetchAndRenderFiles() {
     }).catch(err => console.error(err));
 }
 
-// NEW: Upload directly to Firebase Storage with correct content type metadata
+// ---------------------------------------------------------
+// NEW FIREBASE UPLOAD WITH LIVE PROGRESS BAR & CONTENT TYPE
+// ---------------------------------------------------------
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
@@ -249,37 +251,57 @@ window.uploadFileToFolderAPI = async function() {
     const file = input.files[0];
     
     if(!file) return customAlert("Please select a file first.");
-    if(status) status.innerText = "Uploading to Firebase Cloud...";
+    
+    // Give immediate visual feedback that the process has started
+    if(status) status.innerText = "Starting Firebase upload... 0%";
     
     try {
-        // Dynamically import Firebase to keep global scope safe
+        // Dynamically import Firebase
         const { storage } = await import('./firebase-config.js');
-        const { ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+        const { ref, uploadBytesResumable, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
         
-        // Generate a unique path for the file in Firebase Storage
         const uniqueName = Date.now() + '-' + file.name;
         const storageRef = ref(storage, `folders/${currentFolderContext.id}/${uniqueName}`);
         
-        // This is the magic line that fixes the text/code bug for PDFs and Images
+        // This metadata tells Firebase exactly what kind of file it is (PDF, Image, etc.)
         const metadata = { contentType: file.type };
         
-        // Upload to Firebase
-        const snapshot = await uploadBytes(storageRef, file, metadata);
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        // Use uploadBytesResumable instead of uploadBytes to track the live percentage
+        const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
-        // Save the metadata to your Render database so it shows up in your folder
+        // Wrap the upload in a promise so we can track the state_changed events
+        await new Promise((resolve, reject) => {
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    // Calculate and update the live percentage
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    if(status) status.innerText = `Uploading to Firebase: ${Math.round(progress)}%`;
+                },
+                (error) => reject(error),
+                () => resolve()
+            );
+        });
+
+        // Firebase upload is finished. Now we notify Render.
+        if(status) status.innerText = "Firebase 100%. Saving to database (Waking up Render server...)";
+        
+        // Get the secure HTTPS link from Firebase
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+        // Tell the Render server to log the file into data.json
         await apiFetch('/api/files', {
             method: 'POST',
             body: JSON.stringify({
                 folderId: currentFolderContext.id,
                 name: file.name,
-                url: downloadURL, // Firebase gives us a full HTTPS url here
+                url: downloadURL,
                 type: file.type,
                 uploader: currentUser.username
             })
         });
 
-        if(status) status.innerText = "Upload Complete!";
+        // Everything is done
+        if(status) status.innerText = "Upload 100% Complete!";
         input.value = "";
         fetchAndRenderFiles();
         
@@ -290,7 +312,7 @@ window.uploadFileToFolderAPI = async function() {
 };
 
 window.deleteFileAPI = function(fileId) {
-    customConfirm("Delete this file from the directory?", function() {
+    customConfirm("Delete this file?", function() {
         apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
         .then(() => fetchAndRenderFiles())
         .catch(err => customAlert(err.message));
@@ -298,7 +320,7 @@ window.deleteFileAPI = function(fileId) {
 };
 
 window.playOrOpenFileAPI = function(url, name) {
-    // FIX: Support both old Render files (relative URL) and new Firebase files (absolute HTTP URL)
+    // Check if the URL is an absolute Firebase URL or a relative Render URL
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
@@ -676,7 +698,7 @@ window.deleteUserAPI = function(username) {
         .then(() => {
             customAlert(`${username} has been deleted.`);
             closeProfile();
-            fetchUsers();
+            fetchUsers(); 
         })
         .catch(err => customAlert(err.message));
     });
@@ -760,7 +782,6 @@ function renderMessages() {
       info.textContent = `Attachment: ${message.attachment.name}`;
       attach.appendChild(info);
       
-      // FIX: Support both old Render files and new Firebase absolute URLs in chat
       const fullUrl = message.attachment.url.startsWith('http') ? message.attachment.url : SERVER_BASE + message.attachment.url;
       
       if (message.attachment.type.startsWith('image/')) {
@@ -838,16 +859,18 @@ window.sendMessage = function() {
     .catch((err) => customAlert('Upload failed: ' + err.message));
 };
 
-// NEW: Chat attachments also upload to Firebase Storage with correct metadata
 async function uploadChatAttachment(file) {
     const { storage } = await import('./firebase-config.js');
-    const { ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+    const { ref, uploadBytesResumable, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
     
     const uniqueName = Date.now() + '-' + file.name;
     const storageRef = ref(storage, `chat-attachments/${uniqueName}`);
     const metadata = { contentType: file.type };
     
-    const snapshot = await uploadBytes(storageRef, file, metadata);
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+    
+    // We can just await the whole task for chat, or add a progress bar here later if you want
+    const snapshot = await uploadTask;
     const downloadURL = await getDownloadURL(snapshot.ref);
     
     return {

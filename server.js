@@ -3,7 +3,18 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-const multer = require('multer');
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (req, file, cb) {
+    // Extracts the extension (e.g., .pdf) and attaches it to the saved file
+    const ext = path.extname(file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'file-' + uniqueSuffix + ext);
+  }
+});
+const upload = multer({ storage: storage });
 const { Server } = require('socket.io');
 
 const ADMIN_USERNAME = 'Marquillero';

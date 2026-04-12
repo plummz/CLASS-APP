@@ -1,392 +1,329 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My School Portfolio</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My School Portfolio</title>
  
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
  
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0b1b3d">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="My School Portfolio">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1b3d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 
-    <button id="install-btn" class="install-btn" style="display:none;">Install App</button>
+  <button id="install-btn" class="install-btn" style="display:none;">Install App</button>
  
-    <div id="bg-mountain" class="scene-bg active"></div>
-    <div id="bg-ocean"    class="scene-bg"></div>
-    <div id="bg-aerial"   class="scene-bg"></div>
-    <div id="bg-galaxy"   class="scene-bg"></div>
-    
-    <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
-    <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
+  <div id="bg-mountain" class="scene-bg active"></div>
+  <div id="bg-ocean"    class="scene-bg"></div>
+  <div id="bg-aerial"   class="scene-bg"></div>
+  <div id="bg-galaxy"   class="scene-bg"></div>
+  
+  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
+  <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
  
-    <div class="aurora active" id="aurora"></div>
+  <div class="aurora active" id="aurora"></div>
  
-    <canvas id="starfield"></canvas>
+  <canvas id="starfield"></canvas>
  
-    <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
-        <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
-    </svg>
+  <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
+    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
+  </svg>
  
-    <div class="wave-container" id="wave-container">
-        <div class="wave"></div>
-        <div class="wave"></div>
-        <div class="wave"></div>
+  <div class="wave-container" id="wave-container">
+    <div class="wave"></div><div class="wave"></div><div class="wave"></div>
+  </div>
+ 
+  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-ocean"    id="particles-ocean"></div>
+  <div class="particles particle-aerial"   id="particles-aerial"></div>
+  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
+ 
+  <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:2001; background:none; border:none; cursor:pointer;">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </button>
+ 
+  <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:2000;">⛰️ First Semester</div>
+ 
+  <nav id="sidebar">
+    <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
+ 
+    <div class="nav-item active" data-page="first" onclick="goToPage('first')">
+      <span class="nav-icon">⛰️</span>
+      <div class="nav-text"><span class="nav-label">First Semester</span></div>
     </div>
  
-    <div class="particles particle-mountain" id="particles-mountain"></div>
-    <div class="particles particle-ocean"    id="particles-ocean"></div>
-    <div class="particles particle-aerial"   id="particles-aerial"></div>
-    <div class="particles particle-galaxy"   id="particles-galaxy"></div>
+    <div class="nav-item" data-page="second" onclick="goToPage('second')">
+      <span class="nav-icon">🌊</span>
+      <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+    </div>
  
-    <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:1001; background:none; border:none; cursor:pointer;">
-        <div class="bar"></div>
-        <div class="bar"></div>
-        <div class="bar"></div>
-    </button>
+    <div class="nav-item" data-page="events" onclick="goToPage('events')">
+      <span class="nav-icon">🛩️</span>
+      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
+    </div>
  
-    <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:1000;">⛰️ First Semester</div>
+    <div class="nav-item" data-page="random" onclick="goToPage('random')">
+      <span class="nav-icon">🌌</span>
+      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
+    </div>
  
-    <nav id="sidebar">
-        <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
+    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
+      <span class="nav-icon">💬</span>
+      <div class="nav-text"><span class="nav-label">Chat</span></div>
+    </div>
  
-        <div class="nav-item active" data-page="first" onclick="goToPage('first')">
-            <span class="nav-icon">⛰️</span>
-            <div class="nav-text"><span class="nav-label">First Semester</span></div>
-        </div>
+    <div class="nav-item" data-page="users" onclick="goToPage('users')">
+      <span class="nav-icon">👥</span>
+      <div class="nav-text"><span class="nav-label">Users</span></div>
+    </div>
  
-        <div class="nav-item" data-page="second" onclick="goToPage('second')">
-            <span class="nav-icon">🌊</span>
-            <div class="nav-text"><span class="nav-label">Second Semester</span></div>
-        </div>
+    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
+      <span class="nav-icon">📅</span>
+      <div class="nav-text"><span class="nav-label">Calendar</span></div>
+    </div>
  
-        <div class="nav-item" data-page="events" onclick="goToPage('events')">
-            <span class="nav-icon">🛩️</span>
-            <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
-        </div>
- 
-        <div class="nav-item" data-page="random" onclick="goToPage('random')">
-            <span class="nav-icon">🌌</span>
-            <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
-        </div>
- 
-        <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
-            <span class="nav-icon">💬</span>
-            <div class="nav-text"><span class="nav-label">Chat</span></div>
-        </div>
- 
-        <div class="nav-item" data-page="users" onclick="goToPage('users')">
-            <span class="nav-icon">👥</span>
-            <div class="nav-text"><span class="nav-label">Users</span></div>
-        </div>
- 
-        <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
-            <span class="nav-icon">📅</span>
-            <div class="nav-text"><span class="nav-label">Calendar</span></div>
-        </div>
- 
-        <div class="nav-item" data-page="music" onclick="goToPage('music')">
-            <span class="nav-icon">🎵</span>
-            <div class="nav-text"><span class="nav-label">Music</span></div>
-        </div>
+    <div class="nav-item" data-page="music" onclick="goToPage('music')">
+      <span class="nav-icon">🎵</span>
+      <div class="nav-text"><span class="nav-label">Music</span></div>
+    </div>
 
-        <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
-            <span class="nav-icon">🚪</span>
-            <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
-        </div>
+    <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
+      <span class="nav-icon">🚪</span>
+      <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
+    </div>
+    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
+  </nav>
+ 
+  <div id="overlay" onclick="closeMenu()"></div>
+ 
+  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
+    <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto;">
+      <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
+      <div class="input-group">
+        <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+      </div>
+      <div class="input-group">
+        <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+      </div>
+      <div class="auth-buttons" style="display: flex; gap: 10px;">
+        <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
+        <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
+      </div>
+      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px;"></p>
+    </div>
+  </div>
+ 
+  <div class="page active" id="page-first">
+    <div class="page-header"><h1 class="page-title">First Semester</h1></div>
+    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT (VIDEO SUPPORT ADDED)</div>
+    <div class="upload-grid">
+      <div class="subject-card"><div class="status-badge">✓ DONE</div><span class="subject-icon">📐</span><h3>Math 0</h3><p>Sir Jason Saludes</p><button class="browse-btn" onclick="openSubjectFolder('Math 0')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">📖</span><h3>English +</h3><p>Sir Winbert Abrenica</p><button class="browse-btn" onclick="openSubjectFolder('English Plus')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">✏️</span><h3>English 1</h3><p>Maam Lovely Joy Salas</p><button class="browse-btn" onclick="openSubjectFolder('English 1')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">🌍</span><h3>SS 1</h3><p>Maam Bing Pumpiana</p><button class="browse-btn" onclick="openSubjectFolder('SS 1')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">📐</span><h3>Math 0</h3><p>Sir Jason Saludes</p><button class="browse-btn" onclick="openSubjectFolder('Math 0-2')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">📖</span><h3>English +</h3><p>Sir Winbert Abrenica</p><button class="browse-btn" onclick="openSubjectFolder('English Plus-2')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">✏️</span><h3>English 1</h3><p>Maam Lovely Joy Salas</p><button class="browse-btn" onclick="openSubjectFolder('English 1-2')">BROWSE</button></div>
+      <div class="subject-card"><span class="subject-icon">🏃</span><h3>Pathfit 1</h3><p>Sir Mariana Bayana</p><button class="browse-btn" onclick="openSubjectFolder('Pathfit 1')">BROWSE</button></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-second" style="display:none;">
+    <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
+    <div class="upload-grid">
+      <div class="subject-card"><span class="subject-icon">💻</span><h3>ITCC 111</h3><p>Maam Krystal Sayca</p><button class="browse-btn" onclick="openSubjectFolder('ITCC 111')">BROWSE</button></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-events" style="display:none;"><h1 class="page-title">Event Pictures</h1><div class="upload-grid"></div></div>
+  <div class="page" id="page-random" style="display:none;"><h1 class="page-title">Random Pictures</h1><div class="upload-grid"></div></div>
+
+  <div class="page" id="page-music" style="display:none;">
+    <div class="page-header"><h1 class="page-title">MUSIC / STUDY FOLDER</h1></div>
+    <button onclick="createMusicFolder()" class="btn-create" style="background:#00ff88; color:black; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold; margin-bottom:20px;">+ New Music Folder</button>
+    <div id="folder-grid" class="upload-grid"></div>
+    <div class="music-player-container" style="background:#16213e; padding:25px; border-radius:15px; margin-top:30px;">
+      <h3 style="margin-top:0; color:#00ff88; text-align:center;">Now Playing</h3>
+      <p id="now-playing-text" style="color:gray; font-size:14px; text-align:center; margin-bottom:15px;">Select a track to play</p>
+      <audio id="audio-player" controls style="width: 100%;" onplay="window.startVisualizer(this)"></audio>
+    </div>
+    <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:20px;">
+      <div id="dancing-speaker" style="width:120px; height:120px; background:#00ff88; border-radius:50%; box-shadow:0 0 30px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
+        <div style="width:50px; height:50px; background:#1a1a2e; border-radius:50%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="folder-view-modal" style="display:none; position:fixed; z-index:15000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; backdrop-filter:blur(10px); pointer-events:auto;">
+    <div style="background:#1a1a2e; width:90%; max-width:600px; padding:30px; border-radius:20px; position:relative; max-height:85vh; display:flex; flex-direction:column; z-index:15001; pointer-events:auto;">
+      <button onclick="closeFolderView()" style="position:absolute; top:15px; right:15px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">&times;</button>
+      <h2 id="folder-view-title" style="margin-top:0; color:#00ff88; font-family:'Cinzel Decorative';">Folder Name</h2>
+      <div style="background:#16213e; padding:20px; border-radius:12px; margin-bottom:20px;">
+        <input type="file" id="folder-specific-upload" multiple style="color:white; width:100%; margin-bottom:15px;">
+        <button id="upload-btn-storage" style="background:#00ff88; color:#0b1b3d; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">Upload to Cloud</button>
+        <div id="upload-status" style="color:#00ff88; font-size:13px; margin-top:10px; text-align:center;"></div>
+      </div>
+      <div id="folder-file-list" style="flex:1; overflow-y:auto; background:rgba(255,255,255,0.05); border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:12px;"></div>
+    </div>
+  </div>
+
+  <div id="live-clock"></div>
+ 
+  <script src="script.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+
+  <script type="module">
+    import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { auth, db, storage } from './firebase-config.js';
+    import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    window.currentFolderId = null;
+
+    // MENU SYSTEM (Restored to work with sidebar classes)
+    window.toggleMenu = () => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('open');
+    };
+
+    window.closeMenu = () => {
+        document.getElementById('sidebar').classList.remove('open');
+    };
+
+    window.goToPage = (pageId) => {
+        document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+        const targetPage = document.getElementById('page-' + pageId);
+        if(targetPage) targetPage.style.display = 'block';
         
-        <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
-    </nav>
- 
-    <div id="overlay" onclick="closeMenu()"></div>
- 
-    <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
-        <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto;">
-            <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
-            <div class="input-group">
-                <input type="email" id="loginEmail" placeholder="School Email" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
-            </div>
-            <div class="input-group">
-                <input type="password" id="loginPassword" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
-            </div>
-            <div class="auth-buttons" style="display: flex; gap: 10px;">
-                <button class="btn-login" id="btnLogin" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
-                <button class="btn-register" id="btnRegister" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
-            </div>
-            <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px;">Invalid email or password.</p>
-        </div>
-    </div>
- 
-    <div class="page active" id="page-first">
-        <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-        <div class="section-label">UPLOAD PDF FOR EACH SUBJECT (VIDEO SUPPORT ADDED)</div>
-        <div class="upload-grid">
-            <div class="subject-card">
-                <div class="status-badge">✓ DONE</div>
-                <span class="subject-icon">📐</span>
-                <h3>Math 0</h3>
-                <p>Sir Jason Saludes</p>
-                <button class="browse-btn" onclick="openSubjectFolder('Math 0')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">📖</span>
-                <h3>English +</h3>
-                <p>Sir Winbert Abrenica</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English Plus')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">✏️</span>
-                <h3>English 1</h3>
-                <p>Maam Lovely Joy Salas</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English 1')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">🌍</span>
-                <h3>SS 1</h3>
-                <p>Maam Bing Pumpiana</p>
-                <button class="browse-btn" onclick="openSubjectFolder('SS 1')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">📐</span>
-                <h3>Math 0</h3>
-                <p>Sir Jason Saludes</p>
-                <button class="browse-btn" onclick="openSubjectFolder('Math 0-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">📖</span>
-                <h3>English +</h3>
-                <p>Sir Winbert Abrenica</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English Plus-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">✏️</span>
-                <h3>English 1</h3>
-                <p>Maam Lovely Joy Salas</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English 1-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">🏃</span>
-                <h3>Pathfit 1</h3>
-                <p>Sir Mariana Bayana</p>
-                <button class="browse-btn" onclick="openSubjectFolder('Pathfit 1')">BROWSE</button>
-            </div>
-        </div>
-    </div>
+        // Page Indicators
+        const indicator = document.getElementById('page-indicator');
+        const labels = {'first': '⛰️ First Semester', 'second': '🌊 Second Semester', 'music': '🎵 Music Hub'};
+        indicator.innerText = labels[pageId] || pageId.toUpperCase();
+        
+        window.closeMenu();
+    };
 
-    <div class="page" id="page-second" style="display:none;">
-        <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
-        <div class="section-label">Upload your second semester files here.</div>
-        <div class="upload-grid">
-            <div class="subject-card">
-                <span class="subject-icon">💻</span>
-                <h3>ITCC 111</h3>
-                <p>Maam Krystal Sayca</p>
-                <button class="browse-btn" onclick="openSubjectFolder('ITCC 111')">BROWSE</button>
-            </div>
-        </div>
-    </div>
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('nav-logout').style.display = 'flex';
+            window.loadFolders(); 
+        } else {
+            document.getElementById('auth-modal').style.display = 'flex';
+        }
+    });
 
-    <div class="page" id="page-music" style="display:none;">
-        <div class="page-header"><h1 class="page-title">MUSIC / STUDY FOLDER</h1></div>
-        <button onclick="createMusicFolder()" class="btn-create" style="background: #00ff88; color: black; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 20px;">+ New Music Folder</button>
-        <div id="folder-grid" class="upload-grid"></div>
-        <div class="music-player-container" style="background: #16213e; padding: 25px; border-radius: 15px; margin-top: 30px;">
-            <h3 style="margin-top: 0; color: #00ff88; text-align: center;">Now Playing</h3>
-            <p id="now-playing-text" style="color: gray; font-size: 14px; text-align: center; margin-bottom: 15px;">Select a track to play</p>
-            <audio id="audio-player" controls style="width: 100%;" onplay="window.startVisualizer(this)"></audio>
-        </div>
-        <div id="visualizer-container" style="display: flex; justify-content: center; margin-top: 20px;">
-            <div id="dancing-speaker" style="width: 120px; height: 120px; background: #00ff88; border-radius: 50%; box-shadow: 0 0 30px #00ff88; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease;">
-                <div style="width: 50px; height: 50px; background: #1a1a2e; border-radius: 50%;"></div>
-            </div>
-        </div>
-    </div>
+    document.getElementById('btnLogin').onclick = async () => {
+        const e = document.getElementById('loginEmail').value;
+        const p = document.getElementById('loginPassword').value;
+        try { await signInWithEmailAndPassword(auth, e, p); } 
+        catch (err) { alert(err.message); }
+    };
 
-    <div id="folder-view-modal" style="display: none; position: fixed; z-index: 20000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; backdrop-filter: blur(10px); pointer-events: auto;">
-        <div style="background: #1a1a2e; width: 90%; max-width: 600px; padding: 30px; border-radius: 20px; position: relative; max-height: 85vh; display: flex; flex-direction: column; z-index: 20001; pointer-events: auto;">
-            <button onclick="closeFolderView()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; font-size: 32px; cursor: pointer;">&times;</button>
-            <h2 id="folder-view-title" style="margin-top: 0; color: #00ff88; font-family: 'Cinzel Decorative';">Folder Name</h2>
-            <div style="background: #16213e; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                <input type="file" id="folder-specific-upload" multiple style="color: white; width: 100%; margin-bottom: 15px;">
-                <button id="upload-btn-storage" style="background: #00ff88; color: #0b1b3d; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%;">Upload to Cloud</button>
-                <div id="upload-status" style="color: #00ff88; font-size: 13px; margin-top: 10px; text-align: center;"></div>
-            </div>
-            <div id="folder-file-list" style="flex: 1; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;"></div>
-        </div>
-    </div>
+    window.handleLogout = () => signOut(auth).then(() => location.reload());
 
-    <div id="live-clock"></div>
- 
-    <script src="script.js"></script>
-    <script type="module" src="firebase-config.js"></script>
+    // CLOUD LOGIC (The stuff we were actually fixing)
+    document.getElementById('upload-btn-storage').onclick = async () => {
+        const fileInput = document.getElementById('folder-specific-upload');
+        const status = document.getElementById('upload-status');
+        const files = fileInput.files;
+        if (!files.length || !window.currentFolderId) return;
 
-    <script type="module">
-        import { collection, addDoc, getDocs, query, where, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-        import { auth, db, storage } from './firebase-config.js';
-        import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        status.innerText = "Processing Cloud Upload...";
+        for (const file of files) {
+            const sRef = ref(storage, `uploads/${auth.currentUser.uid}/${window.currentFolderId}/${file.name}`);
+            try {
+                const snap = await uploadBytes(sRef, file);
+                const url = await getDownloadURL(snap.ref);
+                await addDoc(collection(db, "folder_files"), {
+                    folderId: window.currentFolderId,
+                    fileName: file.name,
+                    fileUrl: url,
+                    uid: auth.currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error(e); }
+        }
+        status.innerText = "Success!";
+        window.loadFilesInFolder();
+    };
 
-        window.currentFolderId = null;
+    window.openSubjectFolder = (subjectName) => {
+        window.currentFolderId = subjectName;
+        document.getElementById('folder-view-title').innerText = subjectName;
+        document.getElementById('folder-view-modal').style.display = 'flex';
+        window.loadFilesInFolder();
+    };
 
-        // AUTH CONTROL
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('auth-modal').style.display = 'none';
-                document.getElementById('nav-logout').style.display = 'flex';
-                window.loadFolders(); 
-            } else {
-                document.getElementById('auth-modal').style.display = 'flex';
-                document.getElementById('nav-logout').style.display = 'none';
-            }
+    window.createMusicFolder = async () => {
+        const n = prompt("Folder Name:");
+        if (n) await addDoc(collection(db, "folders"), { name: n, createdBy: auth.currentUser.uid, timestamp: serverTimestamp() });
+        window.loadFolders();
+    };
+
+    window.loadFolders = async () => {
+        const grid = document.getElementById('folder-grid');
+        if (!grid || !auth.currentUser) return;
+        const q = query(collection(db, "folders"), where("createdBy", "==", auth.currentUser.uid));
+        const snap = await getDocs(q);
+        grid.innerHTML = "";
+        snap.forEach(d => {
+            grid.innerHTML += `<div class="subject-card" onclick="openSubjectFolder('${d.id}')"><div style="font-size:40px;">📁</div><div style="color:white; font-weight:bold; margin-top:8px;">${d.data().name}</div></div>`;
         });
+    };
 
-        // MENU SYSTEM
-        window.toggleMenu = () => {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
-        };
+    window.closeFolderView = () => document.getElementById('folder-view-modal').style.display = 'none';
 
-        window.closeMenu = () => {
-            document.getElementById('sidebar').classList.remove('open');
-        };
+    window.loadFilesInFolder = async () => {
+        const list = document.getElementById('folder-file-list');
+        list.innerHTML = "Fetching files...";
+        const q = query(collection(db, "folder_files"), where("folderId", "==", window.currentFolderId));
+        const snap = await getDocs(q);
+        list.innerHTML = "";
+        snap.forEach(d => {
+            const file = d.data();
+            list.innerHTML += `<div style="background:rgba(0,0,0,0.4); padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;"><span style="color:white; font-size:14px;">📄 ${file.fileName}</span><button onclick="playMedia('${file.fileUrl}', '${file.fileName}')" style="background:#00ff88; color:black; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Open</button></div>`;
+        });
+    };
 
-        window.goToPage = (pageId) => {
-            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-            const targetPage = document.getElementById('page-' + pageId);
-            if(targetPage) targetPage.style.display = 'block';
-            document.getElementById('page-indicator').innerText = pageId.toUpperCase();
-            window.closeMenu();
-        };
+    window.playMedia = (url, name) => {
+        const player = document.getElementById('audio-player');
+        if (name.toLowerCase().endsWith('.mp3')) {
+            player.src = url;
+            player.play();
+            document.getElementById('now-playing-text').innerText = "Playing: " + name;
+        } else {
+            window.open(url, '_blank');
+        }
+    };
 
-        document.getElementById('btnLogin').onclick = async () => {
-            const e = document.getElementById('loginEmail').value;
-            const p = document.getElementById('loginPassword').value;
-            try { await signInWithEmailAndPassword(auth, e, p); } 
-            catch (err) { alert(err.message); }
-        };
+    window.startVisualizer = (audio) => {
+        if (!window.audioCtx) {
+            window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            window.analyser = window.audioCtx.createAnalyser();
+            const src = window.audioCtx.createMediaElementSource(audio);
+            src.connect(window.analyser);
+            window.analyser.connect(window.audioCtx.destination);
+        }
+        const data = new Uint8Array(window.analyser.frequencyBinCount);
+        const speaker = document.getElementById('dancing-speaker');
+        function pulse() {
+            requestAnimationFrame(pulse);
+            window.analyser.getByteFrequencyData(data);
+            const avg = data.slice(0, 10).reduce((a, b) => a + b) / 10;
+            speaker.style.transform = `scale(${1 + (avg / 255)})`;
+        }
+        pulse();
+    };
+  </script>
 
-        window.handleLogout = () => signOut(auth).then(() => location.reload());
-
-        // STORAGE CLOUD LOGIC
-        document.getElementById('upload-btn-storage').onclick = async () => {
-            const fileInput = document.getElementById('folder-specific-upload');
-            const status = document.getElementById('upload-status');
-            const files = fileInput.files;
-            if (!files.length || !window.currentFolderId) return;
-
-            status.innerText = "Processing Cloud Upload...";
-            for (const file of files) {
-                const sRef = ref(storage, `uploads/${auth.currentUser.uid}/${window.currentFolderId}/${file.name}`);
-                try {
-                    const snap = await uploadBytes(sRef, file);
-                    const url = await getDownloadURL(snap.ref);
-                    await addDoc(collection(db, "folder_files"), {
-                        folderId: window.currentFolderId,
-                        fileName: file.name,
-                        fileUrl: url,
-                        uid: auth.currentUser.uid,
-                        timestamp: serverTimestamp()
-                    });
-                } catch (e) { console.error(e); }
-            }
-            status.innerText = "Success! Files are live.";
-            fileInput.value = "";
-            window.loadFilesInFolder();
-        };
-
-        // FOLDERS
-        window.openSubjectFolder = (subjectName) => {
-            window.currentFolderId = subjectName;
-            document.getElementById('folder-view-title').innerText = subjectName;
-            document.getElementById('folder-view-modal').style.display = 'flex';
-            window.loadFilesInFolder();
-        };
-
-        window.createMusicFolder = async () => {
-            const n = prompt("New Folder Name:");
-            if (n) await addDoc(collection(db, "folders"), { name: n, createdBy: auth.currentUser.uid, timestamp: serverTimestamp() });
-            window.loadFolders();
-        };
-
-        window.loadFolders = async () => {
-            const grid = document.getElementById('folder-grid');
-            if (!grid || !auth.currentUser) return;
-            const q = query(collection(db, "folders"), where("createdBy", "==", auth.currentUser.uid));
-            const snap = await getDocs(q);
-            grid.innerHTML = "";
-            snap.forEach(d => {
-                grid.innerHTML += `
-                <div class="subject-card" onclick="openSubjectFolder('${d.id}')">
-                    <div style="font-size:40px;">📁</div>
-                    <div style="color:white; font-weight:bold; margin-top:8px;">${d.data().name}</div>
-                </div>`;
-            });
-        };
-
-        window.closeFolderView = () => document.getElementById('folder-view-modal').style.display = 'none';
-
-        window.loadFilesInFolder = async () => {
-            const list = document.getElementById('folder-file-list');
-            list.innerHTML = "Fetching files...";
-            const q = query(collection(db, "folder_files"), where("folderId", "==", window.currentFolderId));
-            const snap = await getDocs(q);
-            list.innerHTML = "";
-            snap.forEach(d => {
-                const file = d.data();
-                list.innerHTML += `
-                <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: white; font-size: 14px;">📄 ${file.fileName}</span>
-                    <button onclick="playMedia('${file.fileUrl}', '${file.fileName}')" style="background:#00ff88; color:black; border:none; padding:6px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">Open</button>
-                </div>`;
-            });
-        };
-
-        window.playMedia = (url, name) => {
-            const player = document.getElementById('audio-player');
-            if (name.toLowerCase().endsWith('.mp3')) {
-                player.src = url;
-                player.play();
-                document.getElementById('now-playing-text').innerText = "Playing: " + name;
-            } else {
-                window.open(url, '_blank');
-            }
-        };
-
-        window.startVisualizer = (audio) => {
-            if (!window.audioCtx) {
-                window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                window.analyser = window.audioCtx.createAnalyser();
-                const src = window.audioCtx.createMediaElementSource(audio);
-                src.connect(window.analyser);
-                window.analyser.connect(window.audioCtx.destination);
-            }
-            const data = new Uint8Array(window.analyser.frequencyBinCount);
-            const speaker = document.getElementById('dancing-speaker');
-            function pulse() {
-                requestAnimationFrame(pulse);
-                window.analyser.getByteFrequencyData(data);
-                const avg = data.slice(0, 10).reduce((a, b) => a + b) / 10;
-                speaker.style.transform = `scale(${1 + (avg / 255)})`;
-            }
-            pulse();
-        };
-    </script>
-
-    <div id="chat-bauble" onclick="toggleChatWindow()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #00ff88; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; z-index: 21000;">💬</div>
-    <div id="chat-window" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px; background: #1a1a2e; border: 1px solid #333; border-radius: 15px; flex-direction: column; z-index: 21000; overflow: hidden;">
-        <div style="background: #0f3460; padding: 15px; color: white; display: flex; justify-content: space-between;">
-            <span style="font-weight:bold;">Private Chat</span>
-            <button onclick="toggleChatWindow()" style="background:none; border:none; color:white; cursor:pointer;">&times;</button>
-        </div>
-        <div id="private-messages-display" style="flex: 1; padding: 15px; overflow-y: auto; background: #0b0b1a;"></div>
-    </div>
+  <div id="chat-bauble" onclick="toggleChatWindow()" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000;">💬</div>
 </body>
 </html>

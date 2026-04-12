@@ -316,4 +316,42 @@ io.on('connection', (socket) => {
       text: text || '',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       pinned: false,
-      edited
+      edited: false,
+      deletedFor: [],
+      attachment: attachment || null,
+      type: 'message',
+    };
+    if (chat === 'private') {
+      const [userA, userB] = target.split('||');
+      const key = getPrivateKey(userA, userB);
+      state.chatHistory.private[key] = state.chatHistory.private[key] || [];
+      state.chatHistory.private[key].push(message);
+      saveData(state);
+      io.to(key).emit('message', { chat, target: { userA, userB }, message });
+      return;
+    }
+    state.chatHistory[chat] = state.chatHistory[chat] || [];
+    state.chatHistory[chat].push(message);
+    saveData(state);
+    io.to(chat).emit('message', { chat, message });
+  });
+
+  socket.on('updateProfile', (payload) => {
+    const user = findUser(payload.username);
+    if (!user) return;
+    Object.assign(user, payload);
+    saveData(state);
+    io.emit('users', safeUsers());
+  });
+
+  socket.on('disconnect', () => {
+    const username = socket.data.username;
+    if (username) {
+      updatePresence(username, false);
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});

@@ -106,7 +106,7 @@
  
   <div id="overlay" onclick="closeMenu()"></div>
  
-  <div id="auth-modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
+  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
     <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1);">
       <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
       <div class="input-group">
@@ -217,28 +217,60 @@
 
   <div id="folder-explorer-modal" style="display:none; position:fixed; z-index:15000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
     <div style="background:#1a1a2e; width:90%; max-width:800px; padding:30px; border-radius:20px; position:relative;">
-      <button onclick="closeModal('folder-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
+      <button onclick="closeFolderModal('folder-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
       <h2 id="folder-explorer-title" style="color:#00ff88; margin-top:0; font-family:'Cinzel Decorative';">Subject Folders</h2>
-      <button onclick="createFolder()" style="background:#00ff88; font-weight:bold; color:black; border:none; padding:10px 15px; border-radius:8px; margin-bottom:20px; cursor:pointer;">+ New Folder</button>
-      <div id="folder-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; max-height:60vh; overflow-y:auto; padding-right:10px;"></div>
+      <button onclick="createFolderAPI()" style="background:#00ff88; font-weight:bold; color:black; border:none; padding:10px 15px; border-radius:8px; margin-bottom:20px; cursor:pointer;">+ New Folder</button>
+      <div id="folder-grid-modal" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; max-height:60vh; overflow-y:auto; padding-right:10px;"></div>
     </div>
   </div>
 
   <div id="file-explorer-modal" style="display:none; position:fixed; z-index:16000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
     <div style="background:#1a1a2e; width:90%; max-width:800px; padding:30px; border-radius:20px; position:relative;">
-      <button onclick="closeModal('file-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
-      <button onclick="backToFolders()" style="position:absolute; top:15px; left:15px; font-size:14px; background:none; color:#00ff88; border:none; cursor:pointer;">&larr; Back</button>
+      <button onclick="closeFolderModal('file-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
+      <button onclick="backToFoldersAPI()" style="position:absolute; top:15px; left:15px; font-size:14px; background:none; color:#00ff88; border:none; cursor:pointer;">&larr; Back</button>
       <h2 id="file-explorer-title" style="color:#00d4ff; text-align:center; margin-top:20px; font-family:'Cinzel Decorative';">Folder Name</h2>
       <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; margin-bottom:20px; text-align:center;">
          <input type="file" id="file-upload-input" style="color:white; max-width:250px;">
-         <button onclick="uploadFileToFolder()" style="background:#00d4ff; font-weight:bold; color:black; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Upload File</button>
+         <button onclick="uploadFileToFolderAPI()" style="background:#00d4ff; font-weight:bold; color:black; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Upload File</button>
          <div id="file-upload-status" style="color:#00ff88; font-size:12px; margin-top:10px;"></div>
       </div>
       <div id="file-list-container" style="max-height:40vh; overflow-y:auto; background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; display:flex; flex-direction:column; gap:10px;"></div>
     </div>
   </div>
 
+  <div id="custom-alert-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #ff6b6b;">
+      <h3 style="color:#ff6b6b; margin-bottom:15px; font-family:'Cinzel Decorative';">Notice</h3>
+      <p id="alert-text" style="color:white; margin-bottom:20px; font-size:14px;"></p>
+      <button onclick="document.getElementById('custom-alert-modal').style.display='none'" style="background:#ff6b6b; color:black; border:none; padding:10px 30px; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
+    </div>
+  </div>
+
+  <div id="custom-prompt-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #00d4ff;">
+      <h3 id="prompt-title" style="color:#00d4ff; margin-bottom:15px; font-family:'Cinzel Decorative';">Input Required</h3>
+      <input type="text" id="prompt-input" style="width:100%; padding:12px; border-radius:8px; border:none; margin-bottom:20px; background:rgba(255,255,255,0.1); color:white; outline:none;" autocomplete="off">
+      <div style="display:flex; gap:10px;">
+        <button id="prompt-submit" style="flex:1; background:#00d4ff; color:black; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Submit</button>
+        <button onclick="document.getElementById('custom-prompt-modal').style.display='none'" style="flex:1; background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="custom-confirm-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #ffd700;">
+      <h3 style="color:#ffd700; margin-bottom:15px; font-family:'Cinzel Decorative';">Confirm Action</h3>
+      <p id="confirm-text" style="color:white; margin-bottom:20px; font-size:14px;"></p>
+      <div style="display:flex; gap:10px;">
+        <button id="confirm-yes" style="flex:1; background:#ffd700; color:black; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Yes</button>
+        <button onclick="document.getElementById('custom-confirm-modal').style.display='none'" style="flex:1; background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="live-clock"></div>
+
+  <div id="chat-bauble" onclick="window.goToPage('chat')" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000; box-shadow:0 4px 15px rgba(0,0,0,0.3);">💬</div>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="script.js"></script>

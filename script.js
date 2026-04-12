@@ -1,6 +1,16 @@
 /* ============================================================
-   SCRIPT.JS — My School Portfolio
+   SCRIPT.JS — My School Portfolio (FULL SUPABASE VERSION)
    ============================================================ */
+
+// 1. SUPABASE CONNECTION INFO
+const SUPABASE_URL = 'https://rxpezjhsnqkjydurtayx.supabase.co'; 
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4cGV6amhzbnFranlkdXJ0YXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTIwODUsImV4cCI6MjA5MTU4ODA4NX0.wAhjVae3O1vFzGwF_JfXeFJJtB7hv3gTD9T5MHsjhRo';
+
+// Initialize Supabase Client
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const SERVER_BASE = 'https://class-app-y67k.onrender.com';
 
 /* ============================================================
    CUSTOM MODALS (Replaces prompt/alert/confirm for PWA support)
@@ -116,7 +126,7 @@ function buildFolderCards(gridId, count, prefix = "Folder") {
 }
 
 /* ============================================================
-   FOLDER & FILE EXPLORER LOGIC 
+   FOLDER & FILE EXPLORER LOGIC (Supabase Powered)
    ============================================================ */
 let currentParentContext = null; 
 let currentFolderContext = null; 
@@ -139,8 +149,10 @@ window.openFolderExplorer = function(parentName) {
 };
 
 function fetchAndRenderFolders() {
-    apiFetch(`/api/folders?parent=${encodeURIComponent(currentParentContext)}`)
-    .then(folders => {
+    sb.from('folders').select('*').eq('parent', currentParentContext)
+    .then(({ data: folders, error }) => {
+        if (error) return console.error("Folder fetch error:", error);
+        
         const grid = document.getElementById('folder-grid-modal');
         if(!grid) return;
         grid.innerHTML = '';
@@ -167,34 +179,29 @@ function fetchAndRenderFolders() {
             </div>
             `;
         });
-    })
-    .catch(err => console.error("Folder fetch error:", err));
+    });
 }
 
 window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
     customPrompt("Enter new folder name:", function(name) {
         if(!name) return;
-        apiFetch('/api/folders', {
-            method: 'POST',
-            body: JSON.stringify({ parent: currentParentContext, name: name, owner: currentUser.username })
-        }).then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username }])
+        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
     });
 };
 
 window.renameFolderAPI = function(id, oldName) {
     customPrompt("Enter new name for folder:", function(newName) {
         if(!newName || newName === oldName) return;
-        apiFetch(`/api/folders/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ name: newName })
-        }).then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+        sb.from('folders').update({ name: newName }).eq('id', id)
+        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
     }, oldName);
 };
 
 window.deleteFolderAPI = function(id) {
     customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", function() {
-        apiFetch(`/api/folders/${id}`, { method: 'DELETE' })
+        sb.from('folders').delete().eq('id', id)
         .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
     });
 };
@@ -213,8 +220,10 @@ window.backToFoldersAPI = function() {
 };
 
 function fetchAndRenderFiles() {
-    apiFetch(`/api/files?folderId=${currentFolderContext.id}`)
-    .then(files => {
+    sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
+    .then(({ data: files, error }) => {
+        if (error) return console.error(error);
+        
         const list = document.getElementById('file-list-container');
         if(!list) return;
         list.innerHTML = '';
@@ -238,11 +247,11 @@ function fetchAndRenderFiles() {
             </div>
             `;
         });
-    }).catch(err => console.error(err));
+    });
 }
 
 // ---------------------------------------------------------
-// NEW FIREBASE UPLOAD WITH LIVE PROGRESS BAR & CONTENT TYPE
+// SUPABASE STORAGE UPLOAD WITH LIVE PROGRESS BAR & CONTENT TYPE
 // ---------------------------------------------------------
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
@@ -252,56 +261,33 @@ window.uploadFileToFolderAPI = async function() {
     
     if(!file) return customAlert("Please select a file first.");
     
-    // Give immediate visual feedback that the process has started
-    if(status) status.innerText = "Starting Firebase upload... 0%";
+    if(status) status.innerText = "Uploading to Supabase Cloud...";
     
     try {
-        // Dynamically import Firebase
-        const { storage } = await import('./firebase-config.js');
-        const { ref, uploadBytesResumable, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+        const filePath = `uploads/${Date.now()}_${file.name}`;
         
-        const uniqueName = Date.now() + '-' + file.name;
-        const storageRef = ref(storage, `folders/${currentFolderContext.id}/${uniqueName}`);
+        // Upload to Supabase Storage Bucket
+        const { data, error } = await sb.storage
+            .from('portfolio-assets')
+            .upload(filePath, file, { contentType: file.type });
+            
+        if (error) throw error;
+
+        if(status) status.innerText = "Upload 100%. Saving to database...";
         
-        // This metadata tells Firebase exactly what kind of file it is (PDF, Image, etc.)
-        const metadata = { contentType: file.type };
-        
-        // Use uploadBytesResumable instead of uploadBytes to track the live percentage
-        const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+        // Get Public URL
+        const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
 
-        // Wrap the upload in a promise so we can track the state_changed events
-        await new Promise((resolve, reject) => {
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    // Calculate and update the live percentage
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    if(status) status.innerText = `Uploading to Firebase: ${Math.round(progress)}%`;
-                },
-                (error) => reject(error),
-                () => resolve()
-            );
-        });
+        // Save metadata to Files table
+        await sb.from('files').insert([{
+            folder_id: currentFolderContext.id,
+            name: file.name,
+            url: urlData.publicUrl,
+            type: file.type,
+            uploader: currentUser.username
+        }]);
 
-        // Firebase upload is finished. Now we notify Render.
-        if(status) status.innerText = "Firebase 100%. Saving to database (Waking up Render server...)";
-        
-        // Get the secure HTTPS link from Firebase
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-        // Tell the Render server to log the file into data.json
-        await apiFetch('/api/files', {
-            method: 'POST',
-            body: JSON.stringify({
-                folderId: currentFolderContext.id,
-                name: file.name,
-                url: downloadURL,
-                type: file.type,
-                uploader: currentUser.username
-            })
-        });
-
-        // Everything is done
-        if(status) status.innerText = "Upload 100% Complete!";
+        if(status) status.innerText = "Upload Complete!";
         input.value = "";
         fetchAndRenderFiles();
         
@@ -313,14 +299,13 @@ window.uploadFileToFolderAPI = async function() {
 
 window.deleteFileAPI = function(fileId) {
     customConfirm("Delete this file?", function() {
-        apiFetch(`/api/files/${fileId}`, { method: 'DELETE' })
+        sb.from('files').delete().eq('id', fileId)
         .then(() => fetchAndRenderFiles())
         .catch(err => customAlert(err.message));
     });
 };
 
 window.playOrOpenFileAPI = function(url, name) {
-    // Check if the URL is an absolute Firebase URL or a relative Render URL
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
@@ -366,7 +351,6 @@ window.startVisualizer = (audioElement) => {
    EXISTING FEATURES: AUTH, ADMIN, CHAT, CALENDAR
    ============================================================ */
 let users = [];
-const SERVER_BASE = 'https://class-app-y67k.onrender.com';
 let socket = null;
 let currentUser = null;
 let isAdmin = false;
@@ -374,6 +358,7 @@ let chatHistory = { group: [], todo: [], private: {} };
 let currentChat = { type: 'group', target: null };
 
 function apiFetch(path, options = {}) {
+  // Retained purely for Chat history fetching from Render
   return fetch(`${SERVER_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
@@ -407,8 +392,7 @@ function initSocket() {
   });
 
   socket.on('users', (payload) => {
-    users = payload;
-    renderUserDirectory();
+    // Socket users are active sessions, but we use Supabase for the main directory
     renderChatUsersList();
   });
 
@@ -452,44 +436,40 @@ function getAllMessages() {
   ];
 }
 
-window.login = function() {
+window.login = async function() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
-  if (!username || !password) return customAlert('Enter username and password');
+  if (!username) return customAlert('Enter username');
   
   document.getElementById('errorMessage').style.display = 'none';
 
-  apiFetch('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) })
-    .then((data) => {
-      currentUser = data.user;
-      isAdmin = data.isAdmin;
-      saveSession();
-      establishSession();
-    })
-    .catch((err) => {
-      document.getElementById('errorMessage').innerText = err.message;
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('username', username).single();
+  if (error || !profile) {
+      document.getElementById('errorMessage').innerText = "User not found. Please register.";
       document.getElementById('errorMessage').style.display = 'block';
-    });
+      return;
+  }
+  
+  currentUser = profile;
+  isAdmin = (profile.username === 'Marquillero');
+  saveSession();
+  establishSession();
 };
 
-window.register = function() {
+window.register = async function() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
-  if (!username || !password) return customAlert('Enter username and password');
+  if (!username) return customAlert('Enter username');
   
   document.getElementById('errorMessage').style.display = 'none';
 
-  apiFetch('/api/register', { method: 'POST', body: JSON.stringify({ username, password }) })
-    .then((data) => {
-      currentUser = data.user;
-      isAdmin = data.isAdmin;
-      saveSession();
-      establishSession();
-    })
-    .catch((err) => {
-      document.getElementById('errorMessage').innerText = err.message;
+  const { error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true }]);
+  if (error) {
+      document.getElementById('errorMessage').innerText = "Username taken or Error occurred.";
       document.getElementById('errorMessage').style.display = 'block';
-    });
+  } else {
+      window.login();
+  }
 };
 
 window.handleLogout = function() {
@@ -505,18 +485,16 @@ function establishSession() {
   const navLogout = document.getElementById('nav-logout');
   if(navLogout) navLogout.style.display = 'flex';
 
-  renderUserDirectory();
-  renderChatUsersList();
+  fetchUsers();
   updateChatHeader();
   initSocket();
-  fetchUsers();
   fetchMessages(currentChat.type, currentChat.target);
 }
 
 function fetchUsers() {
-  apiFetch('/api/users')
-    .then((data) => {
-      users = data;
+  sb.from('profiles').select('*')
+    .then(({data}) => {
+      users = data || [];
       renderUserDirectory();
       renderChatUsersList();
     }).catch((err) => console.warn(err.message));
@@ -549,7 +527,7 @@ function renderUserDirectory() {
     card.innerHTML = `
       <div class="user-card-top">
         <div>
-          <div class="user-name">${user.displayName}</div>
+          <div class="user-name">${user.display_name || user.username}</div>
           <div class="user-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
         <button class="user-view-btn" onclick="openUserProfile('${user.username}')">Profile</button>
@@ -573,7 +551,7 @@ function renderChatUsersList() {
       item.className = 'chat-user-item';
       item.innerHTML = `
         <div>
-          <div class="chat-user-name">${user.displayName}</div>
+          <div class="chat-user-name">${user.display_name || user.username}</div>
           <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
         <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
@@ -593,7 +571,7 @@ window.openUserProfile = function(username) {
   const isMine = currentUser?.username === profile.username;
   
   let html = `
-    <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.displayName}</h2>
+    <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.display_name || profile.username}</h2>
     <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
     <div class="profile-row"><strong>Birthday:</strong> ${profile.birthday || 'Unknown'}</div>
     <div class="profile-row"><strong>Address:</strong> ${profile.address || 'Unknown'}</div>
@@ -635,7 +613,7 @@ window.editUserProfile = function(username) {
     
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">Display Name</label>
-        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.displayName || ''}">
+        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.display_name || profile.username || ''}">
     </div>
     
     <div style="margin-bottom: 10px;">
@@ -672,7 +650,7 @@ window.editUserProfile = function(username) {
 
 window.saveProfileEdits = function(username) {
   const payload = {
-    displayName: document.getElementById('profile-displayName').value.trim(),
+    display_name: document.getElementById('profile-displayName').value.trim(),
     birthday: document.getElementById('profile-birthday').value.trim(),
     address: document.getElementById('profile-address').value.trim(),
     github: document.getElementById('profile-github').value.trim(),
@@ -680,8 +658,8 @@ window.saveProfileEdits = function(username) {
     note: document.getElementById('profile-note').value.trim(),
   };
   
-  apiFetch(`/api/users/${username}`, { method: 'PUT', body: JSON.stringify(payload) })
-    .then((updatedUser) => {
+  sb.from('profiles').update(payload).eq('username', username)
+    .then(() => {
       const profile = users.find((user) => user.username === username);
       if (profile) Object.assign(profile, payload);
       
@@ -694,7 +672,7 @@ window.saveProfileEdits = function(username) {
 
 window.deleteUserAPI = function(username) {
     customConfirm(`Are you sure you want to completely delete ${username} from the application?`, function() {
-        apiFetch(`/api/users/${username}`, { method: 'DELETE' })
+        sb.from('profiles').delete().eq('username', username)
         .then(() => {
             customAlert(`${username} has been deleted.`);
             closeProfile();
@@ -860,24 +838,18 @@ window.sendMessage = function() {
 };
 
 async function uploadChatAttachment(file) {
-    const { storage } = await import('./firebase-config.js');
-    const { ref, uploadBytesResumable, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js');
+    const filePath = `chat-attachments/${Date.now()}_${file.name}`;
     
-    const uniqueName = Date.now() + '-' + file.name;
-    const storageRef = ref(storage, `chat-attachments/${uniqueName}`);
-    const metadata = { contentType: file.type };
+    const { data, error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
+    if (error) throw error;
     
-    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
-    
-    // We can just await the whole task for chat, or add a progress bar here later if you want
-    const snapshot = await uploadTask;
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
     
     return {
         name: file.name,
         type: file.type,
         size: file.size,
-        url: downloadURL 
+        url: urlData.publicUrl 
     };
 }
 

@@ -1048,3 +1048,40 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCalendar();
   updateClock();
 });
+
+document.getElementById('custom-bg-upload').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Create a temporary URL for the uploaded image/video
+    const localUrl = URL.createObjectURL(file);
+    
+    // Turn off the default animated backgrounds
+    document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
+    document.getElementById('aurora').classList.remove('active');
+    document.getElementById('mountain-svg').classList.remove('active');
+    
+    // Apply the custom background to the body
+    document.body.style.backgroundImage = `url(${localUrl})`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+    
+    customAlert("Custom Background Applied!");
+});
+
+// 2. Weekly Announcement Logic (Saves to local storage)
+window.saveAnnouncement = function() {
+    const noteContent = document.getElementById('announcement-note').value;
+    localStorage.setItem('savedWeeklyAnnouncement', noteContent);
+    customAlert("Weekly Announcement Saved!");
+};
+
+// Auto-load the saved announcement when the page refreshes
+window.addEventListener('DOMContentLoaded', () => {
+    const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
+    if (savedNote) {
+        const noteBox = document.getElementById('announcement-note');
+        if(noteBox) noteBox.value = savedNote;
+    }
+});

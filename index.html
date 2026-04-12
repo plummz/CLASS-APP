@@ -46,7 +46,9 @@
   <div class="particles particle-galaxy"   id="particles-galaxy"></div>
  
   <button id="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()" style="position:fixed; top:20px; left:20px; z-index:2001; background:none; border:none; cursor:pointer;">
-    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
+    <div class="bar" style="width:30px; height:3px; background:white; margin:5px 0;"></div>
   </button>
  
   <div id="page-indicator" style="position:fixed; top:20px; left:75px; font-weight:bold; z-index:2000;">⛰️ First Semester</div>
@@ -295,7 +297,14 @@
         window.loadFilesInFolder();
     };
 
-    // --- MUSIC FOLDERS ---
+    // --- FOLDER VIEWER (CRITICAL: Added back openSubjectFolder so "Browse" works) ---
+    window.openSubjectFolder = (name) => {
+        window.currentFolderId = name;
+        document.getElementById('folder-view-title').innerText = name;
+        document.getElementById('folder-view-modal').style.display = 'flex';
+        window.loadFilesInFolder();
+    };
+
     window.createMusicFolder = async () => {
         const n = prompt("New Folder Name:");
         if (n) await addDoc(collection(db, "folders"), { name: n, uid: auth.currentUser.uid, timestamp: serverTimestamp() });
@@ -314,7 +323,6 @@
         });
     };
 
-    // --- FOLDER VIEWER & PLAYBACK ---
     window.openFolderView = (id, name) => {
         window.currentFolderId = id;
         document.getElementById('folder-view-title').innerText = name;

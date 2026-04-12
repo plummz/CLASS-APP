@@ -549,7 +549,7 @@ function renderChatUsersList() {
 }
 
 /* ============================================================
-   USER PROFILE MODAL & EDIT LOGIC (RESTORED)
+   USER PROFILE MODAL, EDIT, & DELETE LOGIC (RESTORED)
    ============================================================ */
 window.openUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
@@ -561,7 +561,7 @@ window.openUserProfile = function(username) {
   
   const isMine = currentUser?.username === profile.username;
   
-  details.innerHTML = `
+  let html = `
     <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.displayName}</h2>
     <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
     <div class="profile-row"><strong>Birthday:</strong> ${profile.birthday || 'Unknown'}</div>
@@ -569,11 +569,23 @@ window.openUserProfile = function(username) {
     <div class="profile-row"><strong>GitHub:</strong> ${profile.github || '—'}</div>
     <div class="profile-row"><strong>Email:</strong> ${profile.email || '—'}</div>
     <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${profile.note || 'No additional note.'}</div>
-    <div class="profile-actions modal-btn-group">
+    <div class="profile-actions modal-btn-group" style="flex-wrap: wrap;">
       <button class="btn-primary flex-1" onclick="openChat('private', '${profile.username}')">Message</button>
-      ${isMine ? `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>` : ''}
-    </div>
   `;
+
+  // Edit Profile button (if viewing own profile)
+  if (isMine) {
+    html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
+  }
+  
+  // NEW: Admin Delete User button (if Admin viewing someone else)
+  if (isAdmin && !isMine) {
+    html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
+  }
+
+  html += `</div>`; // Close the btn group
+  
+  details.innerHTML = html;
   profilePanel.classList.add('active');
 };
 
@@ -641,15 +653,27 @@ window.saveProfileEdits = function(username) {
   
   apiFetch(`/api/users/${username}`, { method: 'PUT', body: JSON.stringify(payload) })
     .then((updatedUser) => {
-      // Sync local state so it updates instantly
       const profile = users.find((user) => user.username === username);
       if (profile) Object.assign(profile, payload);
       
-      fetchUsers(); // Refresh grid in background
+      fetchUsers(); 
       customAlert("Profile updated successfully!");
-      openUserProfile(username); // Take them back to the view panel
+      openUserProfile(username); 
     })
     .catch((err) => customAlert(err.message));
+};
+
+// NEW: Admin Delete User Function
+window.deleteUserAPI = function(username) {
+    customConfirm(`Are you sure you want to completely delete ${username} from the application?`, function() {
+        apiFetch(`/api/users/${username}`, { method: 'DELETE' })
+        .then(() => {
+            customAlert(`${username} has been deleted.`);
+            closeProfile();
+            fetchUsers(); // Refresh the user directory immediately
+        })
+        .catch(err => customAlert(err.message));
+    });
 };
 
 /* ============================================================
@@ -672,7 +696,6 @@ window.openChat = function(type, target = null) {
   }
   fetchMessages(type, target);
   
-  // If they were on the users page, move them to the chat page smoothly
   if (currentPage !== 'chat') {
       window.goToPage('chat');
   }

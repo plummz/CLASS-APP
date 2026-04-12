@@ -10,10 +10,6 @@
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 
@@ -40,7 +36,7 @@
     <div class="wave"></div><div class="wave"></div><div class="wave"></div>
   </div>
  
-  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-mountain active" id="particles-mountain"></div>
   <div class="particles particle-ocean"    id="particles-ocean"></div>
   <div class="particles particle-aerial"   id="particles-aerial"></div>
   <div class="particles particle-galaxy"   id="particles-galaxy"></div>
@@ -56,42 +52,42 @@
   <nav id="sidebar">
     <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
  
-    <div class="nav-item active" data-page="first" onclick="goToPage('first')">
+    <div class="nav-item active" onclick="goToPage('first')">
       <span class="nav-icon">⛰️</span>
       <div class="nav-text"><span class="nav-label">First Semester</span></div>
     </div>
  
-    <div class="nav-item" data-page="second" onclick="goToPage('second')">
+    <div class="nav-item" onclick="goToPage('second')">
       <span class="nav-icon">🌊</span>
       <div class="nav-text"><span class="nav-label">Second Semester</span></div>
     </div>
  
-    <div class="nav-item" data-page="events" onclick="goToPage('events')">
+    <div class="nav-item" onclick="goToPage('events')">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
     </div>
  
-    <div class="nav-item" data-page="random" onclick="goToPage('random')">
+    <div class="nav-item" onclick="goToPage('random')">
       <span class="nav-icon">🌌</span>
       <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
     </div>
  
-    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
+    <div class="nav-item" onclick="goToPage('chat')">
       <span class="nav-icon">💬</span>
       <div class="nav-text"><span class="nav-label">Chat</span></div>
     </div>
  
-    <div class="nav-item" data-page="users" onclick="goToPage('users')">
+    <div class="nav-item" onclick="goToPage('users')">
       <span class="nav-icon">👥</span>
       <div class="nav-text"><span class="nav-label">Users</span></div>
     </div>
  
-    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
+    <div class="nav-item" onclick="goToPage('calendar')">
       <span class="nav-icon">📅</span>
       <div class="nav-text"><span class="nav-label">Calendar</span></div>
     </div>
  
-    <div class="nav-item" data-page="music" onclick="goToPage('music')">
+    <div class="nav-item" onclick="goToPage('music')">
       <span class="nav-icon">🎵</span>
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
@@ -125,7 +121,7 @@
  
   <div class="page active" id="page-first">
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
-    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT (VIDEO SUPPORT ADDED)</div>
+    <div class="section-label">UPLOAD PDF FOR EACH SUBJECT</div>
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
@@ -149,54 +145,19 @@
 
   <div class="page" id="page-chat" style="display:none;">
     <div class="page-header"><h1 class="page-title">Chat</h1></div>
-    <div class="chat-container">
-      <div class="chat-sidebar">
-        <div class="chat-list">
-          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
-          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
-          <div class="chat-section-label">Private Contacts</div>
-          <div id="chat-user-list" class="chat-user-list"></div>
-        </div>
-      </div>
-      <div class="chat-main">
-        <div class="chat-header" id="chat-header">Select a chat</div>
-        <div class="chat-messages" id="chat-messages"></div>
-        <div class="chat-input">
-          <input type="text" id="message-input" placeholder="Type a message...">
-          <label class="attachment-label" for="attachment-input">Attach</label>
-          <input type="file" id="attachment-input" accept="*/*">
-          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
-          <button onclick="sendMessage()">Send</button>
-        </div>
-      </div>
+    <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; text-align: center;">
+        <p>Use the floating green button on the bottom right to chat globally!</p>
     </div>
   </div>
 
   <div class="page" id="page-users" style="display:none;">
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
-    <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-grid" id="user-grid"></div>
-    <div class="profile-panel" id="profile-panel">
-      <button class="close-profile" onclick="closeProfile()">×</button>
-      <div id="profile-details"></div>
-    </div>
   </div>
 
   <div class="page" id="page-calendar" style="display:none;">
     <div class="page-header"><h1 class="page-title">Calendar</h1></div>
-    <div class="calendar-container">
-      <div class="calendar-header">
-        <button onclick="prevMonth()">Prev</button>
-        <h2 id="month-year">April 2026</h2>
-        <button onclick="nextMonth()">Next</button>
-      </div>
-      <div class="calendar-grid" id="calendar-grid"></div>
-    </div>
-    <div class="announcements">
-      <h3>Weekly Announcements</h3>
-      <textarea id="announcement-note" placeholder="Add notes..."></textarea>
-      <button onclick="saveAnnouncement()">Save</button>
-    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
   <div class="page" id="page-music" style="display:none;">
@@ -231,6 +192,32 @@
   <div id="live-clock"></div>
  
   <script src="script.js"></script>
+
+  <script>
+    // These control the newly added features (Chat, Folders). 
+    // They are completely separate from your menu script.js
+    window.currentFolderId = null;
+
+    window.openSubjectFolder = (name) => {
+        window.currentFolderId = name;
+        document.getElementById('folder-view-title').innerText = name;
+        document.getElementById('folder-view-modal').style.display = 'flex';
+        // If Firebase is loaded, fetch files immediately
+        if (typeof window.loadFilesInFolder === 'function') {
+            window.loadFilesInFolder();
+        }
+    };
+
+    window.closeFolderView = () => {
+        document.getElementById('folder-view-modal').style.display = 'none';
+        document.getElementById('upload-status').innerText = "";
+    };
+
+    window.toggleChatWindow = () => {
+        const win = document.getElementById('chat-window');
+        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+    };
+  </script>
   
   <script type="module" src="firebase-config.js"></script>
   <script type="module">
@@ -238,8 +225,6 @@
     import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
     import { auth, db, storage } from './firebase-config.js';
     import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-    window.currentFolderId = null;
 
     // --- AUTH LOGIC ---
     onAuthStateChanged(auth, (user) => {
@@ -270,7 +255,7 @@
 
     window.handleLogout = () => signOut(auth).then(() => location.reload());
 
-    // --- REAL CLOUD STORAGE UPLOAD ---
+    // --- CLOUD STORAGE UPLOAD ---
     document.getElementById('upload-btn-storage').onclick = async () => {
         const fileInput = document.getElementById('folder-specific-upload');
         const status = document.getElementById('upload-status');
@@ -297,14 +282,7 @@
         window.loadFilesInFolder();
     };
 
-    // --- FOLDER VIEWER (CRITICAL: Added back openSubjectFolder so "Browse" works) ---
-    window.openSubjectFolder = (name) => {
-        window.currentFolderId = name;
-        document.getElementById('folder-view-title').innerText = name;
-        document.getElementById('folder-view-modal').style.display = 'flex';
-        window.loadFilesInFolder();
-    };
-
+    // --- MUSIC FOLDERS ---
     window.createMusicFolder = async () => {
         const n = prompt("New Folder Name:");
         if (n) await addDoc(collection(db, "folders"), { name: n, uid: auth.currentUser.uid, timestamp: serverTimestamp() });
@@ -318,23 +296,12 @@
         const snap = await getDocs(q);
         grid.innerHTML = "";
         snap.forEach(d => {
-            grid.innerHTML += `<div class="subject-card" onclick="openFolderView('${d.id}', '${d.data().name}')" style="cursor:pointer; border:1px solid #00ff88; padding:15px; border-radius:10px; text-align:center;">
+            grid.innerHTML += `<div class="subject-card" onclick="window.openFolderView('${d.id}', '${d.data().name}')" style="cursor:pointer; border:1px solid #00ff88; padding:15px; border-radius:10px; text-align:center;">
                 <div style="font-size:30px;">📁</div><div style="color:white; font-weight:bold; margin-top:5px;">${d.data().name}</div></div>`;
         });
     };
 
-    window.openFolderView = (id, name) => {
-        window.currentFolderId = id;
-        document.getElementById('folder-view-title').innerText = name;
-        document.getElementById('folder-view-modal').style.display = 'flex';
-        window.loadFilesInFolder();
-    };
-
-    window.closeFolderView = () => {
-        document.getElementById('folder-view-modal').style.display = 'none';
-        document.getElementById('upload-status').innerText = "";
-    };
-
+    // --- FOLDER VIEWER FETCHING ---
     window.loadFilesInFolder = async () => {
         const list = document.getElementById('folder-file-list');
         list.innerHTML = "Fetching files from cloud...";
@@ -343,20 +310,22 @@
         list.innerHTML = "";
         snap.forEach(d => {
             const f = d.data();
+            // Escaping quotes just in case your filenames contain apostrophes
+            const safeName = f.fileName.replace(/'/g, "\\'");
             list.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:10px; background:rgba(255,255,255,0.1); padding:10px; border-radius:5px;">
                 <span style="color:white; font-size:12px; word-break: break-all; margin-right: 10px;">📄 ${f.fileName}</span>
-                <button onclick="playMedia('${f.fileUrl}', '${f.fileName}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold; min-width: 80px;">Play/Open</button></div>`;
+                <button onclick="window.playMedia('${f.fileUrl}', '${safeName}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-weight:bold; min-width: 80px;">Play/Open</button></div>`;
         });
     };
 
     window.playMedia = (url, name) => {
         const player = document.getElementById('audio-player');
         if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-            player.src = url;
+            player.src = url; 
             player.play();
             document.getElementById('now-playing-text').innerText = "Playing: " + name;
         } else {
-            window.open(url, '_blank');
+            window.open(url, '_blank'); 
         }
     };
 
@@ -379,12 +348,7 @@
         loop();
     };
 
-    // --- FLOATING CHAT FIREBASE LOGIC ---
-    window.toggleChatWindow = () => {
-        const win = document.getElementById('chat-window');
-        win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
-    };
-
+    // --- FLOATING CHAT LOGIC ---
     window.sendPrivateMessage = async () => {
         const input = document.getElementById('private-chat-input');
         const msg = input.value.trim();
@@ -400,7 +364,6 @@
         } catch(e) { console.error(e); }
     };
 
-    // Real-time Chat Listener
     onSnapshot(query(collection(db, "messages"), orderBy("timestamp", "asc")), (snap) => {
         const display = document.getElementById('private-messages-display');
         if(!display) return;
@@ -427,7 +390,7 @@
     </div>
     <div style="padding: 10px; display: flex; gap: 8px; background: #16213e; border-top: 1px solid #333;">
         <input type="text" id="private-chat-input" placeholder="Message..." style="flex: 1; padding: 10px; border-radius: 20px; border: none; outline: none; background: #1a1a2e; color: white;">
-        <button onclick="sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
+        <button onclick="window.sendPrivateMessage()" style="background: #00ff88; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; justify-content: center; align-items: center;">🚀</button>
     </div>
   </div>
 </body>

@@ -156,28 +156,16 @@
                 <button class="browse-btn" onclick="openSubjectFolder('SS 1')">BROWSE</button>
             </div>
             <div class="subject-card">
-                <span class="subject-icon">📐</span>
-                <h3>Math 0</h3>
-                <p>Sir Jason Saludes</p>
-                <button class="browse-btn" onclick="openSubjectFolder('Math 0-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">📖</span>
-                <h3>English +</h3>
-                <p>Sir Winbert Abrenica</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English Plus-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
-                <span class="subject-icon">✏️</span>
-                <h3>English 1</h3>
-                <p>Maam Lovely Joy Salas</p>
-                <button class="browse-btn" onclick="openSubjectFolder('English 1-2')">BROWSE</button>
-            </div>
-            <div class="subject-card">
                 <span class="subject-icon">🏃</span>
                 <h3>Pathfit 1</h3>
                 <p>Sir Mariana Bayana</p>
                 <button class="browse-btn" onclick="openSubjectFolder('Pathfit 1')">BROWSE</button>
+            </div>
+            <div class="subject-card">
+                <span class="subject-icon">💻</span>
+                <h3>ITCC 111</h3>
+                <p>Maam Krystal Sayca</p>
+                <button class="browse-btn" onclick="openSubjectFolder('ITCC 111')">BROWSE</button>
             </div>
         </div>
     </div>
@@ -236,7 +224,7 @@
             }
         });
 
-        // MENU FIX
+        // MENU SYSTEM
         window.toggleMenu = () => {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
@@ -266,7 +254,7 @@
 
         window.handleLogout = () => signOut(auth).then(() => location.reload());
 
-        // STORAGE LOGIC
+        // STORAGE CLOUD LOGIC
         document.getElementById('upload-btn-storage').onclick = async () => {
             const fileInput = document.getElementById('folder-specific-upload');
             const status = document.getElementById('upload-status');
@@ -288,7 +276,8 @@
                     });
                 } catch (e) { console.error(e); }
             }
-            status.innerText = "Success!";
+            status.innerText = "Success! Files are live.";
+            fileInput.value = "";
             window.loadFilesInFolder();
         };
 
@@ -301,7 +290,7 @@
         };
 
         window.createMusicFolder = async () => {
-            const n = prompt("Folder Name:");
+            const n = prompt("New Folder Name:");
             if (n) await addDoc(collection(db, "folders"), { name: n, createdBy: auth.currentUser.uid, timestamp: serverTimestamp() });
             window.loadFolders();
         };
@@ -350,6 +339,7 @@
             }
         };
 
+        // AUDIO VISUALIZER
         window.startVisualizer = (audio) => {
             if (!window.audioCtx) {
                 window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();

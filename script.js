@@ -465,7 +465,6 @@ window.handleLogout = function() {
 };
 
 function establishSession() {
-  // FIXED: Uses style.display to hide the Auth Modal properly
   const authModal = document.getElementById('auth-modal');
   if(authModal) authModal.style.display = 'none';
   
@@ -523,7 +522,7 @@ function renderUserDirectory() {
       </div>
       <div class="user-meta">GitHub: ${user.github || '—'}</div>
       <div class="user-meta">Email: ${user.email || '—'}</div>
-      <div class="user-note">${user.note}</div>
+      <div class="user-note">${user.note || ''}</div>
     `;
     grid.appendChild(card);
   });
@@ -549,6 +548,113 @@ function renderChatUsersList() {
     });
 }
 
+/* ============================================================
+   USER PROFILE MODAL & EDIT LOGIC (RESTORED)
+   ============================================================ */
+window.openUserProfile = function(username) {
+  const profile = users.find((user) => user.username === username);
+  if (!profile) return;
+  
+  const profilePanel = document.getElementById('profile-panel');
+  const details = document.getElementById('profile-details');
+  if (!profilePanel || !details) return;
+  
+  const isMine = currentUser?.username === profile.username;
+  
+  details.innerHTML = `
+    <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.displayName}</h2>
+    <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
+    <div class="profile-row"><strong>Birthday:</strong> ${profile.birthday || 'Unknown'}</div>
+    <div class="profile-row"><strong>Address:</strong> ${profile.address || 'Unknown'}</div>
+    <div class="profile-row"><strong>GitHub:</strong> ${profile.github || '—'}</div>
+    <div class="profile-row"><strong>Email:</strong> ${profile.email || '—'}</div>
+    <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${profile.note || 'No additional note.'}</div>
+    <div class="profile-actions modal-btn-group">
+      <button class="btn-primary flex-1" onclick="openChat('private', '${profile.username}')">Message</button>
+      ${isMine ? `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>` : ''}
+    </div>
+  `;
+  profilePanel.classList.add('active');
+};
+
+window.closeProfile = function() {
+  const panel = document.getElementById('profile-panel');
+  if (panel) panel.classList.remove('active');
+};
+
+window.editUserProfile = function(username) {
+  const profile = users.find((user) => user.username === username);
+  if (!profile) return;
+  
+  const details = document.getElementById('profile-details');
+  if (!details) return;
+  
+  details.innerHTML = `
+    <h2 class="modal-title text-blue" style="margin-bottom: 15px;">Edit Profile</h2>
+    
+    <div style="margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #00d4ff;">Display Name</label>
+        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.displayName || ''}">
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #00d4ff;">Birthday</label>
+        <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.birthday || ''}">
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #00d4ff;">Address</label>
+        <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.address || ''}">
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #00d4ff;">GitHub URL</label>
+        <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.github || ''}">
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #00d4ff;">Email</label>
+        <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.email || ''}">
+    </div>
+    
+    <div style="margin-bottom: 15px;">
+        <label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
+        <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${profile.note || ''}</textarea>
+    </div>
+    
+    <div class="profile-actions modal-btn-group">
+      <button class="btn-primary flex-1" onclick="saveProfileEdits('${profile.username}')">Save</button>
+      <button class="btn-outline-red flex-1" onclick="openUserProfile('${profile.username}')">Cancel</button>
+    </div>
+  `;
+};
+
+window.saveProfileEdits = function(username) {
+  const payload = {
+    displayName: document.getElementById('profile-displayName').value.trim(),
+    birthday: document.getElementById('profile-birthday').value.trim(),
+    address: document.getElementById('profile-address').value.trim(),
+    github: document.getElementById('profile-github').value.trim(),
+    email: document.getElementById('profile-email').value.trim(),
+    note: document.getElementById('profile-note').value.trim(),
+  };
+  
+  apiFetch(`/api/users/${username}`, { method: 'PUT', body: JSON.stringify(payload) })
+    .then((updatedUser) => {
+      // Sync local state so it updates instantly
+      const profile = users.find((user) => user.username === username);
+      if (profile) Object.assign(profile, payload);
+      
+      fetchUsers(); // Refresh grid in background
+      customAlert("Profile updated successfully!");
+      openUserProfile(username); // Take them back to the view panel
+    })
+    .catch((err) => customAlert(err.message));
+};
+
+/* ============================================================
+   CHAT LOGIC
+   ============================================================ */
 function updateChatHeader() {
   const header = document.getElementById('chat-header');
   if (!header) return;
@@ -565,6 +671,11 @@ window.openChat = function(type, target = null) {
     socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, target) : null, user: currentUser });
   }
   fetchMessages(type, target);
+  
+  // If they were on the users page, move them to the chat page smoothly
+  if (currentPage !== 'chat') {
+      window.goToPage('chat');
+  }
 };
 
 function getCurrentHistory() {
@@ -889,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', () => {
     currentUser = storedUser;
     establishSession();
   } else {
-    // FIXED: Correctly opens the Auth Modal using style.display
     const modal = document.getElementById('auth-modal');
     if(modal) modal.style.display = 'flex';
   }

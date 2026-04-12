@@ -3,18 +3,7 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: function (req, file, cb) {
-    // Extracts the extension (e.g., .pdf) and attaches it to the saved file
-    const ext = path.extname(file.originalname);
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'file-' + uniqueSuffix + ext);
-  }
-});
-const upload = multer({ storage: storage });
+const multer = require('multer');
 const { Server } = require('socket.io');
 
 const ADMIN_USERNAME = 'Marquillero';
@@ -26,6 +15,19 @@ const PORT = process.env.PORT || 3000;
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
+
+// MULTER CONFIG: Preserves original file extensions (.pdf, .mp3, etc.)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'file-' + uniqueSuffix + ext);
+  }
+});
+const upload = multer({ storage: storage });
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {
@@ -49,8 +51,6 @@ function saveData(data) {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
-
-const upload = multer({ dest: UPLOAD_DIR });
 
 app.use(cors());
 app.use(express.json());
@@ -126,7 +126,7 @@ function emitMessage(chat, target, message) {
   io.to(chat).emit('message', payload);
 }
 
-// --- NEW API: FOLDERS & FILES ---
+// --- FOLDERS & FILES API ---
 app.get('/api/folders', (req, res) => {
   const parent = req.query.parent;
   res.json(state.folders.filter(f => f.parent === parent));
@@ -169,8 +169,8 @@ app.delete('/api/files/:id', (req, res) => {
   saveData(state);
   res.json({ success: true });
 });
-// --------------------------------
 
+// --- AUTH & USERS API ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -209,6 +209,32 @@ app.get('/api/users', (req, res) => {
   res.json(safeUsers());
 });
 
+app.put('/api/users/:username', (req, res) => {
+  const username = req.params.username;
+  const user = findUser(username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  Object.assign(user, req.body);
+  saveData(state);
+  io.emit('users', safeUsers());
+  res.json(user);
+});
+
+// NEW API: DELETE USER
+app.delete('/api/users/:username', (req, res) => {
+  const username = req.params.username;
+  const initialLength = state.users.length;
+  state.users = state.users.filter(u => u.username !== username);
+  
+  if (state.users.length === initialLength) {
+      return res.status(404).json({ error: 'User not found' });
+  }
+  
+  saveData(state);
+  io.emit('users', safeUsers()); 
+  res.json({ success: true });
+});
+
+// --- CHAT & FILE UPLOAD API ---
 app.get('/api/messages', (req, res) => {
   const { chat, target } = req.query;
   if (!chat) return res.status(400).json({ error: 'chat query required' });
@@ -255,16 +281,6 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
   const fileUrl = `/uploads/${req.file.filename}`;
   res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: fileUrl });
-});
-
-app.put('/api/users/:username', (req, res) => {
-  const username = req.params.username;
-  const user = findUser(username);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  Object.assign(user, req.body);
-  saveData(state);
-  io.emit('users', safeUsers());
-  res.json(user);
 });
 
 app.put('/api/messages/:id', (req, res) => {

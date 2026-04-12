@@ -2,7 +2,6 @@
    STYLE.CSS — My School Portfolio
    ============================================================ */
  
- 
 /* ── CSS VARIABLES ── */
 :root {
   --mountain-glow:   #b8f0b8;
@@ -29,7 +28,6 @@
   --dark-glow:       #333;
 }
  
- 
 /* ── RESET & BASE ── */
 * {
   margin: 0;
@@ -44,7 +42,6 @@ body {
   min-height: 100vh;
 }
  
- 
 /* ── STARFIELD CANVAS ── */
 #starfield {
   position: fixed;
@@ -53,8 +50,50 @@ body {
   z-index: 0;
 }
  
- 
-/* ── INSTALL BUTTON ── */
+/* ── UTILITY CLASSES (Replaced Inline Styles) ── */
+.hidden { display: none !important; }
+.flex-1 { flex: 1; }
+.text-center { text-align: center; }
+.text-white { color: white; }
+.text-green { color: var(--neon-green); }
+.text-blue { color: var(--neon-blue); }
+.text-yellow { color: #ffd700; }
+.text-red { color: #ff6b6b; }
+.mt-10 { margin-top: 10px; }
+.full-width { width: 100%; }
+.pointer-auto { pointer-events: auto; }
+.align-left { text-align: left; }
+
+/* ── UI ELEMENTS ── */
+#install-btn,
+#custom-bg-upload {
+    display: none;
+}
+
+.custom-bg-btn {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 1000;
+    background: var(--menu-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 6px 12px;
+    backdrop-filter: blur(20px);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.custom-bg-btn:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+    color: white;
+}
+
 .install-btn {
   position: fixed;
   bottom: 1.2rem;
@@ -127,7 +166,6 @@ body {
     linear-gradient(180deg, #02000a 0%, #060010 25%, #0d0025 50%, #150038 75%, #1a0044 100%);
 }
  
- 
 /* ── AURORA EFFECT ── */
 .aurora {
   position: fixed;
@@ -155,7 +193,6 @@ body {
   100% { transform: scale(1.1) rotate(2deg); }
 }
  
- 
 /* ── MOUNTAIN SILHOUETTE ── */
 .mountain-silhouette {
   position: fixed;
@@ -171,7 +208,6 @@ body {
 .mountain-silhouette.active {
   opacity: 0.6;
 }
- 
  
 /* ── OCEAN WAVES ── */
 .wave-container {
@@ -204,7 +240,6 @@ body {
 @keyframes wave1 { 0% { transform: translateX(0); }   100% { transform: translateX(25%); } }
 @keyframes wave2 { 0% { transform: translateX(0); }   100% { transform: translateX(-25%); } }
  
- 
 /* ============================================================
    PARTICLE SYSTEMS
    ============================================================ */
@@ -220,7 +255,6 @@ body {
   opacity: 1;
 }
  
-/* Mountain: falling leaves */
 .particle-mountain .leaf {
   position: absolute;
   width: 8px;
@@ -237,7 +271,6 @@ body {
   100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
  
-/* Ocean: bubbles */
 .particle-ocean .bubble {
   position: absolute;
   border-radius: 50%;
@@ -252,7 +285,6 @@ body {
   100% { transform: translateY(-20px) scale(1.3); opacity: 0; }
 }
  
-/* Aerial: sparks */
 .particle-aerial .spark {
   position: absolute;
   width: 4px;
@@ -267,7 +299,6 @@ body {
   50%       { transform: scale(1) translateY(-30px); opacity: 1; }
 }
  
-/* Galaxy: twinkling stars */
 .particle-galaxy .star {
   position: absolute;
   background: white;
@@ -279,7 +310,6 @@ body {
   50%       { opacity: 1;   transform: scale(1.5); box-shadow: 0 0 8px var(--galaxy-primary); }
 }
  
- 
 /* ============================================================
    HAMBURGER MENU BUTTON
    ============================================================ */
@@ -287,7 +317,7 @@ body {
   position: fixed;
   top: 18px;
   left: 18px;
-  z-index: 1000;
+  z-index: 2001;
   width: 52px;
   height: 52px;
   background: var(--menu-bg);
@@ -309,24 +339,23 @@ body {
 }
  
 #menu-toggle .bar {
-  width: 22px;
-  height: 2px;
+  width: 30px;
+  height: 3px;
   background: white;
   border-radius: 2px;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: center;
 }
-#menu-toggle.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+#menu-toggle.open .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
 #menu-toggle.open .bar:nth-child(2) { opacity: 0; transform: scaleX(0); }
-#menu-toggle.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+#menu-toggle.open .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
  
- 
-/* ── PAGE INDICATOR (top left label) ── */
+/* ── PAGE INDICATOR ── */
 #page-indicator {
   position: fixed;
   top: 18px;
   left: 80px;
-  z-index: 999;
+  z-index: 2000;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
   border-radius: 10px;
@@ -342,7 +371,6 @@ body {
   white-space: nowrap;
 }
  
- 
 /* ============================================================
    SIDEBAR
    ============================================================ */
@@ -352,7 +380,7 @@ body {
   left: -320px;
   width: 300px;
   height: 100vh;
-  z-index: 999;
+  z-index: 1999;
   background: rgba(4, 4, 20, 0.97);
   backdrop-filter: blur(30px);
   border-right: 1px solid var(--glass-border);
@@ -361,6 +389,7 @@ body {
   flex-direction: column;
   padding-top: 90px;
   box-shadow: 4px 0 40px rgba(0, 0, 0, 0.6);
+  overflow-y: auto;
 }
 #sidebar.open {
   left: 0;
@@ -400,14 +429,12 @@ body {
 .nav-item.active::before {
   opacity: 1;
 }
- 
-/* Nav hover background per page */
+
 .nav-item[data-page="first"]::before  { background: linear-gradient(90deg, rgba(74, 124, 89, 0.2), transparent); }
 .nav-item[data-page="second"]::before { background: linear-gradient(90deg, rgba(0, 102, 204, 0.2), transparent); }
 .nav-item[data-page="events"]::before { background: linear-gradient(90deg, rgba(255, 107, 53, 0.2), transparent); }
 .nav-item[data-page="random"]::before { background: linear-gradient(90deg, rgba(155, 93, 229, 0.2), transparent); }
  
-/* Active border per page */
 .nav-item[data-page="first"].active  { border-left-color: var(--mountain-accent); }
 .nav-item[data-page="second"].active { border-left-color: var(--ocean-primary); }
 .nav-item[data-page="events"].active { border-left-color: var(--aerial-primary); }
@@ -432,6 +459,15 @@ body {
   color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.05em;
 }
+
+#nav-logout {
+    display: none;
+    margin-top: auto; 
+    padding-bottom: 20px;
+}
+#nav-logout:hover {
+    background: rgba(255, 77, 77, 0.2); 
+}
  
 .sidebar-footer {
   margin-top: auto;
@@ -443,12 +479,11 @@ body {
   font-family: 'Exo 2', sans-serif;
 }
  
- 
 /* ── OVERLAY ── */
 #overlay {
   position: fixed;
   inset: 0;
-  z-index: 998;
+  z-index: 1998;
   background: rgba(0, 0, 0, 0.5);
   opacity: 0;
   pointer-events: none;
@@ -459,7 +494,6 @@ body {
   opacity: 1;
   pointer-events: all;
 }
- 
  
 /* ============================================================
    PAGES
@@ -507,18 +541,10 @@ body {
 }
  
 /* Page color themes */
-#page-first  .page-header,
-#page-first  .page-title  { color: var(--mountain-glow); }
- 
-#page-second .page-header,
-#page-second .page-title  { color: var(--ocean-glow); }
- 
-#page-events .page-header,
-#page-events .page-title  { color: var(--aerial-glow); }
- 
-#page-random .page-header,
-#page-random .page-title  { color: var(--galaxy-glow); }
- 
+#page-first  .page-header, #page-first  .page-title  { color: var(--mountain-glow); }
+#page-second .page-header, #page-second .page-title  { color: var(--ocean-glow); }
+#page-events .page-header, #page-events .page-title  { color: var(--aerial-glow); }
+#page-random .page-header, #page-random .page-title  { color: var(--galaxy-glow); }
  
 /* ── SECTION LABEL ── */
 .section-label {
@@ -543,9 +569,8 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
  
- 
 /* ============================================================
-   SUBJECT CARDS (First & Second Semester)
+   SUBJECT & FOLDER CARDS
    ============================================================ */
 .upload-grid {
   display: grid;
@@ -566,30 +591,10 @@ body {
   overflow: hidden;
   cursor: pointer;
 }
-.subject-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.subject-card:hover::before { opacity: 1; }
-.subject-card:hover         { transform: translateY(-4px); }
- 
+.subject-card:hover { transform: translateY(-4px); }
 #page-first  .subject-card:hover { border-color: var(--mountain-accent); box-shadow: 0 8px 32px rgba(74, 124, 89, 0.35); }
 #page-second .subject-card:hover { border-color: var(--ocean-primary);   box-shadow: 0 8px 32px rgba(0, 212, 255, 0.25); }
- 
-/* Hidden file input covers the whole card */
-.subject-card input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
- 
+
 .card-icon {
   font-size: 26px;
   margin-bottom: 10px;
@@ -607,72 +612,14 @@ body {
   letter-spacing: 0.03em;
   margin-bottom: 3px;
 }
- 
 .card-teacher {
   font-size: 12px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 0.03em;
-  margin-bottom: 12px;
   font-style: italic;
   line-height: 1.4;
 }
- 
-.card-upload-area {
-  border-top: 1px solid rgba(255, 255, 255, 0.09);
-  padding-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
- 
-.upload-btn-label {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  white-space: nowrap;
-  pointer-events: none;
-  flex-shrink: 0;
-}
-#page-first  .upload-btn-label { color: var(--mountain-glow); background: rgba(74, 124, 89, 0.15); }
-#page-second .upload-btn-label { color: var(--ocean-glow);    background: rgba(0, 212, 255, 0.1); }
- 
-.file-name-display {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
- 
-.uploaded-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 200, 100, 0.18);
-  border: 1px solid rgba(0, 200, 100, 0.5);
-  color: #00ff88;
-  font-size: 10px;
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 2px 7px;
-  border-radius: 6px;
-  display: none;
-  text-transform: uppercase;
-}
- 
- 
-/* ============================================================
-   FOLDER CARDS (Event & Random Pictures)
-   ============================================================ */
+
 .folder-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -695,11 +642,9 @@ body {
   justify-content: flex-end;
 }
 .folder-card:hover { transform: translateY(-6px) scale(1.02); }
- 
 #page-events .folder-card:hover { box-shadow: 0 12px 40px rgba(255, 215, 0, 0.3);  border-color: var(--aerial-primary); }
 #page-random .folder-card:hover { box-shadow: 0 12px 40px rgba(199, 125, 255, 0.3); border-color: var(--galaxy-primary); }
  
-/* Unique anime-inspired gradient per folder */
 .folder-card:nth-child(1)  .folder-bg { background: linear-gradient(135deg, #1a0030 0%, #6a0dad 45%, #ff6b00 100%); }
 .folder-card:nth-child(2)  .folder-bg { background: linear-gradient(135deg, #0d0d0d 0%, #ff6200 45%, #ffcc00 100%); }
 .folder-card:nth-child(3)  .folder-bg { background: linear-gradient(135deg, #000510 0%, #1c1c2e 45%, #c0392b 100%); }
@@ -721,36 +666,12 @@ body {
   inset: 0;
   transition: transform 0.4s ease;
 }
-.folder-card:hover .folder-bg {
-  transform: scale(1.07);
-}
- 
-/* Dot pattern overlay */
-.folder-pattern {
-  position: absolute;
-  inset: 0;
-  opacity: 0.15;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
- 
-/* Glowing orb decoration */
-.folder-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(18px);
-  opacity: 0.45;
-}
-.folder-card:nth-child(odd)  .folder-orb { top: 8%;   right: 12%; width: 55px; height: 55px; background: rgba(255, 255, 255, 0.22); }
-.folder-card:nth-child(even) .folder-orb { bottom: 28%; left: 8%;  width: 45px; height: 45px; background: rgba(255, 200, 100, 0.28); }
- 
-/* Dark gradient at bottom so text is readable */
+.folder-card:hover .folder-bg { transform: scale(1.07); }
 .folder-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(0deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.08) 60%, transparent 100%);
 }
- 
 .folder-info {
   position: relative;
   z-index: 2;
@@ -759,7 +680,6 @@ body {
   flex-direction: column;
   gap: 4px;
 }
- 
 .folder-name {
   font-family: 'Exo 2', sans-serif;
   font-size: 15px;
@@ -768,211 +688,166 @@ body {
   letter-spacing: 0.05em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
- 
-.folder-upload-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 4px;
-}
- 
-.folder-btn {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 5px 10px;
-  border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
- 
-.folder-filename {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
- 
-/* Hidden file input covers the whole card */
-.folder-card input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  z-index: 3;
-}
- 
-.folder-uploaded {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  background: rgba(0, 200, 100, 0.25);
-  border: 1px solid rgba(0, 255, 120, 0.6);
-  color: #00ff99;
-  font-size: 10px;
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 2px 8px;
-  border-radius: 6px;
-  display: none;
-  text-transform: uppercase;
-}
- 
-/* Image preview fills card after upload */
-.folder-preview {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  object-fit: cover;
-  width: 100%;
-  height: 100%;
-  display: none;
-  border-radius: 18px;
-}
- 
- 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar        { width: 6px; }
-::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
 
 /* ============================================================
-   NEW FEATURES: MODALS, CHAT, CALENDAR, MUSIC, ETC.
+   SHARED UI: MODALS & FORMS (Replaces Inline Styles)
    ============================================================ */
-
-/* Custom BG Upload Button */
-.custom-bg-btn {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 1000;
-  background: var(--menu-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 6px 12px;
-  backdrop-filter: blur(20px);
-  font-family: 'Exo 2', sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
-  cursor: pointer;
-  transition: all 0.3s ease;
+.custom-modal-overlay {
+    position: fixed;
+    z-index: 15000;
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: none; /* Changed from inline style */
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
 }
-.custom-bg-btn:hover {
-  border-color: rgba(255, 255, 255, 0.35);
-  color: white;
+.custom-modal-overlay.blur-bg {
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+}
+.custom-modal-overlay.high-z {
+    z-index: 99999;
 }
 
-/* Auth Modal */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  background: var(--modal-bg);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
+.custom-modal-box {
+    background: #1a1a2e;
+    width: 90%;
+    max-width: 800px;
+    padding: 30px;
+    border-radius: 20px;
+    position: relative;
 }
-.modal.active {
-  opacity: 1;
-  pointer-events: all;
+.custom-modal-box.small-box {
+    max-width: 350px;
+    padding: 25px;
+    text-align: center;
 }
-.modal-content {
-  background: var(--menu-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 30px;
-  max-width: 400px;
-  width: 90%;
+
+.auth-modal-box {
+    z-index: 10001; 
+    pointer-events: auto;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.border-red { border: 1px solid #ff6b6b; }
+.border-blue { border: 1px solid var(--neon-blue); }
+.border-yellow { border: 1px solid #ffd700; }
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px; right: 15px;
+    font-size: 28px;
+    background: none; color: white; border: none;
+    cursor: pointer;
+}
+.modal-back-btn {
+    position: absolute;
+    top: 15px; left: 15px;
+    font-size: 14px;
+    background: none; color: var(--neon-green); border: none;
+    cursor: pointer;
+}
+
+.modal-title {
+    font-family: 'Cinzel Decorative', serif;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+.modal-title.spaced { margin-top: 20px; }
+.modal-text { color: white; margin-bottom: 20px; font-size: 14px; }
+
+.modal-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+}
+.input-group .modal-input { margin-bottom: 15px; }
+.input-group:last-of-type .modal-input { margin-bottom: 20px; }
+
+.modal-btn-group { display: flex; gap: 10px; }
+
+.btn-primary {
+    background: var(--neon-green);
+    color: black;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.btn-primary:hover { background: white; }
+.btn-large { padding: 15px 30px; font-size: 18px; }
+
+.btn-secondary {
+    background: transparent;
+    color: var(--neon-green);
+    border: 1px solid var(--neon-green);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-blue { background: var(--neon-blue); color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-red { background: #ff6b6b; color: black; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-yellow { background: #ffd700; color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-outline-red { background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+/* FOLDER SPECIFIC UI */
+.btn-create-folder { padding: 10px 15px; margin-bottom: 20px; }
+.folder-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.file-upload-area {
+    background: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+.file-upload-input { color: white; max-width: 250px; }
+.upload-status-text { color: var(--neon-green); font-size: 12px; margin-top: 10px; }
+
+.file-list-container {
+    max-height: 40vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.error-msg { 
+  color: #ff6b6b; 
+  display: none; 
+  margin-top: 15px; 
+  font-size: 0.85em; 
   text-align: center;
-  backdrop-filter: blur(20px);
-}
-.modal-content h2 {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: 24px;
-  color: white;
-  margin-bottom: 20px;
-}
-.modal-content input {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  font-family: 'Rajdhani', sans-serif;
-}
-.modal-content button {
-  margin: 10px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  background: var(--neon-green);
-  color: black;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.modal-content button:hover {
-  background: white;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 8px;
+  border-radius: 5px;
 }
 
-/* Admin Panel */
-.admin-panel {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2001;
-  background: var(--menu-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 20px;
-  backdrop-filter: blur(20px);
-  text-align: center;
-}
-.admin-panel h3 {
-  font-family: 'Cinzel Decorative', serif;
-  color: white;
-  margin-bottom: 15px;
-}
-.admin-panel button {
-  margin: 5px;
-  padding: 8px 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.admin-panel button:hover {
-  background: var(--neon-pink);
-  color: black;
-}
-
-/* Chat System */
+/* ============================================================
+   CHAT SYSTEM
+   ============================================================ */
 .chat-container {
   display: flex;
   height: 70vh;
@@ -1021,7 +896,7 @@ body {
   padding: 10px;
   border-top: 1px solid var(--glass-border);
 }
-..chat-input input {
+.chat-input input {
   flex: 1;
   padding: 8px;
   border: 1px solid var(--glass-border);
@@ -1040,9 +915,7 @@ body {
   cursor: pointer;
   margin-left: 10px;
 }
-.chat-input input#attachment-input {
-  display: none;
-}
+.chat-input input#attachment-input { display: none; }
 .chat-input .attachment-selected {
   margin-left: 10px;
   color: rgba(255, 255, 255, 0.65);
@@ -1051,15 +924,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 180px;
-}
-.chat-input button {
-  margin-left: 10px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--neon-green);
-  color: black;
-  cursor: pointer;
 }
 .chat-actions {
   display: flex;
@@ -1092,10 +956,7 @@ body {
   border-color: #00ff88;
   background: rgba(0, 255, 136, 0.12);
 }
-.chat-message .chat-sender {
-  font-weight: 700;
-  margin-right: 6px;
-}
+.chat-message .chat-sender { font-weight: 700; margin-right: 6px; }
 .chat-message .chat-time {
   display: inline-block;
   margin-left: 10px;
@@ -1108,31 +969,11 @@ body {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
 }
-.chat-text {
-  margin-top: 8px;
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-.chat-attachment {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.chat-attachment a,
-.chat-attachment video,
-.chat-attachment img {
-  max-width: 100%;
-  border-radius: 12px;
-}
-.chat-attachment video,
-.chat-attachment img {
-  display: block;
-}
-.chat-attachment-link {
-  color: var(--neon-blue);
-  text-decoration: underline;
-}
+.chat-text { margin-top: 8px; white-space: pre-wrap; line-height: 1.5; }
+.chat-attachment { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.chat-attachment a, .chat-attachment video, .chat-attachment img { max-width: 100%; border-radius: 12px; }
+.chat-attachment video, .chat-attachment img { display: block; }
+.chat-attachment-link { color: var(--neon-blue); text-decoration: underline; }
 .chat-system-message {
   margin-bottom: 12px;
   padding: 10px 14px;
@@ -1141,7 +982,6 @@ body {
   color: rgba(255, 255, 255, 0.7);
   font-style: italic;
 }
-
 .chat-header {
   padding: 14px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -1150,51 +990,36 @@ body {
   letter-spacing: 0.02em;
   background: rgba(255, 255, 255, 0.03);
 }
-
 .chat-section-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-  margin: 16px 0 6px;
-  letter-spacing: 0.18em;
+  font-size: 11px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
+  margin: 16px 0 6px; letter-spacing: 0.18em;
 }
-
-.chat-user-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+.chat-user-list { display: flex; flex-direction: column; gap: 10px; }
 .chat-user-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px; background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.chat-user-name { color: white; font-weight: 600; margin-bottom: 4px; }
+.chat-status { font-size: 11px; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.65); }
+.chat-status.online { color: #00ff88; }
+.chat-status.offline { color: rgba(255, 255, 255, 0.45); }
+
+.chat-bauble {
+    position: fixed;
+    bottom: 30px; right: 30px;
+    width: 60px; height: 60px;
+    background: var(--neon-green);
+    border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 24px; cursor: pointer;
+    z-index: 21000;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
-.chat-user-name {
-  color: white;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.chat-status {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.chat-status.online {
-  color: #00ff88;
-}
-
-.chat-status.offline {
-  color: rgba(255, 255, 255, 0.45);
-}
-
+/* ============================================================
+   USER DIRECTORY
+   ============================================================ */
 .user-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1202,7 +1027,6 @@ body {
   max-width: 1100px;
   margin: 0 auto;
 }
-
 .user-card {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1211,557 +1035,122 @@ body {
   backdrop-filter: blur(14px);
   transition: transform 0.33s ease, border-color 0.33s ease;
 }
-
 .user-card:hover {
   transform: translateY(-4px);
   border-color: rgba(0, 255, 136, 0.25);
 }
-
 .user-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 14px;
 }
-
-.user-name {
-  font-size: 18px;
-  font-weight: 700;
-  color: white;
+.user-name { font-size: 18px; font-weight: 700; color: white; }
+.user-meta, .user-note { font-size: 13px; color: rgba(255, 255, 255, 0.75); line-height: 1.5; }
+.user-note { margin-top: 10px; }
+.user-view-btn, .profile-actions button {
+  padding: 8px 14px; border-radius: 10px; border: none;
+  background: rgba(0, 255, 136, 0.18); color: white; cursor: pointer; transition: background 0.25s ease;
 }
-
-.user-meta,
-.user-note {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.5;
-}
-
-.user-note {
-  margin-top: 10px;
-}
-
-.user-view-btn,
-.profile-actions button {
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: none;
-  background: rgba(0, 255, 136, 0.18);
-  color: white;
-  cursor: pointer;
-  transition: background 0.25s ease;
-}
-
-.user-view-btn:hover,
-.profile-actions button:hover {
-  background: rgba(0, 255, 136, 0.32);
-}
-
-.user-status {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.user-status.online {
-  color: #00ff88;
-}
-
-.user-status.offline {
-  color: rgba(255, 255, 255, 0.45);
-}
+.user-view-btn:hover, .profile-actions button:hover { background: rgba(0, 255, 136, 0.32); }
+.user-status { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
+.user-status.online { color: #00ff88; }
+.user-status.offline { color: rgba(255, 255, 255, 0.45); }
 
 .profile-panel {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 20px; right: 20px;
   width: min(420px, calc(100% - 40px));
-  max-height: 78vh;
-  overflow-y: auto;
+  max-height: 78vh; overflow-y: auto;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
   padding: 28px 24px 24px;
   backdrop-filter: blur(20px);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
-  z-index: 1001;
-  display: none;
+  z-index: 1001; display: none;
 }
-
-.profile-panel.active {
-  display: block;
-}
-
+.profile-panel.active { display: block; }
 .close-profile {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-  cursor: pointer;
+  position: absolute; top: 16px; right: 16px;
+  width: 30px; height: 30px; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08); color: white; cursor: pointer;
 }
+.profile-row { margin: 10px 0; color: rgba(255, 255, 255, 0.82); }
+.profile-row strong { display: inline-block; width: 100px; color: rgba(255, 255, 255, 0.95); }
+.profile-actions { margin-top: 18px; display: flex; justify-content: flex-end; }
 
-.profile-row {
-  margin: 10px 0;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.profile-row strong {
-  display: inline-block;
-  width: 100px;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.profile-actions {
-  margin-top: 18px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.chat-message {
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: white;
-}
-
-.chat-message .chat-sender {
-  font-weight: 700;
-  margin-right: 6px;
-}
-
-.chat-message .chat-time {
-  display: inline-block;
-  margin-left: 10px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.empty-chat {
-  color: rgba(255, 255, 255, 0.45);
-  padding: 14px;
-}
-
-@media (max-width: 900px) {
-  .chat-container {
-    flex-direction: column;
-    height: auto;
-  }
-
-  .chat-sidebar {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--glass-border);
-  }
-
-  .chat-main {
-    min-height: 40vh;
-  }
-
-  .chat-input {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .chat-input input,
-  .chat-input button,
-  .chat-input input[type="file"] {
-    width: 100%;
-    margin: 0;
-  }
-
-  .page {
-    padding: 100px 20px 90px;
-  }
-
-  .profile-panel {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    width: min(92vw, 420px);
-    bottom: 14px;
-  }
-}
-
-/* Calendar */
+/* ============================================================
+   CALENDAR
+   ============================================================ */
 .calendar-container {
   background: var(--calendar-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 20px;
-  backdrop-filter: blur(10px);
-  color: white;
+  border-radius: 18px; padding: 20px;
+  backdrop-filter: blur(10px); color: white;
 }
 .calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-.calendar-header button {
-  padding: 8px 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
 }
 .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;
 }
 .calendar-grid div {
-  padding: 10px;
-  text-align: center;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
 }
-.calendar-grid div:hover {
-  background: var(--neon-pink);
-  color: black;
-}
-.announcements {
-  margin-top: 20px;
-}
+.calendar-grid div:hover { background: var(--neon-pink); color: black; }
 .announcements textarea {
-  width: 100%;
-  height: 100px;
-  padding: 10px;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  resize: none;
-}
-.announcements button {
-  margin-top: 10px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--neon-green);
-  color: black;
-  cursor: pointer;
+  width: 100%; height: 100px; padding: 10px; border: 1px solid var(--glass-border);
+  border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; resize: none;
 }
 
-/* Music Player */
-.music-player {
-  background: var(--music-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 20px;
-  backdrop-filter: blur(10px);
-  color: white;
+/* ============================================================
+   MUSIC PLAYER
+   ============================================================ */
+.music-manage-container { text-align: center; margin-bottom: 30px; }
+.music-player-card {
+    text-align: center; background: rgba(0,0,0,0.6);
+    padding: 30px; border-radius: 20px;
 }
-.playlist {
-  margin: 20px 0;
-  max-height: 200px;
-  overflow-y: auto;
+.music-now-playing { color: var(--neon-green); margin-bottom: 20px; }
+.visualizer-wrapper { display: flex; justify-content: center; margin-top: 30px; }
+.speaker-outer {
+    width: 140px; height: 140px;
+    background: var(--neon-green); border-radius: 50%;
+    box-shadow: 0 0 40px var(--neon-green);
+    transition: transform 0.05s ease;
+    display: flex; align-items: center; justify-content: center;
 }
-.playlist div {
-  padding: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  cursor: pointer;
-}
-.playlist div:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-audio {
-  width: 100%;
-}
+.speaker-inner { width: 60px; height: 60px; background: #1a1a2e; border-radius: 50%; }
 
-/* Live Clock */
+/* ============================================================
+   LIVE CLOCK
+   ============================================================ */
 #live-clock {
   position: fixed;
-  bottom: 18px;
-  right: 18px;
+  bottom: 18px; right: 18px;
   z-index: 1000;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 6px 12px;
+  border-radius: 10px; padding: 6px 12px;
   backdrop-filter: blur(20px);
   font-family: 'Exo 2', sans-serif;
-  font-size: 12px;
-  color: white;
+  font-size: 12px; color: white;
 }
 
-/* Enhanced Folder Icons (30+ styles) */
-.folder-card.neon .folder-bg { box-shadow: 0 0 20px var(--neon-green); }
-.folder-card.dark-glow .folder-bg { box-shadow: 0 0 20px var(--dark-glow); }
-.folder-card.sakura .folder-bg { background: linear-gradient(135deg, var(--sakura-pink), #ffdfba); }
-/* Add more classes as needed for 30+ styles, e.g., .neon-blue, .neon-pink, etc. */
-
-/* Additional Background Presets (30-40) */
-#bg-preset1 { background: linear-gradient(135deg, #ff9a9e, #fecfef); }
-#bg-preset2 { background: linear-gradient(135deg, #a8edea, #fed6e3); }
-/* Add more #bg-preset3 to #bg-preset40 with unique gradients */
-
-/* Chat Reactions */
-.reaction-btn {
-  display: inline-block;
-  margin: 2px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-.reaction-btn:hover {
-  background: var(--neon-blue);
-  color: black;
-}
-/* Add 250-300 reaction buttons with emojis in JS */
-
-/* Chat Background Designs (100-150) */
-.chat-bg-design1 { background: url('design1.png') no-repeat center center; background-size: cover; }
-/* Add more .chat-bg-design2 to .chat-bg-design150 */
-
-/* Video Upload Support */
-.subject-card video, .folder-card video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 18px;
-  display: none;
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+@media (max-width: 900px) {
+  .chat-container { flex-direction: column; height: auto; }
+  .chat-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--glass-border); }
+  .chat-main { min-height: 40vh; }
+  .chat-input { flex-wrap: wrap; gap: 10px; }
+  .chat-input input, .chat-input button, .chat-input input[type="file"] { width: 100%; margin: 0; }
+  .page { padding: 100px 20px 90px; }
+  .profile-panel { left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); bottom: 14px; }
 }
 
-/* Author Credit */
-.author-credit {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 0, 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Delete Button */
-.delete-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(255, 0, 0, 0.8);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  font-size: 12px;
-  display: none;
-}
-
-
-/* make page text stand out */
-.page { position: fixed; inset: 0; z-index: 3; overflow-y: auto; padding: 100px 40px 80px; ... }
-.page.active { opacity: 1; pointer-events: all; transform: translateY(0); }
-
-/* --- NEW FIREBASE AUTH STYLES --- */
-.auth-buttons { 
-  display: flex; 
-  gap: 10px; 
-  margin-top: 20px; 
-}
-
-.btn-login, .btn-register { 
-  flex: 1; 
-  padding: 12px; 
-  border-radius: 8px; 
-  border: none; 
-  cursor: pointer; 
-  font-weight: bold; 
-  transition: 0.3s ease;
-}
-
-.btn-login { 
-  background: #4A90E2; 
-  color: white; 
-}
-
-.btn-register { 
-  background: rgba(255, 255, 255, 0.1); 
-  color: white; 
-  border: 1px solid rgba(255, 255, 255, 0.3); 
-  backdrop-filter: blur(5px);
-}
-
-.btn-login:hover { background: #357ABD; }
-.btn-register:hover { background: rgba(255, 255, 255, 0.2); }
-
-.error-msg { 
-  color: #ff6b6b; 
-  display: none; 
-  margin-top: 15px; 
-  font-size: 0.85em; 
-  text-align: center;
-  background: rgba(255, 107, 107, 0.1);
-  padding: 8px;
-  border-radius: 5px;
-}
-
-.btn-close {
-  width: 100%;
-  margin-top: 15px;
-  background: transparent;
-  color: #aaa;
-  border: none;
-  cursor: pointer;
-  text-decoration: underline;
-  font-size: 0.8em;
-}
-
-#nav-logout:hover {
-    background: rgba(255, 77, 77, 0.2); /* Soft red glow on hover */
-}
-#nav-logout {
-    display: flex !important; /* Forces it to show */
-    cursor: pointer;
-    margin-top: auto; /* Pushes the logout button to the very bottom of the sidebar */
-    padding-bottom: 20px;
-}
-
-#nav-logout .nav-label {
-    color: #ff6b6b !important; /* Makes the text red so it's easy to spot */
-}
-
-#sidebar {
-    height: 100%;
-    overflow-y: auto; /* This allows you to scroll if you add too many items */
-    display: flex;
-    flex-direction: column;
-}
-
-#auth-modal {
-    z-index: 10000 !important; /* Ensures it sits on top of the mountains */
-    background: rgba(0, 0, 0, 0.7); /* Dims the background so the portal pops */
-}
-
-/* --- LOGIN MODAL FIXES --- */
-.login-overlay {
-    position: fixed;
-    z-index: 999999; 
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.login-box {
-    background: #1a1a2e;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(0,255,136,0.2);
-    width: 90%;
-    max-width: 400px;
-    z-index: 1000000;
-}
-
-.login-input {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    border: none;
-    background: rgba(255,255,255,0.1);
-    color: white;
-    outline: none;
-    box-sizing: border-box;
-}
-
-/* --- FOLDER VIEW MODAL --- */
-.folder-modal-overlay {
-    position: fixed;
-    z-index: 15000;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
-    display: none; /* Controlled by JS */
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(5px);
-}
-
-.folder-modal-content {
-    background: #1a1a2e;
-    width: 90%;
-    max-width: 600px;
-    padding: 30px;
-    border-radius: 15px;
-    position: relative;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.folder-upload-area {
-    background: #16213e;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-.file-list-area {
-    flex: 1;
-    overflow-y: auto;
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.file-item {
-    background: rgba(0,0,0,0.5);
-    padding: 10px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* --- BUTTONS & EXTRAS --- */
-.btn-primary {
-    background: #00ff88;
-    color: #0b0b1a;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.btn-secondary {
-    background: transparent;
-    color: #00ff88;
-    border: 1px solid #00ff88;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-.music-player-box {
-    background: #1a1a2e;
-    padding: 25px;
-    border-radius: 15px;
-    margin-top: 30px;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }

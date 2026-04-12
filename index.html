@@ -17,15 +17,15 @@
 </head>
 <body>
 
-  <button id="install-btn" class="install-btn" style="display:none;">Install App</button>
+  <button id="install-btn" class="install-btn">Install App</button>
  
   <div id="bg-mountain" class="scene-bg active"></div>
   <div id="bg-ocean"    class="scene-bg"></div>
   <div id="bg-aerial"   class="scene-bg"></div>
   <div id="bg-galaxy"   class="scene-bg"></div>
   
-  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display:none;">
-  <label for="custom-bg-upload" class="custom-bg-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; cursor: pointer;">Upload Custom BG</label>
+  <input type="file" id="custom-bg-upload" accept="image/*,video/*">
+  <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
  
   <div class="aurora active" id="aurora"></div>
  
@@ -54,7 +54,7 @@
   <div id="page-indicator">⛰️ First Semester</div>
  
   <nav id="sidebar">
-    <div class="sidebar-title" style="margin-top: 50px; text-align: center; color: #00ff88;">My Portfolio</div>
+    <div class="sidebar-title">My Portfolio</div>
  
     <div class="nav-item active" data-page="first" onclick="goToPage('first')">
       <span class="nav-icon">⛰️</span>
@@ -96,9 +96,9 @@
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
 
-    <div class="nav-item" id="nav-logout" style="display:none; cursor: pointer;" onclick="handleLogout()">
+    <div class="nav-item" id="nav-logout" onclick="handleLogout()">
       <span class="nav-icon">🚪</span>
-      <div class="nav-text"><span class="nav-label" style="color: #ff6b6b;">Log Out</span></div>
+      <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
     
     <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2025</div>
@@ -106,20 +106,20 @@
  
   <div id="overlay" onclick="closeMenu()"></div>
  
-  <div id="auth-modal" style="display: flex; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; pointer-events: auto;">
-    <div class="modal-content login-container" style="z-index: 10001; pointer-events: auto; background: #1a1a2e; padding: 40px; border-radius: 20px; width: 350px; border: 1px solid rgba(255,255,255,0.1);">
-      <h2 style="color: white; text-align: center; margin-bottom: 20px; font-family: 'Playfair Display', serif;">CLASS APP PORTAL</h2>
+  <div id="auth-modal" class="custom-modal-overlay high-z pointer-auto">
+    <div class="custom-modal-box small-box auth-modal-box">
+      <h2 class="modal-title text-white">CLASS APP PORTAL</h2>
       <div class="input-group">
-        <input type="text" id="username" placeholder="Username" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="text" id="username" class="modal-input" placeholder="Username" required>
       </div>
       <div class="input-group">
-        <input type="password" id="password" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white;">
+        <input type="password" id="password" class="modal-input" placeholder="Password" required>
       </div>
-      <div class="auth-buttons" style="display: flex; gap: 10px;">
-        <button class="btn-login" onclick="login()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Sign In</button>
-        <button class="btn-register" onclick="register()" style="flex: 1; padding: 12px; background: #00ff88; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: black;">Create Account</button>
+      <div class="modal-btn-group">
+        <button class="btn-primary flex-1" onclick="login()">Sign In</button>
+        <button class="btn-primary flex-1" onclick="register()">Create Account</button>
       </div>
-      <p id="errorMessage" class="error-msg" style="color: #ff6b6b; display: none; text-align: center; margin-top: 15px;"></p>
+      <p id="errorMessage" class="error-msg"></p>
     </div>
   </div>
  
@@ -129,25 +129,25 @@
     <div class="upload-grid" id="grid-first"></div>
   </div>
 
-  <div class="page" id="page-second" style="display:none;">
+  <div class="page hidden" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-second"></div>
   </div>
 
-  <div class="page" id="page-events" style="display:none;">
+  <div class="page hidden" id="page-events">
     <div class="page-header"><h1 class="page-title">Event Pictures</h1></div>
     <div class="section-label">CLICK TO VIEW EVENT FOLDERS</div>
     <div class="folder-grid" id="grid-events"></div>
   </div>
   
-  <div class="page" id="page-random" style="display:none;">
+  <div class="page hidden" id="page-random">
     <div class="page-header"><h1 class="page-title">Random Pictures</h1></div>
     <div class="section-label">CLICK TO VIEW RANDOM FOLDERS</div>
     <div class="folder-grid" id="grid-random"></div>
   </div>
 
-  <div class="page" id="page-chat" style="display:none;">
+  <div class="page hidden" id="page-chat">
     <div class="page-header"><h1 class="page-title">Chat</h1></div>
     <div class="chat-container">
       <div class="chat-sidebar">
@@ -166,13 +166,13 @@
           <label class="attachment-label" for="attachment-input">Attach</label>
           <input type="file" id="attachment-input" accept="*/*">
           <span class="attachment-selected" id="attachment-selected">No file chosen</span>
-          <button onclick="sendMessage()">Send</button>
+          <button class="btn-primary" onclick="sendMessage()">Send</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="page" id="page-users" style="display:none;">
+  <div class="page hidden" id="page-users">
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
     <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-grid" id="user-grid"></div>
@@ -182,95 +182,95 @@
     </div>
   </div>
 
-  <div class="page" id="page-calendar" style="display:none;">
+  <div class="page hidden" id="page-calendar">
     <div class="page-header"><h1 class="page-title">Calendar</h1></div>
     <div class="calendar-container">
       <div class="calendar-header">
-        <button onclick="prevMonth()">Prev</button>
+        <button class="btn-secondary" onclick="prevMonth()">Prev</button>
         <h2 id="month-year">April 2026</h2>
-        <button onclick="nextMonth()">Next</button>
+        <button class="btn-secondary" onclick="nextMonth()">Next</button>
       </div>
       <div class="calendar-grid" id="calendar-grid"></div>
     </div>
     <div class="announcements">
       <h3>Weekly Announcements</h3>
       <textarea id="announcement-note" placeholder="Add notes..."></textarea>
-      <button onclick="saveAnnouncement()">Save</button>
+      <button class="btn-primary mt-10" onclick="saveAnnouncement()">Save</button>
     </div>
   </div>
 
-  <div class="page" id="page-music" style="display:none;">
+  <div class="page hidden" id="page-music">
     <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
-    <div style="text-align: center; margin-bottom: 30px;">
-        <button onclick="openFolderExplorer('Music Hub')" style="background:#00ff88; color:black; font-weight:bold; padding: 15px 30px; border-radius:8px; border:none; cursor:pointer;">Open Music Folders</button>
+    <div class="music-manage-container">
+        <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
     </div>
-    <div class="music-player" style="text-align: center; background: rgba(0,0,0,0.6); padding: 30px; border-radius: 20px;">
-      <h3 id="now-playing-text" style="color: #00ff88; margin-bottom: 20px;">Select a track from a folder to play</h3>
-      <audio id="audio-player" controls crossorigin="anonymous" style="width: 100%;" onplay="startVisualizer(this)"></audio>
-      <div id="visualizer-container" style="display:flex; justify-content:center; margin-top:30px;">
-        <div id="dancing-speaker" style="width:140px; height:140px; background:#00ff88; border-radius:50%; box-shadow:0 0 40px #00ff88; transition:transform 0.05s ease; display:flex; align-items:center; justify-content:center;">
-          <div style="width:60px; height:60px; background:#1a1a2e; border-radius:50%;"></div>
+    <div class="music-player-card">
+      <h3 id="now-playing-text" class="music-now-playing">Select a track from a folder to play</h3>
+      <audio id="audio-player" class="full-width" controls crossorigin="anonymous" onplay="startVisualizer(this)"></audio>
+      <div id="visualizer-container" class="visualizer-wrapper">
+        <div id="dancing-speaker" class="speaker-outer">
+          <div class="speaker-inner"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="folder-explorer-modal" style="display:none; position:fixed; z-index:15000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
-    <div style="background:#1a1a2e; width:90%; max-width:800px; padding:30px; border-radius:20px; position:relative;">
-      <button onclick="closeFolderModal('folder-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
-      <h2 id="folder-explorer-title" style="color:#00ff88; margin-top:0; font-family:'Cinzel Decorative';">Subject Folders</h2>
-      <button onclick="createFolderAPI()" style="background:#00ff88; font-weight:bold; color:black; border:none; padding:10px 15px; border-radius:8px; margin-bottom:20px; cursor:pointer;">+ New Folder</button>
-      <div id="folder-grid-modal" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; max-height:60vh; overflow-y:auto; padding-right:10px;"></div>
+  <div id="folder-explorer-modal" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <button class="modal-close-btn" onclick="closeFolderModal('folder-explorer-modal')">&times;</button>
+      <h2 id="folder-explorer-title" class="modal-title text-green">Subject Folders</h2>
+      <button class="btn-primary btn-create-folder" onclick="createFolderAPI()">+ New Folder</button>
+      <div id="folder-grid-modal" class="folder-modal-grid"></div>
     </div>
   </div>
 
-  <div id="file-explorer-modal" style="display:none; position:fixed; z-index:16000; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center;">
-    <div style="background:#1a1a2e; width:90%; max-width:800px; padding:30px; border-radius:20px; position:relative;">
-      <button onclick="closeFolderModal('file-explorer-modal')" style="position:absolute; top:15px; right:15px; font-size:28px; background:none; color:white; border:none; cursor:pointer;">&times;</button>
-      <button onclick="backToFoldersAPI()" style="position:absolute; top:15px; left:15px; font-size:14px; background:none; color:#00ff88; border:none; cursor:pointer;">&larr; Back</button>
-      <h2 id="file-explorer-title" style="color:#00d4ff; text-align:center; margin-top:20px; font-family:'Cinzel Decorative';">Folder Name</h2>
-      <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; margin-bottom:20px; text-align:center;">
-         <input type="file" id="file-upload-input" style="color:white; max-width:250px;">
-         <button onclick="uploadFileToFolderAPI()" style="background:#00d4ff; font-weight:bold; color:black; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Upload File</button>
-         <div id="file-upload-status" style="color:#00ff88; font-size:12px; margin-top:10px;"></div>
+  <div id="file-explorer-modal" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <button class="modal-close-btn" onclick="closeFolderModal('file-explorer-modal')">&times;</button>
+      <button class="modal-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
+      <h2 id="file-explorer-title" class="modal-title text-blue text-center spaced">Folder Name</h2>
+      <div class="file-upload-area">
+         <input type="file" id="file-upload-input" class="file-upload-input">
+         <button class="btn-blue" onclick="uploadFileToFolderAPI()">Upload File</button>
+         <div id="file-upload-status" class="upload-status-text"></div>
       </div>
-      <div id="file-list-container" style="max-height:40vh; overflow-y:auto; background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; display:flex; flex-direction:column; gap:10px;"></div>
+      <div id="file-list-container" class="file-list-container"></div>
     </div>
   </div>
 
-  <div id="custom-alert-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
-    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #ff6b6b;">
-      <h3 style="color:#ff6b6b; margin-bottom:15px; font-family:'Cinzel Decorative';">Notice</h3>
-      <p id="alert-text" style="color:white; margin-bottom:20px; font-size:14px;"></p>
-      <button onclick="document.getElementById('custom-alert-modal').style.display='none'" style="background:#ff6b6b; color:black; border:none; padding:10px 30px; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
+  <div id="custom-alert-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-red">
+      <h3 class="modal-title text-red">Notice</h3>
+      <p id="alert-text" class="modal-text"></p>
+      <button class="btn-red" onclick="closeFolderModal('custom-alert-modal')">OK</button>
     </div>
   </div>
 
-  <div id="custom-prompt-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
-    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #00d4ff;">
-      <h3 id="prompt-title" style="color:#00d4ff; margin-bottom:15px; font-family:'Cinzel Decorative';">Input Required</h3>
-      <input type="text" id="prompt-input" style="width:100%; padding:12px; border-radius:8px; border:none; margin-bottom:20px; background:rgba(255,255,255,0.1); color:white; outline:none;" autocomplete="off">
-      <div style="display:flex; gap:10px;">
-        <button id="prompt-submit" style="flex:1; background:#00d4ff; color:black; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Submit</button>
-        <button onclick="document.getElementById('custom-prompt-modal').style.display='none'" style="flex:1; background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancel</button>
+  <div id="custom-prompt-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-blue">
+      <h3 id="prompt-title" class="modal-title text-blue">Input Required</h3>
+      <input type="text" id="prompt-input" class="modal-input" autocomplete="off">
+      <div class="modal-btn-group">
+        <button id="prompt-submit" class="btn-blue flex-1">Submit</button>
+        <button class="btn-outline-red flex-1" onclick="closeFolderModal('custom-prompt-modal')">Cancel</button>
       </div>
     </div>
   </div>
 
-  <div id="custom-confirm-modal" style="display:none; position:fixed; z-index:99999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; backdrop-filter:blur(5px);">
-    <div style="background:#1a1a2e; padding:25px; border-radius:15px; text-align:center; width:80%; max-width:350px; border: 1px solid #ffd700;">
-      <h3 style="color:#ffd700; margin-bottom:15px; font-family:'Cinzel Decorative';">Confirm Action</h3>
-      <p id="confirm-text" style="color:white; margin-bottom:20px; font-size:14px;"></p>
-      <div style="display:flex; gap:10px;">
-        <button id="confirm-yes" style="flex:1; background:#ffd700; color:black; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Yes</button>
-        <button onclick="document.getElementById('custom-confirm-modal').style.display='none'" style="flex:1; background:transparent; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancel</button>
+  <div id="custom-confirm-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-yellow">
+      <h3 class="modal-title text-yellow">Confirm Action</h3>
+      <p id="confirm-text" class="modal-text"></p>
+      <div class="modal-btn-group">
+        <button id="confirm-yes" class="btn-yellow flex-1">Yes</button>
+        <button class="btn-outline-red flex-1" onclick="closeFolderModal('custom-confirm-modal')">Cancel</button>
       </div>
     </div>
   </div>
 
   <div id="live-clock"></div>
 
-  <div id="chat-bauble" onclick="window.goToPage('chat')" style="position:fixed; bottom:30px; right:30px; width:60px; height:60px; background:#00ff88; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:24px; cursor:pointer; z-index:21000; box-shadow:0 4px 15px rgba(0,0,0,0.3);">💬</div>
+  <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="script.js"></script>

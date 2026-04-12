@@ -465,8 +465,9 @@ window.handleLogout = function() {
 };
 
 function establishSession() {
+  // FIXED: Uses style.display to hide the Auth Modal properly
   const authModal = document.getElementById('auth-modal');
-  if(authModal) authModal.classList.remove('active');
+  if(authModal) authModal.style.display = 'none';
   
   const navLogout = document.getElementById('nav-logout');
   if(navLogout) navLogout.style.display = 'flex';
@@ -845,7 +846,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 /* ============================================================
-   INITIALIZATION (RESTORED EXACTLY FOR MENU TO WORK)
+   INITIALIZATION 
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
@@ -880,7 +881,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // RESTORED: Menu button event listener
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
@@ -889,8 +889,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentUser = storedUser;
     establishSession();
   } else {
+    // FIXED: Correctly opens the Auth Modal using style.display
     const modal = document.getElementById('auth-modal');
-    if(modal) modal.classList.add('active');
+    if(modal) modal.style.display = 'flex';
   }
 
   buildSubjectCards('grid-first', firstSem);

@@ -16,7 +16,6 @@
   --menu-bg:         rgba(5, 5, 20, 0.93);
   --glass:           rgba(255, 255, 255, 0.07);
   --glass-border:    rgba(255, 255, 255, 0.16);
-  /* Added for new features */
   --chat-bg:         rgba(10, 10, 30, 0.95);
   --calendar-bg:     rgba(20, 20, 40, 0.9);
   --music-bg:        rgba(30, 30, 50, 0.9);
@@ -50,7 +49,7 @@ body {
   z-index: 0;
 }
  
-/* ── UTILITY CLASSES (Replaced Inline Styles) ── */
+/* ── UTILITY CLASSES ── */
 .hidden { display: none !important; }
 .flex-1 { flex: 1; }
 .text-center { text-align: center; }
@@ -369,6 +368,19 @@ body {
   color: rgba(255, 255, 255, 0.75);
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* ── NOTIFICATIONS & BADGES ── */
+.notif-dot {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 10px;
+  height: 10px;
+  background-color: #ff3333;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff3333;
+  border: 1px solid #1a1a2e;
 }
  
 /* ============================================================
@@ -690,7 +702,7 @@ body {
 }
 
 /* ============================================================
-   SHARED UI: MODALS & FORMS (Replaces Inline Styles)
+   SHARED UI: MODALS & FORMS
    ============================================================ */
 .custom-modal-overlay {
     position: fixed;
@@ -698,7 +710,7 @@ body {
     top: 0; left: 0; 
     width: 100%; height: 100%;
     background: rgba(0,0,0,0.9);
-    display: none; /* Changed from inline style */
+    display: none; 
     justify-content: center;
     align-items: center;
     pointer-events: auto;
@@ -1079,7 +1091,7 @@ body {
 .profile-actions { margin-top: 18px; display: flex; justify-content: flex-end; }
 
 /* ============================================================
-   CALENDAR
+   CALENDAR & NOTIFICATION DOTS
    ============================================================ */
 .calendar-container {
   background: var(--calendar-bg);
@@ -1095,8 +1107,22 @@ body {
 }
 .calendar-grid div {
   padding: 10px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
+  position: relative;
 }
 .calendar-grid div:hover { background: var(--neon-pink); color: black; }
+
+.calendar-note-dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  background-color: #ff3333;
+  border-radius: 50%;
+  box-shadow: 0 0 5px #ff3333;
+}
+
 .announcements textarea {
   width: 100%; height: 100px; padding: 10px; border: 1px solid var(--glass-border);
   border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: white; resize: none;
@@ -1126,7 +1152,8 @@ body {
    ============================================================ */
 #live-clock {
   position: fixed;
-  bottom: 18px; right: 18px;
+  top: 65px; 
+  right: 18px;
   z-index: 1000;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
@@ -1154,3 +1181,4 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+

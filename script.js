@@ -939,7 +939,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 /* ============================================================
-   INITIALIZATION 
+   INITIALIZATION & PERSISTENT CUSTOM BACKGROUND
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
@@ -956,13 +956,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch((err) => {
       console.warn('Service Worker registration failed:', err);
-    });
-  }
-
-  const customBgUpload = document.getElementById('custom-bg-upload');
-  if (customBgUpload) {
-    customBgUpload.addEventListener('change', function() {
-      handleCustomBgUpload(this.files[0]);
     });
   }
 
@@ -991,27 +984,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderCalendar();
   updateClock();
+
+  // --- AUTO-LOAD SAVED BACKGROUND ON STARTUP ---
+  const savedBg = localStorage.getItem('savedCustomBg');
+  if (savedBg) {
+      document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
+      document.getElementById('aurora').classList.remove('active');
+      document.getElementById('mountain-svg').classList.remove('active');
+      
+      document.body.style.backgroundImage = `url(${savedBg})`;
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundAttachment = 'fixed';
+  }
 });
 
+// --- NEW STICKY CUSTOM BACKGROUND UPLOADER ---
 document.getElementById('custom-bg-upload').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    // Create a temporary URL for the uploaded image/video
-    const localUrl = URL.createObjectURL(file);
-    
-    // Turn off the default animated backgrounds
-    document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-    document.getElementById('aurora').classList.remove('active');
-    document.getElementById('mountain-svg').classList.remove('active');
-    
-    // Apply the custom background to the body
-    document.body.style.backgroundImage = `url(${localUrl})`;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
-    
-    customAlert("Custom Background Applied!");
+    // Use FileReader to convert the image to a Base64 string that can be saved permanently
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Image = e.target.result;
+        
+        // Turn off the default animated backgrounds
+        document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
+        document.getElementById('aurora').classList.remove('active');
+        document.getElementById('mountain-svg').classList.remove('active');
+        
+        // Apply the custom background to the body
+        document.body.style.backgroundImage = `url(${base64Image})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundAttachment = 'fixed';
+        
+        // Save the image string to localStorage so it stays after refresh/close
+        try {
+            localStorage.setItem('savedCustomBg', base64Image);
+            customAlert("Custom Background Applied & Saved Permanently!");
+        } catch (err) {
+            customAlert("Background applied! (Note: File is too large to save permanently after refresh).");
+        }
+    };
+    reader.readAsDataURL(file);
 });
 
 // 2. Weekly Announcement Logic (Saves to local storage)

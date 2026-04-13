@@ -10,6 +10,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Kept purely so any old files you uploaded to Render can still open without breaking
 const SERVER_BASE = 'https://class-app-y67k.onrender.com';
 
 /* ============================================================
@@ -264,11 +265,11 @@ window.uploadFileToFolderAPI = async function() {
     if(status) status.innerText = "Uploading to Supabase Cloud...";
     
     try {
-        // EDITED: Clean filename to prevent Supabase "Invalid Key" errors
+        // Clean filename to prevent Supabase "Invalid Key" errors
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
         const filePath = `uploads/${Date.now()}_${safeName}`;
         
-        // EDITED: Added contentType to fix PDFs opening as raw code
+        // Added contentType to fix PDFs opening as raw code
         const { data, error } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
@@ -348,94 +349,16 @@ window.startVisualizer = (audioElement) => {
   loop();
 };
 
-
 /* ============================================================
-   EXISTING FEATURES: AUTH, ADMIN, CHAT, CALENDAR
+   AUTH & USER MANAGEMENT
    ============================================================ */
 let users = [];
-let socket = null;
-let currentUser = null;
-let isAdmin = false;
-let chatHistory = { group: [], todo: [], private: {} };
-let currentChat = { type: 'group', target: null };
-
-function apiFetch(path, options = {}) {
-  // Retained purely for Chat history fetching from Render
-  return fetch(`${SERVER_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  }).then(async (res) => {
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || res.statusText);
-    return body;
-  });
-}
-
-function loadSession() {
-  const stored = localStorage.getItem('classAppUser');
-  if (!stored) return null;
-  try { return JSON.parse(stored); } catch { return null; }
-}
+let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
+let isAdmin = currentUser?.username === 'Marquillero';
 
 function saveSession() {
   if (currentUser) { localStorage.setItem('classAppUser', JSON.stringify(currentUser)); } 
   else { localStorage.removeItem('classAppUser'); }
-}
-
-function initSocket() {
-  if (socket) return;
-  socket = io(SERVER_BASE);
-
-  socket.on('connect', () => {
-    if (currentUser) {
-      socket.emit('identify', { username: currentUser.username });
-      socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null, user: currentUser });
-    }
-  });
-
-  socket.on('users', (payload) => {
-    // Socket users are active sessions, but we use Supabase for the main directory
-    renderChatUsersList();
-  });
-
-  socket.on('message', ({ chat, target, message }) => {
-    if (chat === 'private') {
-      const key = getPrivateKey(target.userA, target.userB);
-      chatHistory.private[key] = chatHistory.private[key] || [];
-      chatHistory.private[key].push(message);
-      if (currentChat.type === 'private' && getPrivateKey(currentUser.username, currentChat.target) === key) {
-        renderMessages();
-      }
-      return;
-    }
-    chatHistory[chat] = chatHistory[chat] || [];
-    chatHistory[chat].push(message);
-    if (currentChat.type === chat) renderMessages();
-  });
-
-  socket.on('messageUpdated', (message) => {
-    const history = getAllMessages();
-    const found = history.find((msg) => msg.id === message.id);
-    if (found) { Object.assign(found, message); renderMessages(); }
-  });
-
-  socket.on('messageDeleted', ({ id }) => {
-    const history = getAllMessages();
-    const index = history.findIndex((message) => message.id === id);
-    if (index !== -1) { history.splice(index, 1); renderMessages(); }
-  });
-}
-
-function getPrivateKey(userA, userB) {
-    return [userA, userB].sort().join('||');
-}
-
-function getAllMessages() {
-  return [
-    ...(chatHistory.group || []),
-    ...(chatHistory.todo || []),
-    ...Object.values(chatHistory.private || {}).flat(),
-  ];
 }
 
 window.login = async function() {
@@ -455,6 +378,9 @@ window.login = async function() {
   currentUser = profile;
   isAdmin = (profile.username === 'Marquillero');
   saveSession();
+  
+  // Set user online
+  await sb.from('profiles').update({ online: true }).eq('username', currentUser.username);
   establishSession();
 };
 
@@ -474,7 +400,10 @@ window.register = async function() {
   }
 };
 
-window.handleLogout = function() {
+window.handleLogout = async function() {
+    if(currentUser) {
+        await sb.from('profiles').update({ online: false }).eq('username', currentUser.username);
+    }
     currentUser = null;
     saveSession();
     location.reload();
@@ -489,7 +418,7 @@ function establishSession() {
 
   fetchUsers();
   updateChatHeader();
-  initSocket();
+  initSupabaseRealtimeChat();
   fetchMessages(currentChat.type, currentChat.target);
 }
 
@@ -499,23 +428,6 @@ function fetchUsers() {
       users = data || [];
       renderUserDirectory();
       renderChatUsersList();
-    }).catch((err) => console.warn(err.message));
-}
-
-function fetchMessages(chat, target = null) {
-  if (!chat) return;
-  const query = new URLSearchParams({ chat });
-  if (chat === 'private' && target) query.set('target', getPrivateKey(currentUser.username, target));
-  
-  apiFetch(`/api/messages?${query.toString()}`)
-    .then((messages) => {
-      if (chat === 'private') {
-        const key = getPrivateKey(currentUser.username, target);
-        chatHistory.private[key] = messages;
-      } else {
-        chatHistory[chat] = messages;
-      }
-      renderMessages();
     }).catch((err) => console.warn(err.message));
 }
 
@@ -612,37 +524,30 @@ window.editUserProfile = function(username) {
   
   details.innerHTML = `
     <h2 class="modal-title text-blue" style="margin-bottom: 15px;">Edit Profile</h2>
-    
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">Display Name</label>
         <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.display_name || profile.username || ''}">
     </div>
-    
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">Birthday</label>
         <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.birthday || ''}">
     </div>
-    
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">Address</label>
         <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.address || ''}">
     </div>
-    
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">GitHub URL</label>
         <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.github || ''}">
     </div>
-    
     <div style="margin-bottom: 10px;">
         <label style="font-size: 12px; color: #00d4ff;">Email</label>
         <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.email || ''}">
     </div>
-    
     <div style="margin-bottom: 15px;">
         <label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
         <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${profile.note || ''}</textarea>
     </div>
-    
     <div class="profile-actions modal-btn-group">
       <button class="btn-primary flex-1" onclick="saveProfileEdits('${profile.username}')">Save</button>
       <button class="btn-outline-red flex-1" onclick="openUserProfile('${profile.username}')">Cancel</button>
@@ -662,9 +567,6 @@ window.saveProfileEdits = function(username) {
   
   sb.from('profiles').update(payload).eq('username', username)
     .then(() => {
-      const profile = users.find((user) => user.username === username);
-      if (profile) Object.assign(profile, payload);
-      
       fetchUsers(); 
       customAlert("Profile updated successfully!");
       openUserProfile(username); 
@@ -672,21 +574,17 @@ window.saveProfileEdits = function(username) {
     .catch((err) => customAlert(err.message));
 };
 
-window.deleteUserAPI = function(username) {
-    customConfirm(`Are you sure you want to completely delete ${username} from the application?`, function() {
-        sb.from('profiles').delete().eq('username', username)
-        .then(() => {
-            customAlert(`${username} has been deleted.`);
-            closeProfile();
-            fetchUsers(); 
-        })
-        .catch(err => customAlert(err.message));
-    });
-};
-
 /* ============================================================
-   CHAT LOGIC
+   100% SUPABASE SERVERLESS CHAT ENGINE
    ============================================================ */
+let chatHistory = { group: [], todo: [], private: {} };
+let currentChat = { type: 'group', target: null };
+let realtimeSubscription = null;
+
+function getPrivateKey(userA, userB) {
+    return [userA, userB].sort().join('||');
+}
+
 function updateChatHeader() {
   const header = document.getElementById('chat-header');
   if (!header) return;
@@ -699,15 +597,76 @@ function updateChatHeader() {
 window.openChat = function(type, target = null) {
   currentChat = { type, target };
   updateChatHeader();
-  if (socket && currentUser) {
-    socket.emit('joinChat', { chat: currentChat.type, target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, target) : null, user: currentUser });
-  }
   fetchMessages(type, target);
-  
-  if (currentPage !== 'chat') {
-      window.goToPage('chat');
-  }
+  if (currentPage !== 'chat') window.goToPage('chat');
 };
+
+// Start listening for new messages live from Supabase
+function initSupabaseRealtimeChat() {
+    if (realtimeSubscription) return;
+
+    realtimeSubscription = sb.channel('public:messages')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
+            
+            // If a message was inserted (someone sent a chat)
+            if (payload.eventType === 'INSERT') {
+                const m = payload.new;
+                const formattedMsg = {
+                    id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
+                    time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                };
+
+                if (m.chat_type === 'private') {
+                    const otherUser = m.sender === currentUser.username ? m.target : m.sender;
+                    const key = getPrivateKey(currentUser.username, otherUser);
+                    if(!chatHistory.private[key]) chatHistory.private[key] = [];
+                    chatHistory.private[key].push(formattedMsg);
+                    if (currentChat.type === 'private' && currentChat.target === otherUser) renderMessages();
+                } else {
+                    if(!chatHistory[m.chat_type]) chatHistory[m.chat_type] = [];
+                    chatHistory[m.chat_type].push(formattedMsg);
+                    if (currentChat.type === m.chat_type) renderMessages();
+                }
+            } 
+            
+            // If a message was deleted or edited, just re-fetch the current chat to update screen
+            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') {
+                fetchMessages(currentChat.type, currentChat.target);
+            }
+        }).subscribe();
+}
+
+// Fetch old messages from the database
+async function fetchMessages(chatType, target = null) {
+  if (!chatType) return;
+  
+  let query = sb.from('messages').select('*');
+  
+  if (chatType === 'private') {
+      // Get messages between Me and Target
+      query = query.eq('chat_type', 'private')
+                   .or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
+  } else {
+      // Get group or todo messages
+      query = query.eq('chat_type', chatType);
+  }
+
+  const { data: messages, error } = await query.order('created_at', { ascending: true });
+  if (error) return console.warn(error);
+
+  const formattedMessages = messages.map(m => ({
+      id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
+      time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+  }));
+
+  if (chatType === 'private') {
+      const key = getPrivateKey(currentUser.username, target);
+      chatHistory.private[key] = formattedMessages;
+  } else {
+      chatHistory[chatType] = formattedMessages;
+  }
+  renderMessages();
+}
 
 function getCurrentHistory() {
   if (currentChat.type === 'group') return chatHistory.group || [];
@@ -808,7 +767,7 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-window.sendMessage = function() {
+window.sendMessage = async function() {
   const input = document.getElementById('message-input');
   const attachmentInput = document.getElementById('attachment-input');
   const text = input.value.trim();
@@ -818,63 +777,49 @@ window.sendMessage = function() {
   if (!currentUser) return customAlert('Please login first.');
   if (currentChat.type === 'private' && !currentChat.target) return customAlert('Select a private contact.');
 
-  const uploadPromise = file ? uploadChatAttachment(file) : Promise.resolve(null);
-  
-  uploadPromise
-    .then((attachment) => {
-      if (socket) {
-        socket.emit('sendMessage', {
-          chat: currentChat.type,
-          target: currentChat.type === 'private' ? getPrivateKey(currentUser.username, currentChat.target) : null,
-          sender: currentUser.username,
-          text,
-          attachment,
-        });
+  let attachmentData = null;
+
+  if (file) {
+      // Fixes the "Invalid Key" error for chat attachments too!
+      const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const filePath = `chat-attachments/${Date.now()}_${safeName}`;
+      
+      const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
+      if (!error) {
+          const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
+          attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl };
       }
-      input.value = '';
-      attachmentInput.value = '';
-      const lbl = document.getElementById('attachment-selected');
-      if(lbl) lbl.textContent = 'No file chosen';
-    })
-    .catch((err) => customAlert('Upload failed: ' + err.message));
+  }
+  
+  // Save directly to Supabase. Realtime will automatically broadcast it to everyone!
+  await sb.from('messages').insert([{
+      chat_type: currentChat.type,
+      target: currentChat.type === 'private' ? currentChat.target : null,
+      sender: currentUser.username,
+      text: text,
+      attachment: attachmentData
+  }]);
+
+  input.value = '';
+  attachmentInput.value = '';
+  const lbl = document.getElementById('attachment-selected');
+  if(lbl) lbl.textContent = 'No file chosen';
 };
 
-async function uploadChatAttachment(file) {
-    // EDITED: Clean chat attachment filenames as well
-    const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-    const filePath = `chat-attachments/${Date.now()}_${safeName}`;
-    
-    const { data, error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
-    if (error) throw error;
-    
-    const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
-    
-    return {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url: urlData.publicUrl 
-    };
-}
-
-function editChatMessage(id) {
+window.editChatMessage = function(id) {
   const message = getCurrentHistory().find(m => m.id === id);
   if (!message) return;
-  customPrompt('Edit your message:', function(updated) {
+  customPrompt('Edit your message:', async function(updated) {
       if (updated === null) return;
-      apiFetch(`/api/messages/${id}`, { method: 'PUT', body: JSON.stringify({ text: updated }) })
-        .then(() => fetchMessages(currentChat.type, currentChat.target))
-        .catch((err) => customAlert(err.message));
+      await sb.from('messages').update({ text: updated }).eq('id', id);
   }, message.text);
-}
+};
 
-function deleteMessageForEveryone(id) {
-  customConfirm("Delete for everyone?", function() {
-      fetch(`${SERVER_BASE}/api/messages/${id}`, { method: 'DELETE' })
-        .then(() => fetchMessages(currentChat.type, currentChat.target))
-        .catch((err) => customAlert(err.message));
+window.deleteMessageForEveryone = async function(id) {
+  customConfirm("Delete message?", async function() {
+      await sb.from('messages').delete().eq('id', id);
   });
-}
+};
 
 /* ============================================================
    UI & NAVIGATION LOGIC
@@ -932,13 +877,11 @@ window.goToPage = function(pageName) {
 };
 
 window.toggleMenu = function() {
-  document.getElementById('menu-toggle').classList.toggle('open');
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('active');
 };
 
 window.closeMenu = function() {
-  document.getElementById('menu-toggle').classList.remove('open');
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('active');
 };
@@ -1034,10 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
-  const storedUser = loadSession();
-  if (storedUser) {
-    currentUser = storedUser;
-    isAdmin = (currentUser.username === 'Marquillero');
+  if (currentUser) {
     establishSession();
   } else {
     const modal = document.getElementById('auth-modal');

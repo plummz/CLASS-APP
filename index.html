@@ -27,7 +27,7 @@
   <div id="bg-galaxy"   class="scene-bg"></div>
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
-  <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
+  <label for="custom-bg-upload" class="custom-bg-btn" style="position: absolute; top: 15px; right: 15px; z-index: 100; cursor: pointer; color: #00d4ff; font-weight: bold; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 8px; border: 1px solid #00d4ff;">Upload Custom BG</label>
  
   <div class="aurora active" id="aurora"></div>
  
@@ -35,11 +35,17 @@
  
   <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
+    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
   </svg>
  
   <div class="wave-container" id="wave-container">
     <div class="wave"></div><div class="wave"></div><div class="wave"></div>
   </div>
+ 
+  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-ocean"    id="particles-ocean"></div>
+  <div class="particles particle-aerial"   id="particles-aerial"></div>
+  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
  
   <button id="menu-toggle" aria-label="Toggle menu">
     <div class="bar"></div>
@@ -51,10 +57,14 @@
  
   <nav id="sidebar">
     <div class="sidebar-title">My Portfolio</div>
- 
-    <div class="nav-dropdown">
-      <div class="dropdown-header" onclick="toggleDropdown('year1')">First Year <span class="arrow">▼</span></div>
-      <div id="year1-content" class="dropdown-content year-1-theme">
+
+    <div class="nav-dropdown-group year-1-theme">
+      <div class="nav-dropdown-header" onclick="toggleYear('year1')">
+        <span class="nav-icon">🎓</span>
+        <div class="nav-text"><span class="nav-label">First Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year1" class="nav-dropdown-content">
         <div class="nav-item active" data-page="first" onclick="goToPage('first')">
           <span class="nav-icon">⛰️</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
@@ -66,50 +76,60 @@
       </div>
     </div>
 
-    <div class="nav-dropdown">
-      <div class="dropdown-header" onclick="toggleDropdown('year2')">Second Year <span class="arrow">▼</span></div>
-      <div id="year2-content" class="dropdown-content year-2-theme">
-        <div class="nav-item" onclick="customAlert('Second Year content locked until Semester Start')">
-          <span class="nav-icon">📋</span>
+    <div class="nav-dropdown-group year-2-theme">
+      <div class="nav-dropdown-header" onclick="toggleYear('year2')">
+        <span class="nav-icon">🏛️</span>
+        <div class="nav-text"><span class="nav-label">Second Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year2" class="nav-dropdown-content">
+        <div class="nav-item" onclick="customAlert('Coming Soon!')">
+          <span class="nav-icon">📘</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Second Year content locked until Semester Start')">
-          <span class="nav-icon">📊</span>
+        <div class="nav-item" onclick="customAlert('Coming Soon!')">
+          <span class="nav-icon">📙</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
       </div>
     </div>
 
-    <div class="nav-dropdown">
-      <div class="dropdown-header" onclick="toggleDropdown('year3')">Third Year <span class="arrow">▼</span></div>
-      <div id="year3-content" class="dropdown-content year-3-theme">
-        <div class="nav-item" onclick="customAlert('Third Year content locked')">
-          <span class="nav-icon">📖</span>
+    <div class="nav-dropdown-group year-3-theme">
+      <div class="nav-dropdown-header" onclick="toggleYear('year3')">
+        <span class="nav-icon">🚀</span>
+        <div class="nav-text"><span class="nav-label">Third Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year3" class="nav-dropdown-content">
+        <div class="nav-item" onclick="customAlert('Locked')">
+          <span class="nav-icon">🔬</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Third Year content locked')">
-          <span class="nav-icon">✏️</span>
+        <div class="nav-item" onclick="customAlert('Locked')">
+          <span class="nav-icon">🔭</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
       </div>
     </div>
 
-    <div class="nav-dropdown">
-      <div class="dropdown-header" onclick="toggleDropdown('year4')">Fourth Year <span class="arrow">▼</span></div>
-      <div id="year4-content" class="dropdown-content year-4-theme">
-        <div class="nav-item" onclick="customAlert('Thesis Year content locked')">
-          <span class="nav-icon">🎓</span>
+    <div class="nav-dropdown-group year-4-theme">
+      <div class="nav-dropdown-header" onclick="toggleYear('year4')">
+        <span class="nav-icon">🏆</span>
+        <div class="nav-text"><span class="nav-label">Fourth Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year4" class="nav-dropdown-content">
+        <div class="nav-item" onclick="customAlert('Thesis Year')">
+          <span class="nav-icon">📜</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Graduation content locked')">
+        <div class="nav-item" onclick="customAlert('Graduation')">
           <span class="nav-icon">✨</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
       </div>
     </div>
 
-    <div class="nav-divider"></div>
- 
     <div class="nav-item" data-page="events" onclick="goToPage('events')">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
@@ -145,7 +165,7 @@
       <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
     
-    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2026</div>
+    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2026</div>
   </nav>
  
   <div id="overlay" onclick="closeMenu()"></div>
@@ -245,29 +265,28 @@
   
   <div class="page" id="page-music">
     <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
-    
-    <div class="yt-search-container">
-        <input type="text" id="yt-search-input" placeholder="Search music on YouTube...">
-        <button class="btn-blue" onclick="searchYouTube()">Search</button>
+
+    <div class="yt-search-wrapper" style="margin-bottom: 20px; text-align: center;">
+      <input type="text" id="yt-search-input" placeholder="Search music on YouTube..." style="padding: 10px; width: 60%; border-radius: 8px; border: 1px solid #00d4ff; background: rgba(0,0,0,0.3); color: white;">
+      <button class="btn-primary" onclick="searchYouTube()" style="padding: 10px 20px; margin-left: 10px;">Search</button>
     </div>
 
     <div class="music-manage-container">
         <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
     </div>
-
     <div class="music-player-card">
       <h3 id="now-playing-text" class="music-now-playing">Select a track from a folder to play</h3>
-      <audio id="audio-player" class="full-width" controls crossorigin="anonymous"></audio>
+      <audio id="audio-player" class="full-width" controls crossorigin="anonymous" onplay="startBlockVisualizer(this)"></audio>
       
       <div class="music-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-secondary" onclick="playPrevSong()">⏮ Prev</button>
-          <button id="btn-loop" class="btn-secondary" onclick="toggleLoop()">🔁 Loop All: ON</button>
-          <button id="btn-repeat" class="btn-secondary" onclick="toggleRepeat()">🔂 Repeat 1: OFF</button>
-          <button class="btn-secondary" onclick="playNextSong()">Next ⏭</button>
+          <button class="btn-secondary" onclick="playPrevSong()" style="padding: 8px 12px; font-size: 12px;">⏮ Prev</button>
+          <button id="btn-loop" class="btn-secondary" onclick="toggleLoop()" style="padding: 8px 12px; font-size: 12px; color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
+          <button id="btn-repeat" class="btn-secondary" onclick="toggleRepeat()" style="padding: 8px 12px; font-size: 12px; color: white; border-color: white;">🔂 Repeat 1: OFF</button>
+          <button class="btn-secondary" onclick="playNextSong()" style="padding: 8px 12px; font-size: 12px;">Next ⏭</button>
       </div>
 
-      <div class="visualizer-wrapper">
-        <canvas id="block-visualizer"></canvas>
+      <div id="visualizer-container" class="visualizer-wrapper" style="margin-top: 20px; height: 250px; background: black; border-radius: 12px; overflow: hidden;">
+        <canvas id="block-canvas" style="width: 100%; height: 100%;"></canvas>
       </div>
     </div>
   </div>
@@ -320,7 +339,7 @@
       <p id="confirm-text" class="modal-text"></p>
       <div class="modal-btn-group">
         <button id="confirm-yes" class="btn-yellow flex-1">Yes</button>
-        <button class="btn-outline-red flex-1" onclick="closeFolderModal('custom-confirm-modal')">Cancel</button>
+        <button class="btn-outline-red flex-1" onclick="closeFolderModal('custom-confirm-modal')">No</button>
       </div>
     </div>
   </div>
@@ -329,6 +348,7 @@
 
   <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
 
+  <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 

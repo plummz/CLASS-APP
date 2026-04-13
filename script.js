@@ -132,6 +132,12 @@ function buildFolderCards(gridId, count, prefix = "Folder") {
 let currentParentContext = null; 
 let currentFolderContext = null; 
 
+// Music Player Global State
+let currentPlaylist = [];
+let currentTrackIndex = -1;
+let isLoop = true;
+let isRepeat = false;
+
 window.closeFolderModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'none';
@@ -225,6 +231,9 @@ function fetchAndRenderFiles() {
     .then(({ data: files, error }) => {
         if (error) return console.error(error);
         
+        // Populate currentPlaylist with all audio files in this folder
+        currentPlaylist = files.filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
+        
         const list = document.getElementById('file-list-container');
         if(!list) return;
         list.innerHTML = '';
@@ -308,14 +317,22 @@ window.deleteFileAPI = function(fileId) {
     });
 };
 
-window.playOrOpenFileAPI = function(url, name) {
+/* ============================================================
+   MUSIC PLAYER QUEUE & LOGIC
+   ============================================================ */
+window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
     if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
+        // Find track index for queue system
+        if (!skipIndexUpdate && currentPlaylist.length > 0) {
+            currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
+        }
+        
         if(player) {
             player.src = fullUrl;
-            player.play();
+            player.play().catch(e => console.warn('Autoplay blocked:', e));
         }
         const text = document.getElementById('now-playing-text');
         if(text) text.innerText = "Playing: " + name;
@@ -325,6 +342,58 @@ window.playOrOpenFileAPI = function(url, name) {
         
     } else {
         window.open(fullUrl, '_blank');
+    }
+};
+
+window.playNextSong = function() {
+    if (currentPlaylist.length === 0 || currentTrackIndex === -1) return;
+    currentTrackIndex++;
+    
+    // Check if we hit the end of the folder
+    if (currentTrackIndex >= currentPlaylist.length) {
+        if (isLoop) {
+            currentTrackIndex = 0; // Loop back to start
+        } else {
+            currentTrackIndex = -1; // Stop playing
+            return; 
+        }
+    }
+    const nextSong = currentPlaylist[currentTrackIndex];
+    playOrOpenFileAPI(nextSong.url, nextSong.name, true);
+};
+
+window.playPrevSong = function() {
+    if (currentPlaylist.length === 0 || currentTrackIndex === -1) return;
+    currentTrackIndex--;
+    
+    if (currentTrackIndex < 0) {
+        if (isLoop) {
+            currentTrackIndex = currentPlaylist.length - 1; // Go to last song
+        } else {
+            currentTrackIndex = 0; // Just replay the first song
+        }
+    }
+    const prevSong = currentPlaylist[currentTrackIndex];
+    playOrOpenFileAPI(prevSong.url, prevSong.name, true);
+};
+
+window.toggleLoop = function() {
+    isLoop = !isLoop;
+    const btn = document.getElementById('btn-loop');
+    if(btn) {
+        btn.innerText = `🔁 Loop All: ${isLoop ? 'ON' : 'OFF'}`;
+        btn.style.color = isLoop ? 'var(--neon-green)' : 'white';
+        btn.style.borderColor = isLoop ? 'var(--neon-green)' : 'white';
+    }
+};
+
+window.toggleRepeat = function() {
+    isRepeat = !isRepeat;
+    const btn = document.getElementById('btn-repeat');
+    if(btn) {
+        btn.innerText = `🔂 Repeat 1: ${isRepeat ? 'ON' : 'OFF'}`;
+        btn.style.color = isRepeat ? 'var(--neon-green)' : 'white';
+        btn.style.borderColor = isRepeat ? 'var(--neon-green)' : 'white';
     }
 };
 
@@ -616,6 +685,18 @@ function initSupabaseRealtimeChat() {
                     time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                 };
 
+                // NOTIFICATION LOGIC: If someone else sent the message
+                if (m.sender !== currentUser.username) {
+                    const sound = document.getElementById('notif-sound');
+                    if (sound) sound.play().catch(e => console.log('Audio blocked until user interaction'));
+                    
+                    // Show red dot if not currently on the chat page looking at this specific chat
+                    if (currentPage !== 'chat' || (currentChat.type === 'private' && m.chat_type === 'private' && currentChat.target !== m.sender)) {
+                        const dot = document.getElementById('chat-notif-dot');
+                        if (dot) dot.classList.remove('hidden');
+                    }
+                }
+
                 if (m.chat_type === 'private') {
                     const otherUser = m.sender === currentUser.username ? m.target : m.sender;
                     const key = getPrivateKey(currentUser.username, otherUser);
@@ -838,6 +919,8 @@ const pageConfig = {
 let currentPage = 'first';
 // Load saved page backgrounds from local storage
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
+// Load saved calendar notes
+let calendarNotes = JSON.parse(localStorage.getItem('calendarNotes')) || {};
 
 window.goToPage = function(pageName) {
   if (pageName === currentPage) {
@@ -845,6 +928,12 @@ window.goToPage = function(pageName) {
     if(p) p.scrollTop = 0;
     closeMenu();
     return;
+  }
+
+  // Hide notification dot if navigating to chat
+  if (pageName === 'chat') {
+      const dot = document.getElementById('chat-notif-dot');
+      if (dot) dot.classList.add('hidden');
   }
 
   // 1. Turn off old page and its background effects
@@ -915,11 +1004,22 @@ function renderCalendar() {
   grid.innerHTML = '';
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  
   for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
+  
   for (let day = 1; day <= daysInMonth; day++) {
     const dayDiv = document.createElement('div');
     dayDiv.textContent = day;
     dayDiv.onclick = () => window.addNote(day);
+    
+    // Check if there's a note for this specific day to show the red dot
+    const dateKey = `${currentYear}-${currentMonth}-${day}`;
+    if (calendarNotes[dateKey]) {
+        const dot = document.createElement('div');
+        dot.className = 'calendar-note-dot';
+        dayDiv.appendChild(dot);
+    }
+    
     grid.appendChild(dayDiv);
   }
   const title = document.getElementById('month-year');
@@ -930,9 +1030,21 @@ window.prevMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth 
 window.nextMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
 
 window.addNote = function(day) {
-    customPrompt('Add note:', function(note) {
-        if(note) customAlert(`Note added for ${day}: ${note}`);
-    });
+    const dateKey = `${currentYear}-${currentMonth}-${day}`;
+    const displayDate = new Date(currentYear, currentMonth, day).toLocaleDateString();
+    const existingNote = calendarNotes[dateKey] || '';
+    
+    customPrompt(`Note for ${displayDate}:`, function(note) {
+        if (note !== null) { // User clicked Submit, not Cancel
+            if (note.trim() === '') {
+                delete calendarNotes[dateKey]; // Delete if empty
+            } else {
+                calendarNotes[dateKey] = note.trim(); // Save note
+            }
+            localStorage.setItem('calendarNotes', JSON.stringify(calendarNotes));
+            renderCalendar(); // Re-render to show/hide the red dot
+        }
+    }, existingNote);
 };
 
 function updateClock() {
@@ -1003,6 +1115,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderCalendar();
   updateClock();
+
+  // Attach event listener for the music player loop/repeat functionality
+  const player = document.getElementById('audio-player');
+  if(player) {
+      player.addEventListener('ended', () => {
+          if (isRepeat) {
+              player.play(); // Play the exact same song again
+          } else {
+              window.playNextSong(); // Move to the next song
+          }
+      });
+  }
 
   // --- AUTO-LOAD SAVED BACKGROUND FOR THE INITIAL PAGE ON STARTUP ---
   if (customPageBgs[currentPage]) {

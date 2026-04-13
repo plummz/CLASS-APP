@@ -264,9 +264,11 @@ window.uploadFileToFolderAPI = async function() {
     if(status) status.innerText = "Uploading to Supabase Cloud...";
     
     try {
-        const filePath = `uploads/${Date.now()}_${file.name}`;
+        // EDITED: Clean filename to prevent Supabase "Invalid Key" errors
+        const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+        const filePath = `uploads/${Date.now()}_${safeName}`;
         
-        // Upload to Supabase Storage Bucket
+        // EDITED: Added contentType to fix PDFs opening as raw code
         const { data, error } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
@@ -838,7 +840,9 @@ window.sendMessage = function() {
 };
 
 async function uploadChatAttachment(file) {
-    const filePath = `chat-attachments/${Date.now()}_${file.name}`;
+    // EDITED: Clean chat attachment filenames as well
+    const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+    const filePath = `chat-attachments/${Date.now()}_${safeName}`;
     
     const { data, error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
     if (error) throw error;

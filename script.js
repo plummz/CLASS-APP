@@ -231,7 +231,7 @@ function fetchAndRenderFiles() {
     .then(({ data: files, error }) => {
         if (error) return console.error(error);
         
-        // Populate currentPlaylist with all audio files in this folder
+        // Populate currentPlaylist with all audio files in this folder for the Music Queue
         currentPlaylist = files.filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
         
         const list = document.getElementById('file-list-container');
@@ -994,7 +994,9 @@ window.closeMenu = function() {
   document.getElementById('overlay').classList.remove('active');
 };
 
-// Calendar Base
+/* ============================================================
+   CALENDAR LOGIC (WITH READ-ONLY VIEW AND RED DOTS)
+   ============================================================ */
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
@@ -1029,22 +1031,76 @@ function renderCalendar() {
 window.prevMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
 window.nextMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
 
+// The new logic to open a View-Only screen first!
 window.addNote = function(day) {
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
-    const displayDate = new Date(currentYear, currentMonth, day).toLocaleDateString();
+    const displayDate = new Date(currentYear, currentMonth, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
     const existingNote = calendarNotes[dateKey] || '';
+
+    if (existingNote) {
+        showNoteView(dateKey, displayDate, existingNote);
+    } else {
+        openNotePrompt(dateKey, displayDate, '');
+    }
+};
+
+// Shows the note nicely so you can read it before deciding to edit
+window.showNoteView = function(dateKey, displayDate, text) {
+    let existingModal = document.getElementById('view-note-modal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+    <div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal-box small-box border-blue">
+            <button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button>
+            <h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${displayDate}</h3>
+            <div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${text}</div>
+            <div class="modal-btn-group">
+                <button class="btn-primary flex-1" id="edit-note-btn">Edit Note</button>
+            </div>
+        </div>
+    </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    customPrompt(`Note for ${displayDate}:`, function(note) {
-        if (note !== null) { // User clicked Submit, not Cancel
-            if (note.trim() === '') {
-                delete calendarNotes[dateKey]; // Delete if empty
-            } else {
-                calendarNotes[dateKey] = note.trim(); // Save note
-            }
-            localStorage.setItem('calendarNotes', JSON.stringify(calendarNotes));
-            renderCalendar(); // Re-render to show/hide the red dot
+    document.getElementById('edit-note-btn').onclick = function() {
+        document.getElementById('view-note-modal').remove();
+        openNotePrompt(dateKey, displayDate, text);
+    };
+};
+
+// Opens a large Textarea for actually writing/editing
+window.openNotePrompt = function(dateKey, displayDate, existingNote) {
+    let existingModal = document.getElementById('edit-note-modal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+    <div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal-box small-box border-blue">
+            <h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3>
+            <textarea id="note-textarea" class="modal-input" placeholder="Type your note here..." style="height:120px; resize:none; margin-bottom: 20px;">${existingNote}</textarea>
+            <div class="modal-btn-group">
+                <button class="btn-blue flex-1" id="save-note-btn">Save</button>
+                <button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button>
+            </div>
+        </div>
+    </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    document.getElementById('note-textarea').focus();
+
+    document.getElementById('save-note-btn').onclick = function() {
+        const note = document.getElementById('note-textarea').value.trim();
+        if (note === '') {
+            delete calendarNotes[dateKey];
+        } else {
+            calendarNotes[dateKey] = note;
         }
-    }, existingNote);
+        localStorage.setItem('calendarNotes', JSON.stringify(calendarNotes));
+        renderCalendar();
+        document.getElementById('edit-note-modal').remove();
+    };
 };
 
 function updateClock() {

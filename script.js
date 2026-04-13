@@ -822,7 +822,7 @@ window.deleteMessageForEveryone = async function(id) {
 };
 
 /* ============================================================
-   UI & NAVIGATION LOGIC
+   UI & NAVIGATION LOGIC (WITH PER-PAGE CUSTOM BACKGROUNDS)
    ============================================================ */
 const pageConfig = {
   first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
@@ -836,6 +836,8 @@ const pageConfig = {
 };
 
 let currentPage = 'first';
+// Load saved page backgrounds from local storage
+let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 
 window.goToPage = function(pageName) {
   if (pageName === currentPage) {
@@ -845,26 +847,43 @@ window.goToPage = function(pageName) {
     return;
   }
 
+  // 1. Turn off old page and its background effects
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
   if(oldPage) oldPage.classList.remove('active');
   
   document.getElementById(old.bg).classList.remove('active');
   document.getElementById(old.particles).classList.remove('active');
-  if (old.wave) document.getElementById('wave-container').classList.remove('active');
+  if (old.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
   if (old.mountain) document.getElementById('mountain-svg').classList.remove('active');
   if (old.aurora) document.getElementById('aurora').classList.remove('active');
 
+  // 2. Set new page active
   currentPage = pageName;
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
-  
   if(newPage) newPage.classList.add('active');
-  document.getElementById(cfg.bg).classList.add('active');
-  document.getElementById(cfg.particles).classList.add('active');
-  if (cfg.wave) document.getElementById('wave-container').classList.add('active');
-  if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
-  if (cfg.aurora) document.getElementById('aurora').classList.add('active');
+
+  // 3. APPLY BACKGROUND (Custom vs Default)
+  if (customPageBgs[pageName]) {
+      // User has a custom background specifically for this page!
+      document.body.style.backgroundImage = `url(${customPageBgs[pageName]})`;
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundAttachment = 'fixed';
+      
+      // Ensure all default animations are completely turned off so they don't block it
+      document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
+  } else {
+      // User does NOT have a custom background here, use the cool default ones
+      document.body.style.backgroundImage = ''; // Clear any custom background
+      
+      document.getElementById(cfg.bg).classList.add('active');
+      document.getElementById(cfg.particles).classList.add('active');
+      if (cfg.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.add('active');
+      if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
+      if (cfg.aurora) document.getElementById('aurora').classList.add('active');
+  }
 
   document.getElementById('page-indicator').textContent = cfg.label;
   if(newPage) newPage.scrollTop = 0;
@@ -939,7 +958,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 /* ============================================================
-   INITIALIZATION & PERSISTENT CUSTOM BACKGROUND
+   INITIALIZATION & PERSISTENT PER-PAGE CUSTOM BACKGROUND
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
@@ -985,21 +1004,21 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCalendar();
   updateClock();
 
-  // --- AUTO-LOAD SAVED BACKGROUND ON STARTUP ---
-  const savedBg = localStorage.getItem('savedCustomBg');
-  if (savedBg) {
+  // --- AUTO-LOAD SAVED BACKGROUND FOR THE INITIAL PAGE ON STARTUP ---
+  if (customPageBgs[currentPage]) {
       document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
       document.getElementById('aurora').classList.remove('active');
       document.getElementById('mountain-svg').classList.remove('active');
+      if (document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
       
-      document.body.style.backgroundImage = `url(${savedBg})`;
+      document.body.style.backgroundImage = `url(${customPageBgs[currentPage]})`;
       document.body.style.backgroundSize = 'cover';
       document.body.style.backgroundPosition = 'center';
       document.body.style.backgroundAttachment = 'fixed';
   }
 });
 
-// --- NEW STICKY CUSTOM BACKGROUND UPLOADER ---
+// --- NEW STICKY CUSTOM BACKGROUND UPLOADER (SAVES PER-PAGE) ---
 document.getElementById('custom-bg-upload').addEventListener('change', function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1009,21 +1028,25 @@ document.getElementById('custom-bg-upload').addEventListener('change', function(
     reader.onload = function(e) {
         const base64Image = e.target.result;
         
-        // Turn off the default animated backgrounds
-        document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-        document.getElementById('aurora').classList.remove('active');
-        document.getElementById('mountain-svg').classList.remove('active');
+        // Save the image string specifically for whatever page the user is currently looking at
+        customPageBgs[currentPage] = base64Image;
         
-        // Apply the custom background to the body
-        document.body.style.backgroundImage = `url(${base64Image})`;
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundAttachment = 'fixed';
-        
-        // Save the image string to localStorage so it stays after refresh/close
         try {
-            localStorage.setItem('savedCustomBg', base64Image);
-            customAlert("Custom Background Applied & Saved Permanently!");
+            localStorage.setItem('customPageBgs', JSON.stringify(customPageBgs));
+            customAlert(`Custom Background applied and saved to the ${currentPage.toUpperCase()} page!`);
+            
+            // Turn off the default animated backgrounds instantly
+            document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
+            document.getElementById('aurora').classList.remove('active');
+            document.getElementById('mountain-svg').classList.remove('active');
+            if (document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
+            
+            // Apply the custom background to the body visually
+            document.body.style.backgroundImage = `url(${base64Image})`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+            
         } catch (err) {
             customAlert("Background applied! (Note: File is too large to save permanently after refresh).");
         }

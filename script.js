@@ -715,6 +715,12 @@ function initSupabaseRealtimeChat() {
                 fetchMessages(currentChat.type, currentChat.target);
             }
         }).subscribe();
+        
+    // Also listen for Calendar Note updates live!
+    sb.channel('public:calendar_notes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, payload => {
+            fetchCalendarNotes(); // Refresh notes when anyone edits them
+        }).subscribe();
 }
 
 // Fetch old messages from the database
@@ -919,8 +925,8 @@ const pageConfig = {
 let currentPage = 'first';
 // Load saved page backgrounds from local storage
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
-// Load saved calendar notes
-let calendarNotes = JSON.parse(localStorage.getItem('calendarNotes')) || {};
+// Setup globally available calendar notes (Fetched from Supabase now!)
+let calendarNotes = {};
 
 window.goToPage = function(pageName) {
   if (pageName === currentPage) {
@@ -995,10 +1001,22 @@ window.closeMenu = function() {
 };
 
 /* ============================================================
-   CALENDAR LOGIC (WITH READ-ONLY VIEW AND RED DOTS)
+   CALENDAR LOGIC (SUPABASE POWERED)
    ============================================================ */
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
+
+// Fetch notes from Supabase database
+async function fetchCalendarNotes() {
+    const { data, error } = await sb.from('calendar_notes').select('*');
+    if (!error && data) {
+        calendarNotes = {}; // Reset local cache
+        data.forEach(row => {
+            calendarNotes[row.date_key] = row.note;
+        });
+        renderCalendar(); // Re-render visually to update red dots
+    }
+}
 
 function renderCalendar() {
   const grid = document.getElementById('calendar-grid');
@@ -1031,7 +1049,6 @@ function renderCalendar() {
 window.prevMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
 window.nextMonth = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
 
-// The new logic to open a View-Only screen first!
 window.addNote = function(day) {
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
     const displayDate = new Date(currentYear, currentMonth, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
@@ -1069,7 +1086,7 @@ window.showNoteView = function(dateKey, displayDate, text) {
     };
 };
 
-// Opens a large Textarea for actually writing/editing
+// Opens a large Textarea for actually writing/editing and saves it directly to Supabase
 window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     let existingModal = document.getElementById('edit-note-modal');
     if (existingModal) existingModal.remove();
@@ -1090,14 +1107,26 @@ window.openNotePrompt = function(dateKey, displayDate, existingNote) {
 
     document.getElementById('note-textarea').focus();
 
-    document.getElementById('save-note-btn').onclick = function() {
+    document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
+        
+        // Ensure user is logged in
+        if(!currentUser) {
+            customAlert("You must be logged in to save calendar notes.");
+            return;
+        }
+
         if (note === '') {
             delete calendarNotes[dateKey];
+            await sb.from('calendar_notes').delete().eq('date_key', dateKey); // Delete from cloud
         } else {
             calendarNotes[dateKey] = note;
+            // Upsert creates it if it doesn't exist, or updates it if it does
+            await sb.from('calendar_notes').upsert([
+                { date_key: dateKey, note: note, updated_by: currentUser.username }
+            ]);
         }
-        localStorage.setItem('calendarNotes', JSON.stringify(calendarNotes));
+        
         renderCalendar();
         document.getElementById('edit-note-modal').remove();
     };
@@ -1169,7 +1198,8 @@ document.addEventListener('DOMContentLoaded', () => {
   buildFolderCards('grid-events', eventCount, 'Event');
   buildFolderCards('grid-random', randomCount, 'Random');
 
-  renderCalendar();
+  // FETCH GLOBALLY SAVED CALENDAR NOTES FROM CLOUD 
+  fetchCalendarNotes(); 
   updateClock();
 
   // Attach event listener for the music player loop/repeat functionality

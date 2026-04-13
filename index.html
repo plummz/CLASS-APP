@@ -17,6 +17,8 @@
 </head>
 <body>
 
+  <audio id="notif-sound" src="https://actions.google.com/sounds/v1/ui/pop.ogg" preload="auto"></audio>
+
   <button id="install-btn" class="install-btn">Install App</button>
  
   <div id="bg-mountain" class="scene-bg active"></div>
@@ -25,9 +27,10 @@
   <div id="bg-galaxy"   class="scene-bg"></div>
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
-  <label for="custom-bg-upload" class="custom-bg-btn">Upload Custom BG</label>
+  <label for="custom-bg-upload" class="custom-bg-btn" style="position: absolute; top: 15px; right: 15px; z-index: 100; cursor: pointer; color: #00d4ff; font-weight: bold; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 8px; border: 1px solid #00d4ff;">Upload Custom BG</label>
  
   <div class="aurora active" id="aurora"></div>
+ 
   <canvas id="starfield"></canvas>
  
   <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -51,8 +54,6 @@
   </button>
  
   <div id="page-indicator">⛰️ First Semester</div>
-  
-  <div id="live-clock"></div>
  
   <nav id="sidebar">
     <div class="sidebar-title">My Portfolio</div>
@@ -78,7 +79,7 @@
     </div>
  
     <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
-      <span class="nav-icon" style="position: relative;">💬<span id="chat-notif-dot-nav" class="notif-dot hidden"></span></span>
+      <span class="nav-icon" style="position: relative;">💬<span id="chat-notif-dot" class="notif-dot hidden"></span></span>
       <div class="nav-text"><span class="nav-label">Chat</span></div>
     </div>
  
@@ -209,10 +210,11 @@
       <h3 id="now-playing-text" class="music-now-playing">Select a track from a folder to play</h3>
       <audio id="audio-player" class="full-width" controls crossorigin="anonymous" onplay="startVisualizer(this)"></audio>
       
-      <div class="music-controls">
-          <button class="btn-secondary" onclick="playPrevTrack()">⏮ Prev</button>
-          <button id="repeat-btn" class="btn-secondary" onclick="toggleRepeatMode()">Repeat: ALL 🔁</button>
-          <button class="btn-secondary" onclick="playNextTrack()">Next ⏭</button>
+      <div class="music-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-secondary" onclick="playPrevSong()" style="padding: 8px 12px; font-size: 12px;">⏮ Prev</button>
+          <button id="btn-loop" class="btn-secondary" onclick="toggleLoop()" style="padding: 8px 12px; font-size: 12px; color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
+          <button id="btn-repeat" class="btn-secondary" onclick="toggleRepeat()" style="padding: 8px 12px; font-size: 12px; color: white; border-color: white;">🔂 Repeat 1: OFF</button>
+          <button class="btn-secondary" onclick="playNextSong()" style="padding: 8px 12px; font-size: 12px;">Next ⏭</button>
       </div>
 
       <div id="visualizer-container" class="visualizer-wrapper">
@@ -276,10 +278,11 @@
     </div>
   </div>
 
-  <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">
-      💬<span id="chat-notif-dot-bauble" class="notif-dot hidden"></span>
-  </div>
+  <div id="live-clock"></div>
 
+  <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
+
+  <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 

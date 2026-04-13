@@ -1,5 +1,5 @@
 /* ============================================================
-   STYLE.CSS — My School Portfolio
+   STYLE.CSS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
  
 /* ── CSS VARIABLES ── */
@@ -384,7 +384,7 @@ body {
 }
  
 /* ============================================================
-   SIDEBAR
+   SIDEBAR (DROPDOWN NAVIGATION)
    ============================================================ */
 #sidebar {
   position: fixed;
@@ -419,7 +419,7 @@ body {
   margin-bottom: 12px;
 }
  
-.nav-item {
+.nav-item, .nav-dropdown-header {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -430,6 +430,32 @@ body {
   position: relative;
   overflow: hidden;
 }
+
+.nav-dropdown-header .dropdown-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  transition: transform 0.3s;
+}
+
+.nav-dropdown-group.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.nav-dropdown-content {
+  display: none;
+  background: rgba(0,0,0,0.2);
+}
+
+.nav-dropdown-group.open .nav-dropdown-content {
+  display: block;
+}
+
+/* Year Level Custom Background Designs */
+.year-1-theme { border-left: 3px solid #00ff88; background: linear-gradient(90deg, rgba(0, 255, 136, 0.05), transparent); }
+.year-2-theme { border-left: 3px solid #00d4ff; background: linear-gradient(90deg, rgba(0, 212, 255, 0.05), transparent); }
+.year-3-theme { border-left: 3px solid #ffd700; background: linear-gradient(90deg, rgba(255, 215, 0, 0.05), transparent); }
+.year-4-theme { border-left: 3px solid #ff0080; background: linear-gradient(90deg, rgba(255, 0, 128, 0.05), transparent); }
+
 .nav-item::before {
   content: '';
   position: absolute;
@@ -1129,7 +1155,7 @@ body {
 }
 
 /* ============================================================
-   MUSIC PLAYER
+   MUSIC PLAYER & VISUALIZER
    ============================================================ */
 .music-manage-container { text-align: center; margin-bottom: 30px; }
 .music-player-card {
@@ -1137,15 +1163,6 @@ body {
     padding: 30px; border-radius: 20px;
 }
 .music-now-playing { color: var(--neon-green); margin-bottom: 20px; }
-.visualizer-wrapper { display: flex; justify-content: center; margin-top: 30px; }
-.speaker-outer {
-    width: 140px; height: 140px;
-    background: var(--neon-green); border-radius: 50%;
-    box-shadow: 0 0 40px var(--neon-green);
-    transition: transform 0.05s ease;
-    display: flex; align-items: center; justify-content: center;
-}
-.speaker-inner { width: 60px; height: 60px; background: #1a1a2e; border-radius: 50%; }
 
 /* ============================================================
    LIVE CLOCK
@@ -1181,4 +1198,3 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
-

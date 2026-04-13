@@ -318,20 +318,25 @@ window.deleteFileAPI = function(fileId) {
 };
 
 /* ============================================================
-   MUSIC PLAYER QUEUE & LOGIC
+   MUSIC PLAYER QUEUE & LOGIC (FIXED Native Loop & Queue)
    ============================================================ */
 window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
     if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-        // Find track index for queue system
+        // Find track index securely so Next/Prev always works
         if (!skipIndexUpdate && currentPlaylist.length > 0) {
             currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
+            // Fallback just in case the URL was slightly modified
+            if (currentTrackIndex === -1) {
+                currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
+            }
         }
         
         if(player) {
             player.src = fullUrl;
+            player.loop = isRepeat; // FIX: Use native browser loop for Repeat 1
             player.play().catch(e => console.warn('Autoplay blocked:', e));
         }
         const text = document.getElementById('now-playing-text');
@@ -346,33 +351,45 @@ window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
 };
 
 window.playNextSong = function() {
-    if (currentPlaylist.length === 0 || currentTrackIndex === -1) return;
-    currentTrackIndex++;
+    if (currentPlaylist.length === 0) return;
     
-    // Check if we hit the end of the folder
-    if (currentTrackIndex >= currentPlaylist.length) {
-        if (isLoop) {
-            currentTrackIndex = 0; // Loop back to start
-        } else {
-            currentTrackIndex = -1; // Stop playing
-            return; 
+    // Failsafe: if we lose our index, just jump to the first song
+    if (currentTrackIndex === -1) {
+        currentTrackIndex = 0;
+    } else {
+        currentTrackIndex++;
+        // Check if we hit the end of the folder
+        if (currentTrackIndex >= currentPlaylist.length) {
+            if (isLoop) {
+                currentTrackIndex = 0; // Loop back to start of folder
+            } else {
+                currentTrackIndex = -1; // Stop playing completely
+                return; 
+            }
         }
     }
+    
     const nextSong = currentPlaylist[currentTrackIndex];
     playOrOpenFileAPI(nextSong.url, nextSong.name, true);
 };
 
 window.playPrevSong = function() {
-    if (currentPlaylist.length === 0 || currentTrackIndex === -1) return;
-    currentTrackIndex--;
+    if (currentPlaylist.length === 0) return;
     
-    if (currentTrackIndex < 0) {
-        if (isLoop) {
-            currentTrackIndex = currentPlaylist.length - 1; // Go to last song
-        } else {
-            currentTrackIndex = 0; // Just replay the first song
+    // Failsafe: if we lose our index, jump to the last song
+    if (currentTrackIndex === -1) {
+        currentTrackIndex = currentPlaylist.length - 1;
+    } else {
+        currentTrackIndex--;
+        if (currentTrackIndex < 0) {
+            if (isLoop) {
+                currentTrackIndex = currentPlaylist.length - 1; // Go to last song
+            } else {
+                currentTrackIndex = 0; // Just replay the first song
+            }
         }
     }
+    
     const prevSong = currentPlaylist[currentTrackIndex];
     playOrOpenFileAPI(prevSong.url, prevSong.name, true);
 };
@@ -390,10 +407,15 @@ window.toggleLoop = function() {
 window.toggleRepeat = function() {
     isRepeat = !isRepeat;
     const btn = document.getElementById('btn-repeat');
+    const player = document.getElementById('audio-player');
     if(btn) {
         btn.innerText = `🔂 Repeat 1: ${isRepeat ? 'ON' : 'OFF'}`;
         btn.style.color = isRepeat ? 'var(--neon-green)' : 'white';
         btn.style.borderColor = isRepeat ? 'var(--neon-green)' : 'white';
+    }
+    // Update the native browser audio element directly!
+    if(player) {
+        player.loop = isRepeat;
     }
 };
 
@@ -1202,14 +1224,13 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchCalendarNotes(); 
   updateClock();
 
-  // Attach event listener for the music player loop/repeat functionality
+  // Attach event listener for the music player loop/playlist functionality
   const player = document.getElementById('audio-player');
   if(player) {
       player.addEventListener('ended', () => {
-          if (isRepeat) {
-              player.play(); // Play the exact same song again
-          } else {
-              window.playNextSong(); // Move to the next song
+          // If native Repeat 1 is OFF, move to the next song in folder
+          if (!player.loop) {
+              window.playNextSong(); 
           }
       });
   }

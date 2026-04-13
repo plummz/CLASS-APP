@@ -1,5 +1,5 @@
 /* ============================================================
-   SCRIPT.JS — My School Portfolio (FULL SUPABASE VERSION)
+   SCRIPT.JS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
 
 // 1. SUPABASE CONNECTION INFO
@@ -17,33 +17,44 @@ const SERVER_BASE = 'https://class-app-y67k.onrender.com';
    CUSTOM MODALS (Replaces prompt/alert/confirm for PWA support)
    ============================================================ */
 window.customAlert = function(text) {
-    document.getElementById('alert-text').innerText = text;
-    document.getElementById('custom-alert-modal').style.display = 'flex';
+    const alertBox = document.getElementById('alert-text');
+    if (alertBox) alertBox.innerText = text;
+    const modal = document.getElementById('custom-alert-modal');
+    if (modal) modal.style.display = 'flex';
 };
 
 window.customPrompt = function(title, callback, defaultValue = '') {
     const modal = document.getElementById('custom-prompt-modal');
     const inputEl = document.getElementById('prompt-input');
-    document.getElementById('prompt-title').innerText = title;
-    inputEl.value = defaultValue;
-    modal.style.display = 'flex';
-    inputEl.focus();
+    const titleEl = document.getElementById('prompt-title');
+    const submitBtn = document.getElementById('prompt-submit');
+    
+    if (titleEl) titleEl.innerText = title;
+    if (inputEl) inputEl.value = defaultValue;
+    if (modal) modal.style.display = 'flex';
+    if (inputEl) inputEl.focus();
 
-    document.getElementById('prompt-submit').onclick = function() {
-        modal.style.display = 'none';
-        callback(inputEl.value.trim());
-    };
+    if (submitBtn) {
+        submitBtn.onclick = function() {
+            modal.style.display = 'none';
+            callback(inputEl.value.trim());
+        };
+    }
 };
 
 window.customConfirm = function(text, callback) {
-    document.getElementById('confirm-text').innerText = text;
+    const confirmBox = document.getElementById('confirm-text');
+    if (confirmBox) confirmBox.innerText = text;
     const modal = document.getElementById('custom-confirm-modal');
-    modal.style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
     
-    document.getElementById('confirm-yes').onclick = function() {
-        modal.style.display = 'none';
-        callback();
-    };
+    const yesBtn = document.getElementById('confirm-yes');
+    if (yesBtn) {
+        yesBtn.onclick = function() {
+            modal.style.display = 'none';
+            callback();
+        };
+    }
 };
 
 /* ============================================================
@@ -141,16 +152,17 @@ let isRepeat = false;
 window.closeFolderModal = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'none';
-}
+};
 
 window.openFolderModalObj = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'flex';
-}
+};
 
 window.openFolderExplorer = function(parentName) {
     currentParentContext = parentName;
-    document.getElementById('folder-explorer-title').innerText = `${parentName} Folders`;
+    const title = document.getElementById('folder-explorer-title');
+    if (title) title.innerText = `${parentName} Folders`;
     fetchAndRenderFolders();
     openFolderModalObj('folder-explorer-modal');
 };
@@ -215,7 +227,8 @@ window.deleteFolderAPI = function(id) {
 
 window.openFileExplorer = function(folderId, folderName) {
     currentFolderContext = { id: folderId, name: folderName };
-    document.getElementById('file-explorer-title').innerText = `${currentParentContext} / ${folderName}`;
+    const title = document.getElementById('file-explorer-title');
+    if (title) title.innerText = `${currentParentContext} / ${folderName}`;
     closeFolderModal('folder-explorer-modal');
     fetchAndRenderFiles();
     openFolderModalObj('file-explorer-modal');
@@ -231,7 +244,6 @@ function fetchAndRenderFiles() {
     .then(({ data: files, error }) => {
         if (error) return console.error(error);
         
-        // Populate currentPlaylist with all audio files in this folder for the Music Queue
         currentPlaylist = files.filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
         
         const list = document.getElementById('file-list-container');
@@ -260,9 +272,6 @@ function fetchAndRenderFiles() {
     });
 }
 
-// ---------------------------------------------------------
-// SUPABASE STORAGE UPLOAD WITH LIVE PROGRESS BAR & CONTENT TYPE
-// ---------------------------------------------------------
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
@@ -274,11 +283,9 @@ window.uploadFileToFolderAPI = async function() {
     if(status) status.innerText = "Uploading to Supabase Cloud...";
     
     try {
-        // Clean filename to prevent Supabase "Invalid Key" errors
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
         const filePath = `uploads/${Date.now()}_${safeName}`;
         
-        // Added contentType to fix PDFs opening as raw code
         const { data, error } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
@@ -287,10 +294,8 @@ window.uploadFileToFolderAPI = async function() {
 
         if(status) status.innerText = "Upload 100%. Saving to database...";
         
-        // Get Public URL
         const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
 
-        // Save metadata to Files table
         await sb.from('files').insert([{
             folder_id: currentFolderContext.id,
             name: file.name,
@@ -318,27 +323,100 @@ window.deleteFileAPI = function(fileId) {
 };
 
 /* ============================================================
-   MUSIC PLAYER QUEUE & LOGIC (FIXED Native Loop & Queue)
+   MUSIC PLAYER & ADVANCED VISUALIZER (TOP TO BOTTOM)
    ============================================================ */
+
+window.searchYouTube = function() {
+    const input = document.getElementById('yt-search-input');
+    if (!input || !input.value.trim()) return customAlert("Enter a song name to search!");
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(input.value.trim())}`, '_blank');
+};
+
+let audioCtx = null;
+let analyser = null;
+let source = null;
+
+window.startBlockVisualizer = (audioElement) => {
+    const canvas = document.getElementById('block-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        source = audioCtx.createMediaElementSource(audioElement);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+    }
+    
+    // Set for rainbow block detail
+    analyser.fftSize = 128;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function draw() {
+        requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const barWidth = (canvas.width / 40) * 1.5;
+        let x = 0;
+
+        for (let i = 0; i < 40; i++) {
+            let barHeight = dataArray[i] / 1.5;
+            const hue = (i / 40) * 360; // Rainbow color
+            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+
+            // Draw individual stacking blocks
+            const blockSize = 10;
+            const gap = 3;
+            const numBlocks = Math.floor(barHeight / (blockSize + gap));
+
+            for (let j = 0; j < numBlocks; j++) {
+                // Main top bars
+                ctx.fillRect(x, (canvas.height / 2) - (j * (blockSize + gap)) - 5, barWidth - 2, blockSize);
+                
+                // Reflection logic
+                ctx.globalAlpha = 0.3; 
+                ctx.fillRect(x, (canvas.height / 2) + (j * (blockSize + gap)) + 5, barWidth - 2, blockSize);
+                ctx.globalAlpha = 1.0;
+            }
+            x += barWidth;
+        }
+    }
+    draw();
+};
+
 window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
     if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-        // Find track index securely so Next/Prev always works
         if (!skipIndexUpdate && currentPlaylist.length > 0) {
             currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
-            // Fallback just in case the URL was slightly modified
-            if (currentTrackIndex === -1) {
-                currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
-            }
+            if (currentTrackIndex === -1) currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
         }
         
         if(player) {
             player.src = fullUrl;
-            player.loop = isRepeat; // FIX: Use native browser loop for Repeat 1
+            player.loop = isRepeat;
             player.play().catch(e => console.warn('Autoplay blocked:', e));
+            
+            // Background Play Support (Media Session)
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: name,
+                    artist: 'School Portfolio Music Hub',
+                    artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }]
+                });
+                
+                navigator.mediaSession.setActionHandler('nexttrack', window.playNextSong);
+                navigator.mediaSession.setActionHandler('previoustrack', window.playPrevSong);
+            }
         }
+        
         const text = document.getElementById('now-playing-text');
         if(text) text.innerText = "Playing: " + name;
         
@@ -352,44 +430,30 @@ window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
 
 window.playNextSong = function() {
     if (currentPlaylist.length === 0) return;
-    
-    // Failsafe: if we lose our index, just jump to the first song
     if (currentTrackIndex === -1) {
         currentTrackIndex = 0;
     } else {
         currentTrackIndex++;
-        // Check if we hit the end of the folder
         if (currentTrackIndex >= currentPlaylist.length) {
-            if (isLoop) {
-                currentTrackIndex = 0; // Loop back to start of folder
-            } else {
-                currentTrackIndex = -1; // Stop playing completely
-                return; 
-            }
+            if (isLoop) currentTrackIndex = 0;
+            else { currentTrackIndex = -1; return; }
         }
     }
-    
     const nextSong = currentPlaylist[currentTrackIndex];
     playOrOpenFileAPI(nextSong.url, nextSong.name, true);
 };
 
 window.playPrevSong = function() {
     if (currentPlaylist.length === 0) return;
-    
-    // Failsafe: if we lose our index, jump to the last song
     if (currentTrackIndex === -1) {
         currentTrackIndex = currentPlaylist.length - 1;
     } else {
         currentTrackIndex--;
         if (currentTrackIndex < 0) {
-            if (isLoop) {
-                currentTrackIndex = currentPlaylist.length - 1; // Go to last song
-            } else {
-                currentTrackIndex = 0; // Just replay the first song
-            }
+            if (isLoop) currentTrackIndex = currentPlaylist.length - 1;
+            else currentTrackIndex = 0;
         }
     }
-    
     const prevSong = currentPlaylist[currentTrackIndex];
     playOrOpenFileAPI(prevSong.url, prevSong.name, true);
 };
@@ -413,31 +477,7 @@ window.toggleRepeat = function() {
         btn.style.color = isRepeat ? 'var(--neon-green)' : 'white';
         btn.style.borderColor = isRepeat ? 'var(--neon-green)' : 'white';
     }
-    // Update the native browser audio element directly!
-    if(player) {
-        player.loop = isRepeat;
-    }
-};
-
-window.startVisualizer = (audioElement) => {
-  if (!window.audioCtx) {
-    window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    window.analyser = window.audioCtx.createAnalyser();
-    const source = window.audioCtx.createMediaElementSource(audioElement);
-    source.connect(window.analyser);
-    window.analyser.connect(window.audioCtx.destination);
-  }
-  
-  const data = new Uint8Array(window.analyser.frequencyBinCount);
-  const speaker = document.getElementById('dancing-speaker');
-  
-  function loop() {
-    requestAnimationFrame(loop);
-    window.analyser.getByteFrequencyData(data);
-    const bass = data.slice(0, 10).reduce((a, b) => a + b) / 10;
-    if(speaker) speaker.style.transform = `scale(${1 + (bass / 255)})`;
-  }
-  loop();
+    if(player) player.loop = isRepeat;
 };
 
 /* ============================================================
@@ -454,38 +494,40 @@ function saveSession() {
 
 window.login = async function() {
   const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value.trim();
   if (!username) return customAlert('Enter username');
   
-  document.getElementById('errorMessage').style.display = 'none';
+  const errBox = document.getElementById('errorMessage');
+  if (errBox) errBox.style.display = 'none';
 
   const { data: profile, error } = await sb.from('profiles').select('*').eq('username', username).single();
   if (error || !profile) {
-      document.getElementById('errorMessage').innerText = "User not found. Please register.";
-      document.getElementById('errorMessage').style.display = 'block';
+      if (errBox) {
+          errBox.innerText = "User not found. Please register.";
+          errBox.style.display = 'block';
+      }
       return;
   }
   
   currentUser = profile;
   isAdmin = (profile.username === 'Marquillero');
   saveSession();
-  
-  // Set user online
   await sb.from('profiles').update({ online: true }).eq('username', currentUser.username);
   establishSession();
 };
 
 window.register = async function() {
   const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value.trim();
   if (!username) return customAlert('Enter username');
   
-  document.getElementById('errorMessage').style.display = 'none';
+  const errBox = document.getElementById('errorMessage');
+  if (errBox) errBox.style.display = 'none';
 
   const { error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true }]);
   if (error) {
-      document.getElementById('errorMessage').innerText = "Username taken or Error occurred.";
-      document.getElementById('errorMessage').style.display = 'block';
+      if (errBox) {
+          errBox.innerText = "Username taken or Error occurred.";
+          errBox.style.display = 'block';
+      }
   } else {
       window.login();
   }
@@ -503,7 +545,6 @@ window.handleLogout = async function() {
 function establishSession() {
   const authModal = document.getElementById('auth-modal');
   if(authModal) authModal.style.display = 'none';
-  
   const navLogout = document.getElementById('nav-logout');
   if(navLogout) navLogout.style.display = 'flex';
 
@@ -568,13 +609,11 @@ function renderChatUsersList() {
 window.openUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
-  
   const profilePanel = document.getElementById('profile-panel');
   const details = document.getElementById('profile-details');
   if (!profilePanel || !details) return;
   
   const isMine = currentUser?.username === profile.username;
-  
   let html = `
     <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.display_name || profile.username}</h2>
     <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
@@ -587,16 +626,9 @@ window.openUserProfile = function(username) {
       <button class="btn-primary flex-1" onclick="openChat('private', '${profile.username}')">Message</button>
   `;
 
-  if (isMine) {
-    html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
-  }
-  
-  if (isAdmin && !isMine) {
-    html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
-  }
-
+  if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
+  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
   html += `</div>`; 
-  
   details.innerHTML = html;
   profilePanel.classList.add('active');
 };
@@ -609,36 +641,23 @@ window.closeProfile = function() {
 window.editUserProfile = function(username) {
   const profile = users.find((user) => user.username === username);
   if (!profile) return;
-  
   const details = document.getElementById('profile-details');
   if (!details) return;
   
   details.innerHTML = `
     <h2 class="modal-title text-blue" style="margin-bottom: 15px;">Edit Profile</h2>
-    <div style="margin-bottom: 10px;">
-        <label style="font-size: 12px; color: #00d4ff;">Display Name</label>
-        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.display_name || profile.username || ''}">
-    </div>
-    <div style="margin-bottom: 10px;">
-        <label style="font-size: 12px; color: #00d4ff;">Birthday</label>
-        <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.birthday || ''}">
-    </div>
-    <div style="margin-bottom: 10px;">
-        <label style="font-size: 12px; color: #00d4ff;">Address</label>
-        <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.address || ''}">
-    </div>
-    <div style="margin-bottom: 10px;">
-        <label style="font-size: 12px; color: #00d4ff;">GitHub URL</label>
-        <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.github || ''}">
-    </div>
-    <div style="margin-bottom: 10px;">
-        <label style="font-size: 12px; color: #00d4ff;">Email</label>
-        <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.email || ''}">
-    </div>
-    <div style="margin-bottom: 15px;">
-        <label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
-        <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${profile.note || ''}</textarea>
-    </div>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Display Name</label>
+        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.display_name || profile.username || ''}"></div>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Birthday</label>
+        <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.birthday || ''}"></div>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Address</label>
+        <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.address || ''}"></div>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">GitHub URL</label>
+        <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.github || ''}"></div>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Email</label>
+        <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.email || ''}"></div>
+    <div style="margin-bottom: 15px;"><label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
+        <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${profile.note || ''}</textarea></div>
     <div class="profile-actions modal-btn-group">
       <button class="btn-primary flex-1" onclick="saveProfileEdits('${profile.username}')">Save</button>
       <button class="btn-outline-red flex-1" onclick="openUserProfile('${profile.username}')">Cancel</button>
@@ -657,24 +676,18 @@ window.saveProfileEdits = function(username) {
   };
   
   sb.from('profiles').update(payload).eq('username', username)
-    .then(() => {
-      fetchUsers(); 
-      customAlert("Profile updated successfully!");
-      openUserProfile(username); 
-    })
+    .then(() => { fetchUsers(); customAlert("Profile updated successfully!"); openUserProfile(username); })
     .catch((err) => customAlert(err.message));
 };
 
 /* ============================================================
-   100% SUPABASE SERVERLESS CHAT ENGINE
+   SUPABASE SERVERLESS CHAT ENGINE
    ============================================================ */
 let chatHistory = { group: [], todo: [], private: {} };
 let currentChat = { type: 'group', target: null };
 let realtimeSubscription = null;
 
-function getPrivateKey(userA, userB) {
-    return [userA, userB].sort().join('||');
-}
+function getPrivateKey(userA, userB) { return [userA, userB].sort().join('||'); }
 
 function updateChatHeader() {
   const header = document.getElementById('chat-header');
@@ -692,33 +705,24 @@ window.openChat = function(type, target = null) {
   if (currentPage !== 'chat') window.goToPage('chat');
 };
 
-// Start listening for new messages live from Supabase
 function initSupabaseRealtimeChat() {
     if (realtimeSubscription) return;
-
     realtimeSubscription = sb.channel('public:messages')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
-            
-            // If a message was inserted (someone sent a chat)
             if (payload.eventType === 'INSERT') {
                 const m = payload.new;
                 const formattedMsg = {
                     id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
                     time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                 };
-
-                // NOTIFICATION LOGIC: If someone else sent the message
                 if (m.sender !== currentUser.username) {
                     const sound = document.getElementById('notif-sound');
-                    if (sound) sound.play().catch(e => console.log('Audio blocked until user interaction'));
-                    
-                    // Show red dot if not currently on the chat page looking at this specific chat
+                    if (sound) sound.play().catch(e => console.log('Audio blocked'));
                     if (currentPage !== 'chat' || (currentChat.type === 'private' && m.chat_type === 'private' && currentChat.target !== m.sender)) {
                         const dot = document.getElementById('chat-notif-dot');
                         if (dot) dot.classList.remove('hidden');
                     }
                 }
-
                 if (m.chat_type === 'private') {
                     const otherUser = m.sender === currentUser.username ? m.target : m.sender;
                     const key = getPrivateKey(currentUser.username, otherUser);
@@ -731,34 +735,18 @@ function initSupabaseRealtimeChat() {
                     if (currentChat.type === m.chat_type) renderMessages();
                 }
             } 
-            
-            // If a message was deleted or edited, just re-fetch the current chat to update screen
-            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') {
-                fetchMessages(currentChat.type, currentChat.target);
-            }
+            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') fetchMessages(currentChat.type, currentChat.target);
         }).subscribe();
         
-    // Also listen for Calendar Note updates live!
     sb.channel('public:calendar_notes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, payload => {
-            fetchCalendarNotes(); // Refresh notes when anyone edits them
-        }).subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, payload => { fetchCalendarNotes(); }).subscribe();
 }
 
-// Fetch old messages from the database
 async function fetchMessages(chatType, target = null) {
   if (!chatType) return;
-  
   let query = sb.from('messages').select('*');
-  
-  if (chatType === 'private') {
-      // Get messages between Me and Target
-      query = query.eq('chat_type', 'private')
-                   .or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
-  } else {
-      // Get group or todo messages
-      query = query.eq('chat_type', chatType);
-  }
+  if (chatType === 'private') query = query.eq('chat_type', 'private').or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
+  else query = query.eq('chat_type', chatType);
 
   const { data: messages, error } = await query.order('created_at', { ascending: true });
   if (error) return console.warn(error);
@@ -768,12 +756,8 @@ async function fetchMessages(chatType, target = null) {
       time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
   }));
 
-  if (chatType === 'private') {
-      const key = getPrivateKey(currentUser.username, target);
-      chatHistory.private[key] = formattedMessages;
-  } else {
-      chatHistory[chatType] = formattedMessages;
-  }
+  if (chatType === 'private') { const key = getPrivateKey(currentUser.username, target); chatHistory.private[key] = formattedMessages; }
+  else chatHistory[chatType] = formattedMessages;
   renderMessages();
 }
 
@@ -790,11 +774,7 @@ function renderMessages() {
   container.innerHTML = '';
   const history = getCurrentHistory();
   const visibleMessages = history.filter((message) => !message.deletedFor || !message.deletedFor.includes(currentUser?.username));
-  
-  if (!visibleMessages.length) {
-    container.innerHTML = '<p class="empty-chat">No messages yet.</p>';
-    return;
-  }
+  if (!visibleMessages.length) { container.innerHTML = '<p class="empty-chat">No messages yet.</p>'; return; }
   
   const pinned = visibleMessages.filter((message) => message.pinned);
   const normal = visibleMessages.filter((message) => !message.pinned);
@@ -802,76 +782,33 @@ function renderMessages() {
   pinned.concat(normal).forEach((message) => {
     if (message.type === 'system') {
       const sysDiv = document.createElement('div');
-      sysDiv.className = 'chat-system-message';
-      sysDiv.textContent = message.text;
-      container.appendChild(sysDiv);
-      return;
+      sysDiv.className = 'chat-system-message'; sysDiv.textContent = message.text;
+      container.appendChild(sysDiv); return;
     }
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-message${message.pinned ? ' message-pinned' : ''}`;
-    
     const senderLine = document.createElement('div');
-    senderLine.innerHTML = `
-      <span class="chat-sender">${message.sender}</span>
-      <span class="chat-time">${message.time}</span>
-      ${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}
-    `;
+    senderLine.innerHTML = `<span class="chat-sender">${message.sender}</span><span class="chat-time">${message.time}</span>${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}`;
     msgDiv.appendChild(senderLine);
-    
     const textLine = document.createElement('div');
-    textLine.className = 'chat-text';
-    textLine.textContent = message.text;
+    textLine.className = 'chat-text'; textLine.textContent = message.text;
     msgDiv.appendChild(textLine);
     
     if (message.attachment) {
-      const attach = document.createElement('div');
-      attach.className = 'chat-attachment';
-      const info = document.createElement('div');
-      info.textContent = `Attachment: ${message.attachment.name}`;
-      attach.appendChild(info);
-      
+      const attach = document.createElement('div'); attach.className = 'chat-attachment';
+      const info = document.createElement('div'); info.textContent = `Attachment: ${message.attachment.name}`; attach.appendChild(info);
       const fullUrl = message.attachment.url.startsWith('http') ? message.attachment.url : SERVER_BASE + message.attachment.url;
-      
-      if (message.attachment.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        img.src = fullUrl;
-        img.style.maxWidth = '200px';
-        attach.appendChild(img);
-      } else if (message.attachment.type.startsWith('video/')) {
-        const video = document.createElement('video');
-        video.src = fullUrl;
-        video.controls = true;
-        video.style.maxWidth = '250px';
-        attach.appendChild(video);
-      } else {
-        const link = document.createElement('a');
-        link.className = 'chat-attachment-link';
-        link.href = fullUrl;
-        link.target = '_blank';
-        link.textContent = `Download`;
-        attach.appendChild(link);
-      }
+      if (message.attachment.type.startsWith('image/')) { const img = document.createElement('img'); img.src = fullUrl; img.style.maxWidth = '200px'; attach.appendChild(img); }
+      else if (message.attachment.type.startsWith('video/')) { const video = document.createElement('video'); video.src = fullUrl; video.controls = true; video.style.maxWidth = '250px'; attach.appendChild(video); }
+      else { const link = document.createElement('a'); link.className = 'chat-attachment-link'; link.href = fullUrl; link.target = '_blank'; link.textContent = `Download`; attach.appendChild(link); }
       msgDiv.appendChild(attach);
     }
-    
-    const actions = document.createElement('div');
-    actions.className = 'chat-actions';
-    
+    const actions = document.createElement('div'); actions.className = 'chat-actions';
     if (currentUser && message.sender === currentUser.username) {
-        const editBtn = document.createElement('button');
-        editBtn.className = 'chat-action-button';
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = () => editChatMessage(message.id);
-        actions.appendChild(editBtn);
-        
-        const delAllBtn = document.createElement('button');
-        delAllBtn.className = 'chat-action-button';
-        delAllBtn.textContent = 'Delete All';
-        delAllBtn.onclick = () => deleteMessageForEveryone(message.id);
-        actions.appendChild(delAllBtn);
+        const editBtn = document.createElement('button'); editBtn.className = 'chat-action-button'; editBtn.textContent = 'Edit'; editBtn.onclick = () => editChatMessage(message.id); actions.appendChild(editBtn);
+        const delAllBtn = document.createElement('button'); delAllBtn.className = 'chat-action-button'; delAllBtn.textContent = 'Delete All'; delAllBtn.onclick = () => deleteMessageForEveryone(message.id); actions.appendChild(delAllBtn);
     }
-    msgDiv.appendChild(actions);
-    container.appendChild(msgDiv);
+    msgDiv.appendChild(actions); container.appendChild(msgDiv);
   });
   container.scrollTop = container.scrollHeight;
 }
@@ -881,58 +818,42 @@ window.sendMessage = async function() {
   const attachmentInput = document.getElementById('attachment-input');
   const text = input.value.trim();
   const file = attachmentInput.files[0];
-  
   if (!text && !file) return;
   if (!currentUser) return customAlert('Please login first.');
-  if (currentChat.type === 'private' && !currentChat.target) return customAlert('Select a private contact.');
+  if (currentChat.type === 'private' && !currentChat.target) return customAlert('Select a contact.');
 
   let attachmentData = null;
-
   if (file) {
-      // Fixes the "Invalid Key" error for chat attachments too!
       const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
       const filePath = `chat-attachments/${Date.now()}_${safeName}`;
-      
       const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
-      if (!error) {
-          const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
-          attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl };
-      }
+      if (!error) { const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath); attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl }; }
   }
-  
-  // Save directly to Supabase. Realtime will automatically broadcast it to everyone!
-  await sb.from('messages').insert([{
-      chat_type: currentChat.type,
-      target: currentChat.type === 'private' ? currentChat.target : null,
-      sender: currentUser.username,
-      text: text,
-      attachment: attachmentData
-  }]);
-
-  input.value = '';
-  attachmentInput.value = '';
-  const lbl = document.getElementById('attachment-selected');
-  if(lbl) lbl.textContent = 'No file chosen';
+  await sb.from('messages').insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }]);
+  input.value = ''; attachmentInput.value = '';
+  const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = 'No file chosen';
 };
 
 window.editChatMessage = function(id) {
   const message = getCurrentHistory().find(m => m.id === id);
   if (!message) return;
-  customPrompt('Edit your message:', async function(updated) {
-      if (updated === null) return;
-      await sb.from('messages').update({ text: updated }).eq('id', id);
-  }, message.text);
+  customPrompt('Edit:', async function(updated) { if (updated !== null) await sb.from('messages').update({ text: updated }).eq('id', id); }, message.text);
 };
 
-window.deleteMessageForEveryone = async function(id) {
-  customConfirm("Delete message?", async function() {
-      await sb.from('messages').delete().eq('id', id);
-  });
-};
+window.deleteMessageForEveryone = async function(id) { customConfirm("Delete message?", async function() { await sb.from('messages').delete().eq('id', id); }); };
 
 /* ============================================================
-   UI & NAVIGATION LOGIC (WITH PER-PAGE CUSTOM BACKGROUNDS)
+   UI & DROPDOWN NAVIGATION LOGIC
    ============================================================ */
+
+window.toggleYear = function(yearId) {
+    const group = document.querySelector(`.nav-dropdown-group.${yearId.replace('year', 'year-')}-theme`);
+    if (!group) return;
+    const wasOpen = group.classList.contains('open');
+    document.querySelectorAll('.nav-dropdown-group').forEach(g => g.classList.remove('open'));
+    if (!wasOpen) group.classList.add('open');
+};
+
 const pageConfig = {
   first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
   second:   { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🌊 Second Semester' },
@@ -945,56 +866,33 @@ const pageConfig = {
 };
 
 let currentPage = 'first';
-// Load saved page backgrounds from local storage
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
-// Setup globally available calendar notes (Fetched from Supabase now!)
 let calendarNotes = {};
 
 window.goToPage = function(pageName) {
-  if (pageName === currentPage) {
-    const p = document.getElementById('page-' + pageName);
-    if(p) p.scrollTop = 0;
-    closeMenu();
-    return;
-  }
+  if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
+  if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
 
-  // Hide notification dot if navigating to chat
-  if (pageName === 'chat') {
-      const dot = document.getElementById('chat-notif-dot');
-      if (dot) dot.classList.add('hidden');
-  }
-
-  // 1. Turn off old page and its background effects
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
   if(oldPage) oldPage.classList.remove('active');
-  
   document.getElementById(old.bg).classList.remove('active');
   document.getElementById(old.particles).classList.remove('active');
   if (old.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
   if (old.mountain) document.getElementById('mountain-svg').classList.remove('active');
   if (old.aurora) document.getElementById('aurora').classList.remove('active');
 
-  // 2. Set new page active
   currentPage = pageName;
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
   if(newPage) newPage.classList.add('active');
 
-  // 3. APPLY BACKGROUND (Custom vs Default)
   if (customPageBgs[pageName]) {
-      // User has a custom background specifically for this page!
       document.body.style.backgroundImage = `url(${customPageBgs[pageName]})`;
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-      document.body.style.backgroundAttachment = 'fixed';
-      
-      // Ensure all default animations are completely turned off so they don't block it
+      document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
       document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
   } else {
-      // User does NOT have a custom background here, use the cool default ones
-      document.body.style.backgroundImage = ''; // Clear any custom background
-      
+      document.body.style.backgroundImage = '';
       document.getElementById(cfg.bg).classList.add('active');
       document.getElementById(cfg.particles).classList.add('active');
       if (cfg.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.add('active');
@@ -1002,70 +900,41 @@ window.goToPage = function(pageName) {
       if (cfg.aurora) document.getElementById('aurora').classList.add('active');
   }
 
-  document.getElementById('page-indicator').textContent = cfg.label;
+  const indicator = document.getElementById('page-indicator');
+  if (indicator) indicator.textContent = cfg.label;
   if(newPage) newPage.scrollTop = 0;
-
-  document.querySelectorAll('.nav-item').forEach(item => {
-    if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName);
-  });
-
+  document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
   closeMenu();
 };
 
-window.toggleMenu = function() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('active');
-};
-
-window.closeMenu = function() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('active');
-};
+window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
+window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
 
 /* ============================================================
-   CALENDAR LOGIC (SUPABASE POWERED)
+   CALENDAR LOGIC (CLOUD BASED)
    ============================================================ */
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
-// Fetch notes from Supabase database
 async function fetchCalendarNotes() {
     const { data, error } = await sb.from('calendar_notes').select('*');
     if (!error && data) {
-        calendarNotes = {}; // Reset local cache
-        data.forEach(row => {
-            calendarNotes[row.date_key] = row.note;
-        });
-        renderCalendar(); // Re-render visually to update red dots
+        calendarNotes = {}; data.forEach(row => { calendarNotes[row.date_key] = row.note; });
+        renderCalendar();
     }
 }
 
 function renderCalendar() {
-  const grid = document.getElementById('calendar-grid');
-  if(!grid) return;
-  grid.innerHTML = '';
-  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  
+  const grid = document.getElementById('calendar-grid'); if(!grid) return;
+  grid.innerHTML = ''; const firstDay = new Date(currentYear, currentMonth, 1).getDay(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
-  
   for (let day = 1; day <= daysInMonth; day++) {
-    const dayDiv = document.createElement('div');
-    dayDiv.textContent = day;
-    dayDiv.onclick = () => window.addNote(day);
-    
-    // Check if there's a note for this specific day to show the red dot
+    const dayDiv = document.createElement('div'); dayDiv.textContent = day; dayDiv.onclick = () => window.addNote(day);
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
-    if (calendarNotes[dateKey]) {
-        const dot = document.createElement('div');
-        dot.className = 'calendar-note-dot';
-        dayDiv.appendChild(dot);
-    }
-    
+    if (calendarNotes[dateKey]) { const dot = document.createElement('div'); dot.className = 'calendar-note-dot'; dayDiv.appendChild(dot); }
     grid.appendChild(dayDiv);
   }
-  const title = document.getElementById('month-year');
-  if(title) title.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
+  const title = document.getElementById('month-year'); if(title) title.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear}`;
 }
 
 window.prevMonth = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
@@ -1075,228 +944,95 @@ window.addNote = function(day) {
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
     const displayDate = new Date(currentYear, currentMonth, day).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
     const existingNote = calendarNotes[dateKey] || '';
-
-    if (existingNote) {
-        showNoteView(dateKey, displayDate, existingNote);
-    } else {
-        openNotePrompt(dateKey, displayDate, '');
-    }
+    if (existingNote) showNoteView(dateKey, displayDate, existingNote);
+    else openNotePrompt(dateKey, displayDate, '');
 };
 
-// Shows the note nicely so you can read it before deciding to edit
 window.showNoteView = function(dateKey, displayDate, text) {
-    let existingModal = document.getElementById('view-note-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHtml = `
-    <div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
-        <div class="custom-modal-box small-box border-blue">
-            <button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button>
-            <h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${displayDate}</h3>
-            <div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${text}</div>
-            <div class="modal-btn-group">
-                <button class="btn-primary flex-1" id="edit-note-btn">Edit Note</button>
-            </div>
-        </div>
-    </div>
-    `;
+    let existingModal = document.getElementById('view-note-modal'); if (existingModal) existingModal.remove();
+    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${displayDate}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${text}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="edit-note-btn">Edit Note</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    document.getElementById('edit-note-btn').onclick = function() {
-        document.getElementById('view-note-modal').remove();
-        openNotePrompt(dateKey, displayDate, text);
-    };
+    document.getElementById('edit-note-btn').onclick = function() { document.getElementById('view-note-modal').remove(); openNotePrompt(dateKey, displayDate, text); };
 };
 
-// Opens a large Textarea for actually writing/editing and saves it directly to Supabase
 window.openNotePrompt = function(dateKey, displayDate, existingNote) {
-    let existingModal = document.getElementById('edit-note-modal');
-    if (existingModal) existingModal.remove();
-
-    const modalHtml = `
-    <div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
-        <div class="custom-modal-box small-box border-blue">
-            <h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3>
-            <textarea id="note-textarea" class="modal-input" placeholder="Type your note here..." style="height:120px; resize:none; margin-bottom: 20px;">${existingNote}</textarea>
-            <div class="modal-btn-group">
-                <button class="btn-blue flex-1" id="save-note-btn">Save</button>
-                <button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button>
-            </div>
-        </div>
-    </div>
-    `;
+    let existingModal = document.getElementById('edit-note-modal'); if (existingModal) existingModal.remove();
+    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${existingNote}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn">Save</button><button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    document.getElementById('note-textarea').focus();
-
+    const textEl = document.getElementById('note-textarea'); if (textEl) textEl.focus();
     document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
-        
-        // Ensure user is logged in
-        if(!currentUser) {
-            customAlert("You must be logged in to save calendar notes.");
-            return;
-        }
-
-        if (note === '') {
-            delete calendarNotes[dateKey];
-            await sb.from('calendar_notes').delete().eq('date_key', dateKey); // Delete from cloud
-        } else {
-            calendarNotes[dateKey] = note;
-            // Upsert creates it if it doesn't exist, or updates it if it does
-            await sb.from('calendar_notes').upsert([
-                { date_key: dateKey, note: note, updated_by: currentUser.username }
-            ]);
-        }
-        
-        renderCalendar();
-        document.getElementById('edit-note-modal').remove();
+        if(!currentUser) return customAlert("Login to save notes.");
+        if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
+        else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
+        renderCalendar(); document.getElementById('edit-note-modal').remove();
     };
 };
 
-function updateClock() {
-  const now = new Date();
-  const el = document.getElementById('live-clock');
-  if(el) el.textContent = now.toLocaleTimeString();
-}
+function updateClock() { const now = new Date(); const el = document.getElementById('live-clock'); if(el) el.textContent = now.toLocaleTimeString(); }
 setInterval(updateClock, 1000);
 
 let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) installBtn.style.display = 'block';
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) installBtn.style.display = 'none';
-});
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const btn = document.getElementById('install-btn'); if (btn) btn.style.display = 'block'; });
 
 /* ============================================================
-   INITIALIZATION & PERSISTENT PER-PAGE CUSTOM BACKGROUND
+   INITIALIZATION
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
-  if (installBtn) {
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      installBtn.style.display = 'none';
-    });
-  }
+  if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch((err) => {
-      console.warn('Service Worker registration failed:', err);
-    });
-  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
   const attachmentInput = document.getElementById('attachment-input');
-  if (attachmentInput) {
-    attachmentInput.addEventListener('change', () => {
-      const selectedLabel = document.getElementById('attachment-selected');
-      if(selectedLabel) selectedLabel.textContent = attachmentInput.files[0]?.name || 'No file chosen';
-    });
-  }
+  if (attachmentInput) attachmentInput.addEventListener('change', () => { const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = attachmentInput.files[0]?.name || 'No file chosen'; });
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
-  if (currentUser) {
-    establishSession();
-  } else {
-    const modal = document.getElementById('auth-modal');
-    if(modal) modal.style.display = 'flex';
-  }
+  if (currentUser) establishSession();
+  else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
 
   buildSubjectCards('grid-first', firstSem);
   buildSubjectCards('grid-second', secondSem);
   buildFolderCards('grid-events', eventCount, 'Event');
   buildFolderCards('grid-random', randomCount, 'Random');
+  fetchCalendarNotes(); updateClock();
 
-  // FETCH GLOBALLY SAVED CALENDAR NOTES FROM CLOUD 
-  fetchCalendarNotes(); 
-  updateClock();
-
-  // Attach event listener for the music player loop/playlist functionality
   const player = document.getElementById('audio-player');
-  if(player) {
-      player.addEventListener('ended', () => {
-          // If native Repeat 1 is OFF, move to the next song in folder
-          if (!player.loop) {
-              window.playNextSong(); 
-          }
-      });
-  }
+  if(player) player.addEventListener('ended', () => { if (!player.loop) window.playNextSong(); });
 
-  // --- AUTO-LOAD SAVED BACKGROUND FOR THE INITIAL PAGE ON STARTUP ---
   if (customPageBgs[currentPage]) {
       document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-      document.getElementById('aurora').classList.remove('active');
-      document.getElementById('mountain-svg').classList.remove('active');
-      if (document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
-      
+      document.getElementById('aurora').classList.remove('active'); document.getElementById('mountain-svg').classList.remove('active');
+      const wave = document.getElementById('wave-container'); if (wave) wave.classList.remove('active');
       document.body.style.backgroundImage = `url(${customPageBgs[currentPage]})`;
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-      document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
   }
 });
 
-// --- NEW STICKY CUSTOM BACKGROUND UPLOADER (SAVES PER-PAGE) ---
 document.getElementById('custom-bg-upload').addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Use FileReader to convert the image to a Base64 string that can be saved permanently
+    const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         const base64Image = e.target.result;
-        
-        // Save the image string specifically for whatever page the user is currently looking at
         customPageBgs[currentPage] = base64Image;
-        
         try {
             localStorage.setItem('customPageBgs', JSON.stringify(customPageBgs));
-            customAlert(`Custom Background applied and saved to the ${currentPage.toUpperCase()} page!`);
-            
-            // Turn off the default animated backgrounds instantly
+            customAlert(`Saved to ${currentPage.toUpperCase()} page!`);
             document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-            document.getElementById('aurora').classList.remove('active');
-            document.getElementById('mountain-svg').classList.remove('active');
-            if (document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
-            
-            // Apply the custom background to the body visually
+            document.getElementById('aurora').classList.remove('active'); document.getElementById('mountain-svg').classList.remove('active');
+            const wave = document.getElementById('wave-container'); if (wave) wave.classList.remove('active');
             document.body.style.backgroundImage = `url(${base64Image})`;
-            document.body.style.backgroundSize = 'cover';
-            document.body.style.backgroundPosition = 'center';
-            document.body.style.backgroundAttachment = 'fixed';
-            
-        } catch (err) {
-            customAlert("Background applied! (Note: File is too large to save permanently after refresh).");
-        }
+            document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
+        } catch (err) { customAlert("Applied! (Note: File too large to save long-term)."); }
     };
     reader.readAsDataURL(file);
 });
 
-// 2. Weekly Announcement Logic (Saves to local storage)
-window.saveAnnouncement = function() {
-    const noteContent = document.getElementById('announcement-note').value;
-    localStorage.setItem('savedWeeklyAnnouncement', noteContent);
-    customAlert("Weekly Announcement Saved!");
-};
+window.saveAnnouncement = function() { const noteContent = document.getElementById('announcement-note').value; localStorage.setItem('savedWeeklyAnnouncement', noteContent); customAlert("Saved!"); };
 
-// Auto-load the saved announcement when the page refreshes
 window.addEventListener('DOMContentLoaded', () => {
     const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
-    if (savedNote) {
-        const noteBox = document.getElementById('announcement-note');
-        if(noteBox) noteBox.value = savedNote;
-    }
+    if (savedNote) { const noteBox = document.getElementById('announcement-note'); if(noteBox) noteBox.value = savedNote; }
 });

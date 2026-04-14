@@ -385,15 +385,35 @@ function extractYouTubeId(val) {
     return null;
 }
 
-// Primary: call our own Express proxy — the API key never leaves the server
-// Timeout is long (65s) to survive Render free-tier cold start
-async function ytSearchViaProxy(query) {
+// Fetch a server API endpoint, retrying on 503 (Render cold start) until deadline
+async function serverFetch(url, onWaking) {
+    const deadline = Date.now() + 70000; // 70s total
+    let firstAttempt = true;
+    while (Date.now() < deadline) {
+        try {
+            const remaining = deadline - Date.now();
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), Math.min(15000, remaining));
+            const r = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (r.status === 503 || r.status === 502) {
+                // Render is waking the server up — wait 5s and retry
+                if (firstAttempt && onWaking) onWaking();
+                firstAttempt = false;
+                await new Promise(res => setTimeout(res, 5000));
+                continue;
+            }
+            return r;
+        } catch (_) { return null; }
+    }
+    return null;
+}
+
+// Primary: YouTube Data API via server proxy
+async function ytSearchViaProxy(query, onWaking) {
     try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 65000);
-        const r = await fetch(`/api/yt-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (r.ok) {
+        const r = await serverFetch(`/api/yt-search?q=${encodeURIComponent(query)}`, onWaking);
+        if (r && r.ok) {
             const data = await r.json();
             if (data.items && data.items.length) return data.items;
         }
@@ -401,14 +421,11 @@ async function ytSearchViaProxy(query) {
     return null;
 }
 
-// Fallback 1: Piped API via our server proxy (avoids mobile CORS blocks)
-async function ytSearchViaPiped(query) {
+// Fallback 1: Piped API via server proxy
+async function ytSearchViaPiped(query, onWaking) {
     try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 65000);
-        const r = await fetch(`/api/piped-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (r.ok) {
+        const r = await serverFetch(`/api/piped-search?q=${encodeURIComponent(query)}`, onWaking);
+        if (r && r.ok) {
             const data = await r.json();
             if (data.items && data.items.length) return data.items;
         }
@@ -416,14 +433,11 @@ async function ytSearchViaPiped(query) {
     return null;
 }
 
-// Fallback 2: server-side YouTube scrape (no API key, no third-party dependencies)
-async function ytSearchViaScrape(query) {
+// Fallback 2: server-side YouTube scrape (no API key needed)
+async function ytSearchViaScrape(query, onWaking) {
     try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 65000);
-        const r = await fetch(`/api/yt-scrape?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (r.ok) {
+        const r = await serverFetch(`/api/yt-scrape?q=${encodeURIComponent(query)}`, onWaking);
+        if (r && r.ok) {
             const data = await r.json();
             if (data.items && data.items.length) return data.items;
         }
@@ -482,15 +496,18 @@ window.handleYtInput = async function() {
     const btn = document.getElementById('yt-action-btn');
     const hint = document.getElementById('yt-hint-text');
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-    if (hint) hint.textContent = '🔍 Searching… if this is the first search today, wait up to 60s for the server to wake up.';
+    if (hint) hint.textContent = '🔍 Searching…';
 
-    console.log('[YT Search] Starting search for:', val);
+    // Called when server returns 503 (Render cold start) — update hint so user knows to wait
+    const onWaking = () => {
+        if (hint) hint.textContent = '⏳ Server is starting up, please wait (~30–60s)…';
+    };
 
-    // All 3 run on OUR server (avoids mobile CORS blocks) — first to respond wins
+    // All 3 run on OUR server in parallel — retry on 503 until server wakes up
     const results = await firstSuccess([
-        ytSearchViaProxy(val),   // YouTube Data API
-        ytSearchViaPiped(val),   // Piped relay
-        ytSearchViaScrape(val),  // YouTube HTML scrape (no key needed)
+        ytSearchViaProxy(val, onWaking),
+        ytSearchViaPiped(val, onWaking),
+        ytSearchViaScrape(val, onWaking),
     ]);
 
     console.log('[YT Search] Results:', results ? results.length + ' items' : 'null');

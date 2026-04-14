@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portfolio-v7';
+const CACHE_NAME = 'school-portfolio-v8';
 const ASSETS = [
   '/',
   'index.html',
@@ -19,21 +19,22 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
+      Promise.all(keys.map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
-// Network-first: always fetch fresh from server, fall back to cache if offline
 self.addEventListener('fetch', (event) => {
-  // Only handle same-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  // NEVER cache API calls — let them go directly to the network every time.
+  // Caching API responses was the root cause of the 'Unexpected token <' bug:
+  // Render's HTML cold-start page got cached (status 200, ok=true), then every
+  // subsequent search hit that cached HTML instead of the real JSON endpoint.
+  if (event.request.url.includes('/api/')) return;
+
+  // Static assets only — network first, fall back to cache when offline
   event.respondWith(
     fetch(event.request)
       .then((response) => {

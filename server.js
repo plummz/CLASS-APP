@@ -59,6 +59,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// Prevent browsers and service workers from caching ANY API response.
+// This stops the 'Unexpected token <' bug where a cold-start HTML page
+// gets cached and replayed on every subsequent API call.
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 /* ── Wake-up ping (keeps Render free tier warm) ─────────── */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 

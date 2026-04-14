@@ -59,6 +59,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+/* ── Wake-up ping (keeps Render free tier warm) ─────────── */
+app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
 /* ── YouTube search proxy ──────────────────────────────────
    Key stays on the server — the browser never sees it.
    Usage: GET /api/yt-search?q=despacito

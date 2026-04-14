@@ -386,26 +386,27 @@ function extractYouTubeId(val) {
 }
 
 // Primary: call our own Express proxy — the API key never leaves the server
+// Timeout is long (65s) to survive Render free-tier cold start
 async function ytSearchViaProxy(query) {
     try {
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const tid = setTimeout(() => ctrl.abort(), 65000);
         const r = await fetch(`/api/yt-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
         clearTimeout(tid);
         if (r.ok) {
             const data = await r.json();
             if (data.items && data.items.length) return data.items;
         }
-    } catch (_) { /* fall through to Invidious */ }
+    } catch (_) {}
     return null;
 }
 
 // Fallback 1: Piped API via our server proxy (avoids CORS), then direct as last resort
 async function ytSearchViaPiped(query) {
-    // Try server-side proxy first
+    // Try server-side proxy first (65s to survive cold start)
     try {
         const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const tid = setTimeout(() => ctrl.abort(), 65000);
         const r = await fetch(`/api/piped-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
         clearTimeout(tid);
         if (r.ok) {
@@ -468,6 +469,20 @@ async function ytSearchViaInvidious(query) {
     return null;
 }
 
+// Returns the first non-null result from any of the given promises
+function firstSuccess(promises) {
+    return new Promise((resolve) => {
+        let pending = promises.length;
+        if (!pending) return resolve(null);
+        promises.forEach(p => {
+            Promise.resolve(p).then(result => {
+                if (result) resolve(result);
+                else if (--pending === 0) resolve(null);
+            }).catch(() => { if (--pending === 0) resolve(null); });
+        });
+    });
+}
+
 function showYtResults(results) {
     const container = document.getElementById('yt-results');
     if (!container) return;
@@ -501,14 +516,18 @@ window.handleYtInput = async function() {
     const videoId = extractYouTubeId(val);
     if (videoId) { loadYouTubeIframe(videoId, val); return; }
 
-    // Text search via Invidious
+    // Text search
     const btn = document.getElementById('yt-action-btn');
     const hint = document.getElementById('yt-hint-text');
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-    if (hint) hint.textContent = 'Searching…';
+    if (hint) hint.textContent = 'Searching… (may take up to 60s on first use)';
 
-    // Try server proxy first (YouTube API key), then Piped, then Invidious
-    const results = (await ytSearchViaProxy(val)) || (await ytSearchViaPiped(val)) || (await ytSearchViaInvidious(val));
+    // Run all sources in parallel — return whichever responds first
+    const results = await firstSuccess([
+        ytSearchViaProxy(val),
+        ytSearchViaPiped(val),
+        ytSearchViaInvidious(val),
+    ]);
 
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }
 
@@ -1089,6 +1108,9 @@ window.goToPage = function(pageName) {
     if (pageName === 'music') ytMini.classList.add('hidden');
     else if (ytActive && currentPage === 'music') ytMini.classList.remove('hidden');
   }
+
+  // Ping server when music page opens so Render wakes up before the user searches
+  if (pageName === 'music') fetch('/api/ping').catch(() => {});
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);

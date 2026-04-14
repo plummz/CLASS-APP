@@ -482,7 +482,9 @@ window.handleYtInput = async function() {
     const btn = document.getElementById('yt-action-btn');
     const hint = document.getElementById('yt-hint-text');
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-    if (hint) hint.textContent = 'Searching… (may take up to 60s on first use)';
+    if (hint) hint.textContent = '🔍 Searching… if this is the first search today, wait up to 60s for the server to wake up.';
+
+    console.log('[YT Search] Starting search for:', val);
 
     // All 3 run on OUR server (avoids mobile CORS blocks) — first to respond wins
     const results = await firstSuccess([
@@ -491,14 +493,16 @@ window.handleYtInput = async function() {
         ytSearchViaScrape(val),  // YouTube HTML scrape (no key needed)
     ]);
 
+    console.log('[YT Search] Results:', results ? results.length + ' items' : 'null');
+
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }
 
     if (results && results.length) {
         if (hint) hint.textContent = 'Tap a result to play it here:';
         showYtResults(results);
     } else {
-        if (hint) hint.textContent = 'Search failed — opening YouTube instead. Copy the video URL and paste it above.';
-        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(val)}`, '_blank');
+        // Don't auto-open YouTube — show a button so user can choose
+        if (hint) hint.innerHTML = `Search failed. <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(val)}" target="_blank" style="color:#4af;text-decoration:underline;">Open YouTube manually</a> then paste the URL above.`;
     }
 };
 

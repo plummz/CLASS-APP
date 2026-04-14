@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portfolio-v5';
+const CACHE_NAME = 'school-portfolio-v6';
 const ASSETS = [
   '/',
   'index.html',
@@ -29,8 +29,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first: always fetch fresh from server, fall back to cache if offline
 self.addEventListener('fetch', (event) => {
+  // Only handle same-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

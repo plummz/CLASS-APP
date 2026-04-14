@@ -398,15 +398,21 @@ async function serverFetch(url, onWaking) {
             clearTimeout(tid);
             if (r.status === 503 || r.status === 502) {
                 // Render is waking the server up — wait 5s and retry
-                if (firstAttempt && onWaking) onWaking();
-                firstAttempt = false;
+                if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
+                await new Promise(res => setTimeout(res, 5000));
+                continue;
+            }
+            // Render sometimes returns a 200 HTML "starting up" page during cold start.
+            // Detect this and retry instead of passing HTML to the caller.
+            const ct = r.headers.get('content-type') || '';
+            if (ct.includes('text/html')) {
+                if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
                 await new Promise(res => setTimeout(res, 5000));
                 continue;
             }
             return r;
         } catch (_) {
-            // AbortError (our 15s timeout fired) or network error
-            // If we still have time left, trigger waking hint and retry
+            // AbortError (our 15s timeout fired) or network error — retry if time remains
             if (Date.now() < deadline - 1000) {
                 if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
                 await new Promise(res => setTimeout(res, 2000));
@@ -532,8 +538,9 @@ window.handleYtInput = async function() {
     } else {
         // Show specific errors so we can diagnose without needing server logs
         const labels = ['API', 'Piped', 'InnerTube'];
-        const detail = errors.map((e, i) => `${labels[i]}: ${e || '?'}`).join(' | ');
-        console.error('[YT Search] All methods failed:', detail);
+        const esc = s => String(s || '?').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const detail = errors.map((e, i) => `${labels[i]}: ${esc(e)}`).join(' | ');
+        console.error('[YT Search] All methods failed:', errors);
         if (hint) hint.innerHTML = `Search failed — <small style="opacity:.7">${detail}</small><br><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(val)}" target="_blank" style="color:#4af;text-decoration:underline;">Open YouTube manually</a> then paste the URL above.`;
     }
 };

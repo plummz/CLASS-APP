@@ -1156,6 +1156,10 @@ window.goToPage = function(pageName) {
   document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
   closeMenu();
 
+  // Hide the floating chat bauble on the Lobby page (it overlaps the Send button)
+  const chatBauble = document.getElementById('chat-bauble');
+  if (chatBauble) chatBauble.style.display = pageName === 'lobby' ? 'none' : '';
+
   // Lobby: start canvas after page is visible
   if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
 };
@@ -1372,7 +1376,7 @@ const lobbyModule = (() => {
     return `hsl(${((h % 360) + 360) % 360},55%,40%)`;
   }
 
-  function drawChar(x, y, name, skin, body, moving, frame) {
+  function drawChar(x, y, name, skin, body, moving, frame, bubble) {
     const cx = Math.round(x), cy = Math.round(y);
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
@@ -1413,6 +1417,23 @@ const lobbyModule = (() => {
     }
     ctx.fillStyle = '#ffffff';
     ctx.fillText(label, cx + CHAR_W / 2, cy - 5);
+    // Speech bubble (fades out after 4 s)
+    if (bubble && bubble.expires > Date.now()) {
+      const alpha = Math.min(1, (bubble.expires - Date.now()) / 600);
+      const btext = bubble.text.length > 18 ? bubble.text.slice(0, 17) + '\u2026' : bubble.text;
+      ctx.font = '700 8px monospace';
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(btext).width + 10;
+      const bw = Math.max(tw, 28), bh = 13;
+      const bx = cx + CHAR_W / 2 - bw / 2, by2 = cy - 31;
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.93})`;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by2, bw, bh, 4); ctx.fill(); }
+      else { ctx.fillRect(bx, by2, bw, bh); }
+      // Triangle pointer
+      ctx.beginPath(); ctx.moveTo(cx + CHAR_W/2 - 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2 + 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2, by2 + bh + 5); ctx.fill();
+      ctx.fillStyle = `rgba(20,20,40,${alpha})`;
+      ctx.fillText(btext, cx + CHAR_W / 2, by2 + 10);
+    }
   }
 
   function drawMap(W, H, t) {
@@ -1496,7 +1517,7 @@ const lobbyModule = (() => {
     const all = [...players.values()];
     if (myPlayer) all.push(myPlayer);
     all.sort((a, b) => a.y - b.y);
-    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0);
+    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0, p.bubble);
   }
 
   function setupDpad() {
@@ -1570,7 +1591,13 @@ const lobbyModule = (() => {
         addMsg('●', username + ' left the lobby', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         updateCount();
       });
-      s.on('lobby:chat', (msg) => addMsg(msg.username, msg.text, msg.time));
+      s.on('lobby:chat', (msg) => {
+        addMsg(msg.username, msg.text, msg.time);
+        const bubbleData = { text: msg.text, expires: Date.now() + 4000 };
+        const p = players.get(msg.username);
+        if (p) p.bubble = bubbleData;
+        if (myPlayer && msg.username === myPlayer.username) myPlayer.bubble = bubbleData;
+      });
     },
 
     init() {

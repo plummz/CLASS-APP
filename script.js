@@ -356,25 +356,42 @@ function loadYouTubeIframe(src, label) {
     if (miniLabel) miniLabel.textContent = label || 'YouTube Playing';
 }
 
-window.searchYouTube = function() {
-    const input = document.getElementById('yt-search-input');
-    if (!input || !input.value.trim()) return customAlert("Enter a song name to search!");
-    const query = encodeURIComponent(input.value.trim());
-    loadYouTubeIframe(
-        `https://www.youtube.com/embed?listType=search&list=${query}&autoplay=1`,
-        `Playing: ${input.value.trim()}`
-    );
+// Detect if the input looks like a YouTube URL and update the button label
+window.ytDetectMode = function(val) {
+    const btn = document.getElementById('yt-action-btn');
+    if (!btn) return;
+    btn.textContent = extractYouTubeId(val) ? '▶ Play' : '🔍 Search';
 };
 
+// Main handler: URL → embed in-app; text → open YouTube search in new tab
+window.handleYtInput = function() {
+    const input = document.getElementById('yt-main-input');
+    if (!input || !input.value.trim()) return customAlert("Enter a YouTube URL or song name!");
+    const val = input.value.trim();
+    const videoId = extractYouTubeId(val);
+    if (videoId) {
+        loadYouTubeIframe(`https://www.youtube.com/embed/${videoId}?autoplay=1`, `Now playing`);
+        const pasteBack = document.getElementById('yt-paste-back');
+        if (pasteBack) pasteBack.classList.add('hidden');
+    } else {
+        // Text search — open YouTube in new tab, show paste-back box
+        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(val)}`, '_blank');
+        const pasteBack = document.getElementById('yt-paste-back');
+        if (pasteBack) pasteBack.classList.remove('hidden');
+        const hint = document.getElementById('yt-hint-text');
+        if (hint) hint.textContent = 'YouTube opened in a new tab — find your song, copy its URL, then paste it below to play it here.';
+    }
+};
+
+// Embed from the paste-back box
 window.embedYouTubeURL = function() {
     const input = document.getElementById('yt-url-input');
-    if (!input || !input.value.trim()) return customAlert("Enter a YouTube URL or video ID!");
+    if (!input || !input.value.trim()) return customAlert("Paste a YouTube URL first!");
     const videoId = extractYouTubeId(input.value.trim());
-    if (!videoId) return customAlert("Couldn't find a valid YouTube video ID.\nTry pasting the full URL or the 11-character video ID.");
-    loadYouTubeIframe(
-        `https://www.youtube.com/embed/${videoId}?autoplay=1`,
-        `Playing: ${videoId}`
-    );
+    if (!videoId) return customAlert("Couldn't find a valid YouTube video ID.\nMake sure you copied the full video URL (e.g. youtube.com/watch?v=...)");
+    loadYouTubeIframe(`https://www.youtube.com/embed/${videoId}?autoplay=1`, `Now playing`);
+    const pasteBack = document.getElementById('yt-paste-back');
+    if (pasteBack) pasteBack.classList.add('hidden');
 };
 
 function extractYouTubeId(val) {
@@ -384,12 +401,8 @@ function extractYouTubeId(val) {
     return null;
 }
 
-window.switchYtTab = function(tab) {
-    document.getElementById('yt-panel-search').classList.toggle('hidden', tab !== 'search');
-    document.getElementById('yt-panel-url').classList.toggle('hidden', tab !== 'url');
-    document.getElementById('yt-tab-search').classList.toggle('active', tab === 'search');
-    document.getElementById('yt-tab-url').classList.toggle('active', tab === 'url');
-};
+// Kept for backward compatibility (old HTML may still reference these)
+window.searchYouTube = window.handleYtInput;
 
 window.stopYouTubePlayer = function() {
     const iframe = document.getElementById('yt-iframe');
@@ -399,6 +412,8 @@ window.stopYouTubePlayer = function() {
     ytActive = false;
     const mini = document.getElementById('yt-mini-player');
     if (mini) mini.classList.add('hidden');
+    const pasteBack = document.getElementById('yt-paste-back');
+    if (pasteBack) pasteBack.classList.add('hidden');
 };
 
 let audioCtx = null;

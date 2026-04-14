@@ -302,28 +302,31 @@
 
     <!-- ── YouTube Embedded Player ──────────────────────── -->
     <div class="yt-embed-section">
-      <div class="yt-tabs">
-        <button class="yt-tab active" id="yt-tab-search" onclick="switchYtTab('search')">YouTube Search</button>
-        <button class="yt-tab" id="yt-tab-url" onclick="switchYtTab('url')">Paste URL / ID</button>
+      <div class="yt-input-row">
+        <input type="text" id="yt-main-input"
+          placeholder="Paste YouTube URL — or type a song name to search..."
+          class="yt-input"
+          onkeydown="if(event.key==='Enter') handleYtInput()"
+          oninput="ytDetectMode(this.value)">
+        <button class="btn-primary" id="yt-action-btn" onclick="handleYtInput()">▶ Play</button>
       </div>
-      <div id="yt-panel-search" class="yt-panel">
-        <div class="yt-input-row">
-          <input type="text" id="yt-search-input" placeholder="Search music on YouTube..." class="yt-input" onkeydown="if(event.key==='Enter') searchYouTube()">
-          <button class="btn-primary" onclick="searchYouTube()">Search</button>
-        </div>
-        <p class="yt-hint">Press Enter or Search — plays right here. Audio keeps going when you navigate away.</p>
-      </div>
-      <div id="yt-panel-url" class="yt-panel hidden">
-        <div class="yt-input-row">
-          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL or video ID..." class="yt-input" onkeydown="if(event.key==='Enter') embedYouTubeURL()">
+      <p class="yt-hint" id="yt-hint-text">
+        Paste a YouTube link → plays right here · Type a song name → opens YouTube so you can copy the link back
+      </p>
+
+      <!-- Step-2 paste box: shown after YouTube search opens in new tab -->
+      <div id="yt-paste-back" class="yt-paste-back hidden">
+        <span class="yt-paste-back-label">Found it? Copy the video URL from YouTube and paste it below:</span>
+        <div class="yt-input-row" style="margin-top: 8px;">
+          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL here..." class="yt-input" onkeydown="if(event.key==='Enter') embedYouTubeURL()">
           <button class="btn-primary" onclick="embedYouTubeURL()">Embed</button>
         </div>
-        <p class="yt-hint">Supports: youtube.com/watch?v=..., youtu.be/..., or a bare 11-char video ID.</p>
       </div>
+
       <div class="yt-player-container" id="yt-player-container">
         <div class="yt-placeholder" id="yt-placeholder">
           <span style="font-size:36px;">▶️</span>
-          <p>Search for music above — plays right here</p>
+          <p>Paste a YouTube URL above to play it here</p>
         </div>
         <iframe id="yt-iframe" class="yt-iframe hidden" frameborder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

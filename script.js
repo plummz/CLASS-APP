@@ -401,9 +401,8 @@ async function ytSearchViaProxy(query) {
     return null;
 }
 
-// Fallback 1: Piped API via our server proxy (avoids CORS), then direct as last resort
+// Fallback 1: Piped API via our server proxy (avoids mobile CORS blocks)
 async function ytSearchViaPiped(query) {
-    // Try server-side proxy first (65s to survive cold start)
     try {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), 65000);
@@ -414,58 +413,21 @@ async function ytSearchViaPiped(query) {
             if (data.items && data.items.length) return data.items;
         }
     } catch (_) {}
-
-    // Direct calls to Piped instances as last resort
-    for (const base of PIPED_INSTANCES) {
-        try {
-            const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 6000);
-            const r = await fetch(
-                `${base}/search?q=${encodeURIComponent(query)}&filter=videos`,
-                { signal: ctrl.signal }
-            );
-            clearTimeout(tid);
-            if (r.ok) {
-                const data = await r.json();
-                const items = (data.items || []).filter(v => v.type === 'stream').slice(0, 6);
-                if (items.length) {
-                    return items.map(v => ({
-                        videoId:   (v.url || '').split('v=')[1],
-                        title:     v.title,
-                        author:    v.uploaderName || '',
-                        thumbnail: v.thumbnail || `https://i.ytimg.com/vi/${(v.url||'').split('v=')[1]}/mqdefault.jpg`,
-                    })).filter(v => v.videoId);
-                }
-            }
-        } catch (_) { /* try next */ }
-    }
     return null;
 }
 
-// Fallback 2: public Invidious API
-async function ytSearchViaInvidious(query) {
-    for (const base of YT_INSTANCES) {
-        try {
-            const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), 6000);
-            const r = await fetch(
-                `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds&page=1`,
-                { signal: ctrl.signal }
-            );
-            clearTimeout(tid);
-            if (r.ok) {
-                const data = await r.json();
-                if (Array.isArray(data) && data.length) {
-                    return data.slice(0, 6).map(v => ({
-                        videoId:   v.videoId,
-                        title:     v.title,
-                        author:    v.author,
-                        thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-                    }));
-                }
-            }
-        } catch (_) { /* try next */ }
-    }
+// Fallback 2: server-side YouTube scrape (no API key, no third-party dependencies)
+async function ytSearchViaScrape(query) {
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 65000);
+        const r = await fetch(`/api/yt-scrape?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (r.ok) {
+            const data = await r.json();
+            if (data.items && data.items.length) return data.items;
+        }
+    } catch (_) {}
     return null;
 }
 
@@ -522,11 +484,11 @@ window.handleYtInput = async function() {
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
     if (hint) hint.textContent = 'Searching… (may take up to 60s on first use)';
 
-    // Run all sources in parallel — return whichever responds first
+    // All 3 run on OUR server (avoids mobile CORS blocks) — first to respond wins
     const results = await firstSuccess([
-        ytSearchViaProxy(val),
-        ytSearchViaPiped(val),
-        ytSearchViaInvidious(val),
+        ytSearchViaProxy(val),   // YouTube Data API
+        ytSearchViaPiped(val),   // Piped relay
+        ytSearchViaScrape(val),  // YouTube HTML scrape (no key needed)
     ]);
 
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }

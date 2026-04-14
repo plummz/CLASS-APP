@@ -167,6 +167,78 @@ app.get('/api/piped-search', (req, res) => {
   tryNext();
 });
 
+/* ── YouTube scrape proxy (no API key, scrapes YouTube HTML server-side) ───
+   Usage: GET /api/yt-scrape?q=payphone
+   ─────────────────────────────────────────────────────────────────────── */
+app.get('/api/yt-scrape', (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.status(400).json({ error: 'Missing query' });
+
+  const options = {
+    hostname: 'www.youtube.com',
+    path: `/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%3D%3D`,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  };
+
+  const ytReq = https.get(options, (ytRes) => {
+    let raw = '';
+    ytRes.on('data', chunk => {
+      raw += chunk;
+      // ytInitialData is always in the first ~800 KB — stop reading after 1.5 MB
+      if (raw.length > 1536 * 1024) ytRes.destroy();
+    });
+    ytRes.on('end', () => {
+      try {
+        const marker = 'var ytInitialData = ';
+        const start = raw.indexOf(marker);
+        if (start === -1) return res.status(502).json({ error: 'ytInitialData not found' });
+
+        const jsonStart = start + marker.length;
+        const jsonEnd = raw.indexOf(';</script>', jsonStart);
+        if (jsonEnd === -1) return res.status(502).json({ error: 'ytInitialData end not found' });
+
+        const data = JSON.parse(raw.substring(jsonStart, jsonEnd));
+        const sectionContents = data?.contents
+          ?.twoColumnSearchResultsRenderer
+          ?.primaryContents
+          ?.sectionListRenderer
+          ?.contents?.[0]
+          ?.itemSectionRenderer
+          ?.contents || [];
+
+        const items = [];
+        for (const item of sectionContents) {
+          if (item.videoRenderer && items.length < 6) {
+            const v = item.videoRenderer;
+            if (!v.videoId) continue;
+            items.push({
+              videoId:   v.videoId,
+              title:     v.title?.runs?.[0]?.text || v.title?.simpleText || '',
+              author:    v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '',
+              thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+            });
+          }
+        }
+        if (!items.length) return res.status(404).json({ error: 'No results' });
+        res.json({ items });
+      } catch (e) {
+        console.error('yt-scrape parse error:', e.message);
+        res.status(500).json({ error: 'Parse failed' });
+      }
+    });
+    ytRes.on('error', () => {});
+  });
+  ytReq.on('error', (err) => {
+    console.error('yt-scrape request error:', err.message);
+    res.status(500).json({ error: 'Request to YouTube failed' });
+  });
+  ytReq.setTimeout(15000, () => { ytReq.destroy(); res.status(504).json({ error: 'Timeout' }); });
+});
+
 let state = loadData();
 
 function safeUsers() {

@@ -1100,6 +1100,7 @@ const pageConfig = {
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
+  pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
 };
 
 let currentPage = 'first';
@@ -1112,6 +1113,8 @@ window.goToPage = function(pageName) {
 
   // Lobby: tear down canvas when leaving
   if (currentPage === 'lobby') lobbyModule.destroy();
+  // Pokemon: tear down when leaving
+  if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -1158,6 +1161,8 @@ window.goToPage = function(pageName) {
 
   // Lobby: start canvas after page is visible
   if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
+  // Pokemon: start after page is visible
+  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
 };
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };

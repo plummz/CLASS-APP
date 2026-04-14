@@ -304,29 +304,22 @@
     <div class="yt-embed-section">
       <div class="yt-input-row">
         <input type="text" id="yt-main-input"
-          placeholder="Paste YouTube URL — or type a song name to search..."
+          placeholder="Song name or paste YouTube URL..."
           class="yt-input"
-          onkeydown="if(event.key==='Enter') handleYtInput()"
-          oninput="ytDetectMode(this.value)">
-        <button class="btn-primary" id="yt-action-btn" onclick="handleYtInput()">▶ Play</button>
+          onkeydown="if(event.key==='Enter') handleYtInput()">
+        <button class="btn-primary" id="yt-action-btn" onclick="handleYtInput()">Search</button>
       </div>
       <p class="yt-hint" id="yt-hint-text">
-        Paste a YouTube link → plays right here · Type a song name → opens YouTube so you can copy the link back
+        Type a song name to search · or paste a YouTube URL to play instantly
       </p>
 
-      <!-- Step-2 paste box: shown after YouTube search opens in new tab -->
-      <div id="yt-paste-back" class="yt-paste-back hidden">
-        <span class="yt-paste-back-label">Found it? Copy the video URL from YouTube and paste it below:</span>
-        <div class="yt-input-row" style="margin-top: 8px;">
-          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL here..." class="yt-input" onkeydown="if(event.key==='Enter') embedYouTubeURL()">
-          <button class="btn-primary" onclick="embedYouTubeURL()">Embed</button>
-        </div>
-      </div>
+      <!-- Search results list -->
+      <div id="yt-results" class="yt-results hidden"></div>
 
       <div class="yt-player-container" id="yt-player-container">
         <div class="yt-placeholder" id="yt-placeholder">
           <span style="font-size:36px;">▶️</span>
-          <p>Paste a YouTube URL above to play it here</p>
+          <p>Search for a song or paste a YouTube URL</p>
         </div>
         <iframe id="yt-iframe" class="yt-iframe hidden" frameborder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

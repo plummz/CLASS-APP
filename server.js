@@ -621,6 +621,9 @@ app.delete('/api/messages/:id', (req, res) => {
   res.json({ success: true });
 });
 
+/* ── In-memory lobby player map ─────────────────────────── */
+const lobbyPlayers = new Map(); // socketId → { username, x, y, dir, color, bodyColor }
+
 io.on('connection', (socket) => {
   socket.on('identify', (user) => {
     socket.data.username = user.username;
@@ -676,10 +679,63 @@ io.on('connection', (socket) => {
     io.emit('users', safeUsers());
   });
 
+  /* ── Lobby events ──────────────────────────────────────── */
+  socket.on('lobby:join', (playerData) => {
+    const player = {
+      username: playerData.username || 'Unknown',
+      x: Math.max(22, Math.min(780, playerData.x || 200)),
+      y: Math.max(22, Math.min(470, playerData.y || 200)),
+      dir: playerData.dir || 'down',
+      color: playerData.color || '#00d4ff',
+      bodyColor: playerData.bodyColor || '#336699',
+    };
+    lobbyPlayers.set(socket.id, player);
+    socket.join('lobby');
+    // Send current players to the newcomer
+    socket.emit('lobby:players', Array.from(lobbyPlayers.values()));
+    // Tell everyone else
+    socket.to('lobby').emit('lobby:player_joined', player);
+  });
+
+  socket.on('lobby:move', ({ x, y, dir }) => {
+    const player = lobbyPlayers.get(socket.id);
+    if (!player) return;
+    player.x = Math.max(22, Math.min(780, x || player.x));
+    player.y = Math.max(22, Math.min(470, y || player.y));
+    player.dir = dir || player.dir;
+    socket.to('lobby').emit('lobby:player_moved', { username: player.username, x: player.x, y: player.y, dir: player.dir });
+  });
+
+  socket.on('lobby:chat', ({ text }) => {
+    const player = lobbyPlayers.get(socket.id);
+    if (!player || !text) return;
+    const msg = {
+      username: player.username,
+      text: String(text).slice(0, 100),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    io.to('lobby').emit('lobby:chat', msg);
+  });
+
+  socket.on('lobby:leave', () => {
+    const player = lobbyPlayers.get(socket.id);
+    if (player) {
+      lobbyPlayers.delete(socket.id);
+      io.to('lobby').emit('lobby:player_left', { username: player.username });
+    }
+    socket.leave('lobby');
+  });
+
   socket.on('disconnect', () => {
     const username = socket.data.username;
     if (username) {
       updatePresence(username, false);
+    }
+    // Remove from lobby on disconnect
+    const lobbyPlayer = lobbyPlayers.get(socket.id);
+    if (lobbyPlayer) {
+      lobbyPlayers.delete(socket.id);
+      io.to('lobby').emit('lobby:player_left', { username: lobbyPlayer.username });
     }
   });
 });

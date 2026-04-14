@@ -1099,6 +1099,7 @@ const pageConfig = {
   users:    { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '👥 User Directory' },
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
+  lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
 };
 
 let currentPage = 'first';
@@ -1108,6 +1109,9 @@ let calendarNotes = {};
 window.goToPage = function(pageName) {
   if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
   if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
+
+  // Lobby: tear down canvas when leaving
+  if (currentPage === 'lobby') lobbyModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -1151,6 +1155,9 @@ window.goToPage = function(pageName) {
   if(newPage) newPage.scrollTop = 0;
   document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
   closeMenu();
+
+  // Lobby: start canvas after page is visible
+  if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
 };
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
@@ -1288,3 +1295,355 @@ window.addEventListener('DOMContentLoaded', () => {
     const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
     if (savedNote) { const noteBox = document.getElementById('announcement-note'); if(noteBox) noteBox.value = savedNote; }
 });
+
+/* ============================================================
+   THEME TOGGLE (Dark / Light Mode) + ACCENT COLOR
+   ============================================================ */
+(function applyStoredTheme() {
+  const mode = localStorage.getItem('themeMode') || 'dark';
+  if (mode === 'light') document.body.classList.add('light-mode');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = mode === 'light' ? '☀️' : '🌙';
+  const savedAccent = localStorage.getItem('accentColor');
+  if (savedAccent) {
+    document.documentElement.style.setProperty('--accent', savedAccent);
+    const picker = document.getElementById('accent-picker');
+    if (picker) picker.value = savedAccent;
+  }
+})();
+
+window.toggleTheme = function() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('themeMode', isLight ? 'light' : 'dark');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+};
+
+window.setAccentColor = function(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  localStorage.setItem('accentColor', color);
+};
+
+/* ============================================================
+   SOCKET.IO — lazy-init for Lobby
+   ============================================================ */
+let _socket = null;
+
+function _ensureSocket() {
+  if (_socket) return _socket;
+  _socket = io();
+  _socket.on('connect', () => {
+    if (currentUser) _socket.emit('identify', currentUser);
+    lobbyModule.setupSocket(_socket);
+  });
+  // If connected immediately (reconnect case), setup at once
+  if (_socket.connected) {
+    lobbyModule.setupSocket(_socket);
+    if (currentUser) _socket.emit('identify', currentUser);
+  }
+  return _socket;
+}
+
+/* ============================================================
+   LOBBY MODULE — pixel canvas, real-time Sims-like movement
+   ============================================================ */
+const lobbyModule = (() => {
+  const SPEED = 3, CHAR_W = 16, CHAR_H = 24;
+  const BOUNDS = { minX: 22, maxX: 780, minY: 22, maxY: 470 };
+
+  let canvas, ctx, animFrame, sock;
+  let myPlayer = null;
+  const players = new Map();
+  const keys = {};
+  const dpad = { up: false, down: false, left: false, right: false };
+  let moveThrottle = 0;
+  let socketReady = false;
+  let _kdown, _kup;
+
+  function colorFromName(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return `hsl(${((h % 360) + 360) % 360},72%,65%)`;
+  }
+  function bodyColorFromName(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    h = h * 7;
+    return `hsl(${((h % 360) + 360) % 360},55%,40%)`;
+  }
+
+  function drawChar(x, y, name, skin, body, moving, frame) {
+    const cx = Math.round(x), cy = Math.round(y);
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx + CHAR_W / 2, cy + CHAR_H + 3, CHAR_W / 2 + 1, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Legs (animated)
+    const la = moving ? (frame % 2 === 0 ? 4 : -1) : 0;
+    const lb = moving ? (frame % 2 === 0 ? -1 : 4) : 0;
+    ctx.fillStyle = '#221610';
+    ctx.fillRect(cx + 2,  cy + 16, 5, 8 + la);
+    ctx.fillRect(cx + 9,  cy + 16, 5, 8 + lb);
+    // Body
+    ctx.fillStyle = body;
+    ctx.fillRect(cx + 2, cy + 8, CHAR_W - 4, 10);
+    // Arms
+    const ao = moving ? (frame % 2 === 0 ? 2 : -2) : 0;
+    ctx.fillStyle = body;
+    ctx.fillRect(cx - 3, cy + 9 + ao, 5, 7);
+    ctx.fillRect(cx + CHAR_W - 2, cy + 9 - ao, 5, 7);
+    // Head
+    ctx.fillStyle = skin;
+    ctx.fillRect(cx + 3, cy, 10, 10);
+    // Eyes
+    ctx.fillStyle = '#1a1010';
+    ctx.fillRect(cx + 5, cy + 3, 2, 2);
+    ctx.fillRect(cx + 9, cy + 3, 2, 2);
+    // Nametag
+    const label = name.length > 9 ? name.slice(0, 8) + '\u2026' : name;
+    ctx.font = '700 9px monospace';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(label).width + 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.62)';
+    if (ctx.roundRect) {
+      ctx.beginPath(); ctx.roundRect(cx + CHAR_W / 2 - tw / 2, cy - 15, tw, 12, 3); ctx.fill();
+    } else {
+      ctx.fillRect(cx + CHAR_W / 2 - tw / 2, cy - 15, tw, 12);
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, cx + CHAR_W / 2, cy - 5);
+  }
+
+  function drawMap(W, H, t) {
+    // Floor tiles
+    for (let tx = 0; tx < W; tx += 40) {
+      for (let ty = 0; ty < H; ty += 40) {
+        ctx.fillStyle = ((Math.floor(tx / 40) + Math.floor(ty / 40)) % 2 === 0) ? '#121e2e' : '#162435';
+        ctx.fillRect(tx, ty, 40, 40);
+      }
+    }
+    // Tile grid lines
+    ctx.strokeStyle = 'rgba(0,160,220,0.07)'; ctx.lineWidth = 0.5;
+    for (let tx = 0; tx <= W; tx += 40) { ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, H); ctx.stroke(); }
+    for (let ty = 0; ty <= H; ty += 40) { ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(W, ty); ctx.stroke(); }
+    // Border walls
+    ctx.fillStyle = '#080f1a';
+    ctx.fillRect(0, 0, W, 20); ctx.fillRect(0, H - 20, W, 20);
+    ctx.fillRect(0, 0, 20, H); ctx.fillRect(W - 20, 0, 20, H);
+    ctx.strokeStyle = 'rgba(0,200,255,0.42)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(20, 20, W - 40, H - 40);
+    // Central fountain
+    const fx = W / 2, fy = H / 2;
+    ctx.fillStyle = '#0b1e35';
+    ctx.beginPath(); ctx.arc(fx, fy, 52, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,210,255,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(fx, fy, 52, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,100,210,0.28)';
+    ctx.beginPath(); ctx.arc(fx, fy, 44, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const r = 7 + ((t * 22 + i * 14) % 32);
+      ctx.strokeStyle = `rgba(0,210,255,${Math.max(0, 0.44 - r * 0.012)})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = '#00d4ff'; ctx.beginPath(); ctx.arc(fx, fy, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '700 10px "Rajdhani",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0,200,255,0.4)'; ctx.fillText('SCHOOL LOBBY', fx, fy - 64);
+    // Corner trees
+    for (const [tx2, ty2] of [[62,62],[W-62,62],[62,H-62],[W-62,H-62]]) {
+      ctx.fillStyle = '#3a2a18'; ctx.fillRect(tx2 - 4, ty2 + 4, 8, 14);
+      ctx.fillStyle = '#1a5c28'; ctx.beginPath(); ctx.arc(tx2, ty2, 19, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#247030'; ctx.beginPath(); ctx.arc(tx2 - 5, ty2 - 4, 12, 0, Math.PI * 2); ctx.fill();
+    }
+    // Benches at bottom
+    for (const [bx, by] of [[180, H-42],[320,H-42],[W-180,H-42],[W-320,H-42]]) {
+      ctx.fillStyle = '#3e2c18'; ctx.fillRect(bx - 22, by - 5, 44, 8);
+      ctx.fillRect(bx - 18, by + 3, 5, 7); ctx.fillRect(bx + 13, by + 3, 5, 7);
+    }
+  }
+
+  function gameLoop(ts) {
+    if (!canvas) return;
+    animFrame = requestAnimationFrame(gameLoop);
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    drawMap(W, H, ts / 1000);
+
+    if (myPlayer) {
+      const up    = keys.ArrowUp    || keys.w || dpad.up;
+      const down  = keys.ArrowDown  || keys.s || dpad.down;
+      const left  = keys.ArrowLeft  || keys.a || dpad.left;
+      const right = keys.ArrowRight || keys.d || dpad.right;
+      const moving = up || down || left || right;
+      if (moving) {
+        if (up)    myPlayer.y = Math.max(BOUNDS.minY, myPlayer.y - SPEED);
+        if (down)  myPlayer.y = Math.min(BOUNDS.maxY - CHAR_H, myPlayer.y + SPEED);
+        if (left)  myPlayer.x = Math.max(BOUNDS.minX, myPlayer.x - SPEED);
+        if (right) myPlayer.x = Math.min(BOUNDS.maxX - CHAR_W, myPlayer.x + SPEED);
+        myPlayer.dir = left ? 'left' : right ? 'right' : up ? 'up' : 'down';
+        myPlayer.moving = true;
+        myPlayer.frame = Math.floor(ts / 180) % 4;
+        if (sock && sock.connected && Date.now() - moveThrottle > 50) {
+          moveThrottle = Date.now();
+          sock.emit('lobby:move', { x: myPlayer.x, y: myPlayer.y, dir: myPlayer.dir });
+        }
+      } else {
+        myPlayer.moving = false;
+      }
+    }
+
+    // Draw all players sorted by Y (depth sort)
+    const all = [...players.values()];
+    if (myPlayer) all.push(myPlayer);
+    all.sort((a, b) => a.y - b.y);
+    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0);
+  }
+
+  function setupDpad() {
+    const map = { 'dpad-up': 'up', 'dpad-down': 'down', 'dpad-left': 'left', 'dpad-right': 'right' };
+    Object.entries(map).forEach(([id, dir]) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const on  = () => { dpad[dir] = true;  btn.classList.add('pressed'); };
+      const off = () => { dpad[dir] = false; btn.classList.remove('pressed'); };
+      btn.addEventListener('mousedown', on);
+      btn.addEventListener('mouseup', off);
+      btn.addEventListener('mouseleave', off);
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); on(); }, { passive: false });
+      btn.addEventListener('touchend',   (e) => { e.preventDefault(); off(); }, { passive: false });
+      btn.addEventListener('touchcancel',(e) => { e.preventDefault(); off(); }, { passive: false });
+    });
+  }
+
+  function updateCount() {
+    const el = document.getElementById('lobby-online-count');
+    if (el) el.textContent = (players.size + (myPlayer ? 1 : 0)) + ' online';
+  }
+
+  function safe(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function addMsg(username, text, time) {
+    const box = document.getElementById('lobby-chat-messages');
+    if (!box) return;
+    const isMe = currentUser && username === currentUser.username;
+    const div = document.createElement('div');
+    div.className = 'lobby-chat-msg' + (isMe ? ' lobby-chat-me' : '');
+    div.innerHTML = `<span class="lobby-chat-user">${safe(username)}</span><span class="lobby-chat-text">${safe(text)}</span><span class="lobby-chat-time">${safe(time)}</span>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    while (box.children.length > 60) box.removeChild(box.firstChild);
+  }
+
+  function emitJoin() {
+    if (sock && sock.connected && myPlayer) {
+      sock.emit('lobby:join', {
+        username: myPlayer.username, x: myPlayer.x, y: myPlayer.y,
+        color: myPlayer.color, bodyColor: myPlayer.bodyColor
+      });
+    }
+  }
+
+  return {
+    setupSocket(s) {
+      sock = s;
+      if (socketReady) return;
+      socketReady = true;
+
+      s.on('lobby:players', (all) => {
+        players.clear();
+        all.forEach(p => { if (!myPlayer || p.username !== myPlayer.username) players.set(p.username, { ...p, moving: false, frame: 0 }); });
+        updateCount();
+      });
+      s.on('lobby:player_joined', (p) => {
+        if (!myPlayer || p.username !== myPlayer.username) {
+          players.set(p.username, { ...p, moving: false, frame: 0 });
+          addMsg('●', p.username + ' joined the lobby', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        }
+        updateCount();
+      });
+      s.on('lobby:player_moved', ({ username, x, y, dir }) => {
+        const p = players.get(username);
+        if (p) { p.moving = (x !== p.x || y !== p.y); p.x = x; p.y = y; p.dir = dir; p.frame = (p.frame + 1) % 4; }
+      });
+      s.on('lobby:player_left', ({ username }) => {
+        players.delete(username);
+        addMsg('●', username + ' left the lobby', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        updateCount();
+      });
+      s.on('lobby:chat', (msg) => addMsg(msg.username, msg.text, msg.time));
+    },
+
+    init() {
+      canvas = document.getElementById('lobby-canvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+
+      // Scale canvas to fit container width
+      const resize = () => {
+        const w = canvas.parentElement ? canvas.parentElement.clientWidth : 800;
+        const scale = Math.min(1, w / 800);
+        canvas.style.width  = (800 * scale) + 'px';
+        canvas.style.height = (500 * scale) + 'px';
+      };
+      resize();
+      window.addEventListener('resize', resize);
+      canvas._resize = resize;
+
+      // Keyboard controls (only when not typing in an input)
+      _kdown = (e) => {
+        if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)) {
+          keys[e.key] = true;
+          if (e.key.startsWith('Arrow')) e.preventDefault();
+        }
+      };
+      _kup = (e) => { keys[e.key] = false; };
+      document.addEventListener('keydown', _kdown);
+      document.addEventListener('keyup', _kup);
+
+      setupDpad();
+
+      // Build my player
+      if (currentUser) {
+        myPlayer = {
+          username: currentUser.username,
+          x: 180 + Math.floor(Math.random() * 400),
+          y: 150 + Math.floor(Math.random() * 200),
+          dir: 'down', moving: false, frame: 0,
+          color: colorFromName(currentUser.username),
+          bodyColor: bodyColorFromName(currentUser.username),
+          isMe: true
+        };
+        if (sock && sock.connected) {
+          emitJoin();
+        } else if (sock) {
+          sock.once('connect', () => { if (currentUser) sock.emit('identify', currentUser); emitJoin(); });
+        }
+      }
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(gameLoop);
+      updateCount();
+    },
+
+    destroy() {
+      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+      if (_kdown) { document.removeEventListener('keydown', _kdown); _kdown = null; }
+      if (_kup)   { document.removeEventListener('keyup',   _kup);   _kup = null; }
+      if (canvas && canvas._resize) { window.removeEventListener('resize', canvas._resize); }
+      if (sock && sock.connected && myPlayer) sock.emit('lobby:leave');
+      players.clear();
+      myPlayer = null;
+      canvas = null; ctx = null;
+    }
+  };
+})();
+
+window.sendLobbyChat = function() {
+  const input = document.getElementById('lobby-chat-input');
+  if (!input || !input.value.trim()) return;
+  const s = _ensureSocket();
+  if (s && s.connected) s.emit('lobby:chat', { text: input.value.trim() });
+  else if (s) s.once('connect', () => { /* message lost — acceptable */ });
+  input.value = '';
+};

@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -57,6 +57,12 @@
  
   <nav id="sidebar">
     <div class="sidebar-title">My Portfolio</div>
+
+    <div class="sidebar-controls">
+      <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+      <input type="color" id="accent-picker" class="accent-picker" value="#00d4ff" title="Pick Accent Color" oninput="setAccentColor(this.value)">
+      <span class="accent-label">Accent</span>
+    </div>
 
     <div class="nav-dropdown-group year-1-theme">
       <div class="nav-dropdown-header" onclick="toggleYear('year1')">
@@ -158,6 +164,11 @@
     <div class="nav-item" data-page="music" onclick="goToPage('music')">
       <span class="nav-icon">🎵</span>
       <div class="nav-text"><span class="nav-label">Music</span></div>
+    </div>
+
+    <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
+      <span class="nav-icon">🏫</span>
+      <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
     <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">
@@ -347,6 +358,34 @@
     </div>
   </div>
 
+  <!-- ── LOBBY ──────────────────────────────────────────── -->
+  <div class="page" id="page-lobby">
+    <div class="lobby-wrapper">
+      <div class="lobby-header">
+        <h2 class="lobby-title">🏫 School Lobby</h2>
+        <span class="lobby-online" id="lobby-online-count">0 online</span>
+      </div>
+      <div class="lobby-canvas-area">
+        <canvas id="lobby-canvas" width="800" height="500"></canvas>
+        <div class="dpad" id="lobby-dpad">
+          <button class="dpad-btn dpad-up"    id="dpad-up">▲</button>
+          <button class="dpad-btn dpad-left"  id="dpad-left">◀</button>
+          <button class="dpad-btn dpad-center" disabled></button>
+          <button class="dpad-btn dpad-right" id="dpad-right">▶</button>
+          <button class="dpad-btn dpad-down"  id="dpad-down">▼</button>
+        </div>
+      </div>
+      <div class="lobby-chat-panel">
+        <div class="lobby-chat-messages" id="lobby-chat-messages"></div>
+        <div class="lobby-chat-input-row">
+          <input type="text" id="lobby-chat-input" placeholder="Say something in the lobby…" maxlength="100"
+            onkeydown="if(event.key==='Enter') sendLobbyChat()">
+          <button class="btn-primary" onclick="sendLobbyChat()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="folder-explorer-modal" class="custom-modal-overlay">
     <div class="custom-modal-box">
       <button class="modal-close-btn" onclick="closeFolderModal('folder-explorer-modal')">&times;</button>
@@ -406,7 +445,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=14"></script>
+  <script src="script.js?v=15"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

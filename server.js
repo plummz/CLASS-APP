@@ -67,6 +67,13 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Redirect old PWA installs that used /CLASS-APP/ as start_url.
+// Users who installed before the manifest fix open to /CLASS-APP/ — redirect
+// them to / so the app loads normally without requiring a reinstall.
+app.get('/CLASS-APP', (req, res) => res.redirect('/'));
+app.get('/CLASS-APP/', (req, res) => res.redirect('/'));
+app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
+
 /* ── Wake-up ping (keeps Render free tier warm) ─────────── */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 

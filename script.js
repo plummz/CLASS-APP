@@ -346,14 +346,21 @@ window.deleteFileAPI = function(fileId) {
    ============================================================ */
 let ytActive = false;
 
-// Invidious instances — used as fallback only if the server proxy is unavailable
+// Piped API instances — fallback 1 (no key, CORS-friendly, more reliable than Invidious)
+const PIPED_INSTANCES = [
+    'https://pipedapi.kavin.rocks',
+    'https://pipedapi.tokhmi.xyz',
+    'https://piped-api.garudalinux.org',
+    'https://pipedapi.adminforge.de',
+];
+
+// Invidious instances — fallback 2
 const YT_INSTANCES = [
-    'https://invidious.snopyta.org',
-    'https://vid.puffyan.us',
-    'https://invidious.kavin.rocks',
-    'https://yt.artemislena.eu',
-    'https://invidious.tiekoetter.com',
-    'https://inv.riverside.rocks',
+    'https://inv.nadeko.net',
+    'https://invidious.private.coffee',
+    'https://invidious.fdn.fr',
+    'https://yt.cdaut.de',
+    'https://invidious.perennialte.ch',
 ];
 
 function loadYouTubeIframe(videoId, title) {
@@ -393,7 +400,48 @@ async function ytSearchViaProxy(query) {
     return null;
 }
 
-// Fallback: public Invidious API (no key needed, less reliable)
+// Fallback 1: Piped API via our server proxy (avoids CORS), then direct as last resort
+async function ytSearchViaPiped(query) {
+    // Try server-side proxy first
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const r = await fetch(`/api/piped-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (r.ok) {
+            const data = await r.json();
+            if (data.items && data.items.length) return data.items;
+        }
+    } catch (_) {}
+
+    // Direct calls to Piped instances as last resort
+    for (const base of PIPED_INSTANCES) {
+        try {
+            const ctrl = new AbortController();
+            const tid = setTimeout(() => ctrl.abort(), 6000);
+            const r = await fetch(
+                `${base}/search?q=${encodeURIComponent(query)}&filter=videos`,
+                { signal: ctrl.signal }
+            );
+            clearTimeout(tid);
+            if (r.ok) {
+                const data = await r.json();
+                const items = (data.items || []).filter(v => v.type === 'stream').slice(0, 6);
+                if (items.length) {
+                    return items.map(v => ({
+                        videoId:   (v.url || '').split('v=')[1],
+                        title:     v.title,
+                        author:    v.uploaderName || '',
+                        thumbnail: v.thumbnail || `https://i.ytimg.com/vi/${(v.url||'').split('v=')[1]}/mqdefault.jpg`,
+                    })).filter(v => v.videoId);
+                }
+            }
+        } catch (_) { /* try next */ }
+    }
+    return null;
+}
+
+// Fallback 2: public Invidious API
 async function ytSearchViaInvidious(query) {
     for (const base of YT_INSTANCES) {
         try {
@@ -459,8 +507,8 @@ window.handleYtInput = async function() {
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
     if (hint) hint.textContent = 'Searching…';
 
-    // Try server proxy first (uses YouTube API key securely), then Invidious fallback
-    const results = (await ytSearchViaProxy(val)) || (await ytSearchViaInvidious(val));
+    // Try server proxy first (YouTube API key), then Piped, then Invidious
+    const results = (await ytSearchViaProxy(val)) || (await ytSearchViaPiped(val)) || (await ytSearchViaInvidious(val));
 
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }
 

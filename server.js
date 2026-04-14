@@ -108,6 +108,62 @@ app.get('/api/yt-search', async (req, res) => {
   });
 });
 
+/* ── Piped search proxy (no API key needed, avoids browser CORS blocks) ────
+   Usage: GET /api/piped-search?q=despacito
+   ─────────────────────────────────────────────────────────────────────── */
+const PIPED_HOSTS = [
+  'pipedapi.kavin.rocks',
+  'pipedapi.tokhmi.xyz',
+  'piped-api.garudalinux.org',
+  'pipedapi.adminforge.de',
+];
+
+function pipedSearchRequest(host, q, resolve) {
+  const options = {
+    hostname: host,
+    path: `/search?q=${encodeURIComponent(q)}&filter=videos`,
+    method: 'GET',
+    headers: { 'User-Agent': 'class-app/1.0' },
+  };
+  const req = https.get(options, (pRes) => {
+    let raw = '';
+    pRes.on('data', chunk => { raw += chunk; });
+    pRes.on('end', () => {
+      try {
+        if (pRes.statusCode === 200) {
+          const data = JSON.parse(raw);
+          const items = (data.items || []).filter(v => v.type === 'stream').slice(0, 6).map(v => ({
+            videoId:   (v.url || '').split('v=')[1],
+            title:     v.title,
+            author:    v.uploaderName || '',
+            thumbnail: v.thumbnail || '',
+          })).filter(v => v.videoId);
+          if (items.length) return resolve({ items });
+        }
+      } catch (_) {}
+      resolve(null);
+    });
+  });
+  req.on('error', () => resolve(null));
+  req.setTimeout(6000, () => { req.destroy(); resolve(null); });
+}
+
+app.get('/api/piped-search', (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
+
+  let idx = 0;
+  function tryNext() {
+    if (idx >= PIPED_HOSTS.length) return res.status(502).json({ error: 'All Piped instances failed' });
+    const host = PIPED_HOSTS[idx++];
+    pipedSearchRequest(host, q, (result) => {
+      if (result) return res.json(result);
+      tryNext();
+    });
+  }
+  tryNext();
+});
+
 let state = loadData();
 
 function safeUsers() {

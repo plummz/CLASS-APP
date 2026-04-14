@@ -83,11 +83,11 @@
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year2" class="nav-dropdown-content">
-        <div class="nav-item" onclick="customAlert('Coming Soon!')">
+        <div class="nav-item" data-page="y2first" onclick="goToPage('y2first')">
           <span class="nav-icon">📘</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Coming Soon!')">
+        <div class="nav-item" data-page="y2second" onclick="goToPage('y2second')">
           <span class="nav-icon">📙</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -101,11 +101,11 @@
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year3" class="nav-dropdown-content">
-        <div class="nav-item" onclick="customAlert('Locked')">
+        <div class="nav-item" data-page="y3first" onclick="goToPage('y3first')">
           <span class="nav-icon">🔬</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Locked')">
+        <div class="nav-item" data-page="y3second" onclick="goToPage('y3second')">
           <span class="nav-icon">🔭</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -119,11 +119,11 @@
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year4" class="nav-dropdown-content">
-        <div class="nav-item" onclick="customAlert('Thesis Year')">
+        <div class="nav-item" data-page="y4first" onclick="goToPage('y4first')">
           <span class="nav-icon">📜</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" onclick="customAlert('Graduation')">
+        <div class="nav-item" data-page="y4second" onclick="goToPage('y4second')">
           <span class="nav-icon">✨</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -263,15 +263,75 @@
     </div>
   </div>
   
+  <!-- ── 2ND YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y2first">
+    <div class="page-header"><h1 class="page-title">2nd Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y2first"></div>
+  </div>
+  <div class="page" id="page-y2second">
+    <div class="page-header"><h1 class="page-title">2nd Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y2second"></div>
+  </div>
+  <!-- ── 3RD YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y3first">
+    <div class="page-header"><h1 class="page-title">3rd Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y3first"></div>
+  </div>
+  <div class="page" id="page-y3second">
+    <div class="page-header"><h1 class="page-title">3rd Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y3second"></div>
+  </div>
+  <!-- ── 4TH YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y4first">
+    <div class="page-header"><h1 class="page-title">4th Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y4first"></div>
+  </div>
+  <div class="page" id="page-y4second">
+    <div class="page-header"><h1 class="page-title">4th Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y4second"></div>
+  </div>
+
   <div class="page" id="page-music">
     <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
 
-    <div class="yt-search-wrapper" style="margin-bottom: 20px; text-align: center;">
-      <input type="text" id="yt-search-input" placeholder="Search music on YouTube..." style="padding: 10px; width: 60%; border-radius: 8px; border: 1px solid #00d4ff; background: rgba(0,0,0,0.3); color: white;">
-      <button class="btn-primary" onclick="searchYouTube()" style="padding: 10px 20px; margin-left: 10px;">Search</button>
+    <!-- ── YouTube Embedded Player ──────────────────────── -->
+    <div class="yt-embed-section">
+      <div class="yt-tabs">
+        <button class="yt-tab active" id="yt-tab-search" onclick="switchYtTab('search')">YouTube Search</button>
+        <button class="yt-tab" id="yt-tab-url" onclick="switchYtTab('url')">Paste URL / ID</button>
+      </div>
+      <div id="yt-panel-search" class="yt-panel">
+        <div class="yt-input-row">
+          <input type="text" id="yt-search-input" placeholder="Search music on YouTube..." class="yt-input" onkeydown="if(event.key==='Enter') searchYouTube()">
+          <button class="btn-primary" onclick="searchYouTube()">Search</button>
+        </div>
+        <p class="yt-hint">Press Enter or Search — plays right here. Audio keeps going when you navigate away.</p>
+      </div>
+      <div id="yt-panel-url" class="yt-panel hidden">
+        <div class="yt-input-row">
+          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL or video ID..." class="yt-input" onkeydown="if(event.key==='Enter') embedYouTubeURL()">
+          <button class="btn-primary" onclick="embedYouTubeURL()">Embed</button>
+        </div>
+        <p class="yt-hint">Supports: youtube.com/watch?v=..., youtu.be/..., or a bare 11-char video ID.</p>
+      </div>
+      <div class="yt-player-container" id="yt-player-container">
+        <div class="yt-placeholder" id="yt-placeholder">
+          <span style="font-size:36px;">▶️</span>
+          <p>Search for music above — plays right here</p>
+        </div>
+        <iframe id="yt-iframe" class="yt-iframe hidden" frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>
+      </div>
     </div>
 
-    <div class="music-manage-container">
+    <div class="music-manage-container" style="margin-top: 24px;">
         <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
     </div>
     <div class="music-player-card">
@@ -351,6 +411,16 @@
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
+
+  <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
+  <div id="yt-mini-player" class="yt-mini-player hidden">
+    <span class="yt-mini-icon">▶️</span>
+    <span id="yt-mini-label" class="yt-mini-label">YouTube Playing</span>
+    <div class="yt-mini-actions">
+      <button class="yt-mini-btn" onclick="goToPage('music')" title="Back to Music">🎵</button>
+      <button class="yt-mini-btn" onclick="stopYouTubePlayer()" title="Stop">✕</button>
+    </div>
+  </div>
 
 </body>
 </html>

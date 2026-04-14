@@ -85,6 +85,16 @@ const secondSem = [
   { code: "NSTP 2",   teacher: "",                           icon: "🎗️"  },
 ];
  
+// 2nd Year — fill in subjects when ready
+const y2firstSem  = [];
+const y2secondSem = [];
+// 3rd Year
+const y3firstSem  = [];
+const y3secondSem = [];
+// 4th Year
+const y4firstSem  = [];
+const y4secondSem = [];
+
 const eventCount  = 15;
 const randomCount = 10;
  
@@ -95,7 +105,12 @@ function buildSubjectCards(gridId, subjects) {
   const grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = '';
- 
+
+  if (subjects.length === 0) {
+    grid.innerHTML = '<p style="color:rgba(255,255,255,0.35);text-align:center;width:100%;margin-top:40px;font-size:13px;letter-spacing:1px;">No subjects added yet — they will appear here once added.</p>';
+    return;
+  }
+
   subjects.forEach((subject) => {
     const card = document.createElement('div');
     card.className = 'subject-card';
@@ -326,10 +341,64 @@ window.deleteFileAPI = function(fileId) {
    MUSIC PLAYER & ADVANCED VISUALIZER (TOP TO BOTTOM)
    ============================================================ */
 
+// ── YouTube player state ───────────────────────────────────
+let ytActive = false;
+
+function loadYouTubeIframe(src, label) {
+    const iframe = document.getElementById('yt-iframe');
+    const placeholder = document.getElementById('yt-placeholder');
+    if (!iframe) return;
+    iframe.src = src;
+    iframe.classList.remove('hidden');
+    if (placeholder) placeholder.style.display = 'none';
+    ytActive = true;
+    const miniLabel = document.getElementById('yt-mini-label');
+    if (miniLabel) miniLabel.textContent = label || 'YouTube Playing';
+}
+
 window.searchYouTube = function() {
     const input = document.getElementById('yt-search-input');
     if (!input || !input.value.trim()) return customAlert("Enter a song name to search!");
-    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(input.value.trim())}`, '_blank');
+    const query = encodeURIComponent(input.value.trim());
+    loadYouTubeIframe(
+        `https://www.youtube.com/embed?listType=search&list=${query}&autoplay=1`,
+        `Playing: ${input.value.trim()}`
+    );
+};
+
+window.embedYouTubeURL = function() {
+    const input = document.getElementById('yt-url-input');
+    if (!input || !input.value.trim()) return customAlert("Enter a YouTube URL or video ID!");
+    const videoId = extractYouTubeId(input.value.trim());
+    if (!videoId) return customAlert("Couldn't find a valid YouTube video ID.\nTry pasting the full URL or the 11-character video ID.");
+    loadYouTubeIframe(
+        `https://www.youtube.com/embed/${videoId}?autoplay=1`,
+        `Playing: ${videoId}`
+    );
+};
+
+function extractYouTubeId(val) {
+    const match = val.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/);
+    if (match) return match[1];
+    if (/^[a-zA-Z0-9_-]{11}$/.test(val.trim())) return val.trim();
+    return null;
+}
+
+window.switchYtTab = function(tab) {
+    document.getElementById('yt-panel-search').classList.toggle('hidden', tab !== 'search');
+    document.getElementById('yt-panel-url').classList.toggle('hidden', tab !== 'url');
+    document.getElementById('yt-tab-search').classList.toggle('active', tab === 'search');
+    document.getElementById('yt-tab-url').classList.toggle('active', tab === 'url');
+};
+
+window.stopYouTubePlayer = function() {
+    const iframe = document.getElementById('yt-iframe');
+    const placeholder = document.getElementById('yt-placeholder');
+    if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
+    if (placeholder) placeholder.style.display = '';
+    ytActive = false;
+    const mini = document.getElementById('yt-mini-player');
+    if (mini) mini.classList.add('hidden');
 };
 
 let audioCtx = null;
@@ -857,10 +926,16 @@ window.toggleYear = function(yearId) {
 const pageConfig = {
   first:    { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: true,  label: '⛰️ First Semester' },
   second:   { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🌊 Second Semester' },
+  y2first:  { bg: 'bg-mountain', particles: 'particles-mountain', wave: false, mountain: true,  aurora: false, label: '📘 2nd Year · 1st Semester' },
+  y2second: { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '📙 2nd Year · 2nd Semester' },
+  y3first:  { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '🔬 3rd Year · 1st Semester' },
+  y3second: { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🔭 3rd Year · 2nd Semester' },
+  y4first:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📜 4th Year · 1st Semester' },
+  y4second: { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '✨ 4th Year · 2nd Semester' },
   events:   { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '🛩️ Event Pictures' },
   random:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🌌 Random Pictures' },
-  chat:     { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '💬 Chat' },  
-  users:    { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '👥 User Directory' },  
+  chat:     { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '💬 Chat' },
+  users:    { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '👥 User Directory' },
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
 };
@@ -872,6 +947,13 @@ let calendarNotes = {};
 window.goToPage = function(pageName) {
   if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
   if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
+
+  // YouTube mini-player: show when leaving music, hide when returning
+  const ytMini = document.getElementById('yt-mini-player');
+  if (ytMini) {
+    if (pageName === 'music') ytMini.classList.add('hidden');
+    else if (ytActive && currentPage === 'music') ytMini.classList.remove('hidden');
+  }
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -993,8 +1075,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (currentUser) establishSession();
   else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
 
-  buildSubjectCards('grid-first', firstSem);
-  buildSubjectCards('grid-second', secondSem);
+  buildSubjectCards('grid-first',   firstSem);
+  buildSubjectCards('grid-second',  secondSem);
+  buildSubjectCards('grid-y2first',  y2firstSem);
+  buildSubjectCards('grid-y2second', y2secondSem);
+  buildSubjectCards('grid-y3first',  y3firstSem);
+  buildSubjectCards('grid-y3second', y3secondSem);
+  buildSubjectCards('grid-y4first',  y4firstSem);
+  buildSubjectCards('grid-y4second', y4secondSem);
   buildFolderCards('grid-events', eventCount, 'Event');
   buildFolderCards('grid-random', randomCount, 'Random');
   fetchCalendarNotes(); updateClock();

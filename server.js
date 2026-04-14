@@ -7,7 +7,6 @@ const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');
 const { Server } = require('socket.io');
-const ytsr = require('ytsr');
 
 const ADMIN_USERNAME = 'Marquillero';
 const ADMIN_PASSWORD = '120524';
@@ -240,44 +239,98 @@ app.get('/api/piped-search', (req, res) => {
   tryNext();
 });
 
-/* ── YouTube search via ytsr (no API key, maintained library) ──────────────
-   ytsr uses YouTube's internal API — more reliable than raw HTML scraping.
+/* ── YouTube InnerTube search (no API key — uses YouTube's own internal API) ─
+   The InnerTube API is what youtube.com and the YouTube app use internally.
+   All major YouTube scraping libraries (ytsr, youtube-sr) call this same
+   endpoint under the hood. Returns structured JSON — no HTML parsing.
    Usage: GET /api/yt-scrape?q=payphone
    ─────────────────────────────────────────────────────────────────────── */
-app.get('/api/yt-scrape', async (req, res) => {
+app.get('/api/yt-scrape', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
-  console.log('[ytsr] Searching for:', q);
-  try {
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('ytsr timeout')), 12000)
-    );
-    const searchResults = await Promise.race([
-      ytsr(q, { limit: 6, safeSearch: false }),
-      timeout,
-    ]);
+  console.log('[innertube] Searching for:', q);
 
-    const items = searchResults.items
-      .filter(item => item.type === 'video')
-      .slice(0, 6)
-      .map(item => ({
-        videoId:   item.id,
-        title:     item.title,
-        author:    item.author?.name || '',
-        thumbnail: item.bestThumbnail?.url || `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`,
-      }));
+  const body = JSON.stringify({
+    context: {
+      client: {
+        clientName: 'WEB',
+        clientVersion: '2.20231201.08.00',
+        hl: 'en',
+        gl: 'US',
+      },
+    },
+    query: q,
+  });
 
-    if (!items.length) {
-      console.warn('[ytsr] No video results for:', q);
-      return res.status(404).json({ error: 'No results' });
-    }
-    console.log('[ytsr] OK, returned', items.length, 'results');
-    res.json({ items });
-  } catch (e) {
-    console.error('[ytsr] Error for query "' + q + '":', e.message);
-    res.status(500).json({ error: 'ytsr search failed: ' + e.message });
-  }
+  const options = {
+    hostname: 'www.youtube.com',
+    path: '/youtubei/v1/search',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'X-YouTube-Client-Name': '1',
+      'X-YouTube-Client-Version': '2.20231201.08.00',
+      'Origin': 'https://www.youtube.com',
+    },
+  };
+
+  const ytReq = https.request(options, (ytRes) => {
+    let raw = '';
+    ytRes.on('data', chunk => { raw += chunk; });
+    ytRes.on('end', () => {
+      try {
+        const data = JSON.parse(raw);
+        const allContents = data?.contents
+          ?.twoColumnSearchResultsRenderer
+          ?.primaryContents
+          ?.sectionListRenderer
+          ?.contents || [];
+
+        const items = [];
+        for (const section of allContents) {
+          const sectionItems = section?.itemSectionRenderer?.contents || [];
+          for (const item of sectionItems) {
+            if (item.videoRenderer && items.length < 6) {
+              const v = item.videoRenderer;
+              if (!v.videoId) continue;
+              items.push({
+                videoId:   v.videoId,
+                title:     v.title?.runs?.[0]?.text || v.title?.simpleText || '',
+                author:    v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '',
+                thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+              });
+            }
+          }
+        }
+
+        if (!items.length) {
+          console.warn('[innertube] No video results for:', q, '| HTTP status:', ytRes.statusCode);
+          return res.status(404).json({ error: 'No results' });
+        }
+        console.log('[innertube] OK, returned', items.length, 'results for:', q);
+        res.json({ items });
+      } catch (e) {
+        console.error('[innertube] Parse error:', e.message, '| HTTP:', ytRes.statusCode, '| Body[:200]:', raw.slice(0, 200));
+        res.status(500).json({ error: 'Parse failed: ' + e.message });
+      }
+    });
+  });
+
+  ytReq.on('error', (err) => {
+    console.error('[innertube] Network error:', err.message);
+    res.status(500).json({ error: 'Request failed: ' + err.message });
+  });
+  ytReq.setTimeout(15000, () => {
+    ytReq.destroy();
+    console.error('[innertube] Timeout for:', q);
+    res.status(504).json({ error: 'Timeout' });
+  });
+
+  ytReq.write(body);
+  ytReq.end();
 });
 
 let state = loadData();

@@ -422,48 +422,53 @@ async function serverFetch(url, onWaking) {
 async function ytSearchViaProxy(query, onWaking) {
     try {
         const r = await serverFetch(`/api/yt-search?q=${encodeURIComponent(query)}`, onWaking);
-        if (r && r.ok) {
-            const data = await r.json();
-            if (data.items && data.items.length) return data.items;
-        }
-    } catch (_) {}
-    return null;
+        if (!r) return { error: 'no response' };
+        const data = await r.json();
+        if (r.ok && data.items && data.items.length) return { items: data.items };
+        return { error: (data.error || 'HTTP ' + r.status).slice(0, 60) };
+    } catch (e) { return { error: e.message.slice(0, 40) }; }
 }
 
 // Fallback 1: Piped API via server proxy
 async function ytSearchViaPiped(query, onWaking) {
     try {
         const r = await serverFetch(`/api/piped-search?q=${encodeURIComponent(query)}`, onWaking);
-        if (r && r.ok) {
-            const data = await r.json();
-            if (data.items && data.items.length) return data.items;
-        }
-    } catch (_) {}
-    return null;
+        if (!r) return { error: 'no response' };
+        const data = await r.json();
+        if (r.ok && data.items && data.items.length) return { items: data.items };
+        return { error: (data.error || 'HTTP ' + r.status).slice(0, 60) };
+    } catch (e) { return { error: e.message.slice(0, 40) }; }
 }
 
-// Fallback 2: server-side YouTube scrape (no API key needed)
+// Fallback 2: server-side InnerTube search (no API key needed)
 async function ytSearchViaScrape(query, onWaking) {
     try {
         const r = await serverFetch(`/api/yt-scrape?q=${encodeURIComponent(query)}`, onWaking);
-        if (r && r.ok) {
-            const data = await r.json();
-            if (data.items && data.items.length) return data.items;
-        }
-    } catch (_) {}
-    return null;
+        if (!r) return { error: 'no response' };
+        const data = await r.json();
+        if (r.ok && data.items && data.items.length) return { items: data.items };
+        return { error: (data.error || 'HTTP ' + r.status).slice(0, 60) };
+    } catch (e) { return { error: e.message.slice(0, 40) }; }
 }
 
-// Returns the first non-null result from any of the given promises
+// Returns first successful result or collects all errors
 function firstSuccess(promises) {
     return new Promise((resolve) => {
         let pending = promises.length;
-        if (!pending) return resolve(null);
-        promises.forEach(p => {
+        const errors = [];
+        if (!pending) return resolve({ items: null, errors: [] });
+        promises.forEach((p, i) => {
             Promise.resolve(p).then(result => {
-                if (result) resolve(result);
-                else if (--pending === 0) resolve(null);
-            }).catch(() => { if (--pending === 0) resolve(null); });
+                if (result && result.items) {
+                    resolve({ items: result.items, errors: [] });
+                } else {
+                    errors[i] = result ? result.error : 'unknown';
+                    if (--pending === 0) resolve({ items: null, errors });
+                }
+            }).catch(e => {
+                errors[i] = e.message;
+                if (--pending === 0) resolve({ items: null, errors });
+            });
         });
     });
 }
@@ -512,23 +517,24 @@ window.handleYtInput = async function() {
         if (hint) hint.textContent = '⏳ Server is starting up, please wait (~30–60s)…';
     };
 
-    // All 3 run on OUR server in parallel — retry on 503 until server wakes up
-    const results = await firstSuccess([
+    // All 3 run on OUR server in parallel — retry on 503/timeout until server wakes up
+    const { items, errors } = await firstSuccess([
         ytSearchViaProxy(val, onWaking),
         ytSearchViaPiped(val, onWaking),
         ytSearchViaScrape(val, onWaking),
     ]);
 
-    console.log('[YT Search] Results:', results ? results.length + ' items' : 'null');
-
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }
 
-    if (results && results.length) {
+    if (items && items.length) {
         if (hint) hint.textContent = 'Tap a result to play it here:';
-        showYtResults(results);
+        showYtResults(items);
     } else {
-        // Don't auto-open YouTube — show a button so user can choose
-        if (hint) hint.innerHTML = `Search failed. <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(val)}" target="_blank" style="color:#4af;text-decoration:underline;">Open YouTube manually</a> then paste the URL above.`;
+        // Show specific errors so we can diagnose without needing server logs
+        const labels = ['API', 'Piped', 'InnerTube'];
+        const detail = errors.map((e, i) => `${labels[i]}: ${e || '?'}`).join(' | ');
+        console.error('[YT Search] All methods failed:', detail);
+        if (hint) hint.innerHTML = `Search failed — <small style="opacity:.7">${detail}</small><br><a href="https://www.youtube.com/results?search_query=${encodeURIComponent(val)}" target="_blank" style="color:#4af;text-decoration:underline;">Open YouTube manually</a> then paste the URL above.`;
     }
 };
 

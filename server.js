@@ -251,16 +251,18 @@ app.get('/api/yt-scrape', (req, res) => {
 
   console.log('[innertube] Searching for:', q);
 
+  // Use MWEB client — simpler JSON structure, less bot-detection than WEB
   const body = JSON.stringify({
     context: {
       client: {
-        clientName: 'WEB',
-        clientVersion: '2.20231201.08.00',
+        clientName: 'MWEB',
+        clientVersion: '2.20240101.00.00',
         hl: 'en',
         gl: 'US',
       },
     },
     query: q,
+    params: 'EgIQAQ%3D%3D', // filter: videos only
   });
 
   const options = {
@@ -270,10 +272,13 @@ app.get('/api/yt-scrape', (req, res) => {
     headers: {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(body),
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'X-YouTube-Client-Name': '1',
-      'X-YouTube-Client-Version': '2.20231201.08.00',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.210 Mobile Safari/537.36',
+      'X-YouTube-Client-Name': '2',
+      'X-YouTube-Client-Version': '2.20240101.00.00',
       'Origin': 'https://www.youtube.com',
+      'Referer': 'https://www.youtube.com/',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cookie': 'CONSENT=YES+1;',
     },
   };
 
@@ -283,11 +288,19 @@ app.get('/api/yt-scrape', (req, res) => {
     ytRes.on('end', () => {
       try {
         const data = JSON.parse(raw);
-        const allContents = data?.contents
+
+        // MWEB uses singleColumnSearchResultsRenderer; WEB uses twoColumnSearchResultsRenderer
+        const mwebContents = data?.contents
+          ?.singleColumnSearchResultsRenderer
+          ?.primaryContents
+          ?.sectionListRenderer
+          ?.contents || [];
+        const webContents = data?.contents
           ?.twoColumnSearchResultsRenderer
           ?.primaryContents
           ?.sectionListRenderer
           ?.contents || [];
+        const allContents = mwebContents.length ? mwebContents : webContents;
 
         const items = [];
         for (const section of allContents) {
@@ -307,13 +320,14 @@ app.get('/api/yt-scrape', (req, res) => {
         }
 
         if (!items.length) {
-          console.warn('[innertube] No video results for:', q, '| HTTP status:', ytRes.statusCode);
-          return res.status(404).json({ error: 'No results' });
+          const structureKeys = Object.keys(data?.contents || {}).join(',') || 'none';
+          console.warn('[innertube] No video results for:', q, '| HTTP:', ytRes.statusCode, '| top-level keys:', structureKeys);
+          return res.status(404).json({ error: 'No results — structure: ' + structureKeys });
         }
         console.log('[innertube] OK, returned', items.length, 'results for:', q);
         res.json({ items });
       } catch (e) {
-        console.error('[innertube] Parse error:', e.message, '| HTTP:', ytRes.statusCode, '| Body[:200]:', raw.slice(0, 200));
+        console.error('[innertube] Parse error:', e.message, '| HTTP:', ytRes.statusCode, '| Body[:300]:', raw.slice(0, 300));
         res.status(500).json({ error: 'Parse failed: ' + e.message });
       }
     });

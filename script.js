@@ -387,23 +387,24 @@ function extractYouTubeId(val) {
 
 // Fetch a server API endpoint, retrying on 503 (Render cold start) until deadline
 async function serverFetch(url, onWaking) {
-    const deadline = Date.now() + 70000; // 70s total
+    const deadline = Date.now() + 90000; // 90s total — Render can take up to ~70s to wake
     let firstAttempt = true;
     while (Date.now() < deadline) {
         try {
             const remaining = deadline - Date.now();
             const ctrl = new AbortController();
-            const tid = setTimeout(() => ctrl.abort(), Math.min(15000, remaining));
+            // First attempt: stay open 65s so Render's cold-start connection completes.
+            // Retries: 20s each (server is already awake by then).
+            const attemptTimeout = firstAttempt ? Math.min(65000, remaining) : Math.min(20000, remaining);
+            const tid = setTimeout(() => ctrl.abort(), attemptTimeout);
             const r = await fetch(url, { signal: ctrl.signal });
             clearTimeout(tid);
             if (r.status === 503 || r.status === 502) {
-                // Render is waking the server up — wait 5s and retry
                 if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
                 await new Promise(res => setTimeout(res, 5000));
                 continue;
             }
             // Render sometimes returns a 200 HTML "starting up" page during cold start.
-            // Detect this and retry instead of passing HTML to the caller.
             const ct = r.headers.get('content-type') || '';
             if (ct.includes('text/html')) {
                 if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
@@ -412,9 +413,10 @@ async function serverFetch(url, onWaking) {
             }
             return r;
         } catch (_) {
-            // AbortError (our 15s timeout fired) or network error — retry if time remains
+            // AbortError (timeout) or network error — retry if time remains
             if (Date.now() < deadline - 1000) {
                 if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
+                firstAttempt = false;
                 await new Promise(res => setTimeout(res, 2000));
                 continue;
             }

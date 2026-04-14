@@ -62,6 +62,68 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 /* ── Wake-up ping (keeps Render free tier warm) ─────────── */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
+/* ── Search diagnostics — visit /api/search-test?q=test to debug ─────── */
+app.get('/api/search-test', (req, res) => {
+  const q = (req.query.q || 'test').trim();
+  const report = { q, ytApi: null, piped: null, scrape: null };
+  let done = 0;
+  const finish = () => { if (++done === 3) res.json(report); };
+
+  // 1) YouTube Data API
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    report.ytApi = { status: 'NO KEY SET' };
+    finish();
+  } else {
+    const ytOpts = { hostname: 'www.googleapis.com', path: `/youtube/v3/search?part=snippet&type=video&maxResults=2&q=${encodeURIComponent(q)}&key=${apiKey}` };
+    const ytReq = https.get(ytOpts, ytRes => {
+      let raw = '';
+      ytRes.on('data', c => raw += c);
+      ytRes.on('end', () => {
+        try {
+          const d = JSON.parse(raw);
+          report.ytApi = ytRes.statusCode === 200
+            ? { status: 'OK', items: (d.items||[]).length }
+            : { status: 'ERROR', code: ytRes.statusCode, msg: d.error?.message };
+        } catch (e) { report.ytApi = { status: 'PARSE_ERROR', msg: e.message }; }
+        finish();
+      });
+    });
+    ytReq.on('error', e => { report.ytApi = { status: 'NETWORK_ERROR', msg: e.message }; finish(); });
+    ytReq.setTimeout(8000, () => { ytReq.destroy(); report.ytApi = { status: 'TIMEOUT' }; finish(); });
+  }
+
+  // 2) Piped
+  const pipedReq = https.get({ hostname: 'pipedapi.kavin.rocks', path: `/search?q=${encodeURIComponent(q)}&filter=videos`, headers: { 'User-Agent': 'class-app/1.0' } }, pRes => {
+    let raw = '';
+    pRes.on('data', c => raw += c);
+    pRes.on('end', () => {
+      try {
+        const d = JSON.parse(raw);
+        report.piped = { status: pRes.statusCode === 200 ? 'OK' : 'ERROR', code: pRes.statusCode, items: (d.items||[]).length };
+      } catch (e) { report.piped = { status: 'PARSE_ERROR', msg: e.message, body: raw.slice(0,100) }; }
+      finish();
+    });
+  });
+  pipedReq.on('error', e => { report.piped = { status: 'NETWORK_ERROR', msg: e.message }; finish(); });
+  pipedReq.setTimeout(8000, () => { pipedReq.destroy(); report.piped = { status: 'TIMEOUT' }; finish(); });
+
+  // 3) YouTube scrape
+  const scrapeOpts = { hostname: 'www.youtube.com', path: `/results?search_query=${encodeURIComponent(q)}`, headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Language': 'en-US,en;q=0.9' } };
+  const scrapeReq = https.get(scrapeOpts, sRes => {
+    let raw = '', size = 0;
+    sRes.on('data', c => { raw += c; size += c.length; if (size > 800000) sRes.destroy(); });
+    sRes.on('end', () => {
+      const hasData = raw.includes('var ytInitialData = ');
+      const hasVideos = raw.includes('"videoId"');
+      report.scrape = { status: sRes.statusCode === 200 ? 'OK' : 'ERROR', code: sRes.statusCode, hasInitData: hasData, hasVideoIds: hasVideos, bodyKB: Math.round(size/1024) };
+      finish();
+    });
+  });
+  scrapeReq.on('error', e => { report.scrape = { status: 'NETWORK_ERROR', msg: e.message }; finish(); });
+  scrapeReq.setTimeout(10000, () => { scrapeReq.destroy(); report.scrape = { status: 'TIMEOUT' }; finish(); });
+});
+
 /* ── YouTube search proxy ──────────────────────────────────
    Key stays on the server — the browser never sees it.
    Usage: GET /api/yt-search?q=despacito

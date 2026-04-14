@@ -1,3 +1,4 @@
+require('dotenv').config(); // loads .env for local dev; on Render set vars in the dashboard
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -56,6 +57,45 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+/* ── YouTube search proxy ──────────────────────────────────
+   Key stays on the server — the browser never sees it.
+   Usage: GET /api/yt-search?q=despacito
+   ──────────────────────────────────────────────────────── */
+app.get('/api/yt-search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'YouTube API key not configured on server' });
+
+  try {
+    const ytUrl =
+      `https://www.googleapis.com/youtube/v3/search` +
+      `?part=snippet&type=video&maxResults=6` +
+      `&q=${encodeURIComponent(q)}&key=${apiKey}`;
+
+    const ytRes = await fetch(ytUrl);
+    const ytData = await ytRes.json();
+
+    if (!ytRes.ok) {
+      return res.status(ytRes.status).json({ error: ytData.error?.message || 'YouTube API error' });
+    }
+
+    // Return only what the client needs — never forward the raw response
+    const items = (ytData.items || []).map(item => ({
+      videoId:   item.id.videoId,
+      title:     item.snippet.title,
+      author:    item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+    }));
+
+    res.json({ items });
+  } catch (err) {
+    console.error('YouTube search proxy error:', err);
+    res.status(500).json({ error: 'Search request failed' });
+  }
+});
 
 let state = loadData();
 

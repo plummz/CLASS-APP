@@ -346,7 +346,7 @@ window.deleteFileAPI = function(fileId) {
    ============================================================ */
 let ytActive = false;
 
-// Public Invidious instances (tried in order until one responds)
+// Invidious instances — used as fallback only if the server proxy is unavailable
 const YT_INSTANCES = [
     'https://invidious.snopyta.org',
     'https://vid.puffyan.us',
@@ -378,6 +378,22 @@ function extractYouTubeId(val) {
     return null;
 }
 
+// Primary: call our own Express proxy — the API key never leaves the server
+async function ytSearchViaProxy(query) {
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const r = await fetch(`/api/yt-search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (r.ok) {
+            const data = await r.json();
+            if (data.items && data.items.length) return data.items;
+        }
+    } catch (_) { /* fall through to Invidious */ }
+    return null;
+}
+
+// Fallback: public Invidious API (no key needed, less reliable)
 async function ytSearchViaInvidious(query) {
     for (const base of YT_INSTANCES) {
         try {
@@ -390,7 +406,14 @@ async function ytSearchViaInvidious(query) {
             clearTimeout(tid);
             if (r.ok) {
                 const data = await r.json();
-                if (Array.isArray(data) && data.length) return data.slice(0, 6);
+                if (Array.isArray(data) && data.length) {
+                    return data.slice(0, 6).map(v => ({
+                        videoId:   v.videoId,
+                        title:     v.title,
+                        author:    v.author,
+                        thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+                    }));
+                }
             }
         } catch (_) { /* try next */ }
     }
@@ -407,9 +430,9 @@ function showYtResults(results) {
         const dur = r.lengthSeconds || 0;
         const mins = Math.floor(dur / 60);
         const secs = String(dur % 60).padStart(2, '0');
+        const thumb = r.thumbnail || `https://i.ytimg.com/vi/${r.videoId}/mqdefault.jpg`;
         item.innerHTML = `
-            <img src="https://i.ytimg.com/vi/${r.videoId}/mqdefault.jpg"
-                 class="yt-result-thumb" loading="lazy" onerror="this.style.display='none'">
+            <img src="${thumb}" class="yt-result-thumb" loading="lazy" onerror="this.style.display='none'">
             <div class="yt-result-info">
                 <div class="yt-result-title">${r.title}</div>
                 <div class="yt-result-meta">${r.author || ''} · ${mins}:${secs}</div>
@@ -436,7 +459,8 @@ window.handleYtInput = async function() {
     if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
     if (hint) hint.textContent = 'Searching…';
 
-    const results = await ytSearchViaInvidious(val);
+    // Try server proxy first (uses YouTube API key securely), then Invidious fallback
+    const results = (await ytSearchViaProxy(val)) || (await ytSearchViaInvidious(val));
 
     if (btn) { btn.textContent = 'Search'; btn.disabled = false; }
 

@@ -404,7 +404,16 @@ async function serverFetch(url, onWaking) {
                 continue;
             }
             return r;
-        } catch (_) { return null; }
+        } catch (_) {
+            // AbortError (our 15s timeout fired) or network error
+            // If we still have time left, trigger waking hint and retry
+            if (Date.now() < deadline - 1000) {
+                if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
+                await new Promise(res => setTimeout(res, 2000));
+                continue;
+            }
+            break;
+        }
     }
     return null;
 }

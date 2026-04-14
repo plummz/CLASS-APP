@@ -7,6 +7,7 @@ const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');
 const { Server } = require('socket.io');
+const ytsr = require('ytsr');
 
 const ADMIN_USERNAME = 'Marquillero';
 const ADMIN_PASSWORD = '120524';
@@ -133,17 +134,18 @@ app.get('/api/yt-search', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
 
   const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: 'YouTube API key not configured on server' });
+  if (!apiKey) {
+    console.error('[yt-search] YOUTUBE_API_KEY is not set in environment');
+    return res.status(503).json({ error: 'YouTube API key not configured on server' });
+  }
+
+  console.log('[yt-search] Searching for:', q);
 
   const ytPath =
     `/youtube/v3/search?part=snippet&type=video&maxResults=6` +
     `&q=${encodeURIComponent(q)}&key=${apiKey}`;
 
-  const options = {
-    hostname: 'www.googleapis.com',
-    path: ytPath,
-    method: 'GET',
-  };
+  const options = { hostname: 'www.googleapis.com', path: ytPath, method: 'GET' };
 
   https.get(options, (ytRes) => {
     let raw = '';
@@ -152,7 +154,7 @@ app.get('/api/yt-search', async (req, res) => {
       try {
         const ytData = JSON.parse(raw);
         if (ytRes.statusCode !== 200) {
-          console.error('YouTube API error:', ytData.error);
+          console.error('[yt-search] API error status', ytRes.statusCode, ':', ytData.error?.message || raw.slice(0, 200));
           return res.status(ytRes.statusCode).json({ error: ytData.error?.message || 'YouTube API error' });
         }
         const items = (ytData.items || []).map(item => ({
@@ -161,14 +163,15 @@ app.get('/api/yt-search', async (req, res) => {
           author:    item.snippet.channelTitle,
           thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
         }));
+        console.log('[yt-search] OK, returned', items.length, 'results');
         res.json({ items });
       } catch (e) {
-        console.error('YouTube parse error:', e);
+        console.error('[yt-search] Parse error:', e.message);
         res.status(500).json({ error: 'Failed to parse YouTube response' });
       }
     });
   }).on('error', (err) => {
-    console.error('YouTube search proxy error:', err);
+    console.error('[yt-search] Network error:', err.message);
     res.status(500).json({ error: 'Search request failed' });
   });
 });
@@ -217,88 +220,64 @@ app.get('/api/piped-search', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
 
+  console.log('[piped-search] Searching for:', q);
   let idx = 0;
   function tryNext() {
-    if (idx >= PIPED_HOSTS.length) return res.status(502).json({ error: 'All Piped instances failed' });
+    if (idx >= PIPED_HOSTS.length) {
+      console.error('[piped-search] All Piped instances failed for query:', q);
+      return res.status(502).json({ error: 'All Piped instances failed' });
+    }
     const host = PIPED_HOSTS[idx++];
     pipedSearchRequest(host, q, (result) => {
-      if (result) return res.json(result);
+      if (result) {
+        console.log('[piped-search] OK via', host, '- returned', result.items.length, 'results');
+        return res.json(result);
+      }
+      console.warn('[piped-search] Failed on', host, '- trying next');
       tryNext();
     });
   }
   tryNext();
 });
 
-/* ── YouTube scrape proxy (no API key, scrapes YouTube HTML server-side) ───
+/* ── YouTube search via ytsr (no API key, maintained library) ──────────────
+   ytsr uses YouTube's internal API — more reliable than raw HTML scraping.
    Usage: GET /api/yt-scrape?q=payphone
    ─────────────────────────────────────────────────────────────────────── */
-app.get('/api/yt-scrape', (req, res) => {
+app.get('/api/yt-scrape', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
-  const options = {
-    hostname: 'www.youtube.com',
-    path: `/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%3D%3D`,
-    method: 'GET',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  };
+  console.log('[ytsr] Searching for:', q);
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('ytsr timeout')), 12000)
+    );
+    const searchResults = await Promise.race([
+      ytsr(q, { limit: 6, safeSearch: false }),
+      timeout,
+    ]);
 
-  const ytReq = https.get(options, (ytRes) => {
-    let raw = '';
-    ytRes.on('data', chunk => {
-      raw += chunk;
-      // ytInitialData is always in the first ~800 KB — stop reading after 1.5 MB
-      if (raw.length > 1536 * 1024) ytRes.destroy();
-    });
-    ytRes.on('end', () => {
-      try {
-        const marker = 'var ytInitialData = ';
-        const start = raw.indexOf(marker);
-        if (start === -1) return res.status(502).json({ error: 'ytInitialData not found' });
+    const items = searchResults.items
+      .filter(item => item.type === 'video')
+      .slice(0, 6)
+      .map(item => ({
+        videoId:   item.id,
+        title:     item.title,
+        author:    item.author?.name || '',
+        thumbnail: item.bestThumbnail?.url || `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`,
+      }));
 
-        const jsonStart = start + marker.length;
-        const jsonEnd = raw.indexOf(';</script>', jsonStart);
-        if (jsonEnd === -1) return res.status(502).json({ error: 'ytInitialData end not found' });
-
-        const data = JSON.parse(raw.substring(jsonStart, jsonEnd));
-        const sectionContents = data?.contents
-          ?.twoColumnSearchResultsRenderer
-          ?.primaryContents
-          ?.sectionListRenderer
-          ?.contents?.[0]
-          ?.itemSectionRenderer
-          ?.contents || [];
-
-        const items = [];
-        for (const item of sectionContents) {
-          if (item.videoRenderer && items.length < 6) {
-            const v = item.videoRenderer;
-            if (!v.videoId) continue;
-            items.push({
-              videoId:   v.videoId,
-              title:     v.title?.runs?.[0]?.text || v.title?.simpleText || '',
-              author:    v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '',
-              thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-            });
-          }
-        }
-        if (!items.length) return res.status(404).json({ error: 'No results' });
-        res.json({ items });
-      } catch (e) {
-        console.error('yt-scrape parse error:', e.message);
-        res.status(500).json({ error: 'Parse failed' });
-      }
-    });
-    ytRes.on('error', () => {});
-  });
-  ytReq.on('error', (err) => {
-    console.error('yt-scrape request error:', err.message);
-    res.status(500).json({ error: 'Request to YouTube failed' });
-  });
-  ytReq.setTimeout(15000, () => { ytReq.destroy(); res.status(504).json({ error: 'Timeout' }); });
+    if (!items.length) {
+      console.warn('[ytsr] No video results for:', q);
+      return res.status(404).json({ error: 'No results' });
+    }
+    console.log('[ytsr] OK, returned', items.length, 'results');
+    res.json({ items });
+  } catch (e) {
+    console.error('[ytsr] Error for query "' + q + '":', e.message);
+    res.status(500).json({ error: 'ytsr search failed: ' + e.message });
+  }
 });
 
 let state = loadData();

@@ -1359,6 +1359,7 @@ const lobbyModule = (() => {
   let moveThrottle = 0;
   let socketReady = false;
   let _kdown, _kup;
+  let currentStar = null; // Star Collector mini-game
 
   function colorFromName(name) {
     let h = 0;
@@ -1372,7 +1373,7 @@ const lobbyModule = (() => {
     return `hsl(${((h % 360) + 360) % 360},55%,40%)`;
   }
 
-  function drawChar(x, y, name, skin, body, moving, frame) {
+  function drawChar(x, y, name, skin, body, moving, frame, bubble, score) {
     const cx = Math.round(x), cy = Math.round(y);
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
@@ -1400,8 +1401,10 @@ const lobbyModule = (() => {
     ctx.fillStyle = '#1a1010';
     ctx.fillRect(cx + 5, cy + 3, 2, 2);
     ctx.fillRect(cx + 9, cy + 3, 2, 2);
-    // Nametag
-    const label = name.length > 9 ? name.slice(0, 8) + '\u2026' : name;
+    // Nametag (with optional score badge)
+    const scoreSuffix = score ? ` \u2605${score}` : '';
+    const maxLen = score ? 6 : 9;
+    const label = (name.length > maxLen ? name.slice(0, maxLen - 1) + '\u2026' : name) + scoreSuffix;
     ctx.font = '700 9px monospace';
     ctx.textAlign = 'center';
     const tw = ctx.measureText(label).width + 8;
@@ -1413,6 +1416,22 @@ const lobbyModule = (() => {
     }
     ctx.fillStyle = '#ffffff';
     ctx.fillText(label, cx + CHAR_W / 2, cy - 5);
+    // Speech bubble (fades out after 4 s)
+    if (bubble && bubble.expires > Date.now()) {
+      const alpha = Math.min(1, (bubble.expires - Date.now()) / 600);
+      const btext = bubble.text.length > 18 ? bubble.text.slice(0, 17) + '\u2026' : bubble.text;
+      ctx.font = '700 8px monospace';
+      ctx.textAlign = 'center';
+      const btw = ctx.measureText(btext).width + 10;
+      const bw = Math.max(btw, 28), bh = 13;
+      const bx = cx + CHAR_W / 2 - bw / 2, by2 = cy - 31;
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.93})`;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by2, bw, bh, 4); ctx.fill(); }
+      else { ctx.fillRect(bx, by2, bw, bh); }
+      ctx.beginPath(); ctx.moveTo(cx + CHAR_W/2 - 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2 + 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2, by2 + bh + 5); ctx.fill();
+      ctx.fillStyle = `rgba(20,20,40,${alpha})`;
+      ctx.fillText(btext, cx + CHAR_W / 2, by2 + 10);
+    }
   }
 
   function drawMap(W, H, t) {
@@ -1469,6 +1488,42 @@ const lobbyModule = (() => {
     ctx.clearRect(0, 0, W, H);
     drawMap(W, H, ts / 1000);
 
+    // ── Star Collector: draw star ──────────────────────────
+    if (currentStar) {
+      const { x: sx, y: sy } = currentStar;
+      const pulse = 0.55 + Math.sin(ts / 250) * 0.45;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      // Outer glow
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 18);
+      g.addColorStop(0, 'rgba(255, 215, 0, 0.85)');
+      g.addColorStop(1, 'rgba(255, 120, 0, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, 18, 0, Math.PI * 2); ctx.fill();
+      // 5-point star shape
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (i * Math.PI / 5) - Math.PI / 2;
+        const r = i % 2 === 0 ? 9 : 4;
+        if (i === 0) ctx.moveTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+        else ctx.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // ── Star Collector: check if my player walks over star ─
+    if (myPlayer && currentStar && sock && sock.connected) {
+      const dx = (myPlayer.x + CHAR_W / 2) - currentStar.x;
+      const dy = (myPlayer.y + CHAR_H / 2) - currentStar.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 22) {
+        const sid = currentStar.id;
+        currentStar = null; // optimistic clear
+        sock.emit('lobby:collect_star', { starId: sid });
+      }
+    }
+
     if (myPlayer) {
       const up    = keys.ArrowUp    || keys.w || dpad.up;
       const down  = keys.ArrowDown  || keys.s || dpad.down;
@@ -1496,7 +1551,7 @@ const lobbyModule = (() => {
     const all = [...players.values()];
     if (myPlayer) all.push(myPlayer);
     all.sort((a, b) => a.y - b.y);
-    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0);
+    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0, p.bubble, p.score || 0);
   }
 
   function setupDpad() {
@@ -1546,7 +1601,11 @@ const lobbyModule = (() => {
   return {
     setupSocket(s) {
       sock = s;
-      if (socketReady) return;
+      if (socketReady) {
+        // On reconnect: re-emit join so the server re-adds us to the room
+        if (s.connected && myPlayer) emitJoin();
+        return;
+      }
       socketReady = true;
 
       s.on('lobby:players', (all) => {
@@ -1570,7 +1629,22 @@ const lobbyModule = (() => {
         addMsg('●', username + ' left the lobby', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         updateCount();
       });
-      s.on('lobby:chat', (msg) => addMsg(msg.username, msg.text, msg.time));
+      s.on('lobby:chat', (msg) => {
+        addMsg(msg.username, msg.text, msg.time);
+        const bubbleData = { text: msg.text, expires: Date.now() + 4000 };
+        const p = players.get(msg.username);
+        if (p) p.bubble = bubbleData;
+        if (myPlayer && msg.username === myPlayer.username) myPlayer.bubble = bubbleData;
+      });
+      // ── Star Collector events ──────────────────────────────
+      s.on('lobby:star', (star) => { currentStar = star; });
+      s.on('lobby:star_collected', ({ username, score, starId }) => {
+        if (currentStar && currentStar.id === starId) currentStar = null;
+        const p = players.get(username);
+        if (p) p.score = score;
+        if (myPlayer && username === myPlayer.username) myPlayer.score = score;
+        addMsg('\u2605', `${username} collected a star! (${score} \u2605)`, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      });
     },
 
     init() {
@@ -1634,6 +1708,7 @@ const lobbyModule = (() => {
       if (sock && sock.connected && myPlayer) sock.emit('lobby:leave');
       players.clear();
       myPlayer = null;
+      currentStar = null;
       canvas = null; ctx = null;
     }
   };
@@ -1642,8 +1717,13 @@ const lobbyModule = (() => {
 window.sendLobbyChat = function() {
   const input = document.getElementById('lobby-chat-input');
   if (!input || !input.value.trim()) return;
-  const s = _ensureSocket();
-  if (s && s.connected) s.emit('lobby:chat', { text: input.value.trim() });
-  else if (s) s.once('connect', () => { /* message lost — acceptable */ });
+  const text = input.value.trim();
   input.value = '';
+  const s = _ensureSocket();
+  if (s && s.connected) {
+    s.emit('lobby:chat', { text });
+  } else if (s) {
+    // Queue for when connection is established
+    s.once('connect', () => s.emit('lobby:chat', { text }));
+  }
 };

@@ -1361,6 +1361,8 @@ body {
    ============================================================ */
 :root {
   --accent: #00d4ff;
+  /* Wire neon-blue to the accent so the color picker propagates everywhere */
+  --neon-blue: var(--accent);
 }
 
 .sidebar-controls {

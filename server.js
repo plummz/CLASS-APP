@@ -1,6 +1,7 @@
 require('dotenv').config(); // loads .env for local dev; on Render set vars in the dashboard
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
@@ -69,32 +70,42 @@ app.get('/api/yt-search', async (req, res) => {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'YouTube API key not configured on server' });
 
-  try {
-    const ytUrl =
-      `https://www.googleapis.com/youtube/v3/search` +
-      `?part=snippet&type=video&maxResults=6` +
-      `&q=${encodeURIComponent(q)}&key=${apiKey}`;
+  const ytPath =
+    `/youtube/v3/search?part=snippet&type=video&maxResults=6` +
+    `&q=${encodeURIComponent(q)}&key=${apiKey}`;
 
-    const ytRes = await fetch(ytUrl);
-    const ytData = await ytRes.json();
+  const options = {
+    hostname: 'www.googleapis.com',
+    path: ytPath,
+    method: 'GET',
+  };
 
-    if (!ytRes.ok) {
-      return res.status(ytRes.status).json({ error: ytData.error?.message || 'YouTube API error' });
-    }
-
-    // Return only what the client needs — never forward the raw response
-    const items = (ytData.items || []).map(item => ({
-      videoId:   item.id.videoId,
-      title:     item.snippet.title,
-      author:    item.snippet.channelTitle,
-      thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
-    }));
-
-    res.json({ items });
-  } catch (err) {
+  https.get(options, (ytRes) => {
+    let raw = '';
+    ytRes.on('data', chunk => { raw += chunk; });
+    ytRes.on('end', () => {
+      try {
+        const ytData = JSON.parse(raw);
+        if (ytRes.statusCode !== 200) {
+          console.error('YouTube API error:', ytData.error);
+          return res.status(ytRes.statusCode).json({ error: ytData.error?.message || 'YouTube API error' });
+        }
+        const items = (ytData.items || []).map(item => ({
+          videoId:   item.id.videoId,
+          title:     item.snippet.title,
+          author:    item.snippet.channelTitle,
+          thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+        }));
+        res.json({ items });
+      } catch (e) {
+        console.error('YouTube parse error:', e);
+        res.status(500).json({ error: 'Failed to parse YouTube response' });
+      }
+    });
+  }).on('error', (err) => {
     console.error('YouTube search proxy error:', err);
     res.status(500).json({ error: 'Search request failed' });
-  }
+  });
 });
 
 let state = loadData();

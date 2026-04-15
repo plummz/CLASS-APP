@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=12">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -366,17 +366,19 @@
   <!-- ── POKEMON ──────────────────────────────────────────── -->
   <div class="page" id="page-pokemon">
     <div class="pk-wrapper">
-      <canvas id="pk-canvas" width="800" height="560"></canvas>
-      <div class="dpad" id="pk-dpad">
-        <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
-        <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
-        <button class="dpad-btn dpad-center" disabled></button>
-        <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
-        <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
-      </div>
+      <!-- pk-screen is sized by JS to match the canvas; dpad + battle overlay live inside it -->
+      <div class="pk-screen">
+        <canvas id="pk-canvas" width="800" height="560"></canvas>
+        <div class="dpad" id="pk-dpad">
+          <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
+          <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
+          <button class="dpad-btn dpad-center" disabled></button>
+          <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
+          <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
+        </div>
 
-      <!-- Battle Overlay -->
-      <div id="pk-battle" class="pk-battle hidden">
+        <!-- Battle Overlay -->
+        <div id="pk-battle" class="pk-battle hidden">
         <div class="pk-battle-field">
           <!-- Enemy side -->
           <div class="pk-enemy-side">
@@ -437,6 +439,7 @@
           <button class="pk-blackout-btn" onclick="window.pokemonModule.dismissBlackout()">Continue</button>
         </div>
       </div>
+      </div><!-- /pk-screen -->
     </div>
   </div>
 

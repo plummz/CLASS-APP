@@ -2023,16 +2023,36 @@ const pokemonModule = (() => {
 
   function startBattle(sid,lvl){
     const em=mkMon(sid,lvl);
-    battle={pm:team[0],em,phase:'menu'};
-    updateBUI(); enableBtns(true);
-    document.getElementById('pk-battle').classList.remove('hidden');
-    setLog(`A wild ${em.name} appeared!`,'');
+    // Hide d-pad during battle
+    const dpadEl=document.getElementById('pk-dpad');
+    if(dpadEl) dpadEl.classList.add('pk-dpad-hidden');
+    // Encounter flash: alternate white/black 4 times then reveal battle
+    const screen=canvas&&canvas.parentElement;
+    const fl=document.createElement('div');
+    fl.style.cssText='position:absolute;inset:0;z-index:48;pointer-events:none;border-radius:8px;';
+    if(screen) screen.appendChild(fl);
+    let f=0;
+    const doFlash=()=>{
+      fl.style.background=f%2===0?'rgba(255,255,255,0.92)':'rgba(0,0,0,0.05)';
+      f++;
+      if(f<8) setTimeout(doFlash,70);
+      else{
+        fl.remove();
+        battle={pm:team[0],em,phase:'menu'};
+        updateBUI(); enableBtns(true);
+        document.getElementById('pk-battle').classList.remove('hidden');
+        setLog(`A wild ${em.name} appeared!`,'');
+      }
+    };
+    doFlash();
   }
 
   function closeBattle(){
     battle=null;
     document.getElementById('pk-battle').classList.add('hidden');
     document.getElementById('pk-blackout').classList.add('hidden');
+    const dpadEl=document.getElementById('pk-dpad');
+    if(dpadEl) dpadEl.classList.remove('pk-dpad-hidden');
     enableBtns(true); saveGame();
   }
 
@@ -2099,7 +2119,7 @@ const pokemonModule = (() => {
     const tile=getTile(tx,ty), key=`${tx},${ty}`;
     if(tile!==T.TALL||key===lastTileKey||battle){lastTileKey=key;return;}
     lastTileKey=key;
-    if(Math.random()>0.125)return;
+    if(Math.random()>0.28)return;  // ~28% per step in tall grass
     const zone=getZone(tx,ty);
     const pool=ZONES[zone]||ZONES.route1;
     const sid=pool[Math.floor(Math.random()*pool.length)];
@@ -2124,7 +2144,7 @@ const pokemonModule = (() => {
       else if((lt||rt)&&ok(nx,player.y)) player.x=Math.max(0,Math.min(nx,MAP_W*TSIZE-CHAR_S));
       else if((up||dn)&&ok(player.x,ny)) player.y=Math.max(0,Math.min(ny,MAP_H*TSIZE-CHAR_S));
       player.moving=true; player.frame=Math.floor(ts/160)%4;
-      if(Date.now()-moveThrottle>200){
+      if(Date.now()-moveThrottle>150){
         moveThrottle=Date.now();
         checkEncounter(Math.floor((player.x+CHAR_S/2)/TSIZE),Math.floor((player.y+CHAR_S/2)/TSIZE));
       }
@@ -2185,7 +2205,18 @@ const pokemonModule = (() => {
     init(){
       canvas=document.getElementById('pk-canvas'); if(!canvas)return;
       ctx=canvas.getContext('2d');
-      const resize=()=>{ const w=canvas.parentElement?canvas.parentElement.clientWidth:800; const sc=Math.min(1,w/800); canvas.style.width=(800*sc)+'px'; canvas.style.height=(560*sc)+'px'; };
+      const resize=()=>{
+        const wrapper=canvas.parentElement&&canvas.parentElement.parentElement;
+        const maxW=wrapper?wrapper.clientWidth:800;
+        const maxH=wrapper?wrapper.clientHeight:560;
+        const sc=Math.min(1,maxW/800,maxH/560);
+        const cw=Math.round(800*sc), ch=Math.round(560*sc);
+        canvas.style.width=cw+'px'; canvas.style.height=ch+'px';
+        const screen=canvas.parentElement;
+        if(screen){screen.style.width=cw+'px';screen.style.height=ch+'px';}
+        const btl=document.getElementById('pk-battle');
+        if(btl) btl.style.transform=`translate(-50%,-50%) scale(${sc})`;
+      };
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
       if(!worldMap) worldMap=generateMap();
       if(!loadGame()){ player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; showStarterModal(); }

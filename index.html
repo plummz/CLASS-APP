@@ -453,7 +453,10 @@
             <button class="pk-move-btn" id="pk-move-2" onclick="window.pokemonModule.useMove(2)"></button>
             <button class="pk-move-btn" id="pk-move-3" onclick="window.pokemonModule.useMove(3)"></button>
           </div>
-          <button class="pk-run-btn" onclick="window.pokemonModule.tryRun()">🏃 Run Away</button>
+          <div style="display:flex;flex-direction:column;gap:6px;align-self:stretch;">
+            <button class="pk-ball-btn" id="pk-ball-btn" onclick="window.pokemonModule.throwBall()">⚾ Ball <span id="pk-ball-count">(5)</span></button>
+            <button class="pk-run-btn" onclick="window.pokemonModule.tryRun()">🏃 Run</button>
+          </div>
         </div>
 
         <!-- Blackout overlay -->

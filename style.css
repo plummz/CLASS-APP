@@ -1838,6 +1838,16 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 }
 .pk-move-btn:hover:not(:disabled) { background: rgba(255,255,255,0.5); }
 .pk-move-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pk-ball-btn {
+  background: rgba(220,40,40,0.15);
+  border: 2px solid rgba(220,80,80,0.6);
+  border-radius: 10px; padding: 6px 10px;
+  font-family: 'Exo 2',sans-serif; font-size: 12px; font-weight: 700;
+  color: #ff8080; cursor: pointer; transition: background .12s;
+  align-self: stretch;
+}
+.pk-ball-btn:hover { background: rgba(220,40,40,0.3); }
+.pk-ball-btn:disabled { opacity: .4; cursor: not-allowed; }
 .pk-run-btn {
   background: rgba(160,30,30,0.15);
   border: 2px solid rgba(160,30,30,0.5);

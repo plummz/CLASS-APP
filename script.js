@@ -2580,6 +2580,59 @@ const pokemonModule = (() => {
     for(let i=p.moves.length;i<4;i++){ const b=document.getElementById(`pk-move-${i}`); if(b)b.style.visibility='hidden'; }
   }
 
+  /* ── BATTLE AUDIO ── */
+  let sfxCtx=null;
+  function getSfx(){
+    if(!sfxCtx||sfxCtx.state==='closed') sfxCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(sfxCtx.state==='suspended') sfxCtx.resume();
+    return sfxCtx;
+  }
+  function playCry(dexId){
+    if(!dexId)return;
+    try{
+      const a=new Audio(`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${dexId}.ogg`);
+      a.volume=0.45; a.play().catch(()=>{});
+    }catch(e){}
+  }
+  function _tone(c,t,f0,f1,type,dur,vol){
+    const o=c.createOscillator(),g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(f0,t);
+    if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+  }
+  function _noise(c,t,dur,fType,fFreq,vol){
+    const len=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,len,c.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    const src=c.createBufferSource(); src.buffer=buf;
+    const f=c.createBiquadFilter(); f.type=fType; f.frequency.value=fFreq;
+    const g=c.createGain();
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(t); src.stop(t+dur+0.02);
+  }
+  function playMoveSound(type){
+    try{
+      const c=getSfx(),t=c.currentTime+0.02;
+      switch(type){
+        case 'electric': _tone(c,t,900,120,'sawtooth',0.25,0.3); _noise(c,t,0.15,'highpass',3000,0.15); break;
+        case 'fire':     _noise(c,t,0.4,'bandpass',700,0.35); _tone(c,t,200,70,'sawtooth',0.28,0.12); break;
+        case 'water':    _tone(c,t,700,280,'sine',0.45,0.28); _tone(c,t+0.05,500,200,'sine',0.3,0.25); break;
+        case 'grass':    _noise(c,t,0.3,'bandpass',2200,0.22); _tone(c,t,320,420,'triangle',0.22,0.2); break;
+        case 'psychic':  _tone(c,t,600,1400,'sine',0.4,0.3); _tone(c,t+0.1,1000,2000,'sine',0.18,0.35); break;
+        case 'ice':      _tone(c,t,2200,900,'triangle',0.3,0.28); _tone(c,t+0.05,2600,1100,'sine',0.18,0.22); break;
+        case 'ghost':    _tone(c,t,180,90,'sine',0.5,0.3); _noise(c,t,0.45,'lowpass',350,0.12); break;
+        case 'poison':   _tone(c,t,380,180,'square',0.28,0.22); _noise(c,t+0.1,0.2,'bandpass',750,0.14); break;
+        case 'rock':     _noise(c,t,0.2,'lowpass',450,0.55); _tone(c,t,130,50,'sawtooth',0.35,0.15); break;
+        case 'ground':   _noise(c,t,0.38,'lowpass',200,0.6); _tone(c,t,70,35,'sine',0.4,0.3); break;
+        case 'flying':   _noise(c,t,0.3,'highpass',1600,0.2); _tone(c,t,520,1100,'triangle',0.15,0.3); break;
+        case 'bug':      _tone(c,t,580,580,'square',0.18,0.22); _noise(c,t,0.2,'bandpass',1100,0.17); break;
+        case 'dark':     _noise(c,t,0.32,'lowpass',280,0.48); _tone(c,t,110,55,'sawtooth',0.3,0.25); break;
+        case 'dragon':   _tone(c,t,140,70,'sawtooth',0.42,0.4); _noise(c,t+0.06,0.35,'bandpass',380,0.25); break;
+        default:         _noise(c,t,0.15,'lowpass',900,0.4); _tone(c,t,280,180,'triangle',0.22,0.1); break;
+      }
+    }catch(e){}
+  }
+
   /* ── BATTLE ENGINE ── */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -2604,6 +2657,7 @@ const pokemonModule = (() => {
         updateBUI(); enableBtns(true);
         document.getElementById('pk-battle').classList.remove('hidden');
         setLog(`A wild ${em.name} appeared!`,'');
+        playCry(SP[em.speciesId]?.dexId);
       }
     };
     doFlash();
@@ -2678,6 +2732,7 @@ const pokemonModule = (() => {
       const et=eff>1?' Super effective!':eff<1&&eff>0?" Not very effective…":eff===0?" No effect!":'';
       setLog(`${att.name} used ${md.name}!`,`${def.name} took ${dmg} dmg!${et}`);
       flashMove(defIsEnemy, md.type);
+      playMoveSound(md.type);
     } else {
       let et='';
       if(md.eff==='atkDown'){def.atkStg=Math.max(-6,def.atkStg-1);et=`${def.name}'s Attack fell!`;}
@@ -2685,8 +2740,8 @@ const pokemonModule = (() => {
       if(md.eff==='spdDown'){def.spdStg=Math.max(-6,def.spdStg-1);et=`${def.name}'s Speed fell!`;}
       if(md.eff==='accDown'){def.accStg=Math.max(-6,def.accStg-1);et=`${def.name}'s accuracy fell!`;}
       setLog(`${att.name} used ${md.name}!`,et||'But nothing happened…');
-      // Status moves show a subtle self-side flash
       flashMove(!defIsEnemy, md.type);
+      playMoveSound(md.type);
     }
     updateBUI(); await wait(1100);
   }

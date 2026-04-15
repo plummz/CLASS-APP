@@ -70,6 +70,12 @@
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
+    <!-- WIT FB Page — below Lobby -->
+    <div class="nav-item" data-page="witfb" onclick="goToPage('witfb')">
+      <span class="nav-icon">📘</span>
+      <div class="nav-text"><span class="nav-label">WIT FB Page</span></div>
+    </div>
+
     <div class="nav-dropdown-group year-1-theme">
       <div class="nav-dropdown-header" onclick="toggleYear('year1')">
         <span class="nav-icon">🎓</span>
@@ -525,6 +531,35 @@
     </div>
   </div>
 
+  <!-- ── WIT FB PAGE ──────────────────────────────────────── -->
+  <div class="page" id="page-witfb">
+    <div class="witfb-wrapper">
+      <div class="witfb-header">
+        <span class="witfb-icon">📘</span>
+        <div>
+          <h2 class="witfb-title">WIT Facebook Page</h2>
+          <p class="witfb-sub">Latest posts from the official WIT Facebook page</p>
+        </div>
+      </div>
+      <div class="witfb-embed-wrap">
+        <div id="fb-root"></div>
+        <div class="fb-page"
+          data-href="https://www.facebook.com/share/1B1AeX15XY/"
+          data-tabs="timeline"
+          data-width="500"
+          data-height="700"
+          data-small-header="false"
+          data-adapt-container-width="true"
+          data-hide-cover="false"
+          data-show-facepile="true">
+          <blockquote cite="https://www.facebook.com/share/1B1AeX15XY/" class="fb-xfbml-parse-ignore">
+            <a href="https://www.facebook.com/share/1B1AeX15XY/">WIT Facebook Page</a>
+          </blockquote>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="folder-explorer-modal" class="custom-modal-overlay">
     <div class="custom-modal-box">
       <button class="modal-close-btn" onclick="closeFolderModal('folder-explorer-modal')">&times;</button>
@@ -605,5 +640,20 @@
     </div>
   </div>
 
+  <!-- Facebook SDK (loaded only when WIT FB Page is visited) -->
+  <script>
+    window._fbSDKLoaded = false;
+    function loadFBSDK() {
+      if (window._fbSDKLoaded) return;
+      window._fbSDKLoaded = true;
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    }
+  </script>
 </body>
 </html>

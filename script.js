@@ -1342,6 +1342,7 @@ const pageConfig = {
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
+  witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 WIT FB Page' },
 };
 
 let currentPage = 'first';
@@ -1366,6 +1367,9 @@ window.goToPage = function(pageName) {
 
   // Ping server when music page opens so Render wakes up before the user searches
   if (pageName === 'music') fetch('/api/ping').catch(() => {});
+
+  // Lazy-load Facebook SDK the first time WIT FB Page is visited
+  if (pageName === 'witfb' && typeof loadFBSDK === 'function') loadFBSDK();
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);

@@ -1512,6 +1512,43 @@ body.light-mode .folder-card .folder-name { color: #fff; text-shadow: 0 2px 10px
 body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
 
 /* ============================================================
+   ACCENT BORDERS — key buttons pick up the user's chosen accent colour
+   (--neon-blue is already wired to --accent in :root)
+   ============================================================ */
+
+/* Primary action buttons */
+.btn-primary {
+  border: 2px solid var(--accent) !important;
+}
+/* Secondary / outline buttons */
+.btn-secondary {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+/* Modal inputs focus ring */
+.modal-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 0,212,255), 0.18) !important;
+}
+/* Lobby/WIT nav items get accent left-bar when active */
+.nav-item[data-page="lobby"].active,
+.nav-item[data-page="witfb"].active {
+  border-left-color: var(--accent) !important;
+}
+/* Upload / create-folder buttons */
+.btn-create-folder,
+.btn-upload-file,
+.pk-blackout-btn {
+  border: 2px solid var(--accent) !important;
+}
+/* Chat send, search, and general action buttons get a subtle accent ring */
+.lobby-chat-input-row .btn-primary,
+#send-btn,
+.music-search-btn {
+  box-shadow: 0 0 0 2px var(--accent) !important;
+}
+
+/* ============================================================
    LOBBY PAGE
    ============================================================ */
 .lobby-wrapper {
@@ -2004,3 +2041,45 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 .pk-starter-emoji { font-size: 2.4rem; display: block; margin-bottom: 6px; }
 .pk-starter-name { color: #fff; font-size: 12px; font-weight: 700; }
 .pk-starter-type { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ============================================================
+   WIT FB PAGE
+   ============================================================ */
+.witfb-wrapper {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.witfb-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.witfb-icon { font-size: 2.2rem; }
+.witfb-title {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+.witfb-sub {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0;
+  font-family: 'Exo 2', sans-serif;
+}
+.witfb-embed-wrap {
+  display: flex;
+  justify-content: center;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  min-height: 500px;
+}

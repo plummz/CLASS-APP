@@ -2209,6 +2209,16 @@ const pokemonModule = (() => {
     dragon:'rgba(100,50,255,0.85)',
   };
 
+  function updateCoinsDisplay(){
+    const el=document.getElementById('pk-coins');
+    if(el) el.textContent='💰 '+coins.toLocaleString();
+  }
+  function earnCoins(amount){
+    coins+=amount;
+    updateCoinsDisplay();
+    saveGame();
+  }
+
   function flashMove(defIsEnemy, type){
     const id=defIsEnemy?'pk-flash-enemy':'pk-flash-player';
     const el=document.getElementById(id); if(!el)return;
@@ -2265,6 +2275,8 @@ const pokemonModule = (() => {
   let pcCooldown = 0;         // ms until PC can heal again
   let itemToast = null;       // {text, expires, color}
   let pokeballs = 5;          // player starts with 5 Pokéballs
+  let coins = 0;              // in-game currency
+  let totalCaught = 0;        // all-time Pokémon catch count
   // Pokémon Center entrance: center-path tiles x=25, y=30-33
   const PC_TILES = [{x:25,y:30},{x:25,y:31},{x:25,y:32},{x:25,y:33}];
   const ITEM_TYPES = {
@@ -2767,14 +2779,19 @@ const pokemonModule = (() => {
         m.xp+=Math.floor(xg/2);
         while(m.xp>=m.xpToNext){ m.level++; applyLevelUp(m); const evo=tryEvolve(m); if(evo) showToast(`${m.name} evolved!`,'#ffd700',2500); }
       });
-      p.xp+=xg; setLog(`${e.name} fainted!`,`+${xg} XP!`);
+      // Award coins for winning the battle
+      const battleCoins=5+e.level*2+Math.floor((SP[e.speciesId]?.xpY||50)*0.3);
+      coins+=battleCoins; updateCoinsDisplay();
+      p.xp+=xg; setLog(`${e.name} fainted!`,`+${xg} XP  +${battleCoins}💰`);
       const doLvl=()=>{
         if(p.xp>=p.xpToNext){
+          const lvlCoins=p.level*2;
           p.level++; applyLevelUp(p);
+          coins+=lvlCoins; updateCoinsDisplay();
           const evo=tryEvolve(p);
           updateBUI();
           if(evo){ setLog(`${evo} evolved into ${p.name}!`,'✨ New form!'); setTimeout(doLvl,1600); }
-          else { setLog(`${p.name} grew to Lv.${p.level}!`,'🎉'); setTimeout(doLvl,1400); }
+          else { setLog(`${p.name} grew to Lv.${p.level}!`,`+${lvlCoins}💰`); setTimeout(doLvl,1400); }
         } else { updateBUI(); setTimeout(closeBattle,1200); }
       };
       setTimeout(doLvl,1200);
@@ -2894,7 +2911,7 @@ const pokemonModule = (() => {
     localStorage.setItem('pkSave',JSON.stringify({
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
       px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-      pokeballs
+      pokeballs, coins, totalCaught
     }));
     syncPkStats();
   }
@@ -2919,6 +2936,8 @@ const pokemonModule = (() => {
       const sv=JSON.parse(raw); if(!sv.team||!sv.team.length)return false;
       team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
       pokeballs=sv.pokeballs??5;
+      coins=sv.coins??0;
+      totalCaught=sv.totalCaught??team.length;
       const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
       player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
       // Validate saved position — reset to SPAWN if it landed inside a solid tile
@@ -2975,6 +2994,7 @@ const pokemonModule = (() => {
       if(!worldMap) worldMap=generateMap();
       if(mapItems.length===0) initMapItems();
       if(!loadGame()){ player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; showStarterModal(); }
+      updateCoinsDisplay();
       _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
       _kup=e=>{ keys[e.key]=false; };
       document.addEventListener('keydown',_kdown); document.addEventListener('keyup',_kup);
@@ -3007,8 +3027,11 @@ const pokemonModule = (() => {
           const caught=mkMon(e.speciesId,e.level,e.xp);
           caught.hp=Math.max(1,e.hp); // keep current HP
           team.push(caught);
-          setLog(`${e.name} was caught!`,'✨ Added to your team!');
-          setTimeout(()=>{ closeBattle(); showToast(`🎉 Caught ${e.name}!`,'#ffd700',2500); },1400);
+          totalCaught++;
+          const catchCoins=20+e.level*4+Math.floor((SP[e.speciesId]?.xpY||50)*0.8);
+          coins+=catchCoins; updateCoinsDisplay();
+          setLog(`${e.name} was caught!`,`+${catchCoins}💰`);
+          setTimeout(()=>{ closeBattle(); showToast(`🎉 Caught ${e.name}! +${catchCoins}💰`,'#ffd700',2800); },1400);
         } else {
           setLog(`${e.name} broke free!`,`Balls left: ${pokeballs}`);
           // Enemy gets a counter-attack
@@ -3117,7 +3140,7 @@ const pokemonModule = (() => {
       localStorage.setItem('pkSave',JSON.stringify({
         team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
         px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-        pokeballs
+        pokeballs, coins, totalCaught
       }));
       if(!window.currentUser){
         showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);

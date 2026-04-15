@@ -2172,6 +2172,25 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 }
 .pk-save-fab:hover { background: rgba(0,255,136,0.3); transform: scale(1.08); }
 
+/* Coin counter badge — top-left of pk-screen */
+.pk-coin-display {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,215,0,0.55);
+  color: #ffd700;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  z-index: 15;
+  pointer-events: none;
+  font-family: 'Exo 2', sans-serif;
+  letter-spacing: 0.03em;
+  box-shadow: 0 0 8px rgba(255,215,0,0.2);
+}
+
 .pk-lb-fab {
   position: absolute;
   bottom: 66px; right: 14px;

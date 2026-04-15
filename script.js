@@ -1371,6 +1371,10 @@ window.goToPage = function(pageName) {
   // Lazy-load Facebook SDK the first time WIT FB Page is visited
   if (pageName === 'witfb' && typeof loadFBSDK === 'function') loadFBSDK();
 
+  // Hide chat bauble on Pokémon page (FABs occupy bottom-right)
+  const chatBauble = document.getElementById('chat-bauble');
+  if (chatBauble) chatBauble.style.display = pageName === 'pokemon' ? 'none' : '';
+
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
   if(oldPage) oldPage.classList.remove('active');
@@ -2800,6 +2804,21 @@ const pokemonModule = (() => {
     drawOverworld();
   }
 
+  /* ── PP REGENERATION — +1 PP to every move on every Pokémon every 150 s ── */
+  setInterval(()=>{
+    if(!team.length)return;
+    let anyRestored=false;
+    team.forEach(mon=>{
+      mon.moves.forEach(mv=>{
+        if(mv.pp<mv.maxPp){ mv.pp++; anyRestored=true; }
+      });
+    });
+    if(anyRestored){
+      showToast('+1 PP restored to all moves!','#00ff88',2200);
+      if(battle) updateBUI(); // refresh button states if mid-battle
+    }
+  }, 150000);
+
   /* ── SAVE / LOAD ── */
   function saveGame(){
     if(!player||!team.length)return;
@@ -3020,6 +3039,11 @@ const pokemonModule = (() => {
     closeLeaderboard(){
       const ov=document.getElementById('pk-lb-overlay');
       if(ov)ov.classList.add('hidden');
+    },
+    manualSave(){
+      if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
+      saveGame();
+      showToast('Game saved! 💾','#00ff88',1800);
     },
   };
 })();

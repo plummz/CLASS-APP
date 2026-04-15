@@ -1512,40 +1512,62 @@ body.light-mode .folder-card .folder-name { color: #fff; text-shadow: 0 2px 10px
 body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
 
 /* ============================================================
-   ACCENT BORDERS — key buttons pick up the user's chosen accent colour
-   (--neon-blue is already wired to --accent in :root)
+   ACCENT GLOW — all key buttons glow with the user's chosen accent colour
+   (--neon-blue is wired to --accent in :root so existing neon-blue elements
+    already respond; these rules extend it to everything else)
    ============================================================ */
 
-/* Primary action buttons */
-.btn-primary {
+/* Shared glow mixin — applied broadly */
+.btn-primary,
+.btn-secondary,
+.btn-create-folder,
+.btn-upload-file,
+.btn-large,
+.pk-blackout-btn,
+.modal-btn-group .btn-primary,
+.modal-btn-group .btn-secondary {
   border: 2px solid var(--accent) !important;
+  box-shadow: 0 0 10px var(--accent), 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent) !important;
+  transition: box-shadow 0.2s, border-color 0.2s !important;
 }
-/* Secondary / outline buttons */
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-create-folder:hover,
+.btn-upload-file:hover {
+  box-shadow: 0 0 16px var(--accent), 0 0 32px color-mix(in srgb, var(--accent) 55%, transparent) !important;
+}
+
+/* Secondary keeps its transparent background */
 .btn-secondary {
-  border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
-/* Modal inputs focus ring */
+
+/* Modal inputs — glow on focus */
 .modal-input:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 0,212,255), 0.18) !important;
+  box-shadow: 0 0 8px var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent) !important;
+  outline: none !important;
 }
-/* Lobby/WIT nav items get accent left-bar when active */
+
+/* Nav active left-bar — lobby & WIT FB */
 .nav-item[data-page="lobby"].active,
 .nav-item[data-page="witfb"].active {
   border-left-color: var(--accent) !important;
+  box-shadow: inset 4px 0 12px color-mix(in srgb, var(--accent) 30%, transparent) !important;
 }
-/* Upload / create-folder buttons */
-.btn-create-folder,
-.btn-upload-file,
-.pk-blackout-btn {
-  border: 2px solid var(--accent) !important;
-}
-/* Chat send, search, and general action buttons get a subtle accent ring */
+
+/* Chat send / search buttons */
 .lobby-chat-input-row .btn-primary,
 #send-btn,
 .music-search-btn {
-  box-shadow: 0 0 0 2px var(--accent) !important;
+  box-shadow: 0 0 10px var(--accent), 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent) !important;
+}
+
+/* Folder/file cards get a subtle accent border on hover */
+.folder-card:hover,
+.file-card:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent) !important;
 }
 
 /* ============================================================
@@ -2087,6 +2109,20 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 /* ============================================================
    POKÉMON LEADERBOARD
    ============================================================ */
+.pk-save-fab {
+  position: absolute;
+  bottom: 118px; right: 14px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(0,255,136,0.15);
+  border: 2px solid rgba(0,255,136,0.65);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 15;
+  transition: background .15s, transform .15s;
+}
+.pk-save-fab:hover { background: rgba(0,255,136,0.3); transform: scale(1.08); }
+
 .pk-lb-fab {
   position: absolute;
   bottom: 66px; right: 14px;

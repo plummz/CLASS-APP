@@ -2111,9 +2111,8 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
    WIT FB PAGE
    ============================================================ */
 .witfb-wrapper {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 16px 40px;
+  width: 100%;
+  padding: 24px 0 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -2122,7 +2121,7 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-bottom: 16px;
+  padding: 0 16px 16px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .witfb-icon { font-size: 2.2rem; }
@@ -2140,13 +2139,20 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   font-family: 'Exo 2', sans-serif;
 }
 .witfb-embed-wrap {
-  display: flex;
-  justify-content: center;
+  width: 100%;
+  display: block;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
-  min-height: 500px;
+  min-height: 600px;
+}
+/* Force FB plugin iframe to stretch to container width */
+.witfb-embed-wrap .fb-page,
+.witfb-embed-wrap .fb-page > span,
+.witfb-embed-wrap .fb-page > span > iframe {
+  width: 100% !important;
+  min-width: 100% !important;
 }
 
 /* ============================================================

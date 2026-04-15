@@ -1369,7 +1369,11 @@ window.goToPage = function(pageName) {
   if (pageName === 'music') fetch('/api/ping').catch(() => {});
 
   // Lazy-load Facebook SDK the first time WIT FB Page is visited
-  if (pageName === 'witfb' && typeof loadFBSDK === 'function') loadFBSDK();
+  if (pageName === 'witfb' && typeof loadFBSDK === 'function') {
+    loadFBSDK();
+    // Re-parse after the page is painted so the embed measures full container width
+    setTimeout(() => { if (window.FB && window.FB.XFBML) window.FB.XFBML.parse(); }, 400);
+  }
 
   // Hide chat bauble on Pokémon page (FABs occupy bottom-right)
   const chatBauble = document.getElementById('chat-bauble');
@@ -2895,18 +2899,19 @@ const pokemonModule = (() => {
     syncPkStats();
   }
 
-  /* ── LEADERBOARD SYNC ── */
+  /* ── LEADERBOARD SYNC — returns null on success, error string on failure ── */
   async function syncPkStats(){
-    if(!window.currentUser||!team.length)return;
+    if(!window.currentUser||!team.length) return null;
     try{
       const totalLevels=team.reduce((s,m)=>s+m.level,0);
-      await sb.from('pokemon_saves').upsert({
+      const {error}=await sb.from('pokemon_saves').upsert({
         username:currentUser.username,
         pokemon_count:team.length,
         total_levels:totalLevels,
         updated_at:new Date().toISOString()
       },{onConflict:'username'});
-    }catch(e){ /* table may not be ready */ }
+      return error ? error.message : null;
+    }catch(e){ return e.message; }
   }
   function loadGame(){
     try{
@@ -3106,10 +3111,22 @@ const pokemonModule = (() => {
       if(ov)ov.classList.add('hidden');
     },
     showSwapPanel(forced){ showSwapPanel(forced); },
-    manualSave(){
+    async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
-      saveGame();
-      showToast('Game saved! 💾','#00ff88',1800);
+      // Always persist to localStorage immediately
+      localStorage.setItem('pkSave',JSON.stringify({
+        team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
+        px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
+        pokeballs
+      }));
+      if(!window.currentUser){
+        showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);
+        return;
+      }
+      showToast('Syncing...','#00d4ff',1000);
+      const err=await syncPkStats();
+      if(err===null) showToast('Saved & synced to leaderboard! 💾','#00ff88',2200);
+      else showToast('Local ✓ — sync error: '+err,'#ff9900',5000);
     },
   };
 })();

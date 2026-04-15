@@ -814,6 +814,20 @@ body {
   font-style: italic;
   line-height: 1.4;
 }
+.card-view-label {
+  margin-top: 15px;
+  font-size: 11px;
+  color: #00ff88;
+  text-transform: uppercase;
+  font-weight: bold;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 10px;
+}
+.folder-view-label {
+  font-size: 10px;
+  color: #00d4ff;
+  margin-top: 5px;
+}
 
 .folder-grid {
   display: grid;
@@ -1450,6 +1464,12 @@ body.light-mode .upload-card-teacher { color: #2a4a8a; }
 body.light-mode .music-player-card { background: rgba(210,230,255,0.85); }
 body.light-mode .yt-input { background: rgba(200,225,255,0.6); color: #0b1b3d; border-color: rgba(0,100,200,0.35); }
 body.light-mode .calendar-grid > div { background: rgba(200,225,255,0.5); color: #0b2d6b; }
+body.light-mode .subject-card { background: rgba(200,220,255,0.92); border-color: rgba(0,80,200,0.3); }
+body.light-mode .card-subject { color: #0b2d6b; }
+body.light-mode .card-teacher { color: #2a4a8a; }
+body.light-mode .card-view-label { color: #1a6a20; border-top-color: rgba(0,0,0,0.15); }
+body.light-mode .folder-card .folder-name { color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.9); }
+body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
 
 /* ============================================================
    LOBBY PAGE

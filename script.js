@@ -121,7 +121,7 @@ function buildSubjectCards(gridId, subjects) {
       <span class="card-icon">${subject.icon}</span>
       <div class="card-subject">${subject.code}</div>
       <div class="card-teacher">${subject.teacher || 'No teacher assigned'}</div>
-      <div style="margin-top: 15px; font-size: 11px; color: #00ff88; text-transform: uppercase; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+      <div class="card-view-label">
         View Folders 📂
       </div>
     `;
@@ -145,7 +145,7 @@ function buildFolderCards(gridId, count, prefix = "Folder") {
       <div class="folder-overlay"></div>
       <div class="folder-info">
         <div class="folder-name">${prefix} ${i}</div>
-        <div style="font-size: 10px; color: #00d4ff; margin-top: 5px;">View Folders</div>
+        <div class="folder-view-label">View Folders</div>
       </div>
     `;
     grid.appendChild(card);
@@ -1755,7 +1755,7 @@ const pokemonModule = (() => {
   /* ── TILE TYPES ── */
   const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7 };
   const TSIZE = 32, MAP_W = 50, MAP_H = 40, CHAR_S = 24;
-  const SPAWN = { x: 24, y: 33 };
+  const SPAWN = { x: 25, y: 35 };
   const TILE_COLORS = ['#1a6b9e','#3d8b3d','#c8a878','#2d6b2d','#1a3a0a','#8a6a4a','#d4b483','#7a6a5a'];
 
   /* ── SPECIES DATA ── */
@@ -1978,7 +1978,9 @@ const pokemonModule = (() => {
     const mv=MV[moveId]; if(!mv||mv.power===0) return 0;
     const atk=att.atk*stageMul(att.atkStg), dfn=def.def*stageMul(def.defStg);
     let d=Math.floor((2*att.level/5+2)*mv.power*atk/dfn/50)+2;
-    d=Math.floor(d*typeEff(mv.type,def.types));
+    const eff=typeEff(mv.type,def.types);
+    if(eff===0) return 0;  // immune — no damage
+    d=Math.floor(d*eff);
     return Math.max(1,Math.floor(d*(0.85+Math.random()*0.15)));
   }
 
@@ -2143,7 +2145,10 @@ const pokemonModule = (() => {
       const raw=localStorage.getItem('pkSave'); if(!raw)return false;
       const sv=JSON.parse(raw); if(!sv.team||!sv.team.length)return false;
       team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
-      player={x:(sv.px||SPAWN.x)*TSIZE, y:(sv.py||SPAWN.y)*TSIZE, dir:'down',moving:false,frame:0};
+      const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
+      player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
+      // Validate saved position — reset to SPAWN if it landed inside a solid tile
+      if(worldMap && isSolid(spx,spy)){ player.x=SPAWN.x*TSIZE; player.y=SPAWN.y*TSIZE; }
       return true;
     }catch(e){return false;}
   }

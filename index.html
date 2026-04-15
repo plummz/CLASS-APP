@@ -466,6 +466,21 @@
         </div>
       </div>
       </div><!-- /pk-screen -->
+
+      <!-- Pokédex toggle button (always visible on overworld) -->
+      <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>
+    </div>
+  </div>
+
+  <!-- Pokédex Overlay -->
+  <div id="pk-dex-overlay" class="pk-dex-overlay hidden">
+    <div class="pk-dex-panel">
+      <div class="pk-dex-header">
+        <span class="pk-dex-title">📖 Pokédex</span>
+        <button class="pk-dex-close" onclick="window.pokemonModule.toggleDex()">✕</button>
+      </div>
+      <div class="pk-dex-subtitle" id="pk-dex-subtitle">Loading…</div>
+      <div class="pk-dex-grid" id="pk-dex-grid"></div>
     </div>
   </div>
 

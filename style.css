@@ -1873,6 +1873,83 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   border-radius: 10px; padding: 12px 32px; font-size: 16px; font-weight: 700; cursor: pointer;
 }
 
+/* Pokédex FAB button */
+.pk-dex-fab {
+  position: absolute;
+  bottom: 14px; right: 14px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(180,79,255,0.18);
+  border: 2px solid rgba(180,79,255,0.7);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 15;
+  transition: background .15s, transform .15s;
+}
+.pk-dex-fab:hover { background: rgba(180,79,255,0.35); transform: scale(1.08); }
+
+/* Pokédex Overlay */
+.pk-dex-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 3000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.pk-dex-overlay.hidden { display: none !important; }
+.pk-dex-panel {
+  background: #0d0d1a;
+  border: 2px solid rgba(180,79,255,0.6);
+  border-radius: 18px;
+  width: min(680px, 100%);
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.pk-dex-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pk-dex-title { font-family: 'Exo 2',sans-serif; font-size: 1.15rem; font-weight: 700; color: #c880ff; }
+.pk-dex-close {
+  background: none; border: none; color: #aaa; font-size: 1.1rem; cursor: pointer;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s;
+}
+.pk-dex-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.pk-dex-subtitle {
+  padding: 6px 18px; font-size: 0.8rem; color: #888;
+  font-family: 'Exo 2',sans-serif;
+}
+.pk-dex-grid {
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+}
+.pk-dex-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: default;
+  transition: border-color .15s;
+}
+.pk-dex-card:hover { border-color: rgba(180,79,255,0.5); }
+.pk-dex-card img { width: 72px; height: 72px; image-rendering: pixelated; object-fit: contain; }
+.pk-dex-name { font-family: 'Exo 2',sans-serif; font-size: 0.78rem; font-weight: 700; color: #e8e8ff; }
+.pk-dex-level { font-size: 0.7rem; color: #aaa; font-family: 'Exo 2',sans-serif; }
+.pk-dex-types { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.pk-dex-type {
+  font-size: 0.62rem; font-weight: 700; font-family: 'Exo 2',sans-serif;
+  padding: 1px 6px; border-radius: 20px; color: #000;
+  text-transform: uppercase;
+}
+.pk-dex-stats { font-size: 0.65rem; color: #999; font-family: monospace; text-align: center; line-height: 1.4; }
+
 /* Starter selection modal */
 .pk-starter-modal {
   position: fixed; inset: 0;

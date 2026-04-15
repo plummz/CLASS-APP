@@ -2693,6 +2693,34 @@ const pokemonModule = (() => {
       player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0};
       saveGame(); closeBattle();
     },
+    toggleDex(){
+      const ov=document.getElementById('pk-dex-overlay');
+      if(!ov)return;
+      const open=ov.classList.toggle('hidden');
+      if(!open){ // opened (hidden removed = now visible)
+        const grid=document.getElementById('pk-dex-grid');
+        const sub=document.getElementById('pk-dex-subtitle');
+        if(!grid)return;
+        grid.innerHTML='';
+        if(!team.length){ grid.innerHTML='<p style="color:#888;padding:20px;font-family:\'Exo 2\',sans-serif">No Pokémon yet — choose a starter first!</p>'; return; }
+        sub.textContent=`Party: ${team.length} Pokémon`;
+        team.forEach(mon=>{
+          const spec=SP[mon.speciesId]||{};
+          const card=document.createElement('div');
+          card.className='pk-dex-card';
+          const tc=TYPE_COLORS;
+          const typeBadges=(mon.types||spec.types||[]).map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#aaa'}">${t}</span>`).join('');
+          card.innerHTML=`
+            <img src="${spriteUrl(mon.speciesId)}" alt="${mon.name}" onerror="this.style.display='none'">
+            <div class="pk-dex-name">${mon.name}</div>
+            <div class="pk-dex-level">Lv. ${mon.level}</div>
+            <div class="pk-dex-types">${typeBadges}</div>
+            <div class="pk-dex-stats">HP ${mon.hp}/${mon.maxHp}<br>Atk ${mon.atk} Def ${mon.def}<br>Spd ${mon.spd}</div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+    },
   };
 })();
 window.pokemonModule = pokemonModule;

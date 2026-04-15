@@ -354,7 +354,19 @@
       </div>
     </div>
 
-    <div class="music-manage-container" style="margin-top: 24px;">
+    <!-- ── Uploaded file search ─────────────────────────────── -->
+    <div class="music-search-section">
+      <div class="music-search-row">
+        <input type="text" id="music-search-input" class="yt-input music-search-input"
+          placeholder="🔍 Search uploaded songs (e.g. Lauv, OPM, Ed Sheeran…)"
+          oninput="musicSearchDebounced()"
+          onkeydown="if(event.key==='Enter') searchMusicFiles()">
+        <button class="btn-primary" onclick="searchMusicFiles()">Search</button>
+      </div>
+      <div id="music-search-results" class="music-search-results hidden"></div>
+    </div>
+
+    <div class="music-manage-container" style="margin-top: 16px;">
         <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
     </div>
     <div class="music-player-card">

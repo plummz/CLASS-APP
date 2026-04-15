@@ -787,6 +787,70 @@ window.playPrevSong = function() {
     playOrOpenFileAPI(prevSong.url, prevSong.name, true);
 };
 
+/* ── Music Hub: uploaded file search ── */
+let _musicSearchTimer = null;
+window.musicSearchDebounced = function() {
+    clearTimeout(_musicSearchTimer);
+    const q = (document.getElementById('music-search-input') || {}).value || '';
+    if (q.trim().length === 0) {
+        const res = document.getElementById('music-search-results');
+        if (res) res.classList.add('hidden');
+        return;
+    }
+    _musicSearchTimer = setTimeout(searchMusicFiles, 350);
+};
+
+window.searchMusicFiles = async function() {
+    const input = document.getElementById('music-search-input');
+    const resBox = document.getElementById('music-search-results');
+    if (!input || !resBox) return;
+    const q = input.value.trim();
+    if (!q) { resBox.classList.add('hidden'); return; }
+
+    resBox.classList.remove('hidden');
+    resBox.innerHTML = '<div class="music-search-empty">Searching…</div>';
+
+    try {
+        // Search files by name (case-insensitive) across ALL folders
+        const { data: files, error } = await sb.from('files')
+            .select('id, name, url, type, uploader, folder_id')
+            .ilike('name', `%${q}%`)
+            .limit(50);
+
+        if (error) throw error;
+        if (!files || files.length === 0) {
+            resBox.innerHTML = `<div class="music-search-empty">No results for "<strong>${q}</strong>"</div>`;
+            return;
+        }
+
+        // Fetch folder names for the matched files
+        const folderIds = [...new Set(files.map(f => f.folder_id))];
+        const { data: folders } = await sb.from('folders').select('id,name,parent').in('id', folderIds);
+        const folderMap = {};
+        (folders || []).forEach(f => { folderMap[f.id] = f; });
+
+        resBox.innerHTML = files.map(f => {
+            const folder = folderMap[f.folder_id];
+            const folderPath = folder ? folder.name : 'Unknown folder';
+            const isAudio = f.type && f.type.startsWith('audio');
+            const safeName = f.name.replace(/'/g, "\\'");
+            const safeUrl = f.url.replace(/'/g, "\\'");
+            return `
+            <div class="music-search-item">
+              <span style="font-size:24px;">${isAudio ? '🎵' : '📄'}</span>
+              <div class="music-search-item-info">
+                <div class="music-search-item-name">${f.name}</div>
+                <div class="music-search-item-meta">📂 ${folderPath} · by ${f.uploader}</div>
+              </div>
+              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        resBox.innerHTML = `<div class="music-search-empty">Search error: ${e.message}</div>`;
+        console.error('Music search error:', e);
+    }
+};
+
 window.toggleLoop = function() {
     isLoop = !isLoop;
     const btn = document.getElementById('btn-loop');

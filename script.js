@@ -677,43 +677,121 @@ window.startBlockVisualizer = (audioElement) => {
         source.connect(analyser);
         analyser.connect(audioCtx.destination);
     }
-    
-    // Set for rainbow block detail
-    analyser.fftSize = 128;
-    const bufferLength = analyser.frequencyBinCount;
+
+    analyser.fftSize = 256;
+    const bufferLength = analyser.frequencyBinCount; // 128
     const dataArray = new Uint8Array(bufferLength);
-    
+
     function draw() {
         requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
 
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const W = canvas.width, H = canvas.height;
+        const cx = W / 2, cy = H / 2;
 
-        const barWidth = (canvas.width / 40) * 1.5;
-        let x = 0;
+        // Clear with slight motion-blur trail
+        ctx.fillStyle = 'rgba(8,8,12,0.82)';
+        ctx.fillRect(0, 0, W, H);
 
-        for (let i = 0; i < 40; i++) {
-            let barHeight = dataArray[i] / 1.5;
-            const hue = (i / 40) * 360; // Rainbow color
-            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+        // Bass = average of first 6 frequency bins (sub-bass + bass)
+        let bassSum = 0;
+        for (let i = 0; i < 6; i++) bassSum += dataArray[i];
+        const bass = bassSum / 6 / 255; // 0-1
 
-            // Draw individual stacking blocks
-            const blockSize = 10;
-            const gap = 3;
-            const numBlocks = Math.floor(barHeight / (blockSize + gap));
+        const maxR = Math.min(W, H) * 0.42;
 
-            for (let j = 0; j < numBlocks; j++) {
-                // Main top bars
-                ctx.fillRect(x, (canvas.height / 2) - (j * (blockSize + gap)) - 5, barWidth - 2, blockSize);
-                
-                // Reflection logic
-                ctx.globalAlpha = 0.3; 
-                ctx.fillRect(x, (canvas.height / 2) + (j * (blockSize + gap)) + 5, barWidth - 2, blockSize);
-                ctx.globalAlpha = 1.0;
-            }
-            x += barWidth;
+        // ── Outer glow on bass hit ──
+        if (bass > 0.35) {
+            const glowR = maxR * (1.35 + bass * 0.3);
+            const glow = ctx.createRadialGradient(cx, cy, maxR * 0.8, cx, cy, glowR);
+            glow.addColorStop(0, `rgba(255,${Math.floor(100 + bass * 80)},0,${(bass - 0.35) * 0.5})`);
+            glow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+            ctx.fillStyle = glow; ctx.fill();
         }
+
+        // ── Radial frequency bars around speaker edge ──
+        const numBars = Math.min(bufferLength, 80);
+        for (let i = 0; i < numBars; i++) {
+            const angle = (i / numBars) * Math.PI * 2 - Math.PI / 2;
+            const val = dataArray[i] / 255;
+            const r1 = maxR + 4;
+            const r2 = r1 + val * maxR * 0.55;
+            const hue = (i / numBars) * 260 + 200; // blue → purple → red
+            const alpha = 0.5 + val * 0.5;
+            ctx.strokeStyle = `hsla(${hue}, 100%, ${45 + val * 35}%, ${alpha})`;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+            ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+            ctx.stroke();
+        }
+
+        // ── Speaker body background ──
+        const bodyGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+        bodyGrad.addColorStop(0, '#1a1410');
+        bodyGrad.addColorStop(0.7, '#111008');
+        bodyGrad.addColorStop(1, '#0a0805');
+        ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+        ctx.fillStyle = bodyGrad; ctx.fill();
+
+        // Speaker outer rim
+        ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(80,70,50,0.8)`; ctx.lineWidth = 5; ctx.stroke();
+
+        // ── Surround rubber rings (3 concentric, pulsing with bass) ──
+        for (let i = 0; i < 3; i++) {
+            const r = maxR * (0.92 - i * 0.04) * (1 + bass * 0.04);
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${50 + i * 20},${45 + i * 15},${30 + i * 10},${0.6 + i * 0.15})`;
+            ctx.lineWidth = 5 - i;
+            ctx.stroke();
+        }
+
+        // ── Speaker cone (centre, pulses with bass) ──
+        const coneR = maxR * 0.58 * (1 + bass * 0.14);
+        const coneGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coneR);
+        const r = Math.floor(60 + bass * 120), g = Math.floor(50 + bass * 60);
+        coneGrad.addColorStop(0,   `rgba(${r},${g},20,0.95)`);
+        coneGrad.addColorStop(0.45,`rgba(45,38,18,0.9)`);
+        coneGrad.addColorStop(1,   `rgba(18,15,8,0.85)`);
+        ctx.beginPath(); ctx.arc(cx, cy, coneR, 0, Math.PI * 2);
+        ctx.fillStyle = coneGrad; ctx.fill();
+
+        // Cone ribs (radial shadow lines)
+        const numRibs = 12;
+        for (let i = 0; i < numRibs; i++) {
+            const ang = (i / numRibs) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(ang) * coneR, cy + Math.sin(ang) * coneR);
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+
+        // Cone concentric rings
+        for (let i = 1; i <= 4; i++) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, coneR * (i / 4.5), 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(0,0,0,${0.12 + i * 0.04})`; ctx.lineWidth = 1; ctx.stroke();
+        }
+
+        // ── Voice coil / dust cap ──
+        const capR = maxR * 0.11 * (1 + bass * 0.18);
+        const capGrad = ctx.createRadialGradient(cx - capR * 0.25, cy - capR * 0.25, 0, cx, cy, capR);
+        capGrad.addColorStop(0, `rgba(${80 + Math.floor(bass * 120)}, ${70 + Math.floor(bass * 60)}, 40, 1)`);
+        capGrad.addColorStop(1, 'rgba(20,16,8,1)');
+        ctx.beginPath(); ctx.arc(cx, cy, capR, 0, Math.PI * 2);
+        ctx.fillStyle = capGrad; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+        // ── Screw holes (4 corners, decorative) ──
+        const screwR = 4, screwPad = maxR * 0.88;
+        [[0, -1],[1, 0],[0, 1],[-1, 0]].forEach(([dx, dy]) => {
+            ctx.beginPath();
+            ctx.arc(cx + dx * screwPad * 0.72, cy + dy * screwPad * 0.72, screwR, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(40,35,25,0.9)'; ctx.fill();
+            ctx.strokeStyle = 'rgba(100,90,60,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+        });
     }
     draw();
 };

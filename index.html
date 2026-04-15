@@ -64,6 +64,12 @@
       <span class="accent-label">Accent</span>
     </div>
 
+    <!-- Lobby sits above all year groups -->
+    <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
+      <span class="nav-icon">🏫</span>
+      <div class="nav-text"><span class="nav-label">Lobby</span></div>
+    </div>
+
     <div class="nav-dropdown-group year-1-theme">
       <div class="nav-dropdown-header" onclick="toggleYear('year1')">
         <span class="nav-icon">🎓</span>
@@ -166,14 +172,19 @@
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
 
-    <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
-      <span class="nav-icon">🏫</span>
-      <div class="nav-text"><span class="nav-label">Lobby</span></div>
-    </div>
-
-    <div class="nav-item" data-page="pokemon" onclick="goToPage('pokemon')">
-      <span class="nav-icon">⚔️</span>
-      <div class="nav-text"><span class="nav-label">Pokemon</span></div>
+    <!-- Games dropdown — Pokemon lives here -->
+    <div class="nav-dropdown-group games-theme">
+      <div class="nav-dropdown-header" onclick="toggleYear('games')">
+        <span class="nav-icon">🎮</span>
+        <div class="nav-text"><span class="nav-label">Games</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-games" class="nav-dropdown-content">
+        <div class="nav-item" data-page="pokemon" onclick="goToPage('pokemon')">
+          <span class="nav-icon">⚔️</span>
+          <div class="nav-text"><span class="nav-label">Pokemon</span></div>
+        </div>
+      </div>
     </div>
 
     <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">

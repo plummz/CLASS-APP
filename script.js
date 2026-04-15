@@ -1737,3 +1737,478 @@ window.sendLobbyChat = function() {
     s.once('connect', () => s.emit('lobby:chat', { text }));
   }
 };
+
+/* ============================================================
+   POKEMON MODULE — Overworld + Battle (Stage 1)
+   ============================================================ */
+const pokemonModule = (() => {
+  /* ── TILE TYPES ── */
+  const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7 };
+  const TSIZE = 32, MAP_W = 50, MAP_H = 40, CHAR_S = 24;
+  const SPAWN = { x: 24, y: 33 };
+  const TILE_COLORS = ['#1a6b9e','#3d8b3d','#c8a878','#2d6b2d','#1a3a0a','#8a6a4a','#d4b483','#7a6a5a'];
+
+  /* ── SPECIES DATA ── */
+  const SP = {
+    pikachu:   {name:'Pikachu',  types:['electric'],        emoji:'⚡', hp:35, atk:55,def:40,spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],  xpY:112,starter:true},
+    bulbasaur: {name:'Bulbasaur',types:['grass','poison'],  emoji:'🌱', hp:45, atk:49,def:49,spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],         xpY:64, starter:true},
+    squirtle:  {name:'Squirtle', types:['water'],           emoji:'🐢', hp:44, atk:48,def:65,spd:43,  moves:['waterGun','tackle','tailWhip','growl'],         xpY:65, starter:true},
+    chikorita: {name:'Chikorita',types:['grass'],           emoji:'🍃', hp:45, atk:49,def:65,spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],        xpY:64, starter:true},
+    torchic:   {name:'Torchic',  types:['fire'],            emoji:'🔥', hp:45, atk:60,def:40,spd:45,  moves:['ember','scratch','growl','tackle'],             xpY:62, starter:true},
+    cyndaquil: {name:'Cyndaquil',types:['fire'],            emoji:'🌋', hp:39, atk:52,def:43,spd:65,  moves:['ember','tackle','leer','smokescreen'],          xpY:62, starter:true},
+    totodile:  {name:'Totodile', types:['water'],           emoji:'🐊', hp:50, atk:65,def:64,spd:43,  moves:['waterGun','scratch','leer','tackle'],           xpY:63, starter:true},
+    mudkip:    {name:'Mudkip',   types:['water','ground'],  emoji:'💧', hp:50, atk:70,def:50,spd:40,  moves:['waterGun','tackle','growl','mudSlap'],          xpY:62, starter:true},
+    treecko:   {name:'Treecko',  types:['grass'],           emoji:'🦎', hp:40, atk:45,def:35,spd:70,  moves:['pound','leer','absorb','quickAtk'],             xpY:62, starter:true},
+    eevee:     {name:'Eevee',    types:['normal'],          emoji:'🦊', hp:55, atk:55,def:50,spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],          xpY:92, starter:true},
+    rattata:   {name:'Rattata',  types:['normal'],          emoji:'🐀', hp:30, atk:56,def:35,spd:72,  moves:['tackle','quickAtk'],                           xpY:51},
+    pidgey:    {name:'Pidgey',   types:['normal','flying'], emoji:'🐦', hp:40, atk:45,def:40,spd:56,  moves:['tackle','gust'],                               xpY:50},
+    caterpie:  {name:'Caterpie', types:['bug'],             emoji:'🐛', hp:45, atk:30,def:35,spd:45,  moves:['tackle','stringShot'],                         xpY:39},
+    weedle:    {name:'Weedle',   types:['bug','poison'],    emoji:'🪲', hp:40, atk:35,def:30,spd:50,  moves:['poisonSting','stringShot'],                    xpY:39},
+    oddish:    {name:'Oddish',   types:['grass','poison'],  emoji:'🌿', hp:45, atk:50,def:55,spd:30,  moves:['absorb','poisonSting'],                        xpY:64},
+    psyduck:   {name:'Psyduck',  types:['water'],           emoji:'🦆', hp:50, atk:52,def:48,spd:55,  moves:['scratch','waterGun'],                          xpY:80},
+    geodude:   {name:'Geodude',  types:['rock','ground'],   emoji:'🪨', hp:40, atk:80,def:100,spd:20, moves:['tackle','rockThrow'],                          xpY:86},
+    zubat:     {name:'Zubat',    types:['poison','flying'], emoji:'🦇', hp:40, atk:45,def:35,spd:55,  moves:['leechLife','tackle'],                          xpY:49},
+    magikarp:  {name:'Magikarp', types:['water'],           emoji:'🐟', hp:20, atk:10,def:55,spd:80,  moves:['splash','tackle'],                             xpY:40},
+    gastly:    {name:'Gastly',   types:['ghost','poison'],  emoji:'👻', hp:30, atk:35,def:30,spd:80,  moves:['lick','poisonSting'],                          xpY:95},
+  };
+
+  /* ── MOVE DATA ── */
+  const MV = {
+    tackle:      {name:'Tackle',       type:'normal',  power:40, acc:100,cat:'physical',pp:35},
+    scratch:     {name:'Scratch',      type:'normal',  power:40, acc:100,cat:'physical',pp:35},
+    pound:       {name:'Pound',        type:'normal',  power:40, acc:100,cat:'physical',pp:35},
+    quickAtk:    {name:'Quick Atk',    type:'normal',  power:40, acc:100,cat:'physical',pp:30},
+    growl:       {name:'Growl',        type:'normal',  power:0,  acc:100,cat:'status',  pp:40, eff:'atkDown'},
+    tailWhip:    {name:'Tail Whip',    type:'normal',  power:0,  acc:100,cat:'status',  pp:30, eff:'defDown'},
+    leer:        {name:'Leer',         type:'normal',  power:0,  acc:100,cat:'status',  pp:30, eff:'defDown'},
+    sandAtk:     {name:'Sand Attack',  type:'normal',  power:0,  acc:100,cat:'status',  pp:15, eff:'accDown'},
+    smokescreen: {name:'Smokescreen',  type:'normal',  power:0,  acc:100,cat:'status',  pp:20, eff:'accDown'},
+    splash:      {name:'Splash',       type:'normal',  power:0,  acc:100,cat:'status',  pp:40},
+    thunderShock:{name:'Thunder Shock',type:'electric',power:40, acc:100,cat:'special', pp:30},
+    vineWhip:    {name:'Vine Whip',    type:'grass',   power:45, acc:100,cat:'physical',pp:25},
+    razorLeaf:   {name:'Razor Leaf',   type:'grass',   power:55, acc:95, cat:'physical',pp:25},
+    absorb:      {name:'Absorb',       type:'grass',   power:20, acc:100,cat:'special', pp:25,drain:true},
+    waterGun:    {name:'Water Gun',    type:'water',   power:40, acc:100,cat:'special', pp:25},
+    ember:       {name:'Ember',        type:'fire',    power:40, acc:100,cat:'special', pp:25},
+    gust:        {name:'Gust',         type:'flying',  power:40, acc:100,cat:'special', pp:35},
+    rockThrow:   {name:'Rock Throw',   type:'rock',    power:50, acc:90, cat:'physical',pp:15},
+    poisonSting: {name:'Poison Sting', type:'poison',  power:15, acc:100,cat:'physical',pp:35},
+    lick:        {name:'Lick',         type:'ghost',   power:30, acc:100,cat:'physical',pp:30},
+    mudSlap:     {name:'Mud-Slap',     type:'ground',  power:20, acc:100,cat:'special', pp:10,eff:'accDown'},
+    leechLife:   {name:'Leech Life',   type:'bug',     power:80, acc:100,cat:'physical',pp:10,drain:true},
+    stringShot:  {name:'String Shot',  type:'bug',     power:0,  acc:95, cat:'status',  pp:40,eff:'spdDown'},
+  };
+
+  const TYPE_COLORS = {normal:'#A8A878',electric:'#F8D030',fire:'#F08030',water:'#6890F0',
+    grass:'#78C850',poison:'#A040A0',rock:'#B8A038',ground:'#E0C068',
+    flying:'#A890F0',bug:'#A8B820',ghost:'#705898'};
+
+  const TYPE_EFF = {
+    fire:    {fire:0.5,water:0.5,grass:2,bug:2,rock:0.5},
+    water:   {fire:2,water:0.5,grass:0.5,rock:2,ground:2},
+    grass:   {fire:0.5,water:2,grass:0.5,poison:0.5,ground:2,rock:2,bug:0.5,flying:0.5},
+    electric:{water:2,grass:0.5,electric:0.5,ground:0,flying:2},
+    normal:  {rock:0.5,ghost:0},
+    ghost:   {normal:0,ghost:2},
+    poison:  {grass:2,poison:0.5,ground:0.5,ghost:0.5},
+    rock:    {fire:2,flying:2,bug:2,ground:0.5},
+    ground:  {electric:2,fire:2,grass:0.5,rock:2,bug:0.5},
+    bug:     {fire:0.5,grass:2,poison:0.5,flying:0.5,ghost:0.5},
+    flying:  {electric:0.5,grass:2,rock:0.5},
+  };
+
+  const ZONES = {
+    route1: ['rattata','pidgey','caterpie','weedle','rattata','pidgey'],
+    forest: ['caterpie','weedle','oddish','zubat','oddish','gastly'],
+    rocky:  ['geodude','geodude','zubat','rattata','geodude'],
+    shore:  ['psyduck','magikarp','magikarp','oddish','psyduck'],
+    route2: ['rattata','pidgey','psyduck','oddish','weedle'],
+    route3: ['oddish','zubat','gastly','pidgey','rattata'],
+  };
+
+  /* ── STATE ── */
+  let canvas, ctx, animFrame;
+  let player = null, team = [], worldMap = null;
+  let camX = 0, camY = 0;
+  let keys = {}, dpad = {up:false,down:false,left:false,right:false};
+  let moveThrottle = 0, lastTileKey = null;
+  let battle = null, battleLocked = false;
+  let _kdown, _kup;
+
+  /* ── MAP GENERATION ── */
+  function generateMap() {
+    const m = Array.from({length:MAP_H}, () => new Array(MAP_W).fill(T.TREE));
+    const fill = (x1,y1,x2,y2,tile) => {
+      for(let y=Math.max(0,y1);y<=Math.min(MAP_H-1,y2);y++)
+        for(let x=Math.max(0,x1);x<=Math.min(MAP_W-1,x2);x++) m[y][x]=tile;
+    };
+    fill(2,2,MAP_W-3,MAP_H-3,T.GRASS);
+    // Lake top-center
+    fill(19,2,30,9,T.WATER);
+    fill(16,9,33,10,T.SAND); fill(16,2,18,9,T.SAND); fill(31,2,33,9,T.SAND);
+    fill(14,10,18,13,T.TALL); fill(31,10,35,13,T.TALL);
+    // Starting town
+    fill(20,29,30,MAP_H-3,T.PATH);
+    fill(21,30,24,33,T.BUILDING); fill(26,30,29,33,T.BUILDING);
+    fill(21,34,24,37,T.BUILDING); fill(26,34,29,37,T.BUILDING);
+    fill(19,29,19,MAP_H-3,T.TREE); fill(31,29,31,MAP_H-3,T.TREE);
+    fill(23,25,26,29,T.PATH);
+    // Route 1 north
+    fill(23,11,26,28,T.PATH);
+    fill(20,13,22,27,T.TALL); fill(27,13,29,27,T.TALL);
+    // Western forest
+    fill(3,13,18,27,T.TALL);
+    for(let y=13;y<=27;y+=4) for(let x=3;x<=17;x+=5) m[y][x]=T.TREE;
+    fill(9,22,22,24,T.PATH); fill(9,20,22,21,T.TALL); fill(9,25,22,26,T.TALL);
+    // Eastern rocky
+    fill(30,13,46,27,T.ROCK);
+    fill(30,17,46,19,T.PATH); fill(30,13,32,27,T.PATH);
+    fill(33,13,46,15,T.TALL); fill(33,21,46,24,T.TALL);
+    fill(27,20,30,22,T.PATH); fill(27,18,30,19,T.TALL); fill(27,23,30,24,T.TALL);
+    // Hard borders
+    fill(0,0,MAP_W-1,1,T.TREE); fill(0,MAP_H-2,MAP_W-1,MAP_H-1,T.TREE);
+    fill(0,0,1,MAP_H-1,T.TREE); fill(MAP_W-2,0,MAP_W-1,MAP_H-1,T.TREE);
+    fill(23,38,26,39,T.PATH);
+    return m;
+  }
+
+  function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
+  function isSolid(tx,ty){ const t=getTile(tx,ty); return t===T.TREE||t===T.BUILDING||t===T.WATER; }
+  function getZone(tx,ty){
+    if(tx>=14&&tx<=35&&ty>=10&&ty<=13) return 'shore';
+    if(tx>=3&&tx<=18&&ty>=13&&ty<=27)  return 'forest';
+    if(tx>=33&&tx<=46&&ty>=13&&ty<=27) return 'rocky';
+    if(tx>=9&&tx<=22&&(ty===20||ty===21||ty===25||ty===26)) return 'route3';
+    if(tx>=27&&tx<=30&&(ty===18||ty===19||ty===23||ty===24)) return 'route2';
+    return 'route1';
+  }
+
+  /* ── RENDERING ── */
+  function drawTile(sx,sy,tile,tx,ty){
+    ctx.fillStyle = TILE_COLORS[tile]; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+    if(tile===T.GRASS && (tx+ty)%2===0){ ctx.fillStyle='rgba(0,60,0,0.07)'; ctx.fillRect(sx,sy,TSIZE,TSIZE); }
+    else if(tile===T.TALL){
+      ctx.fillStyle='#1a5c1a';
+      ctx.fillRect(sx+4,sy+8,3,8); ctx.fillRect(sx+10,sy+6,3,10);
+      ctx.fillRect(sx+18,sy+9,3,7); ctx.fillRect(sx+24,sy+7,3,9);
+    } else if(tile===T.TREE){
+      ctx.fillStyle='#2a1a08'; ctx.fillRect(sx+TSIZE/2-4,sy+TSIZE/2,8,TSIZE/2);
+      ctx.fillStyle='#1a4a10'; ctx.beginPath(); ctx.arc(sx+TSIZE/2,sy+TSIZE/2,TSIZE/2-2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#2d6b20'; ctx.beginPath(); ctx.arc(sx+TSIZE/2-5,sy+TSIZE/2-4,TSIZE/3,0,Math.PI*2); ctx.fill();
+    } else if(tile===T.WATER){
+      const s=Math.sin(Date.now()/800+tx*0.5+ty*0.3)*0.12+0.88;
+      ctx.fillStyle=`rgba(30,120,180,${s*0.28})`; ctx.fillRect(sx,sy+TSIZE/2,TSIZE,TSIZE/2);
+    } else if(tile===T.BUILDING){
+      ctx.fillStyle='#c87840'; ctx.fillRect(sx,sy,TSIZE,TSIZE/2-2);
+      ctx.fillStyle='#e0c8a0'; ctx.fillRect(sx,sy+TSIZE/2-2,TSIZE,TSIZE/2+2);
+      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(sx+TSIZE/2-4,sy+TSIZE/2+4,8,10);
+    } else if(tile===T.PATH && (tx+ty)%2===0){
+      ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+    } else if(tile===T.ROCK){
+      ctx.fillStyle='rgba(0,0,0,0.12)';
+      ctx.fillRect(sx+2,sy+4,8,6); ctx.fillRect(sx+16,sy+12,9,5); ctx.fillRect(sx+7,sy+21,7,5);
+    }
+  }
+
+  function drawPlayerChar(sx,sy){
+    const cx=Math.round(sx), cy=Math.round(sy);
+    const moving=player.moving, frame=player.frame||0;
+    ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(cx+CHAR_S/2,cy+CHAR_S+2,CHAR_S/2,3,0,0,Math.PI*2); ctx.fill();
+    const la=moving?(frame%2===0?3:-1):0, lb=moving?(frame%2===0?-1:3):0;
+    ctx.fillStyle='#221610'; ctx.fillRect(cx+3,cy+16,4,6+la); ctx.fillRect(cx+9,cy+16,4,6+lb);
+    ctx.fillStyle='#3366cc'; ctx.fillRect(cx+2,cy+8,CHAR_S-4,10);
+    const ao=moving?(frame%2===0?2:-2):0;
+    ctx.fillStyle='#3366cc'; ctx.fillRect(cx-3,cy+9+ao,4,6); ctx.fillRect(cx+CHAR_S-1,cy+9-ao,4,6);
+    ctx.fillStyle='#f5c28a'; ctx.fillRect(cx+4,cy+1,8,9);
+    ctx.fillStyle='#1a1010'; ctx.fillRect(cx+5,cy+4,2,2); ctx.fillRect(cx+9,cy+4,2,2);
+    ctx.fillStyle='#cc2222'; ctx.fillRect(cx+3,cy,10,3);
+  }
+
+  function drawOverworld(){
+    if(!canvas||!ctx) return;
+    const W=canvas.width, H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+    const tpx=Math.round(player.x-W/2+CHAR_S/2);
+    const tpy=Math.round(player.y-H/2+CHAR_S/2);
+    camX=Math.max(0,Math.min(tpx,MAP_W*TSIZE-W));
+    camY=Math.max(0,Math.min(tpy,MAP_H*TSIZE-H));
+    const tx0=Math.floor(camX/TSIZE), ty0=Math.floor(camY/TSIZE);
+    const tx1=Math.min(MAP_W-1,tx0+Math.ceil(W/TSIZE)+1);
+    const ty1=Math.min(MAP_H-1,ty0+Math.ceil(H/TSIZE)+1);
+    for(let ty=ty0;ty<=ty1;ty++)
+      for(let tx=tx0;tx<=tx1;tx++)
+        drawTile(tx*TSIZE-camX, ty*TSIZE-camY, getTile(tx,ty), tx, ty);
+    drawPlayerChar(player.x-camX, player.y-camY);
+  }
+
+  /* ── POKEMON INSTANCES ── */
+  function xpForLevel(lvl){ return Math.floor(0.5*lvl*lvl*lvl); }
+  function calcStats(sid,lvl){
+    const s=SP[sid];
+    return { maxHp:Math.floor(2*s.hp*lvl/100+lvl+10), atk:Math.floor(2*s.atk*lvl/100+5),
+             def:Math.floor(2*s.def*lvl/100+5), spd:Math.floor(2*s.spd*lvl/100+5) };
+  }
+  function mkMon(sid,lvl,xp=0){
+    const s=SP[sid], st=calcStats(sid,lvl);
+    return { speciesId:sid, level:lvl, name:s.name, emoji:s.emoji, types:s.types,
+             hp:st.maxHp, maxHp:st.maxHp, atk:st.atk, def:st.def, spd:st.spd,
+             moves:s.moves.map(m=>({id:m,pp:MV[m].pp,maxPp:MV[m].pp})),
+             xp, xpToNext:xpForLevel(lvl+1),
+             atkStg:0, defStg:0, spdStg:0, accStg:0 };
+  }
+  function stageMul(s){ return [0.25,0.28,0.33,0.4,0.5,0.66,1,1.5,2,2.5,3,3.5,4][Math.max(0,Math.min(12,s+6))]; }
+
+  /* ── DAMAGE ── */
+  function typeEff(atk,defTypes){
+    let e=1; const tbl=TYPE_EFF[atk]||{};
+    for(const d of defTypes) e*=(tbl[d]!==undefined?tbl[d]:1);
+    return e;
+  }
+  function damage(att,def,moveId){
+    const mv=MV[moveId]; if(!mv||mv.power===0) return 0;
+    const atk=att.atk*stageMul(att.atkStg), dfn=def.def*stageMul(def.defStg);
+    let d=Math.floor((2*att.level/5+2)*mv.power*atk/dfn/50)+2;
+    d=Math.floor(d*typeEff(mv.type,def.types));
+    return Math.max(1,Math.floor(d*(0.85+Math.random()*0.15)));
+  }
+
+  /* ── BATTLE UI ── */
+  function setLog(a,b){ const l1=document.getElementById('pk-log-line1'),l2=document.getElementById('pk-log-line2'); if(l1)l1.textContent=a||''; if(l2)l2.textContent=b!==undefined?b:''; }
+  function enableBtns(on){
+    battleLocked=!on;
+    for(let i=0;i<4;i++){ const b=document.getElementById(`pk-move-${i}`); if(b)b.disabled=!on||(battle&&battle.pm.moves[i]&&battle.pm.moves[i].pp<=0); }
+    const rb=document.querySelector('.pk-run-btn'); if(rb)rb.disabled=!on;
+  }
+  function updateBUI(){
+    if(!battle)return;
+    const {pm:p,em:e}=battle;
+    const eph=Math.max(0,Math.round(e.hp/e.maxHp*100));
+    const pph=Math.max(0,Math.round(p.hp/p.maxHp*100));
+    const hpCol=pct=>pct>50?'#2dcc70':pct>25?'#f0b030':'#e74c3c';
+    document.getElementById('pk-ename').textContent=e.name;
+    document.getElementById('pk-elvl').textContent=`Lv.${e.level}`;
+    document.getElementById('pk-esprite').textContent=e.emoji;
+    const eb=document.getElementById('pk-ehp-bar'); eb.style.width=eph+'%'; eb.style.background=hpCol(eph);
+    document.getElementById('pk-ehp-text').textContent=`${Math.max(0,e.hp)}/${e.maxHp}`;
+    document.getElementById('pk-pname').textContent=p.name;
+    document.getElementById('pk-plvl').textContent=`Lv.${p.level}`;
+    document.getElementById('pk-psprite').textContent=p.emoji;
+    const pb=document.getElementById('pk-php-bar'); pb.style.width=pph+'%'; pb.style.background=hpCol(pph);
+    document.getElementById('pk-php-text').textContent=`${Math.max(0,p.hp)}/${p.maxHp}`;
+    document.getElementById('pk-xp-bar').style.width=Math.min(100,Math.round(p.xp/p.xpToNext*100))+'%';
+    p.moves.forEach((mv,i)=>{
+      const b=document.getElementById(`pk-move-${i}`); if(!b)return;
+      const md=MV[mv.id]; if(!md){b.style.visibility='hidden';return;}
+      b.style.visibility='visible';
+      b.innerHTML=`<strong>${md.name}</strong><br><small style="opacity:0.7">${mv.pp}/${mv.maxPp} PP</small>`;
+      b.style.borderLeftColor=TYPE_COLORS[md.type]||'#888'; b.disabled=mv.pp<=0;
+    });
+    for(let i=p.moves.length;i<4;i++){ const b=document.getElementById(`pk-move-${i}`); if(b)b.style.visibility='hidden'; }
+  }
+
+  /* ── BATTLE ENGINE ── */
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+  function startBattle(sid,lvl){
+    const em=mkMon(sid,lvl);
+    battle={pm:team[0],em,phase:'menu'};
+    updateBUI(); enableBtns(true);
+    document.getElementById('pk-battle').classList.remove('hidden');
+    setLog(`A wild ${em.name} appeared!`,'');
+  }
+
+  function closeBattle(){
+    battle=null;
+    document.getElementById('pk-battle').classList.add('hidden');
+    document.getElementById('pk-blackout').classList.add('hidden');
+    enableBtns(true); saveGame();
+  }
+
+  function endBattle(){
+    if(!battle)return;
+    const {pm:p,em:e}=battle;
+    if(e.hp<=0){
+      const xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
+      p.xp+=xg; setLog(`${e.name} fainted!`,`+${xg} XP!`);
+      const doLvl=()=>{
+        if(p.xp>=p.xpToNext){
+          p.level++; const ns=calcStats(p.speciesId,p.level);
+          const ohp=p.maxHp; p.maxHp=ns.maxHp; p.hp=Math.min(p.maxHp,p.hp+(p.maxHp-ohp));
+          p.atk=ns.atk; p.def=ns.def; p.spd=ns.spd; p.xpToNext=xpForLevel(p.level+1);
+          updateBUI(); setLog(`${p.name} grew to Lv.${p.level}!`,'🎉');
+          setTimeout(doLvl,1400);
+        } else { updateBUI(); setTimeout(closeBattle,1200); }
+      };
+      setTimeout(doLvl,1200);
+    } else if(p.hp<=0){
+      setLog(`${p.name} fainted!`,'You blacked out!');
+      setTimeout(()=>document.getElementById('pk-blackout').classList.remove('hidden'),1400);
+    } else { enableBtns(true); }
+  }
+
+  async function execMove(att,def,mvObj){
+    const md=MV[mvObj.id]; if(!md)return;
+    if(Math.random()*100>md.acc*stageMul(att.accStg)){
+      setLog(`${att.name} used ${md.name}!`,'But it missed!'); await wait(1100); return;
+    }
+    if(md.power>0){
+      const dmg=damage(att,def,mvObj.id);
+      def.hp=Math.max(0,def.hp-dmg);
+      if(md.drain) att.hp=Math.min(att.maxHp,att.hp+Math.floor(dmg/2));
+      const eff=typeEff(md.type,def.types);
+      const et=eff>1?' Super effective!':eff<1&&eff>0?" Not very effective…":eff===0?" No effect!":'';
+      setLog(`${att.name} used ${md.name}!`,`${def.name} took ${dmg} dmg!${et}`);
+    } else {
+      let et='';
+      if(md.eff==='atkDown'){def.atkStg=Math.max(-6,def.atkStg-1);et=`${def.name}'s Attack fell!`;}
+      if(md.eff==='defDown'){def.defStg=Math.max(-6,def.defStg-1);et=`${def.name}'s Defense fell!`;}
+      if(md.eff==='spdDown'){def.spdStg=Math.max(-6,def.spdStg-1);et=`${def.name}'s Speed fell!`;}
+      if(md.eff==='accDown'){def.accStg=Math.max(-6,def.accStg-1);et=`${def.name}'s accuracy fell!`;}
+      setLog(`${att.name} used ${md.name}!`,et||'But nothing happened…');
+    }
+    updateBUI(); await wait(1100);
+  }
+
+  async function doTurn(idx){
+    if(!battle||battleLocked)return;
+    const {pm:p,em:e}=battle;
+    const pmv=p.moves[idx]; if(!pmv||pmv.pp<=0)return;
+    pmv.pp--; enableBtns(false);
+    const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+    const pFirst=p.spd*stageMul(p.spdStg)>=e.spd*stageMul(e.spdStg);
+    await execMove(pFirst?p:e, pFirst?e:p, pFirst?pmv:emv);
+    if(e.hp<=0||p.hp<=0){endBattle();return;}
+    await execMove(pFirst?e:p, pFirst?p:e, pFirst?emv:pmv);
+    endBattle();
+  }
+
+  /* ── ENCOUNTER ── */
+  function checkEncounter(tx,ty){
+    const tile=getTile(tx,ty), key=`${tx},${ty}`;
+    if(tile!==T.TALL||key===lastTileKey||battle){lastTileKey=key;return;}
+    lastTileKey=key;
+    if(Math.random()>0.125)return;
+    const zone=getZone(tx,ty);
+    const pool=ZONES[zone]||ZONES.route1;
+    const sid=pool[Math.floor(Math.random()*pool.length)];
+    const wlvl=Math.max(2,(team[0]?team[0].level:5)+Math.floor(Math.random()*3)-1);
+    startBattle(sid,wlvl);
+  }
+
+  /* ── GAME LOOP ── */
+  function gameLoop(ts){
+    if(!canvas)return;
+    animFrame=requestAnimationFrame(gameLoop);
+    if(battle)return;
+    const up=keys.ArrowUp||keys.w||dpad.up, dn=keys.ArrowDown||keys.s||dpad.down;
+    const lt=keys.ArrowLeft||keys.a||dpad.left, rt=keys.ArrowRight||keys.d||dpad.right;
+    if(up||dn||lt||rt){
+      const nx=player.x+(rt?2:lt?-2:0), ny=player.y+(dn?2:up?-2:0);
+      const mg=3, ok=(cx,cy)=>!isSolid(Math.floor((cx+mg)/TSIZE),Math.floor((cy+10)/TSIZE))
+        &&!isSolid(Math.floor((cx+CHAR_S-mg)/TSIZE),Math.floor((cy+10)/TSIZE))
+        &&!isSolid(Math.floor((cx+mg)/TSIZE),Math.floor((cy+CHAR_S-1)/TSIZE))
+        &&!isSolid(Math.floor((cx+CHAR_S-mg)/TSIZE),Math.floor((cy+CHAR_S-1)/TSIZE));
+      if(ok(nx,ny)){ player.x=Math.max(0,Math.min(nx,MAP_W*TSIZE-CHAR_S)); player.y=Math.max(0,Math.min(ny,MAP_H*TSIZE-CHAR_S)); }
+      else if((lt||rt)&&ok(nx,player.y)) player.x=Math.max(0,Math.min(nx,MAP_W*TSIZE-CHAR_S));
+      else if((up||dn)&&ok(player.x,ny)) player.y=Math.max(0,Math.min(ny,MAP_H*TSIZE-CHAR_S));
+      player.moving=true; player.frame=Math.floor(ts/160)%4;
+      if(Date.now()-moveThrottle>200){
+        moveThrottle=Date.now();
+        checkEncounter(Math.floor((player.x+CHAR_S/2)/TSIZE),Math.floor((player.y+CHAR_S/2)/TSIZE));
+      }
+    } else { player.moving=false; }
+    drawOverworld();
+  }
+
+  /* ── SAVE / LOAD ── */
+  function saveGame(){
+    if(!player||!team.length)return;
+    localStorage.setItem('pkSave',JSON.stringify({
+      team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
+      px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE)
+    }));
+  }
+  function loadGame(){
+    try{
+      const raw=localStorage.getItem('pkSave'); if(!raw)return false;
+      const sv=JSON.parse(raw); if(!sv.team||!sv.team.length)return false;
+      team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
+      player={x:(sv.px||SPAWN.x)*TSIZE, y:(sv.py||SPAWN.y)*TSIZE, dir:'down',moving:false,frame:0};
+      return true;
+    }catch(e){return false;}
+  }
+
+  /* ── D-PAD ── */
+  function setupDpad(){
+    const map={'pk-dpad-up':'up','pk-dpad-down':'down','pk-dpad-left':'left','pk-dpad-right':'right'};
+    Object.entries(map).forEach(([id,dir])=>{
+      const btn=document.getElementById(id); if(!btn)return;
+      const on=()=>{dpad[dir]=true;btn.classList.add('pressed');};
+      const off=()=>{dpad[dir]=false;btn.classList.remove('pressed');};
+      btn.addEventListener('mousedown',on); btn.addEventListener('mouseup',off); btn.addEventListener('mouseleave',off);
+      btn.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
+      btn.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
+      btn.addEventListener('touchcancel',e=>{e.preventDefault();off();},{passive:false});
+    });
+  }
+
+  /* ── STARTER MODAL ── */
+  function showStarterModal(){
+    const modal=document.getElementById('pk-starter-modal'), grid=document.getElementById('pk-starter-grid');
+    if(!modal||!grid)return; grid.innerHTML='';
+    Object.entries(SP).filter(([,s])=>s.starter).forEach(([id,s])=>{
+      const c=document.createElement('div'); c.className='pk-starter-card';
+      c.innerHTML=`<span class="pk-starter-emoji">${s.emoji}</span><div class="pk-starter-name">${s.name}</div><div class="pk-starter-type">${s.types.join(' / ')}</div>`;
+      c.onclick=()=>{ team=[mkMon(id,5)]; player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; modal.classList.add('hidden'); saveGame(); };
+      grid.appendChild(c);
+    });
+    modal.classList.remove('hidden');
+  }
+
+  /* ── PUBLIC API ── */
+  return {
+    init(){
+      canvas=document.getElementById('pk-canvas'); if(!canvas)return;
+      ctx=canvas.getContext('2d');
+      const resize=()=>{ const w=canvas.parentElement?canvas.parentElement.clientWidth:800; const sc=Math.min(1,w/800); canvas.style.width=(800*sc)+'px'; canvas.style.height=(560*sc)+'px'; };
+      resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
+      if(!worldMap) worldMap=generateMap();
+      if(!loadGame()){ player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; showStarterModal(); }
+      _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
+      _kup=e=>{ keys[e.key]=false; };
+      document.addEventListener('keydown',_kdown); document.addEventListener('keyup',_kup);
+      setupDpad();
+      if(animFrame)cancelAnimationFrame(animFrame);
+      animFrame=requestAnimationFrame(gameLoop);
+    },
+    destroy(){
+      if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+      if(_kdown){document.removeEventListener('keydown',_kdown);_kdown=null;}
+      if(_kup){document.removeEventListener('keyup',_kup);_kup=null;}
+      if(canvas&&canvas._pkResize)window.removeEventListener('resize',canvas._pkResize);
+      saveGame(); canvas=null; ctx=null; battle=null;
+      Object.keys(keys).forEach(k=>keys[k]=false);
+      dpad={up:false,down:false,left:false,right:false};
+    },
+    useMove(i){ if(battle&&!battleLocked)doTurn(i); },
+    tryRun(){
+      if(!battle||battleLocked)return;
+      const {pm:p,em:e}=battle;
+      const chance=Math.min(0.95,0.5+(p.spd-e.spd)/512);
+      if(Math.random()<chance){ setLog('Got away safely!',''); setTimeout(closeBattle,1000); }
+      else {
+        setLog("Couldn't get away!",''); enableBtns(false);
+        setTimeout(async()=>{
+          const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+          await execMove(e,p,emv); if(p.hp<=0)endBattle(); else enableBtns(true);
+        },600);
+      }
+    },
+    dismissBlackout(){
+      team.forEach(m=>{ m.hp=Math.max(1,Math.floor(m.maxHp/2)); });
+      player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0};
+      saveGame(); closeBattle();
+    },
+  };
+})();
+window.pokemonModule = pokemonModule;

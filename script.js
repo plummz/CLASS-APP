@@ -2553,6 +2553,7 @@ const pokemonModule = (() => {
     battleLocked=!on;
     for(let i=0;i<4;i++){ const b=document.getElementById(`pk-move-${i}`); if(b)b.disabled=!on||(battle&&battle.pm.moves[i]&&battle.pm.moves[i].pp<=0); }
     const rb=document.querySelector('.pk-run-btn'); if(rb)rb.disabled=!on;
+    const sb=document.getElementById('pk-swap-btn'); if(sb)sb.disabled=!on;
     updateBallBtn();
   }
   function updateBUI(){
@@ -2676,6 +2677,64 @@ const pokemonModule = (() => {
     enableBtns(true); saveGame();
   }
 
+  /* ── SWAP HELPERS ── */
+  function showSwapPanel(forced){
+    const panel=document.getElementById('pk-swap-panel');
+    const list=document.getElementById('pk-swap-list');
+    const title=document.getElementById('pk-swap-title');
+    if(!panel||!list)return;
+    title.textContent=forced?'Choose your next Pokémon:':'Choose a Pokémon to swap in:';
+    list.innerHTML='';
+    team.forEach((mon,idx)=>{
+      if(mon===battle.pm)return; // skip current battler
+      const card=document.createElement('div');
+      card.className='pk-swap-card'+(mon.hp<=0?' fainted':'');
+      const hpPct=Math.round(mon.hp/mon.maxHp*100);
+      card.innerHTML=`<img src="${spriteUrl(mon.speciesId)}" alt="${mon.name}" onerror="this.style.display='none'">
+        <div class="pk-swap-card-name">${mon.name} Lv.${mon.level}</div>
+        <div class="pk-swap-card-hp">${mon.hp<=0?'Fainted':mon.hp+'/'+mon.maxHp+' HP ('+hpPct+'%)'}</div>`;
+      if(mon.hp>0) card.onclick=()=>doSwap(idx,forced);
+      list.appendChild(card);
+    });
+    if(forced){
+      // no cancel option when forced
+      panel.dataset.forced='1';
+    } else {
+      panel.dataset.forced='0';
+      const cancel=document.createElement('button');
+      cancel.textContent='Cancel'; cancel.className='pk-run-btn';
+      cancel.style.marginTop='8px';
+      cancel.onclick=()=>panel.classList.add('hidden');
+      list.appendChild(cancel);
+    }
+    panel.classList.remove('hidden');
+    enableBtns(false);
+  }
+
+  async function doSwap(teamIdx, forced){
+    const panel=document.getElementById('pk-swap-panel');
+    if(panel) panel.classList.add('hidden');
+    const incoming=team[teamIdx];
+    battle.pm=incoming;
+    setLog(`Go, ${incoming.name}!`,'');
+    playCry(SP[incoming.speciesId]?.dexId);
+    updateBUI();
+    if(!forced){
+      // Voluntary swap: enemy gets a free attack
+      await wait(800);
+      const {em:e}=battle;
+      const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+      await execMove(e,incoming,emv);
+      if(incoming.hp<=0){
+        const alive=team.filter(m=>m.hp>0);
+        if(alive.length) showSwapPanel(true);
+        else endBattle();
+      } else { enableBtns(true); }
+    } else {
+      enableBtns(true);
+    }
+  }
+
   function applyLevelUp(mon){
     const ns=calcStats(mon.speciesId,mon.level);
     const ohp=mon.maxHp; mon.maxHp=ns.maxHp;
@@ -2716,8 +2775,14 @@ const pokemonModule = (() => {
       };
       setTimeout(doLvl,1200);
     } else if(p.hp<=0){
-      setLog(`${p.name} fainted!`,'You blacked out!');
-      setTimeout(()=>document.getElementById('pk-blackout').classList.remove('hidden'),1400);
+      setLog(`${p.name} fainted!`,'');
+      const alive=team.filter(m=>m!==p&&m.hp>0);
+      if(alive.length){
+        setTimeout(()=>{ setLog(`${p.name} fainted!`,'Send out another?'); showSwapPanel(true); },1200);
+      } else {
+        setLog(`${p.name} fainted!`,'You blacked out!');
+        setTimeout(()=>document.getElementById('pk-blackout').classList.remove('hidden'),1400);
+      }
     } else { enableBtns(true); }
   }
 
@@ -3040,6 +3105,7 @@ const pokemonModule = (() => {
       const ov=document.getElementById('pk-lb-overlay');
       if(ov)ov.classList.add('hidden');
     },
+    showSwapPanel(forced){ showSwapPanel(forced); },
     manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
       saveGame();

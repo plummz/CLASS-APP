@@ -465,8 +465,15 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;align-self:stretch;">
             <button class="pk-ball-btn" id="pk-ball-btn" onclick="window.pokemonModule.throwBall()">⚾ Ball <span id="pk-ball-count">(5)</span></button>
+            <button class="pk-swap-btn" id="pk-swap-btn" onclick="window.pokemonModule.showSwapPanel(false)">⇄ Swap</button>
             <button class="pk-run-btn" onclick="window.pokemonModule.tryRun()">🏃 Run</button>
           </div>
+        </div>
+
+        <!-- Swap panel (party selection) -->
+        <div id="pk-swap-panel" class="pk-swap-panel hidden">
+          <div class="pk-swap-title" id="pk-swap-title">Choose a Pokémon:</div>
+          <div class="pk-swap-list" id="pk-swap-list"></div>
         </div>
 
         <!-- Blackout overlay -->

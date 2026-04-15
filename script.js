@@ -1908,26 +1908,54 @@ const pokemonModule = (() => {
 
   /* ── SPECIES DATA ── */
   const SP = {
-    pikachu:   {name:'Pikachu',  types:['electric'],        dexId:25,  hp:35, atk:55,def:40,spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],  xpY:112,catchRate:190,starter:true},
-    bulbasaur: {name:'Bulbasaur',types:['grass','poison'],  dexId:1,   hp:45, atk:49,def:49,spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],         xpY:64, catchRate:45, starter:true},
-    squirtle:  {name:'Squirtle', types:['water'],           dexId:7,   hp:44, atk:48,def:65,spd:43,  moves:['waterGun','tackle','tailWhip','growl'],         xpY:65, catchRate:45, starter:true},
-    chikorita: {name:'Chikorita',types:['grass'],           dexId:152, hp:45, atk:49,def:65,spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],        xpY:64, catchRate:45, starter:true},
-    torchic:   {name:'Torchic',  types:['fire'],            dexId:255, hp:45, atk:60,def:40,spd:45,  moves:['ember','scratch','growl','tackle'],             xpY:62, catchRate:45, starter:true},
-    cyndaquil: {name:'Cyndaquil',types:['fire'],            dexId:155, hp:39, atk:52,def:43,spd:65,  moves:['ember','tackle','leer','smokescreen'],          xpY:62, catchRate:45, starter:true},
-    totodile:  {name:'Totodile', types:['water'],           dexId:158, hp:50, atk:65,def:64,spd:43,  moves:['waterGun','scratch','leer','tackle'],           xpY:63, catchRate:45, starter:true},
-    mudkip:    {name:'Mudkip',   types:['water','ground'],  dexId:258, hp:50, atk:70,def:50,spd:40,  moves:['waterGun','tackle','growl','mudSlap'],          xpY:62, catchRate:45, starter:true},
-    treecko:   {name:'Treecko',  types:['grass'],           dexId:252, hp:40, atk:45,def:35,spd:70,  moves:['pound','leer','absorb','quickAtk'],             xpY:62, catchRate:45, starter:true},
-    eevee:     {name:'Eevee',    types:['normal'],          dexId:133, hp:55, atk:55,def:50,spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],          xpY:92, catchRate:45, starter:true},
-    rattata:   {name:'Rattata',  types:['normal'],          dexId:19,  hp:30, atk:56,def:35,spd:72,  moves:['tackle','quickAtk'],                           xpY:51, catchRate:255},
-    pidgey:    {name:'Pidgey',   types:['normal','flying'], dexId:16,  hp:40, atk:45,def:40,spd:56,  moves:['tackle','gust'],                               xpY:50, catchRate:255},
-    caterpie:  {name:'Caterpie', types:['bug'],             dexId:10,  hp:45, atk:30,def:35,spd:45,  moves:['tackle','stringShot'],                         xpY:39, catchRate:255},
-    weedle:    {name:'Weedle',   types:['bug','poison'],    dexId:13,  hp:40, atk:35,def:30,spd:50,  moves:['poisonSting','stringShot'],                    xpY:39, catchRate:255},
-    oddish:    {name:'Oddish',   types:['grass','poison'],  dexId:43,  hp:45, atk:50,def:55,spd:30,  moves:['absorb','poisonSting'],                        xpY:64, catchRate:255},
-    psyduck:   {name:'Psyduck',  types:['water'],           dexId:54,  hp:50, atk:52,def:48,spd:55,  moves:['scratch','waterGun'],                          xpY:80, catchRate:190},
-    geodude:   {name:'Geodude',  types:['rock','ground'],   dexId:74,  hp:40, atk:80,def:100,spd:20, moves:['tackle','rockThrow'],                          xpY:86, catchRate:255},
-    zubat:     {name:'Zubat',    types:['poison','flying'], dexId:41,  hp:40, atk:45,def:35,spd:55,  moves:['leechLife','tackle'],                          xpY:49, catchRate:255},
-    magikarp:  {name:'Magikarp', types:['water'],           dexId:129, hp:20, atk:10,def:55,spd:80,  moves:['splash','tackle'],                             xpY:40, catchRate:255},
-    gastly:    {name:'Gastly',   types:['ghost','poison'],  dexId:92,  hp:30, atk:35,def:30,spd:80,  moves:['lick','poisonSting'],                          xpY:95, catchRate:190},
+    /* ── Starters ── */
+    pikachu:   {name:'Pikachu',   types:['electric'],        dexId:25,  hp:35, atk:55,def:40, spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],   xpY:112,catchRate:190,starter:true, evolvesAt:36, evolvesInto:'raichu'},
+    bulbasaur: {name:'Bulbasaur', types:['grass','poison'],  dexId:1,   hp:45, atk:49,def:49, spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],          xpY:64, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'ivysaur'},
+    squirtle:  {name:'Squirtle',  types:['water'],           dexId:7,   hp:44, atk:48,def:65, spd:43,  moves:['waterGun','tackle','tailWhip','growl'],          xpY:65, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'wartortle'},
+    chikorita: {name:'Chikorita', types:['grass'],           dexId:152, hp:45, atk:49,def:65, spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],         xpY:64, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'bayleef'},
+    torchic:   {name:'Torchic',   types:['fire'],            dexId:255, hp:45, atk:60,def:40, spd:45,  moves:['ember','scratch','growl','tackle'],              xpY:62, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'combusken'},
+    cyndaquil: {name:'Cyndaquil', types:['fire'],            dexId:155, hp:39, atk:52,def:43, spd:65,  moves:['ember','tackle','leer','smokescreen'],           xpY:62, catchRate:45, starter:true, evolvesAt:14, evolvesInto:'quilava'},
+    totodile:  {name:'Totodile',  types:['water'],           dexId:158, hp:50, atk:65,def:64, spd:43,  moves:['waterGun','scratch','leer','tackle'],            xpY:63, catchRate:45, starter:true, evolvesAt:18, evolvesInto:'croconaw'},
+    mudkip:    {name:'Mudkip',    types:['water','ground'],  dexId:258, hp:50, atk:70,def:50, spd:40,  moves:['waterGun','tackle','growl','mudSlap'],           xpY:62, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'marshtomp'},
+    treecko:   {name:'Treecko',   types:['grass'],           dexId:252, hp:40, atk:45,def:35, spd:70,  moves:['pound','leer','absorb','quickAtk'],              xpY:62, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'grovyle'},
+    eevee:     {name:'Eevee',     types:['normal'],          dexId:133, hp:55, atk:55,def:50, spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],           xpY:92, catchRate:45, starter:true, evolvesAt:36, evolvesInto:'vaporeon'},
+    /* ── Wild Pokémon ── */
+    rattata:   {name:'Rattata',   types:['normal'],          dexId:19,  hp:30, atk:56,def:35, spd:72,  moves:['tackle','quickAtk'],                            xpY:51, catchRate:255, evolvesAt:20, evolvesInto:'raticate'},
+    pidgey:    {name:'Pidgey',    types:['normal','flying'], dexId:16,  hp:40, atk:45,def:40, spd:56,  moves:['tackle','gust'],                                xpY:50, catchRate:255, evolvesAt:18, evolvesInto:'pidgeotto'},
+    caterpie:  {name:'Caterpie',  types:['bug'],             dexId:10,  hp:45, atk:30,def:35, spd:45,  moves:['tackle','stringShot'],                          xpY:39, catchRate:255, evolvesAt:7,  evolvesInto:'metapod'},
+    weedle:    {name:'Weedle',    types:['bug','poison'],    dexId:13,  hp:40, atk:35,def:30, spd:50,  moves:['poisonSting','stringShot'],                     xpY:39, catchRate:255, evolvesAt:7,  evolvesInto:'kakuna'},
+    oddish:    {name:'Oddish',    types:['grass','poison'],  dexId:43,  hp:45, atk:50,def:55, spd:30,  moves:['absorb','poisonSting'],                         xpY:64, catchRate:255, evolvesAt:21, evolvesInto:'gloom'},
+    psyduck:   {name:'Psyduck',   types:['water'],           dexId:54,  hp:50, atk:52,def:48, spd:55,  moves:['scratch','waterGun'],                           xpY:80, catchRate:190, evolvesAt:33, evolvesInto:'golduck'},
+    geodude:   {name:'Geodude',   types:['rock','ground'],   dexId:74,  hp:40, atk:80,def:100,spd:20,  moves:['tackle','rockThrow'],                           xpY:86, catchRate:255, evolvesAt:25, evolvesInto:'graveler'},
+    zubat:     {name:'Zubat',     types:['poison','flying'], dexId:41,  hp:40, atk:45,def:35, spd:55,  moves:['leechLife','tackle'],                           xpY:49, catchRate:255, evolvesAt:22, evolvesInto:'golbat'},
+    magikarp:  {name:'Magikarp',  types:['water'],           dexId:129, hp:20, atk:10,def:55, spd:80,  moves:['splash','tackle'],                              xpY:40, catchRate:255, evolvesAt:20, evolvesInto:'gyarados'},
+    gastly:    {name:'Gastly',    types:['ghost','poison'],  dexId:92,  hp:30, atk:35,def:30, spd:80,  moves:['lick','poisonSting'],                           xpY:95, catchRate:190, evolvesAt:25, evolvesInto:'haunter'},
+    /* ── Evolved forms (not wild-spawnable, used for evolution targets) ── */
+    raichu:    {name:'Raichu',    types:['electric'],        dexId:26,  hp:60, atk:90,def:55, spd:110, moves:['thunderShock','quickAtk','thunderbolt','tailWhip'],xpY:122,catchRate:75},
+    ivysaur:   {name:'Ivysaur',   types:['grass','poison'],  dexId:2,   hp:60, atk:62,def:63, spd:60,  moves:['vineWhip','tackle','razorLeaf','growl'],         xpY:142,catchRate:45, evolvesAt:32, evolvesInto:'venusaur'},
+    venusaur:  {name:'Venusaur',  types:['grass','poison'],  dexId:3,   hp:80, atk:82,def:83, spd:80,  moves:['vineWhip','razorLeaf','solarBeam','growl'],      xpY:236,catchRate:45},
+    wartortle: {name:'Wartortle', types:['water'],           dexId:8,   hp:59, atk:63,def:80, spd:58,  moves:['waterGun','tackle','surf','tailWhip'],           xpY:143,catchRate:45, evolvesAt:36, evolvesInto:'blastoise'},
+    blastoise: {name:'Blastoise', types:['water'],           dexId:9,   hp:79, atk:83,def:100,spd:78,  moves:['waterGun','surf','hydropump','tackle'],          xpY:239,catchRate:45},
+    bayleef:   {name:'Bayleef',   types:['grass'],           dexId:153, hp:60, atk:62,def:80, spd:60,  moves:['razorLeaf','tackle','bodySlam','growl'],         xpY:142,catchRate:45},
+    combusken: {name:'Combusken', types:['fire','fighting'], dexId:256, hp:60, atk:85,def:60, spd:55,  moves:['ember','scratch','bodySlam','growl'],            xpY:142,catchRate:45},
+    quilava:   {name:'Quilava',   types:['fire'],            dexId:156, hp:58, atk:64,def:58, spd:80,  moves:['ember','tackle','flamethrower','smokescreen'],   xpY:142,catchRate:45},
+    croconaw:  {name:'Croconaw',  types:['water'],           dexId:159, hp:65, atk:80,def:80, spd:58,  moves:['waterGun','scratch','surf','leer'],              xpY:142,catchRate:45},
+    marshtomp: {name:'Marshtomp', types:['water','ground'],  dexId:259, hp:70, atk:85,def:70, spd:50,  moves:['waterGun','mudSlap','surf','tackle'],            xpY:142,catchRate:45},
+    grovyle:   {name:'Grovyle',   types:['grass'],           dexId:253, hp:50, atk:65,def:45, spd:95,  moves:['pound','absorb','razorLeaf','quickAtk'],         xpY:142,catchRate:45},
+    vaporeon:  {name:'Vaporeon',  types:['water'],           dexId:134, hp:130,atk:65,def:60, spd:65,  moves:['waterGun','quickAtk','surf','tackle'],           xpY:184,catchRate:45},
+    raticate:  {name:'Raticate',  types:['normal'],          dexId:20,  hp:55, atk:81,def:60, spd:97,  moves:['tackle','quickAtk','hyperFang','bodySlam'],      xpY:145,catchRate:90},
+    pidgeotto: {name:'Pidgeotto', types:['normal','flying'], dexId:17,  hp:63, atk:60,def:55, spd:71,  moves:['tackle','gust','wingAtk','quickAtk'],            xpY:122,catchRate:120,evolvesAt:36, evolvesInto:'pidgeot'},
+    pidgeot:   {name:'Pidgeot',   types:['normal','flying'], dexId:18,  hp:83, atk:80,def:75, spd:101, moves:['gust','wingAtk','quickAtk','tackle'],            xpY:216,catchRate:45},
+    metapod:   {name:'Metapod',   types:['bug'],             dexId:11,  hp:50, atk:20,def:55, spd:30,  moves:['tackle','stringShot'],                          xpY:72, catchRate:120,evolvesAt:10, evolvesInto:'butterfree'},
+    butterfree: {name:'Butterfree',types:['bug','flying'],   dexId:12,  hp:60, atk:45,def:50, spd:70,  moves:['gust','tackle','wingAtk','stringShot'],          xpY:178,catchRate:45},
+    kakuna:    {name:'Kakuna',    types:['bug','poison'],    dexId:14,  hp:45, atk:25,def:50, spd:35,  moves:['poisonSting','stringShot'],                     xpY:72, catchRate:120,evolvesAt:10, evolvesInto:'beedrill'},
+    beedrill:  {name:'Beedrill',  types:['bug','poison'],    dexId:15,  hp:65, atk:90,def:40, spd:75,  moves:['poisonSting','tackle','bodySlam','quickAtk'],    xpY:178,catchRate:45},
+    gloom:     {name:'Gloom',     types:['grass','poison'],  dexId:44,  hp:60, atk:65,def:70, spd:40,  moves:['absorb','poisonSting','razorLeaf','sludgeBomb'], xpY:138,catchRate:120},
+    golduck:   {name:'Golduck',   types:['water'],           dexId:55,  hp:80, atk:82,def:78, spd:85,  moves:['waterGun','scratch','surf','bodySlam'],          xpY:174,catchRate:75},
+    graveler:  {name:'Graveler',  types:['rock','ground'],   dexId:75,  hp:55, atk:95,def:115,spd:35,  moves:['tackle','rockThrow','bodySlam','mudSlap'],       xpY:164,catchRate:120},
+    golbat:    {name:'Golbat',    types:['poison','flying'], dexId:42,  hp:75, atk:80,def:70, spd:90,  moves:['leechLife','tackle','wingAtk','poisonSting'],    xpY:171,catchRate:90},
+    gyarados:  {name:'Gyarados',  types:['water','flying'],  dexId:130, hp:95, atk:125,def:79,spd:81,  moves:['waterGun','tackle','surf','bodySlam'],           xpY:214,catchRate:45},
+    haunter:   {name:'Haunter',   types:['ghost','poison'],  dexId:93,  hp:45, atk:50,def:45, spd:95,  moves:['lick','shadowBall','poisonSting','tackle'],      xpY:126,catchRate:90},
   };
   const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
   function spriteUrl(speciesId, back=false){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `${SPRITE_BASE}${back?'/back/':'/'}`+id+'.png' : ''; }
@@ -1957,6 +1985,16 @@ const pokemonModule = (() => {
     mudSlap:     {name:'Mud-Slap',     type:'ground',  power:20, acc:100,cat:'special', pp:10,eff:'accDown'},
     leechLife:   {name:'Leech Life',   type:'bug',     power:80, acc:100,cat:'physical',pp:10,drain:true},
     stringShot:  {name:'String Shot',  type:'bug',     power:0,  acc:95, cat:'status',  pp:40,eff:'spdDown'},
+    thunderbolt: {name:'Thunderbolt',  type:'electric',power:90, acc:100,cat:'special', pp:15},
+    bodySlam:    {name:'Body Slam',    type:'normal',  power:85, acc:100,cat:'physical',pp:15},
+    hyperFang:   {name:'Hyper Fang',   type:'normal',  power:80, acc:90, cat:'physical',pp:15},
+    wingAtk:     {name:'Wing Attack',  type:'flying',  power:60, acc:100,cat:'physical',pp:35},
+    surf:        {name:'Surf',         type:'water',   power:90, acc:100,cat:'special', pp:15},
+    flamethrower:{name:'Flamethrower', type:'fire',    power:90, acc:100,cat:'special', pp:15},
+    hydropump:   {name:'Hydro Pump',   type:'water',   power:110,acc:80, cat:'special', pp:5},
+    solarBeam:   {name:'Solar Beam',   type:'grass',   power:120,acc:100,cat:'special', pp:10},
+    shadowBall:  {name:'Shadow Ball',  type:'ghost',   power:80, acc:100,cat:'special', pp:15},
+    sludgeBomb:  {name:'Sludge Bomb',  type:'poison',  power:90, acc:100,cat:'special', pp:10},
   };
 
   const TYPE_COLORS = {normal:'#A8A878',electric:'#F8D030',fire:'#F08030',water:'#6890F0',
@@ -2357,19 +2395,42 @@ const pokemonModule = (() => {
     enableBtns(true); saveGame();
   }
 
+  function applyLevelUp(mon){
+    const ns=calcStats(mon.speciesId,mon.level);
+    const ohp=mon.maxHp; mon.maxHp=ns.maxHp;
+    mon.hp=Math.min(mon.maxHp,mon.hp+(mon.maxHp-ohp));
+    mon.atk=ns.atk; mon.def=ns.def; mon.spd=ns.spd;
+    mon.xpToNext=xpForLevel(mon.level+1);
+  }
+  function tryEvolve(mon){
+    const spec=SP[mon.speciesId];
+    if(!spec||!spec.evolvesAt||mon.level<spec.evolvesAt||!spec.evolvesInto||!SP[spec.evolvesInto])return false;
+    const oldName=mon.name;
+    mon.speciesId=spec.evolvesInto;
+    const ns2=SP[mon.speciesId];
+    mon.name=ns2.name; mon.types=ns2.types;
+    applyLevelUp(mon);
+    return oldName;
+  }
   function endBattle(){
     if(!battle)return;
     const {pm:p,em:e}=battle;
     if(e.hp<=0){
       const xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
+      // Award full XP to active battler, half XP to benched alive members (EXP Share)
+      const benched=team.filter(m=>m!==p&&m.hp>0);
+      benched.forEach(m=>{
+        m.xp+=Math.floor(xg/2);
+        while(m.xp>=m.xpToNext){ m.level++; applyLevelUp(m); const evo=tryEvolve(m); if(evo) showToast(`${m.name} evolved!`,'#ffd700',2500); }
+      });
       p.xp+=xg; setLog(`${e.name} fainted!`,`+${xg} XP!`);
       const doLvl=()=>{
         if(p.xp>=p.xpToNext){
-          p.level++; const ns=calcStats(p.speciesId,p.level);
-          const ohp=p.maxHp; p.maxHp=ns.maxHp; p.hp=Math.min(p.maxHp,p.hp+(p.maxHp-ohp));
-          p.atk=ns.atk; p.def=ns.def; p.spd=ns.spd; p.xpToNext=xpForLevel(p.level+1);
-          updateBUI(); setLog(`${p.name} grew to Lv.${p.level}!`,'🎉');
-          setTimeout(doLvl,1400);
+          p.level++; applyLevelUp(p);
+          const evo=tryEvolve(p);
+          updateBUI();
+          if(evo){ setLog(`${evo} evolved into ${p.name}!`,'✨ New form!'); setTimeout(doLvl,1600); }
+          else { setLog(`${p.name} grew to Lv.${p.level}!`,'🎉'); setTimeout(doLvl,1400); }
         } else { updateBUI(); setTimeout(closeBattle,1200); }
       };
       setTimeout(doLvl,1200);

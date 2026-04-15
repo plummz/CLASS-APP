@@ -1873,6 +1873,27 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   border-radius: 10px; padding: 12px 32px; font-size: 16px; font-weight: 700; cursor: pointer;
 }
 
+/* Move flash effects */
+.pk-move-flash {
+  position: absolute;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.2);
+  z-index: 55;
+}
+.pk-flash-enemy  { right: 80px; top: 60px; }
+.pk-flash-player { left: 80px;  bottom: 100px; }
+@keyframes pkFlashBurst {
+  0%   { opacity: 0.85; transform: scale(0.3); }
+  40%  { opacity: 0.7;  transform: scale(1.3); }
+  100% { opacity: 0;    transform: scale(1.8); }
+}
+.pk-move-flash.pk-flash-active {
+  animation: pkFlashBurst 0.45s ease-out forwards;
+}
+
 /* Pokédex FAB button */
 .pk-dex-fab {
   position: absolute;

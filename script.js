@@ -2038,7 +2038,32 @@ const pokemonModule = (() => {
 
   const TYPE_COLORS = {normal:'#A8A878',electric:'#F8D030',fire:'#F08030',water:'#6890F0',
     grass:'#78C850',poison:'#A040A0',rock:'#B8A038',ground:'#E0C068',
-    flying:'#A890F0',bug:'#A8B820',ghost:'#705898'};
+    flying:'#A890F0',bug:'#A8B820',ghost:'#705898',
+    psychic:'#F85888',ice:'#98D8D8',dark:'#705848',dragon:'#7038F8'};
+
+  // Extended type glow colors for visual fx (more vivid than TYPE_COLORS)
+  const TYPE_FX = {
+    normal:'rgba(200,200,180,0.7)',   electric:'rgba(255,230,0,0.85)',
+    fire:'rgba(255,100,0,0.85)',      water:'rgba(40,140,255,0.85)',
+    grass:'rgba(80,220,80,0.85)',     poison:'rgba(180,40,220,0.85)',
+    rock:'rgba(180,150,60,0.8)',      ground:'rgba(220,180,80,0.8)',
+    flying:'rgba(200,180,255,0.7)',   bug:'rgba(160,220,30,0.8)',
+    ghost:'rgba(100,60,180,0.85)',    psychic:'rgba(250,80,150,0.85)',
+    ice:'rgba(150,240,255,0.85)',     dark:'rgba(90,70,50,0.8)',
+    dragon:'rgba(100,50,255,0.85)',
+  };
+
+  function flashMove(defIsEnemy, type){
+    const id=defIsEnemy?'pk-flash-enemy':'pk-flash-player';
+    const el=document.getElementById(id); if(!el)return;
+    const col=TYPE_FX[type]||TYPE_FX.normal;
+    el.style.background=`radial-gradient(circle, ${col} 0%, transparent 70%)`;
+    el.classList.remove('pk-flash-active');
+    // Force reflow so animation restarts
+    void el.offsetWidth;
+    el.classList.add('pk-flash-active');
+    el.addEventListener('animationend',()=>el.classList.remove('pk-flash-active'),{once:true});
+  }
 
   const TYPE_EFF = {
     fire:    {fire:0.5,water:0.5,grass:2,bug:2,rock:0.5},
@@ -2484,6 +2509,8 @@ const pokemonModule = (() => {
 
   async function execMove(att,def,mvObj){
     const md=MV[mvObj.id]; if(!md)return;
+    // defIsEnemy = true when the defender is the enemy Pokémon (player is attacking)
+    const defIsEnemy = battle && def===battle.em;
     if(Math.random()*100>md.acc*stageMul(att.accStg)){
       setLog(`${att.name} used ${md.name}!`,'But it missed!'); await wait(1100); return;
     }
@@ -2494,6 +2521,7 @@ const pokemonModule = (() => {
       const eff=typeEff(md.type,def.types);
       const et=eff>1?' Super effective!':eff<1&&eff>0?" Not very effective…":eff===0?" No effect!":'';
       setLog(`${att.name} used ${md.name}!`,`${def.name} took ${dmg} dmg!${et}`);
+      flashMove(defIsEnemy, md.type);
     } else {
       let et='';
       if(md.eff==='atkDown'){def.atkStg=Math.max(-6,def.atkStg-1);et=`${def.name}'s Attack fell!`;}
@@ -2501,6 +2529,8 @@ const pokemonModule = (() => {
       if(md.eff==='spdDown'){def.spdStg=Math.max(-6,def.spdStg-1);et=`${def.name}'s Speed fell!`;}
       if(md.eff==='accDown'){def.accStg=Math.max(-6,def.accStg-1);et=`${def.name}'s accuracy fell!`;}
       setLog(`${att.name} used ${md.name}!`,et||'But nothing happened…');
+      // Status moves show a subtle self-side flash
+      flashMove(!defIsEnemy, md.type);
     }
     updateBUI(); await wait(1100);
   }

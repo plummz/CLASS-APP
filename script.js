@@ -291,24 +291,24 @@ window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
     const status = document.getElementById('file-upload-status');
-    const file = input.files[0];
-    
-    if(!file) return customAlert("Please select a file first.");
-    
-    if(status) status.innerText = "Uploading to Supabase Cloud...";
-    
-    try {
+    const files = Array.from(input.files);
+
+    if(files.length === 0) return customAlert("Please select at least one file.");
+
+    let done = 0, failed = 0;
+    if(status) status.innerText = `Uploading 0 / ${files.length}…`;
+
+    for (const file of files) {
+      try {
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-        const filePath = `uploads/${Date.now()}_${safeName}`;
-        
-        const { data, error } = await sb.storage
+        const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
+
+        const { error } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
-            
+
         if (error) throw error;
 
-        if(status) status.innerText = "Upload 100%. Saving to database...";
-        
         const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
 
         await sb.from('files').insert([{
@@ -319,14 +319,19 @@ window.uploadFileToFolderAPI = async function() {
             uploader: currentUser.username
         }]);
 
-        if(status) status.innerText = "Upload Complete!";
-        input.value = "";
-        fetchAndRenderFiles();
-        
-    } catch(e) {
-        if(status) status.innerText = "Error: " + e.message;
-        console.error(e);
+        done++;
+        if(status) status.innerText = `Uploaded ${done} / ${files.length}…`;
+      } catch(e) {
+        failed++;
+        console.error('Upload error:', file.name, e);
+      }
     }
+
+    input.value = "";
+    if(status) status.innerText = failed === 0
+        ? `All ${done} file${done !== 1 ? 's' : ''} uploaded!`
+        : `${done} uploaded, ${failed} failed.`;
+    fetchAndRenderFiles();
 };
 
 window.deleteFileAPI = function(fileId) {

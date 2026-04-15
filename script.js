@@ -289,48 +289,58 @@ function fetchAndRenderFiles() {
 
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
-    const input = document.getElementById('file-upload-input');
+    const input  = document.getElementById('file-upload-input');
     const status = document.getElementById('file-upload-status');
-    const files = Array.from(input.files);
+    const files  = Array.from(input.files);
 
     if(files.length === 0) return customAlert("Please select at least one file.");
 
-    let done = 0, failed = 0;
+    // Capture folder id NOW — before any async work so it can't shift mid-loop
+    const folderId = currentFolderContext && currentFolderContext.id;
+    if(!folderId) return customAlert("No folder selected. Please reopen the folder and try again.");
+
+    let done = 0, failed = 0, failNames = [];
     if(status) status.innerText = `Uploading 0 / ${files.length}…`;
 
     for (const file of files) {
       try {
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-        const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
+        // Unique path: ms timestamp + 6-char random suffix prevents any collision
+        const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
 
-        const { error } = await sb.storage
+        const { error: storErr } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
-
-        if (error) throw error;
+        if(storErr) throw new Error(`Storage: ${storErr.message}`);
 
         const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
 
-        await sb.from('files').insert([{
-            folder_id: currentFolderContext.id,
+        const { error: dbErr } = await sb.from('files').insert([{
+            folder_id: folderId,
             name: file.name,
             url: urlData.publicUrl,
             type: file.type,
             uploader: currentUser.username
         }]);
+        // Supabase v2 returns {data, error} — it does NOT throw on failure
+        if(dbErr) throw new Error(`Database: ${dbErr.message}`);
 
         done++;
         if(status) status.innerText = `Uploaded ${done} / ${files.length}…`;
       } catch(e) {
         failed++;
+        failNames.push(file.name);
         console.error('Upload error:', file.name, e);
       }
     }
 
     input.value = "";
-    if(status) status.innerText = failed === 0
-        ? `All ${done} file${done !== 1 ? 's' : ''} uploaded!`
-        : `${done} uploaded, ${failed} failed.`;
+    if(failed === 0) {
+        if(status) status.innerText = `All ${done} file${done !== 1 ? 's' : ''} uploaded!`;
+    } else {
+        if(status) status.innerText = `${done} uploaded, ${failed} failed.`;
+        customAlert(`${failed} file(s) failed to upload:\n${failNames.join('\n')}\n\nCheck the browser console for details.`);
+    }
     fetchAndRenderFiles();
 };
 

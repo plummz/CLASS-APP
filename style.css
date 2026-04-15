@@ -1781,9 +1781,23 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 .pk-xp-bar { height: 100%; background: #4488ff; border-radius: 2px; transition: width 0.4s; }
 .pk-hp-text { color: rgba(255,255,255,0.8); font-size: 10px; min-width: 44px; text-align: right; }
 .pk-xp-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
-.pk-sprite { font-size: 76px; line-height: 1; filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.55)); user-select: none; }
-.pk-esprite { align-self: flex-end; }
-.pk-psprite { align-self: flex-start; }
+.pk-sprite { display:flex; align-items:center; justify-content:center; user-select:none; filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.55)); }
+.pk-sprite-img { width:110px; height:110px; image-rendering:pixelated; object-fit:contain; }
+.pk-sprite-back { transform:scale(-1.2,1.2); transform-origin:center; }  /* flip + enlarge back sprite */
+.pk-esprite { align-self:flex-end; }
+.pk-psprite { align-self:flex-start; }
+/* Pokémon Center notification */
+.pk-center-toast {
+  position:absolute; top:12px; left:50%; transform:translateX(-50%);
+  background:rgba(30,20,60,0.95); border:2px solid #ff80b0;
+  border-radius:12px; padding:10px 20px; z-index:55;
+  color:#fff; font-family:'Exo 2',sans-serif; font-weight:700; font-size:13px;
+  text-align:center; pointer-events:none; white-space:nowrap;
+  animation:pkToastIn .3s ease;
+}
+@keyframes pkToastIn { from{opacity:0;transform:translateX(-50%) translateY(-8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+/* Item pickup notification */
+.pk-item-toast { border-color:#ffd700; }
 
 /* Battle log */
 .pk-log {

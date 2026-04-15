@@ -1908,27 +1908,29 @@ const pokemonModule = (() => {
 
   /* ── SPECIES DATA ── */
   const SP = {
-    pikachu:   {name:'Pikachu',  types:['electric'],        emoji:'⚡', hp:35, atk:55,def:40,spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],  xpY:112,starter:true},
-    bulbasaur: {name:'Bulbasaur',types:['grass','poison'],  emoji:'🌱', hp:45, atk:49,def:49,spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],         xpY:64, starter:true},
-    squirtle:  {name:'Squirtle', types:['water'],           emoji:'🐢', hp:44, atk:48,def:65,spd:43,  moves:['waterGun','tackle','tailWhip','growl'],         xpY:65, starter:true},
-    chikorita: {name:'Chikorita',types:['grass'],           emoji:'🍃', hp:45, atk:49,def:65,spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],        xpY:64, starter:true},
-    torchic:   {name:'Torchic',  types:['fire'],            emoji:'🔥', hp:45, atk:60,def:40,spd:45,  moves:['ember','scratch','growl','tackle'],             xpY:62, starter:true},
-    cyndaquil: {name:'Cyndaquil',types:['fire'],            emoji:'🌋', hp:39, atk:52,def:43,spd:65,  moves:['ember','tackle','leer','smokescreen'],          xpY:62, starter:true},
-    totodile:  {name:'Totodile', types:['water'],           emoji:'🐊', hp:50, atk:65,def:64,spd:43,  moves:['waterGun','scratch','leer','tackle'],           xpY:63, starter:true},
-    mudkip:    {name:'Mudkip',   types:['water','ground'],  emoji:'💧', hp:50, atk:70,def:50,spd:40,  moves:['waterGun','tackle','growl','mudSlap'],          xpY:62, starter:true},
-    treecko:   {name:'Treecko',  types:['grass'],           emoji:'🦎', hp:40, atk:45,def:35,spd:70,  moves:['pound','leer','absorb','quickAtk'],             xpY:62, starter:true},
-    eevee:     {name:'Eevee',    types:['normal'],          emoji:'🦊', hp:55, atk:55,def:50,spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],          xpY:92, starter:true},
-    rattata:   {name:'Rattata',  types:['normal'],          emoji:'🐀', hp:30, atk:56,def:35,spd:72,  moves:['tackle','quickAtk'],                           xpY:51},
-    pidgey:    {name:'Pidgey',   types:['normal','flying'], emoji:'🐦', hp:40, atk:45,def:40,spd:56,  moves:['tackle','gust'],                               xpY:50},
-    caterpie:  {name:'Caterpie', types:['bug'],             emoji:'🐛', hp:45, atk:30,def:35,spd:45,  moves:['tackle','stringShot'],                         xpY:39},
-    weedle:    {name:'Weedle',   types:['bug','poison'],    emoji:'🪲', hp:40, atk:35,def:30,spd:50,  moves:['poisonSting','stringShot'],                    xpY:39},
-    oddish:    {name:'Oddish',   types:['grass','poison'],  emoji:'🌿', hp:45, atk:50,def:55,spd:30,  moves:['absorb','poisonSting'],                        xpY:64},
-    psyduck:   {name:'Psyduck',  types:['water'],           emoji:'🦆', hp:50, atk:52,def:48,spd:55,  moves:['scratch','waterGun'],                          xpY:80},
-    geodude:   {name:'Geodude',  types:['rock','ground'],   emoji:'🪨', hp:40, atk:80,def:100,spd:20, moves:['tackle','rockThrow'],                          xpY:86},
-    zubat:     {name:'Zubat',    types:['poison','flying'], emoji:'🦇', hp:40, atk:45,def:35,spd:55,  moves:['leechLife','tackle'],                          xpY:49},
-    magikarp:  {name:'Magikarp', types:['water'],           emoji:'🐟', hp:20, atk:10,def:55,spd:80,  moves:['splash','tackle'],                             xpY:40},
-    gastly:    {name:'Gastly',   types:['ghost','poison'],  emoji:'👻', hp:30, atk:35,def:30,spd:80,  moves:['lick','poisonSting'],                          xpY:95},
+    pikachu:   {name:'Pikachu',  types:['electric'],        dexId:25,  hp:35, atk:55,def:40,spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],  xpY:112,starter:true},
+    bulbasaur: {name:'Bulbasaur',types:['grass','poison'],  dexId:1,   hp:45, atk:49,def:49,spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],         xpY:64, starter:true},
+    squirtle:  {name:'Squirtle', types:['water'],           dexId:7,   hp:44, atk:48,def:65,spd:43,  moves:['waterGun','tackle','tailWhip','growl'],         xpY:65, starter:true},
+    chikorita: {name:'Chikorita',types:['grass'],           dexId:152, hp:45, atk:49,def:65,spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],        xpY:64, starter:true},
+    torchic:   {name:'Torchic',  types:['fire'],            dexId:255, hp:45, atk:60,def:40,spd:45,  moves:['ember','scratch','growl','tackle'],             xpY:62, starter:true},
+    cyndaquil: {name:'Cyndaquil',types:['fire'],            dexId:155, hp:39, atk:52,def:43,spd:65,  moves:['ember','tackle','leer','smokescreen'],          xpY:62, starter:true},
+    totodile:  {name:'Totodile', types:['water'],           dexId:158, hp:50, atk:65,def:64,spd:43,  moves:['waterGun','scratch','leer','tackle'],           xpY:63, starter:true},
+    mudkip:    {name:'Mudkip',   types:['water','ground'],  dexId:258, hp:50, atk:70,def:50,spd:40,  moves:['waterGun','tackle','growl','mudSlap'],          xpY:62, starter:true},
+    treecko:   {name:'Treecko',  types:['grass'],           dexId:252, hp:40, atk:45,def:35,spd:70,  moves:['pound','leer','absorb','quickAtk'],             xpY:62, starter:true},
+    eevee:     {name:'Eevee',    types:['normal'],          dexId:133, hp:55, atk:55,def:50,spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],          xpY:92, starter:true},
+    rattata:   {name:'Rattata',  types:['normal'],          dexId:19,  hp:30, atk:56,def:35,spd:72,  moves:['tackle','quickAtk'],                           xpY:51},
+    pidgey:    {name:'Pidgey',   types:['normal','flying'], dexId:16,  hp:40, atk:45,def:40,spd:56,  moves:['tackle','gust'],                               xpY:50},
+    caterpie:  {name:'Caterpie', types:['bug'],             dexId:10,  hp:45, atk:30,def:35,spd:45,  moves:['tackle','stringShot'],                         xpY:39},
+    weedle:    {name:'Weedle',   types:['bug','poison'],    dexId:13,  hp:40, atk:35,def:30,spd:50,  moves:['poisonSting','stringShot'],                    xpY:39},
+    oddish:    {name:'Oddish',   types:['grass','poison'],  dexId:43,  hp:45, atk:50,def:55,spd:30,  moves:['absorb','poisonSting'],                        xpY:64},
+    psyduck:   {name:'Psyduck',  types:['water'],           dexId:54,  hp:50, atk:52,def:48,spd:55,  moves:['scratch','waterGun'],                          xpY:80},
+    geodude:   {name:'Geodude',  types:['rock','ground'],   dexId:74,  hp:40, atk:80,def:100,spd:20, moves:['tackle','rockThrow'],                          xpY:86},
+    zubat:     {name:'Zubat',    types:['poison','flying'], dexId:41,  hp:40, atk:45,def:35,spd:55,  moves:['leechLife','tackle'],                          xpY:49},
+    magikarp:  {name:'Magikarp', types:['water'],           dexId:129, hp:20, atk:10,def:55,spd:80,  moves:['splash','tackle'],                             xpY:40},
+    gastly:    {name:'Gastly',   types:['ghost','poison'],  dexId:92,  hp:30, atk:35,def:30,spd:80,  moves:['lick','poisonSting'],                          xpY:95},
   };
+  const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+  function spriteUrl(speciesId, back=false){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `${SPRITE_BASE}${back?'/back/':'/'}`+id+'.png' : ''; }
 
   /* ── MOVE DATA ── */
   const MV = {
@@ -1992,6 +1994,12 @@ const pokemonModule = (() => {
   let moveThrottle = 0, lastTileKey = null;
   let battle = null, battleLocked = false;
   let _kdown, _kup;
+  let mapItems = [];          // HP restore items on the overworld
+  let pcCooldown = 0;         // ms until PC can heal again
+  let itemToast = null;       // {text, expires, color}
+  // Pokémon Center entrance: center-path tiles x=25, y=30-33 (PATH between buildings)
+  const PC_TILES = [{x:25,y:30},{x:25,y:31},{x:25,y:32},{x:25,y:33}];
+  const ITEM_TYPES = {POTION:{name:'Potion',heal:20,color:'#ff80b0',glow:'rgba(255,128,176,0.4)'},SUPER_POTION:{name:'Super Potion',heal:50,color:'#ff40a0',glow:'rgba(255,64,160,0.4)'},FULL_RESTORE:{name:'Full Restore',heal:9999,color:'#ffd700',glow:'rgba(255,215,0,0.4)'}};
 
   /* ── MAP GENERATION ── */
   function generateMap() {
@@ -2032,6 +2040,129 @@ const pokemonModule = (() => {
 
   function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
   function isSolid(tx,ty){ const t=getTile(tx,ty); return t===T.TREE||t===T.BUILDING||t===T.WATER; }
+
+  /* ── ITEMS ── */
+  function initMapItems(){
+    mapItems = [
+      // Potions scattered around the route and forest
+      {tx:24,ty:15,type:'POTION'},{tx:26,ty:20,type:'POTION'},
+      {tx:12,ty:18,type:'POTION'},{tx:8,ty:22,type:'POTION'},
+      {tx:15,ty:24,type:'POTION'},{tx:32,ty:18,type:'POTION'},
+      {tx:38,ty:17,type:'POTION'},{tx:40,ty:22,type:'POTION'},
+      // Super Potions in harder areas
+      {tx:5,ty:16,type:'SUPER_POTION'},{tx:10,ty:25,type:'SUPER_POTION'},
+      {tx:35,ty:14,type:'SUPER_POTION'},{tx:42,ty:23,type:'SUPER_POTION'},
+      // Full Restore — rare, near lake shore
+      {tx:22,ty:10,type:'FULL_RESTORE'},{tx:27,ty:11,type:'FULL_RESTORE'},
+    ].map(it=>({...it,collected:false}));
+  }
+
+  function showToast(text,color,duration=2200){
+    if(!canvas)return;
+    itemToast={text,color:color||'#ffd700',expires:Date.now()+duration};
+  }
+
+  function checkItemPickup(tx,ty){
+    for(const item of mapItems){
+      if(item.collected)continue;
+      if(Math.abs(item.tx-tx)<=0 && Math.abs(item.ty-ty)<=0){
+        item.collected=true;
+        const it=ITEM_TYPES[item.type];
+        if(it && team.length>0){
+          // Heal the first non-fainted Pokémon
+          const target=team.find(p=>p.hp>0)||team[0];
+          const before=target.hp;
+          target.hp=Math.min(target.maxHp, target.hp+it.heal);
+          const healed=target.hp-before;
+          showToast(`Found ${it.name}! ${target.name} +${healed} HP`,it.color);
+        }
+        return;
+      }
+    }
+  }
+
+  function checkPokeCenter(tx,ty){
+    if(battle||pcCooldown>Date.now())return;
+    const atPC=PC_TILES.some(p=>p.x===tx&&p.y===ty);
+    if(!atPC)return;
+    const needsHeal=team.some(p=>p.hp<p.maxHp);
+    if(!needsHeal)return;
+    pcCooldown=Date.now()+3000; // 3 s cooldown before prompting again
+    healAtCenter();
+  }
+
+  function healAtCenter(){
+    // Animate HP bars filling over 1.5 s then show toast
+    const steps=20, interval=75;
+    let step=0;
+    showToast('🏥 Welcome to the Pokémon Center!','#ff80b0',2000);
+    const timer=setInterval(()=>{
+      step++;
+      team.forEach(p=>{ p.hp=Math.min(p.maxHp, p.hp+Math.ceil(p.maxHp/steps)); });
+      if(step>=steps){
+        team.forEach(p=>{ p.hp=p.maxHp; });
+        clearInterval(timer);
+        showToast('✨ Your Pokémon are fully healed!','#00ff88',2000);
+        saveGame();
+      }
+    },interval);
+  }
+
+  /* ── DRAW ITEMS ON OVERWORLD ── */
+  function drawMapItems(){
+    const now=Date.now();
+    mapItems.forEach(item=>{
+      if(item.collected)return;
+      const it=ITEM_TYPES[item.type]; if(!it)return;
+      const sx=item.tx*TSIZE-camX+TSIZE/2, sy=item.ty*TSIZE-camY+TSIZE/2;
+      if(sx<-16||sx>canvas.width+16||sy<-16||sy>canvas.height+16)return;
+      // Glow pulse
+      const pulse=0.5+0.5*Math.sin(now/400);
+      ctx.save();
+      ctx.globalAlpha=0.35+0.25*pulse;
+      ctx.fillStyle=it.glow;
+      ctx.beginPath(); ctx.arc(sx,sy,10+4*pulse,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.fillStyle=it.color;
+      ctx.beginPath(); ctx.arc(sx,sy,5,0,Math.PI*2); ctx.fill();
+      // Sparkle cross
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.globalAlpha=0.7;
+      ctx.beginPath(); ctx.moveTo(sx-8,sy); ctx.lineTo(sx+8,sy);
+      ctx.moveTo(sx,sy-8); ctx.lineTo(sx,sy+8); ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  /* ── DRAW TOAST NOTIFICATION ── */
+  function drawToast(){
+    if(!itemToast||Date.now()>itemToast.expires)return;
+    const alpha=Math.min(1,(itemToast.expires-Date.now())/300);
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.fillStyle='rgba(10,5,30,0.88)';
+    ctx.font='bold 13px "Exo 2",sans-serif';
+    const tw=ctx.measureText(itemToast.text).width+24;
+    const tx2=(canvas.width-tw)/2, ty2=18;
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.fill();}
+    else ctx.fillRect(tx2,ty2,tw,28);
+    ctx.strokeStyle=itemToast.color; ctx.lineWidth=2;
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.stroke();}
+    ctx.fillStyle='#fff'; ctx.textBaseline='middle';
+    ctx.fillText(itemToast.text,tx2+12,ty2+14);
+    ctx.restore();
+  }
+
+  /* ── DRAW POKÉMON CENTER SIGN ── */
+  function drawPCSign(){
+    // Draw "PC" label on the upper-right building tile (x=26-29,y=30-33)
+    const sx=27*TSIZE-camX, sy=30*TSIZE-camY;
+    if(sx<-80||sx>canvas.width+80||sy<-80||sy>canvas.height+80)return;
+    ctx.save();
+    ctx.fillStyle='rgba(255,100,160,0.92)';
+    ctx.font='bold 9px monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🏥 P.C.',sx+2*TSIZE,sy+1.5*TSIZE);
+    ctx.restore();
+  }
   function getZone(tx,ty){
     if(tx>=14&&tx<=35&&ty>=10&&ty<=13) return 'shore';
     if(tx>=3&&tx<=18&&ty>=13&&ty<=27)  return 'forest';
@@ -2096,7 +2227,10 @@ const pokemonModule = (() => {
     for(let ty=ty0;ty<=ty1;ty++)
       for(let tx=tx0;tx<=tx1;tx++)
         drawTile(tx*TSIZE-camX, ty*TSIZE-camY, getTile(tx,ty), tx, ty);
+    drawMapItems();
+    drawPCSign();
     drawPlayerChar(player.x-camX, player.y-camY);
+    drawToast();
   }
 
   /* ── POKEMON INSTANCES ── */
@@ -2147,12 +2281,14 @@ const pokemonModule = (() => {
     const hpCol=pct=>pct>50?'#2dcc70':pct>25?'#f0b030':'#e74c3c';
     document.getElementById('pk-ename').textContent=e.name;
     document.getElementById('pk-elvl').textContent=`Lv.${e.level}`;
-    document.getElementById('pk-esprite').textContent=e.emoji;
+    const ei=document.getElementById('pk-esprite-img');
+    if(ei){ ei.src=spriteUrl(e.speciesId); ei.alt=e.name; }
     const eb=document.getElementById('pk-ehp-bar'); eb.style.width=eph+'%'; eb.style.background=hpCol(eph);
     document.getElementById('pk-ehp-text').textContent=`${Math.max(0,e.hp)}/${e.maxHp}`;
     document.getElementById('pk-pname').textContent=p.name;
     document.getElementById('pk-plvl').textContent=`Lv.${p.level}`;
-    document.getElementById('pk-psprite').textContent=p.emoji;
+    const pi=document.getElementById('pk-psprite-img');
+    if(pi){ pi.src=spriteUrl(p.speciesId,true); pi.alt=p.name; }
     const pb=document.getElementById('pk-php-bar'); pb.style.width=pph+'%'; pb.style.background=hpCol(pph);
     document.getElementById('pk-php-text').textContent=`${Math.max(0,p.hp)}/${p.maxHp}`;
     document.getElementById('pk-xp-bar').style.width=Math.min(100,Math.round(p.xp/p.xpToNext*100))+'%';
@@ -2294,7 +2430,10 @@ const pokemonModule = (() => {
       player.moving=true; player.frame=Math.floor(ts/160)%4;
       if(Date.now()-moveThrottle>150){
         moveThrottle=Date.now();
-        checkEncounter(Math.floor((player.x+CHAR_S/2)/TSIZE),Math.floor((player.y+CHAR_S/2)/TSIZE));
+        const ptx=Math.floor((player.x+CHAR_S/2)/TSIZE), pty=Math.floor((player.y+CHAR_S/2)/TSIZE);
+        checkEncounter(ptx,pty);
+        checkItemPickup(ptx,pty);
+        checkPokeCenter(ptx,pty);
       }
     } else { player.moving=false; }
     drawOverworld();
@@ -2367,6 +2506,7 @@ const pokemonModule = (() => {
       };
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
       if(!worldMap) worldMap=generateMap();
+      if(mapItems.length===0) initMapItems();
       if(!loadGame()){ player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; showStarterModal(); }
       _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
       _kup=e=>{ keys[e.key]=false; };

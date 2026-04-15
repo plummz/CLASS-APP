@@ -479,6 +479,8 @@
 
       <!-- Pokédex toggle button (always visible on overworld) -->
       <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>
+      <!-- Leaderboard button -->
+      <button class="pk-lb-fab" id="pk-lb-fab" onclick="window.pokemonModule.showLeaderboard()" title="Leaderboard">🏆</button>
     </div>
   </div>
 
@@ -491,6 +493,23 @@
       </div>
       <div class="pk-dex-subtitle" id="pk-dex-subtitle">Loading…</div>
       <div class="pk-dex-grid" id="pk-dex-grid"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Overlay -->
+  <div id="pk-lb-overlay" class="pk-lb-overlay hidden">
+    <div class="pk-lb-panel">
+      <div class="pk-lb-header">
+        <span class="pk-lb-title">🏆 Pokémon Leaderboard</span>
+        <button class="pk-dex-close" onclick="window.pokemonModule.closeLeaderboard()">✕</button>
+      </div>
+      <div class="pk-lb-tabs">
+        <button class="pk-lb-tab active" id="pk-lb-tab-caught"  onclick="window.pokemonModule.showLeaderboard('caught')">🎯 Most Caught</button>
+        <button class="pk-lb-tab"        id="pk-lb-tab-levels"  onclick="window.pokemonModule.showLeaderboard('levels')">⭐ Top Levels</button>
+      </div>
+      <div class="pk-lb-list" id="pk-lb-list">
+        <div class="pk-lb-loading">Loading…</div>
+      </div>
     </div>
   </div>
 

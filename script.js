@@ -2679,6 +2679,21 @@ const pokemonModule = (() => {
       px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
       pokeballs
     }));
+    syncPkStats();
+  }
+
+  /* ── LEADERBOARD SYNC ── */
+  async function syncPkStats(){
+    if(!window.currentUser||!team.length)return;
+    try{
+      const totalLevels=team.reduce((s,m)=>s+m.level,0);
+      await sb.from('pokemon_saves').upsert({
+        username:currentUser.username,
+        pokemon_count:team.length,
+        total_levels:totalLevels,
+        updated_at:new Date().toISOString()
+      },{onConflict:'username'});
+    }catch(e){ /* table may not be ready */ }
   }
   function loadGame(){
     try{
@@ -2832,6 +2847,50 @@ const pokemonModule = (() => {
           grid.appendChild(card);
         });
       }
+    },
+    async showLeaderboard(tab='caught'){
+      const ov=document.getElementById('pk-lb-overlay');
+      if(!ov)return;
+      ov.classList.remove('hidden');
+      // update tab buttons
+      ['caught','levels'].forEach(t=>{
+        const b=document.getElementById(`pk-lb-tab-${t}`);
+        if(b)b.classList.toggle('active',t===tab);
+      });
+      const list=document.getElementById('pk-lb-list');
+      if(!list)return;
+      list.innerHTML='<div class="pk-lb-loading">Loading…</div>';
+      try{
+        const col=tab==='caught'?'pokemon_count':'total_levels';
+        const label=tab==='caught'?' caught':' total lvl';
+        const {data,error}=await sb.from('pokemon_saves')
+          .select('username,pokemon_count,total_levels')
+          .order(col,{ascending:false})
+          .limit(10);
+        if(error||!data||!data.length){
+          list.innerHTML='<div class="pk-lb-empty">No data yet — play Pokémon and save to appear here!</div>';
+          return;
+        }
+        const me=window.currentUser?.username;
+        const medals=['🥇','🥈','🥉'];
+        list.innerHTML=data.map((row,i)=>{
+          const isMe=row.username===me;
+          const rankClass=i<3?`pk-lb-rank-${i+1}`:'pk-lb-rank-n';
+          const rankIcon=medals[i]||`#${i+1}`;
+          const val=tab==='caught'?row.pokemon_count:row.total_levels;
+          return `<div class="pk-lb-row${isMe?' pk-lb-me':''}">
+            <span class="pk-lb-rank ${rankClass}">${rankIcon}</span>
+            <span class="pk-lb-name">${row.username}${isMe?'<span class="pk-lb-you">(you)</span>':''}</span>
+            <span class="pk-lb-val">${val}<span>${label}</span></span>
+          </div>`;
+        }).join('');
+      }catch(e){
+        list.innerHTML='<div class="pk-lb-empty">Could not load leaderboard.</div>';
+      }
+    },
+    closeLeaderboard(){
+      const ov=document.getElementById('pk-lb-overlay');
+      if(ov)ov.classList.add('hidden');
     },
   };
 })();

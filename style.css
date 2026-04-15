@@ -2083,3 +2083,99 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   background: rgba(255,255,255,0.03);
   min-height: 500px;
 }
+
+/* ============================================================
+   POKÉMON LEADERBOARD
+   ============================================================ */
+.pk-lb-fab {
+  position: absolute;
+  bottom: 66px; right: 14px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,215,0,0.15);
+  border: 2px solid rgba(255,215,0,0.65);
+  font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 15;
+  transition: background .15s, transform .15s;
+}
+.pk-lb-fab:hover { background: rgba(255,215,0,0.3); transform: scale(1.08); }
+
+.pk-lb-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 3000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.pk-lb-overlay.hidden { display: none !important; }
+
+.pk-lb-panel {
+  background: #0d0d1a;
+  border: 2px solid rgba(255,215,0,0.45);
+  border-radius: 18px;
+  width: min(520px, 100%);
+  max-height: 82vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.pk-lb-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pk-lb-title {
+  font-family: 'Exo 2', sans-serif; font-size: 1.1rem;
+  font-weight: 700; color: #ffd700;
+}
+.pk-lb-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pk-lb-tab {
+  flex: 1; padding: 10px 8px;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  font-family: 'Exo 2', sans-serif; font-size: 0.82rem; font-weight: 600;
+  color: #888; cursor: pointer; transition: color .15s, border-color .15s;
+}
+.pk-lb-tab.active { color: #ffd700; border-bottom-color: #ffd700; }
+.pk-lb-tab:hover:not(.active) { color: #ccc; }
+
+.pk-lb-list {
+  padding: 10px 14px 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pk-lb-loading { color: #666; font-family: 'Exo 2',sans-serif; font-size: 0.85rem; padding: 24px; text-align: center; }
+.pk-lb-empty   { color: #555; font-family: 'Exo 2',sans-serif; font-size: 0.85rem; padding: 24px; text-align: center; }
+
+.pk-lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  transition: border-color .15s;
+}
+.pk-lb-row:hover { border-color: rgba(255,215,0,0.3); }
+.pk-lb-row.pk-lb-me { border-color: rgba(255,215,0,0.5); background: rgba(255,215,0,0.06); }
+
+.pk-lb-rank {
+  font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: 1rem;
+  min-width: 28px; text-align: center;
+}
+.pk-lb-rank-1 { color: #ffd700; }
+.pk-lb-rank-2 { color: #c0c0c0; }
+.pk-lb-rank-3 { color: #cd7f32; }
+.pk-lb-rank-n { color: #555; }
+
+.pk-lb-name {
+  flex: 1; font-family: 'Exo 2', sans-serif; font-size: 0.88rem;
+  font-weight: 600; color: #ddd;
+}
+.pk-lb-name .pk-lb-you { font-size: 0.7rem; color: #ffd700; margin-left: 6px; }
+
+.pk-lb-val {
+  font-family: 'Exo 2', sans-serif; font-size: 0.85rem;
+  font-weight: 700; color: #ffd700;
+}
+.pk-lb-val span { font-size: 0.7rem; color: #888; font-weight: 400; margin-left: 3px; }

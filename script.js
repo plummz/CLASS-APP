@@ -155,8 +155,9 @@ function buildFolderCards(gridId, count, prefix = "Folder") {
 /* ============================================================
    FOLDER & FILE EXPLORER LOGIC (Supabase Powered)
    ============================================================ */
-let currentParentContext = null; 
-let currentFolderContext = null; 
+let currentParentContext = null;
+let currentFolderContext = null;
+let folderStack = []; // navigation history for back button
 
 // Music Player Global State
 let currentPlaylist = [];
@@ -176,6 +177,7 @@ window.openFolderModalObj = function(modalId) {
 
 window.openFolderExplorer = function(parentName) {
     currentParentContext = parentName;
+    folderStack = []; // reset navigation stack
     const title = document.getElementById('folder-explorer-title');
     if (title) title.innerText = `${parentName} Folders`;
     fetchAndRenderFolders();
@@ -225,11 +227,12 @@ window.createFolderAPI = function() {
     });
 };
 
-window.renameFolderAPI = function(id, oldName) {
+window.renameFolderAPI = function(id, oldName, isSub) {
     customPrompt("Enter new name for folder:", function(newName) {
         if(!newName || newName === oldName) return;
         sb.from('folders').update({ name: newName }).eq('id', id)
-        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+        .then(() => isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders())
+        .catch(err => customAlert(err.message));
     }, oldName);
 };
 
@@ -240,18 +243,46 @@ window.deleteFolderAPI = function(id) {
     });
 };
 
-window.openFileExplorer = function(folderId, folderName) {
+window.openFileExplorer = function(folderId, folderName, parentId) {
+    // Push current context onto stack for back navigation
+    if (currentFolderContext) {
+        folderStack.push({ ...currentFolderContext });
+    } else {
+        folderStack.push({ id: null, name: currentParentContext }); // root level marker
+    }
     currentFolderContext = { id: folderId, name: folderName };
+    // Build breadcrumb title
+    const crumbs = folderStack
+        .filter(f => f.id !== null)
+        .map(f => f.name)
+        .concat(folderName)
+        .join(' / ');
     const title = document.getElementById('file-explorer-title');
-    if (title) title.innerText = `${currentParentContext} / ${folderName}`;
+    if (title) title.innerText = crumbs || folderName;
     closeFolderModal('folder-explorer-modal');
+    fetchAndRenderSubFolders();
     fetchAndRenderFiles();
     openFolderModalObj('file-explorer-modal');
 };
 
 window.backToFoldersAPI = function() {
-    closeFolderModal('file-explorer-modal');
-    openFolderModalObj('folder-explorer-modal');
+    const prev = folderStack.pop();
+    if (!prev || prev.id === null) {
+        // Back to root folder-explorer
+        currentFolderContext = null;
+        closeFolderModal('file-explorer-modal');
+        openFolderModalObj('folder-explorer-modal');
+    } else {
+        // Back to a parent folder (sub-folder navigation)
+        currentFolderContext = prev;
+        const title = document.getElementById('file-explorer-title');
+        if (title) {
+            const crumbs = folderStack.filter(f => f.id !== null).map(f => f.name).concat(prev.name).join(' / ');
+            title.innerText = crumbs || prev.name;
+        }
+        fetchAndRenderSubFolders();
+        fetchAndRenderFiles();
+    }
 };
 
 function fetchAndRenderFiles() {
@@ -286,6 +317,59 @@ function fetchAndRenderFiles() {
         });
     });
 }
+
+/* ── Sub-folder support ── */
+function fetchAndRenderSubFolders() {
+    if (!currentFolderContext || !currentFolderContext.id) return;
+    const parentId = String(currentFolderContext.id);
+    sb.from('folders').select('*').eq('parent', parentId)
+    .then(({ data: subs, error }) => {
+        if (error) return console.error('Subfolder fetch error:', error);
+        const grid = document.getElementById('subfolder-grid-modal');
+        if (!grid) return;
+        grid.innerHTML = '';
+        if (subs.length === 0) {
+            grid.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:12px;">No sub-folders yet.</p>';
+            return;
+        }
+        subs.forEach(f => {
+            const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
+            grid.innerHTML += `
+            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;display:flex;flex-direction:column;">
+                <div onclick="window.openFileExplorer('${f.id}','${f.name.replace(/'/g,"\\'")}','${parentId}')" style="cursor:pointer;flex:1;text-align:center;">
+                    <div style="font-size:36px;margin-bottom:8px;">📂</div>
+                    <div style="color:white;font-weight:bold;font-family:'Exo 2';font-size:14px;word-wrap:break-word;">${f.name}</div>
+                    <div style="color:gray;font-size:10px;margin-top:4px;">By: ${f.owner}</div>
+                </div>
+                ${isOwner ? `
+                <div style="display:flex;gap:5px;margin-top:10px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
+                    <button onclick="window.renameFolderAPI('${f.id}','${f.name.replace(/'/g,"\\'")}',true)" style="flex:1;background:transparent;color:#00d4ff;border:1px solid #00d4ff;border-radius:5px;cursor:pointer;padding:4px;font-size:11px;">Rename</button>
+                    <button onclick="window.deleteSubFolderAPI('${f.id}')" style="flex:1;background:transparent;color:#ff6b6b;border:1px solid #ff6b6b;border-radius:5px;cursor:pointer;padding:4px;font-size:11px;">Delete</button>
+                </div>` : ''}
+            </div>`;
+        });
+    });
+}
+
+window.createSubFolderAPI = function() {
+    if (!currentUser) return customAlert("Please log in to create a sub-folder.");
+    if (!currentFolderContext || !currentFolderContext.id) return customAlert("No folder selected.");
+    customPrompt("Enter sub-folder name:", function(name) {
+        if (!name) return;
+        sb.from('folders').insert([{ parent: String(currentFolderContext.id), name, owner: currentUser.username }])
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderSubFolders();
+        });
+    });
+};
+
+window.deleteSubFolderAPI = function(id) {
+    customConfirm("Delete this sub-folder and all files inside it?", function() {
+        sb.from('folders').delete().eq('id', id)
+        .then(() => fetchAndRenderSubFolders()).catch(err => customAlert(err.message));
+    });
+};
 
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");

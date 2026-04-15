@@ -503,8 +503,17 @@
   <div id="file-explorer-modal" class="custom-modal-overlay">
     <div class="custom-modal-box">
       <button class="modal-close-btn" onclick="closeFolderModal('file-explorer-modal')">&times;</button>
-      <button class="modal-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
+      <button class="modal-back-btn" id="file-explorer-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
       <h2 id="file-explorer-title" class="modal-title text-blue text-center spaced">Folder Name</h2>
+      <!-- Sub-folder section (visible when folder has/can have subfolders) -->
+      <div id="subfolder-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">📂 Sub-folders</span>
+          <button class="btn-primary" style="padding:4px 12px;font-size:12px;" onclick="createSubFolderAPI()">+ New Sub-folder</button>
+        </div>
+        <div id="subfolder-grid-modal" class="folder-modal-grid" style="margin-bottom:16px;"></div>
+        <hr style="border-color:rgba(255,255,255,0.1);margin-bottom:14px;">
+      </div>
       <div class="file-upload-area">
          <input type="file" id="file-upload-input" class="file-upload-input" multiple>
          <button class="btn-blue" onclick="uploadFileToFolderAPI()">Upload Files</button>

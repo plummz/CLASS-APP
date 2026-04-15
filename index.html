@@ -490,8 +490,33 @@
       <button class="pk-lb-fab" id="pk-lb-fab" onclick="window.pokemonModule.showLeaderboard()" title="Leaderboard">🏆</button>
       <!-- Save button -->
       <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
+      <!-- Shop button -->
+      <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
       <!-- Coin counter -->
       <div id="pk-coins" class="pk-coin-display">💰 0</div>
+
+      <!-- Shop Overlay -->
+      <div id="pk-shop-overlay" class="pk-shop-overlay hidden">
+        <div class="pk-shop-panel">
+          <div class="pk-shop-header">
+            <span class="pk-shop-title">🛒 PokéMart</span>
+            <span id="pk-shop-coins-display" class="pk-shop-coins">💰 0</span>
+            <button class="pk-dex-close" onclick="window.pokemonModule.toggleShop()">✕</button>
+          </div>
+          <div class="pk-shop-tabs">
+            <button class="pk-shop-tab active" id="pk-shop-tab-buy" onclick="window.pokemonModule.showShopTab('buy')">🛒 Buy</button>
+            <button class="pk-shop-tab" id="pk-shop-tab-sell" onclick="window.pokemonModule.showShopTab('sell')">💰 Sell</button>
+          </div>
+          <div class="pk-shop-timer" id="pk-shop-timer">Stock refreshes in: --</div>
+          <!-- Target picker (revive / rare candy / stone) -->
+          <div id="pk-shop-picker" class="pk-shop-picker hidden">
+            <div class="pk-shop-picker-title" id="pk-shop-picker-title">Choose a Pokémon:</div>
+            <div id="pk-shop-picker-list" class="pk-shop-picker-list"></div>
+            <button class="pk-run-btn" style="margin-top:8px" onclick="document.getElementById('pk-shop-picker').classList.add('hidden')">Cancel</button>
+          </div>
+          <div class="pk-shop-items" id="pk-shop-items"></div>
+        </div>
+      </div>
     </div>
   </div>
 

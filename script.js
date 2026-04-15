@@ -1999,7 +1999,7 @@ const pokemonModule = (() => {
   /* ── SPECIES DATA ── */
   const SP = {
     /* ── Starters ── */
-    pikachu:   {name:'Pikachu',   types:['electric'],        dexId:25,  hp:35, atk:55,def:40, spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],   xpY:112,catchRate:190,starter:true, evolvesAt:36, evolvesInto:'raichu'},
+    pikachu:   {name:'Pikachu',   types:['electric'],        dexId:25,  hp:35, atk:55,def:40, spd:90,  moves:['thunderShock','quickAtk','tailWhip','growl'],   xpY:112,catchRate:190,starter:true, evolvesAt:36, evolvesInto:'raichu', stoneEvolves:{thunderStone:'raichu'}},
     bulbasaur: {name:'Bulbasaur', types:['grass','poison'],  dexId:1,   hp:45, atk:49,def:49, spd:45,  moves:['vineWhip','tackle','growl','tailWhip'],          xpY:64, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'ivysaur'},
     squirtle:  {name:'Squirtle',  types:['water'],           dexId:7,   hp:44, atk:48,def:65, spd:43,  moves:['waterGun','tackle','tailWhip','growl'],          xpY:65, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'wartortle'},
     chikorita: {name:'Chikorita', types:['grass'],           dexId:152, hp:45, atk:49,def:65, spd:45,  moves:['razorLeaf','tackle','growl','tailWhip'],         xpY:64, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'bayleef'},
@@ -2008,13 +2008,13 @@ const pokemonModule = (() => {
     totodile:  {name:'Totodile',  types:['water'],           dexId:158, hp:50, atk:65,def:64, spd:43,  moves:['waterGun','scratch','leer','tackle'],            xpY:63, catchRate:45, starter:true, evolvesAt:18, evolvesInto:'croconaw'},
     mudkip:    {name:'Mudkip',    types:['water','ground'],  dexId:258, hp:50, atk:70,def:50, spd:40,  moves:['waterGun','tackle','growl','mudSlap'],           xpY:62, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'marshtomp'},
     treecko:   {name:'Treecko',   types:['grass'],           dexId:252, hp:40, atk:45,def:35, spd:70,  moves:['pound','leer','absorb','quickAtk'],              xpY:62, catchRate:45, starter:true, evolvesAt:16, evolvesInto:'grovyle'},
-    eevee:     {name:'Eevee',     types:['normal'],          dexId:133, hp:55, atk:55,def:50, spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],           xpY:92, catchRate:45, starter:true, evolvesAt:36, evolvesInto:'vaporeon'},
+    eevee:     {name:'Eevee',     types:['normal'],          dexId:133, hp:55, atk:55,def:50, spd:55,  moves:['tackle','quickAtk','sandAtk','growl'],           xpY:92, catchRate:45, starter:true, evolvesAt:36, evolvesInto:'vaporeon', stoneEvolves:{waterStone:'vaporeon',thunderStone:'jolteon',fireStone:'flareon'}},
     /* ── Wild Pokémon ── */
     rattata:   {name:'Rattata',   types:['normal'],          dexId:19,  hp:30, atk:56,def:35, spd:72,  moves:['tackle','quickAtk'],                            xpY:51, catchRate:255, evolvesAt:20, evolvesInto:'raticate'},
     pidgey:    {name:'Pidgey',    types:['normal','flying'], dexId:16,  hp:40, atk:45,def:40, spd:56,  moves:['tackle','gust'],                                xpY:50, catchRate:255, evolvesAt:18, evolvesInto:'pidgeotto'},
     caterpie:  {name:'Caterpie',  types:['bug'],             dexId:10,  hp:45, atk:30,def:35, spd:45,  moves:['tackle','stringShot'],                          xpY:39, catchRate:255, evolvesAt:7,  evolvesInto:'metapod'},
     weedle:    {name:'Weedle',    types:['bug','poison'],    dexId:13,  hp:40, atk:35,def:30, spd:50,  moves:['poisonSting','stringShot'],                     xpY:39, catchRate:255, evolvesAt:7,  evolvesInto:'kakuna'},
-    oddish:    {name:'Oddish',    types:['grass','poison'],  dexId:43,  hp:45, atk:50,def:55, spd:30,  moves:['absorb','poisonSting'],                         xpY:64, catchRate:255, evolvesAt:21, evolvesInto:'gloom'},
+    oddish:    {name:'Oddish',    types:['grass','poison'],  dexId:43,  hp:45, atk:50,def:55, spd:30,  moves:['absorb','poisonSting'],                         xpY:64, catchRate:255, evolvesAt:21, evolvesInto:'gloom', stoneEvolves:{leafStone:'vileplume'}},
     psyduck:   {name:'Psyduck',   types:['water'],           dexId:54,  hp:50, atk:52,def:48, spd:55,  moves:['scratch','waterGun'],                           xpY:80, catchRate:190, evolvesAt:33, evolvesInto:'golduck'},
     geodude:   {name:'Geodude',   types:['rock','ground'],   dexId:74,  hp:40, atk:80,def:100,spd:20,  moves:['tackle','rockThrow'],                           xpY:86, catchRate:255, evolvesAt:25, evolvesInto:'graveler'},
     zubat:     {name:'Zubat',     types:['poison','flying'], dexId:41,  hp:40, atk:45,def:35, spd:55,  moves:['leechLife','tackle'],                           xpY:49, catchRate:255, evolvesAt:22, evolvesInto:'golbat'},
@@ -2040,22 +2040,30 @@ const pokemonModule = (() => {
     butterfree: {name:'Butterfree',types:['bug','flying'],   dexId:12,  hp:60, atk:45,def:50, spd:70,  moves:['gust','tackle','wingAtk','stringShot'],          xpY:178,catchRate:45},
     kakuna:    {name:'Kakuna',    types:['bug','poison'],    dexId:14,  hp:45, atk:25,def:50, spd:35,  moves:['poisonSting','stringShot'],                     xpY:72, catchRate:120,evolvesAt:10, evolvesInto:'beedrill'},
     beedrill:  {name:'Beedrill',  types:['bug','poison'],    dexId:15,  hp:65, atk:90,def:40, spd:75,  moves:['poisonSting','tackle','bodySlam','quickAtk'],    xpY:178,catchRate:45},
-    gloom:     {name:'Gloom',     types:['grass','poison'],  dexId:44,  hp:60, atk:65,def:70, spd:40,  moves:['absorb','poisonSting','razorLeaf','sludgeBomb'], xpY:138,catchRate:120},
+    gloom:     {name:'Gloom',     types:['grass','poison'],  dexId:44,  hp:60, atk:65,def:70, spd:40,  moves:['absorb','poisonSting','razorLeaf','sludgeBomb'], xpY:138,catchRate:120, stoneEvolves:{leafStone:'vileplume'}},
     golduck:   {name:'Golduck',   types:['water'],           dexId:55,  hp:80, atk:82,def:78, spd:85,  moves:['waterGun','scratch','surf','bodySlam'],          xpY:174,catchRate:75},
     graveler:  {name:'Graveler',  types:['rock','ground'],   dexId:75,  hp:55, atk:95,def:115,spd:35,  moves:['tackle','rockThrow','bodySlam','mudSlap'],       xpY:164,catchRate:120},
     golbat:    {name:'Golbat',    types:['poison','flying'], dexId:42,  hp:75, atk:80,def:70, spd:90,  moves:['leechLife','tackle','wingAtk','poisonSting'],    xpY:171,catchRate:90},
     gyarados:  {name:'Gyarados',  types:['water','flying'],  dexId:130, hp:95, atk:125,def:79,spd:81,  moves:['waterGun','tackle','surf','bodySlam'],           xpY:214,catchRate:45},
     haunter:   {name:'Haunter',   types:['ghost','poison'],  dexId:93,  hp:45, atk:50,def:45, spd:95,  moves:['lick','shadowBall','poisonSting','tackle'],      xpY:126,catchRate:90},
+    /* ── Stone-evolution targets ── */
+    ninetales: {name:'Ninetales', types:['fire'],            dexId:38,  hp:73, atk:76,def:75, spd:100, moves:['ember','tailWhip','flamethrower','quickAtk'],       xpY:177,catchRate:75},
+    arcanine:  {name:'Arcanine',  types:['fire'],            dexId:59,  hp:90, atk:110,def:80,spd:95,  moves:['ember','bite','flamethrower','bodySlam'],           xpY:194,catchRate:75},
+    clefable:  {name:'Clefable',  types:['normal'],          dexId:36,  hp:95, atk:70,def:73, spd:60,  moves:['pound','growl','bodySlam','quickAtk'],              xpY:129,catchRate:25},
+    wigglytuff:{name:'Wigglytuff',types:['normal'],          dexId:40,  hp:140,atk:70,def:45, spd:45,  moves:['pound','growl','bodySlam','quickAtk'],              xpY:109,catchRate:50},
+    jolteon:   {name:'Jolteon',   types:['electric'],        dexId:135, hp:65, atk:65,def:60, spd:130, moves:['thunderShock','quickAtk','thunderbolt','tackle'],   xpY:184,catchRate:45},
+    flareon:   {name:'Flareon',   types:['fire'],            dexId:136, hp:65, atk:130,def:60,spd:65,  moves:['ember','quickAtk','flamethrower','bodySlam'],       xpY:184,catchRate:45},
+    vileplume: {name:'Vileplume', types:['grass','poison'],  dexId:45,  hp:75, atk:80,def:85, spd:50,  moves:['absorb','poisonSting','razorLeaf','solarBeam'],     xpY:221,catchRate:45},
     /* ── Additional wild Pokémon (Gen 1) ── */
     spearow:   {name:'Spearow',   types:['normal','flying'], dexId:21,  hp:40, atk:60,def:30, spd:70,  moves:['peck','growl'],                                  xpY:52, catchRate:255},
     ekans:     {name:'Ekans',     types:['poison'],          dexId:23,  hp:35, atk:60,def:44, spd:55,  moves:['poisonSting','leer'],                            xpY:58, catchRate:255},
-    clefairy:  {name:'Clefairy',  types:['normal'],          dexId:35,  hp:70, atk:45,def:48, spd:35,  moves:['pound','growl'],                                 xpY:68, catchRate:150},
-    vulpix:    {name:'Vulpix',    types:['fire'],            dexId:37,  hp:38, atk:41,def:40, spd:65,  moves:['ember','tailWhip'],                              xpY:60, catchRate:190},
-    jigglypuff:{name:'Jigglypuff',types:['normal'],          dexId:39,  hp:115,atk:45,def:20, spd:20,  moves:['pound','growl'],                                 xpY:76, catchRate:170},
+    clefairy:  {name:'Clefairy',  types:['normal'],          dexId:35,  hp:70, atk:45,def:48, spd:35,  moves:['pound','growl'],                                 xpY:68, catchRate:150, stoneEvolves:{moonStone:'clefable'}},
+    vulpix:    {name:'Vulpix',    types:['fire'],            dexId:37,  hp:38, atk:41,def:40, spd:65,  moves:['ember','tailWhip'],                              xpY:60, catchRate:190, stoneEvolves:{fireStone:'ninetales'}},
+    jigglypuff:{name:'Jigglypuff',types:['normal'],          dexId:39,  hp:115,atk:45,def:20, spd:20,  moves:['pound','growl'],                                 xpY:76, catchRate:170, stoneEvolves:{moonStone:'wigglytuff'}},
     paras:     {name:'Paras',     types:['bug','grass'],     dexId:46,  hp:35, atk:70,def:55, spd:25,  moves:['scratch','absorb'],                              xpY:57, catchRate:190},
     venonat:   {name:'Venonat',   types:['bug','poison'],    dexId:48,  hp:60, atk:55,def:50, spd:45,  moves:['tackle','poisonSting'],                          xpY:61, catchRate:190},
     meowth:    {name:'Meowth',    types:['normal'],          dexId:52,  hp:40, atk:45,def:35, spd:90,  moves:['scratch','growl'],                               xpY:69, catchRate:255},
-    growlithe: {name:'Growlithe', types:['fire'],            dexId:58,  hp:55, atk:70,def:45, spd:60,  moves:['ember','bite'],                                  xpY:91, catchRate:190},
+    growlithe: {name:'Growlithe', types:['fire'],            dexId:58,  hp:55, atk:70,def:45, spd:60,  moves:['ember','bite'],                                  xpY:91, catchRate:190, stoneEvolves:{fireStone:'arcanine'}},
     poliwag:   {name:'Poliwag',   types:['water'],           dexId:60,  hp:40, atk:50,def:40, spd:90,  moves:['waterGun','tackle'],                             xpY:60, catchRate:255},
     bellsprout:{name:'Bellsprout',types:['grass','poison'],  dexId:69,  hp:50, atk:75,def:35, spd:40,  moves:['vineWhip','poisonSting'],                        xpY:60, catchRate:255},
     shellder:  {name:'Shellder',  types:['water'],           dexId:90,  hp:30, atk:65,def:100,spd:40,  moves:['tackle','waterGun'],                             xpY:61, catchRate:190},
@@ -2277,6 +2285,7 @@ const pokemonModule = (() => {
   let pokeballs = 5;          // player starts with 5 Pokéballs
   let coins = 0;              // in-game currency
   let totalCaught = 0;        // all-time Pokémon catch count
+  let expBoostActive = false; // EXP Charm effect: next battle 2× XP
   // Pokémon Center entrance: center-path tiles x=25, y=30-33
   const PC_TILES = [{x:25,y:30},{x:25,y:31},{x:25,y:32},{x:25,y:33}];
   const ITEM_TYPES = {
@@ -2772,7 +2781,8 @@ const pokemonModule = (() => {
     if(!battle)return;
     const {pm:p,em:e}=battle;
     if(e.hp<=0){
-      const xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
+      let xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
+      if(expBoostActive){ xg*=2; expBoostActive=false; showToast('EXP Charm activated! 2× XP!','#ffe066',1800); }
       // Award full XP to active battler, half XP to benched alive members (EXP Share)
       const benched=team.filter(m=>m!==p&&m.hp>0);
       benched.forEach(m=>{
@@ -2890,6 +2900,231 @@ const pokemonModule = (() => {
     drawOverworld();
   }
 
+  /* ── SHOP ── */
+  const SHOP_POOL = [
+    {id:'potion',       name:'Potion',        desc:'Heal lead Pokémon 30 HP',            price:20,  icon:'💊'},
+    {id:'superPotion',  name:'Super Potion',  desc:'Heal lead Pokémon 80 HP',            price:50,  icon:'💉'},
+    {id:'fullRestore',  name:'Full Restore',  desc:'Fully restore all party HP',         price:180, icon:'✨'},
+    {id:'pokeball3',    name:'Poké Ball ×3',  desc:'Add 3 Poké Balls to your bag',      price:45,  icon:'⚾'},
+    {id:'pokeball5',    name:'Poké Ball ×5',  desc:'Add 5 Poké Balls to your bag',      price:70,  icon:'⚾'},
+    {id:'revive',       name:'Revive',        desc:'Revive one fainted Pokémon (50% HP)',price:80,  icon:'💫'},
+    {id:'fullRevive',   name:'Full Revive',   desc:'Revive one fainted Pokémon (full HP)',price:200,icon:'⭐'},
+    {id:'ppRestore',    name:'PP Restore',    desc:'Fully restore all move PP now',      price:120, icon:'🔋'},
+    {id:'rareCandy',    name:'Rare Candy',    desc:'Instantly level up one Pokémon',     price:280, icon:'🍬'},
+    {id:'expCharm',     name:'EXP Charm',     desc:'Next battle earns 2× XP',           price:150, icon:'⚡'},
+    {id:'thunderStone', name:'Thunder Stone', desc:'Evolve Pikachu or Eevee (Jolteon)',  price:480, icon:'🌩️'},
+    {id:'fireStone',    name:'Fire Stone',    desc:'Evolve Vulpix, Growlithe or Eevee',  price:480, icon:'🔥'},
+    {id:'waterStone',   name:'Water Stone',   desc:'Evolve Eevee into Vaporeon',         price:480, icon:'💧'},
+    {id:'moonStone',    name:'Moon Stone',    desc:'Evolve Clefairy or Jigglypuff',      price:480, icon:'🌙'},
+    {id:'leafStone',    name:'Leaf Stone',    desc:'Evolve Oddish or Gloom to Vileplume',price:480, icon:'🍃'},
+  ];
+
+  const STONE_IDS = ['thunderStone','fireStone','waterStone','moonStone','leafStone'];
+
+  function getShopItems(){
+    const seed=Math.floor(Date.now()/(4*60*60*1000));
+    const pool=[...SHOP_POOL];
+    const picked=[];
+    let s=seed;
+    while(picked.length<5&&pool.length){
+      s=Math.abs((s*1664525+1013904223)&0x7fffffff);
+      const idx=s%pool.length;
+      picked.push(pool.splice(idx,1)[0]);
+    }
+    return picked;
+  }
+
+  function msUntilRestock(){
+    const w=4*60*60*1000;
+    return w-(Date.now()%w);
+  }
+
+  function fmtMs(ms){
+    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
+    return `${h}h ${m}m ${s}s`;
+  }
+
+  let _shopTimerInt=null;
+  function renderShopTimer(){
+    const el=document.getElementById('pk-shop-timer');
+    if(el) el.textContent='Stock refreshes in: '+fmtMs(msUntilRestock());
+  }
+
+  function applyStoneEvo(stoneName){
+    const eligible=team.filter(m=>SP[m.speciesId]?.stoneEvolves?.[stoneName]);
+    if(!eligible.length){ showToast('No Pokémon can use this stone!','#ff6b6b',2000); return false; }
+    // Show picker
+    const list=document.getElementById('pk-shop-picker-list');
+    const picker=document.getElementById('pk-shop-picker');
+    if(!picker||!list)return false;
+    list.innerHTML='';
+    eligible.forEach(mon=>{
+      const targetId=SP[mon.speciesId].stoneEvolves[stoneName];
+      const targetName=SP[targetId]?.name||targetId;
+      const btn=document.createElement('button');
+      btn.className='pk-shop-pick-btn';
+      btn.innerHTML=`<img src="${spriteUrl(mon.speciesId)}" style="width:36px;height:36px;object-fit:contain" onerror="this.style.display='none'"> ${mon.name} Lv.${mon.level} → <strong>${targetName}</strong>`;
+      btn.onclick=()=>{
+        const item=SHOP_POOL.find(i=>i.id===stoneName);
+        if(coins<item.price){ showToast('Not enough coins!','#ff6b6b',1800); picker.classList.add('hidden'); return; }
+        coins-=item.price; updateCoinsDisplay();
+        const oldName=mon.name;
+        mon.speciesId=targetId;
+        const sp=SP[targetId];
+        mon.name=sp.name;
+        mon.types=sp.types;
+        mon.maxHp=Math.floor(sp.hp*mon.level/50+10);
+        mon.hp=Math.min(mon.hp,mon.maxHp);
+        mon.atk=Math.floor(sp.atk*mon.level/50+5);
+        mon.def=Math.floor(sp.def*mon.level/50+5);
+        mon.spd=Math.floor(sp.spd*mon.level/50+5);
+        picker.classList.add('hidden');
+        saveGame();
+        showToast(`${oldName} evolved into ${mon.name}! ✨`,'#ffd700',2500);
+        playCry(sp.dexId);
+        renderShopItems(document.getElementById('pk-shop-tab-sell')?.classList.contains('active')?'sell':'buy');
+      };
+      list.appendChild(btn);
+    });
+    picker.classList.remove('hidden');
+    return true;
+  }
+
+  function showTargetPicker(title, targets, onPick){
+    const list=document.getElementById('pk-shop-picker-list');
+    const picker=document.getElementById('pk-shop-picker');
+    const ptitle=document.getElementById('pk-shop-picker-title');
+    if(!picker||!list)return;
+    if(ptitle) ptitle.textContent=title;
+    list.innerHTML='';
+    targets.forEach(({mon,label})=>{
+      const btn=document.createElement('button');
+      btn.className='pk-shop-pick-btn';
+      btn.innerHTML=`<img src="${spriteUrl(mon.speciesId)}" style="width:36px;height:36px;object-fit:contain" onerror="this.style.display='none'"> ${label}`;
+      btn.onclick=()=>{ picker.classList.add('hidden'); onPick(mon); };
+      list.appendChild(btn);
+    });
+    picker.classList.remove('hidden');
+  }
+
+  function buyItem(id){
+    const item=SHOP_POOL.find(i=>i.id===id); if(!item)return;
+    if(coins<item.price){ showToast('Not enough coins! 💰','#ff6b6b',1800); return; }
+
+    if(id==='potion'){
+      const lead=team.find(m=>m.hp>0&&m.hp<m.maxHp);
+      if(!lead){ showToast('No Pokémon needs healing!','#ffbb00',1800); return; }
+      lead.hp=Math.min(lead.maxHp,lead.hp+30);
+    } else if(id==='superPotion'){
+      const lead=team.find(m=>m.hp>0&&m.hp<m.maxHp);
+      if(!lead){ showToast('No Pokémon needs healing!','#ffbb00',1800); return; }
+      lead.hp=Math.min(lead.maxHp,lead.hp+80);
+    } else if(id==='fullRestore'){
+      team.forEach(m=>{ if(m.hp>0) m.hp=m.maxHp; });
+      if(battle) updateBUI();
+    } else if(id==='pokeball3'){
+      pokeballs+=3; updateBallBtn();
+    } else if(id==='pokeball5'){
+      pokeballs+=5; updateBallBtn();
+    } else if(id==='revive'){
+      const fainted=team.filter(m=>m.hp<=0);
+      if(!fainted.length){ showToast('No fainted Pokémon!','#ffbb00',1800); return; }
+      showTargetPicker('Choose Pokémon to revive:', fainted.map(m=>({mon:m,label:`${m.name} Lv.${m.level}`})), mon=>{
+        coins-=item.price; updateCoinsDisplay();
+        mon.hp=Math.max(1,Math.floor(mon.maxHp/2));
+        saveGame(); showToast(`${mon.name} revived!`,'#00ff88',1800);
+        renderShopItems('buy');
+      }); return;
+    } else if(id==='fullRevive'){
+      const fainted=team.filter(m=>m.hp<=0);
+      if(!fainted.length){ showToast('No fainted Pokémon!','#ffbb00',1800); return; }
+      showTargetPicker('Choose Pokémon to fully revive:', fainted.map(m=>({mon:m,label:`${m.name} Lv.${m.level}`})), mon=>{
+        coins-=item.price; updateCoinsDisplay();
+        mon.hp=mon.maxHp;
+        saveGame(); showToast(`${mon.name} fully revived!`,'#00ff88',1800);
+        renderShopItems('buy');
+      }); return;
+    } else if(id==='ppRestore'){
+      team.forEach(m=>m.moves.forEach(mv=>mv.pp=mv.maxPp));
+      if(battle) updateBUI();
+    } else if(id==='rareCandy'){
+      if(!team.length){ showToast('No Pokémon in party!','#ff6b6b',1800); return; }
+      showTargetPicker('Choose Pokémon to level up:', team.map(m=>({mon:m,label:`${m.name} Lv.${m.level}`})), mon=>{
+        coins-=item.price; updateCoinsDisplay();
+        mon.level++; applyLevelUp(mon);
+        const evo=tryEvolve(mon);
+        if(evo) showToast(`${evo} evolved into ${mon.name}! ✨`,'#ffd700',2500);
+        else showToast(`${mon.name} grew to Lv.${mon.level}! 🎉`,'#00ff88',1800);
+        if(battle) updateBUI();
+        saveGame(); renderShopItems('buy');
+      }); return;
+    } else if(id==='expCharm'){
+      expBoostActive=true;
+    } else if(STONE_IDS.includes(id)){
+      if(applyStoneEvo(id)){
+        // coins deducted inside applyStoneEvo after target chosen
+        return;
+      } else { return; }
+    }
+
+    coins-=item.price; updateCoinsDisplay();
+    saveGame();
+    showToast(`${item.icon} ${item.name} used!`,'#00ff88',1800);
+    renderShopItems('buy');
+  }
+
+  function getSellPrice(mon){
+    return Math.max(10, Math.floor(mon.level*(SP[mon.speciesId]?.xpY||50)*0.4));
+  }
+
+  function renderShopItems(tab){
+    const buyTab=document.getElementById('pk-shop-tab-buy');
+    const sellTab=document.getElementById('pk-shop-tab-sell');
+    if(buyTab) buyTab.classList.toggle('active',tab!=='sell');
+    if(sellTab) sellTab.classList.toggle('active',tab==='sell');
+    // Update coins in shop header
+    const cd=document.getElementById('pk-shop-coins-display');
+    if(cd) cd.textContent='💰 '+coins.toLocaleString();
+    const container=document.getElementById('pk-shop-items');
+    if(!container)return;
+
+    if(tab==='sell'){
+      if(!team.length){ container.innerHTML='<div class="pk-lb-empty">No Pokémon to sell.</div>'; return; }
+      container.innerHTML='<div class="pk-shop-sell-note">Selling permanently removes the Pokémon from your party.</div>';
+      team.forEach((mon,idx)=>{
+        const price=getSellPrice(mon);
+        const card=document.createElement('div');
+        card.className='pk-shop-sell-card';
+        const canSell=team.length>1;
+        card.innerHTML=`<img src="${spriteUrl(mon.speciesId)}" style="width:44px;height:44px;object-fit:contain" onerror="this.style.display='none'">
+          <div class="pk-shop-sell-info">
+            <span class="pk-shop-sell-name">${mon.name} Lv.${mon.level}</span>
+            <span class="pk-shop-sell-price">Sell: ${price}💰</span>
+          </div>
+          <button class="pk-shop-sell-btn" ${canSell?'':'disabled title="Cannot sell last Pokémon"'} onclick="window.pokemonModule._sellPokemon(${idx})">Sell</button>`;
+        container.appendChild(card);
+      });
+    } else {
+      const items=getShopItems();
+      container.innerHTML='';
+      items.forEach(item=>{
+        const canAfford=coins>=item.price;
+        const card=document.createElement('div');
+        card.className='pk-shop-item'+(canAfford?'':' pk-shop-item-poor');
+        card.innerHTML=`<span class="pk-shop-item-icon">${item.icon}</span>
+          <div class="pk-shop-item-info">
+            <div class="pk-shop-item-name">${item.name}</div>
+            <div class="pk-shop-item-desc">${item.desc}</div>
+          </div>
+          <div class="pk-shop-item-right">
+            <div class="pk-shop-item-price">${item.price}💰</div>
+            <button class="pk-shop-buy-btn" ${canAfford?'':'disabled'} onclick="window.pokemonModule._buyItem('${item.id}')">Buy</button>
+          </div>`;
+        container.appendChild(card);
+      });
+    }
+  }
+
   /* ── PP REGENERATION — +1 PP to every move on every Pokémon every 150 s ── */
   setInterval(()=>{
     if(!team.length)return;
@@ -2911,7 +3146,7 @@ const pokemonModule = (() => {
     localStorage.setItem('pkSave',JSON.stringify({
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
       px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-      pokeballs, coins, totalCaught
+      pokeballs, coins, totalCaught, expBoostActive
     }));
     syncPkStats();
   }
@@ -2938,6 +3173,7 @@ const pokemonModule = (() => {
       pokeballs=sv.pokeballs??5;
       coins=sv.coins??0;
       totalCaught=sv.totalCaught??team.length;
+      expBoostActive=sv.expBoostActive??false;
       const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
       player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
       // Validate saved position — reset to SPAWN if it landed inside a solid tile
@@ -3134,13 +3370,41 @@ const pokemonModule = (() => {
       if(ov)ov.classList.add('hidden');
     },
     showSwapPanel(forced){ showSwapPanel(forced); },
+    toggleShop(){
+      const ov=document.getElementById('pk-shop-overlay');
+      if(!ov)return;
+      const opening=ov.classList.toggle('hidden');
+      if(!opening){ // just opened (hidden was present, now removed)
+        renderShopItems('buy');
+        renderShopTimer();
+        if(_shopTimerInt) clearInterval(_shopTimerInt);
+        _shopTimerInt=setInterval(renderShopTimer,1000);
+      } else {
+        if(_shopTimerInt){ clearInterval(_shopTimerInt); _shopTimerInt=null; }
+      }
+    },
+    showShopTab(tab){ renderShopItems(tab); },
+    _buyItem(id){ buyItem(id); },
+    _sellPokemon(idx){
+      const mon=team[idx]; if(!mon||team.length<=1)return;
+      customConfirm(`Sell ${mon.name} (Lv.${mon.level}) for ${getSellPrice(mon)} coins?`, ()=>{
+        const price=getSellPrice(mon);
+        coins+=price; updateCoinsDisplay();
+        team.splice(idx,1);
+        // If active battle Pokémon was sold, this shouldn't happen outside battle — guard
+        if(battle&&battle.pm===mon) battle.pm=team[0];
+        saveGame();
+        showToast(`Sold ${mon.name} for ${price}💰`,'#ffd700',2000);
+        renderShopItems('sell');
+      });
+    },
     async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
       // Always persist to localStorage immediately
       localStorage.setItem('pkSave',JSON.stringify({
         team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
         px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-        pokeballs, coins, totalCaught
+        pokeballs, coins, totalCaught, expBoostActive
       }));
       if(!window.currentUser){
         showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);

@@ -1956,6 +1956,38 @@ const pokemonModule = (() => {
     golbat:    {name:'Golbat',    types:['poison','flying'], dexId:42,  hp:75, atk:80,def:70, spd:90,  moves:['leechLife','tackle','wingAtk','poisonSting'],    xpY:171,catchRate:90},
     gyarados:  {name:'Gyarados',  types:['water','flying'],  dexId:130, hp:95, atk:125,def:79,spd:81,  moves:['waterGun','tackle','surf','bodySlam'],           xpY:214,catchRate:45},
     haunter:   {name:'Haunter',   types:['ghost','poison'],  dexId:93,  hp:45, atk:50,def:45, spd:95,  moves:['lick','shadowBall','poisonSting','tackle'],      xpY:126,catchRate:90},
+    /* ── Additional wild Pokémon (Gen 1) ── */
+    spearow:   {name:'Spearow',   types:['normal','flying'], dexId:21,  hp:40, atk:60,def:30, spd:70,  moves:['peck','growl'],                                  xpY:52, catchRate:255},
+    ekans:     {name:'Ekans',     types:['poison'],          dexId:23,  hp:35, atk:60,def:44, spd:55,  moves:['poisonSting','leer'],                            xpY:58, catchRate:255},
+    clefairy:  {name:'Clefairy',  types:['normal'],          dexId:35,  hp:70, atk:45,def:48, spd:35,  moves:['pound','growl'],                                 xpY:68, catchRate:150},
+    vulpix:    {name:'Vulpix',    types:['fire'],            dexId:37,  hp:38, atk:41,def:40, spd:65,  moves:['ember','tailWhip'],                              xpY:60, catchRate:190},
+    jigglypuff:{name:'Jigglypuff',types:['normal'],          dexId:39,  hp:115,atk:45,def:20, spd:20,  moves:['pound','growl'],                                 xpY:76, catchRate:170},
+    paras:     {name:'Paras',     types:['bug','grass'],     dexId:46,  hp:35, atk:70,def:55, spd:25,  moves:['scratch','absorb'],                              xpY:57, catchRate:190},
+    venonat:   {name:'Venonat',   types:['bug','poison'],    dexId:48,  hp:60, atk:55,def:50, spd:45,  moves:['tackle','poisonSting'],                          xpY:61, catchRate:190},
+    meowth:    {name:'Meowth',    types:['normal'],          dexId:52,  hp:40, atk:45,def:35, spd:90,  moves:['scratch','growl'],                               xpY:69, catchRate:255},
+    growlithe: {name:'Growlithe', types:['fire'],            dexId:58,  hp:55, atk:70,def:45, spd:60,  moves:['ember','bite'],                                  xpY:91, catchRate:190},
+    poliwag:   {name:'Poliwag',   types:['water'],           dexId:60,  hp:40, atk:50,def:40, spd:90,  moves:['waterGun','tackle'],                             xpY:60, catchRate:255},
+    bellsprout:{name:'Bellsprout',types:['grass','poison'],  dexId:69,  hp:50, atk:75,def:35, spd:40,  moves:['vineWhip','poisonSting'],                        xpY:60, catchRate:255},
+    shellder:  {name:'Shellder',  types:['water'],           dexId:90,  hp:30, atk:65,def:100,spd:40,  moves:['tackle','waterGun'],                             xpY:61, catchRate:190},
+    krabby:    {name:'Krabby',    types:['water'],           dexId:98,  hp:30, atk:105,def:90,spd:50,  moves:['tackle','waterGun'],                             xpY:65, catchRate:225},
+    horsea:    {name:'Horsea',    types:['water'],           dexId:116, hp:30, atk:40,def:70, spd:60,  moves:['bubble','smokescreen'],                          xpY:59, catchRate:225},
+    jynx:      {name:'Jynx',      types:['ice','psychic'],   dexId:124, hp:65, atk:50,def:35, spd:95,  moves:['pound','iceBeam'],                               xpY:137,catchRate:45},
+    electabuzz:{name:'Electabuzz',types:['electric'],        dexId:125, hp:65, atk:83,def:57, spd:105, moves:['thunderShock','thunderbolt'],                    xpY:156,catchRate:45},
+    magmar:    {name:'Magmar',    types:['fire'],            dexId:126, hp:65, atk:95,def:57, spd:93,  moves:['ember','flamethrower'],                          xpY:167,catchRate:45},
+    dratini:   {name:'Dratini',   types:['dragon'],          dexId:147, hp:41, atk:64,def:45, spd:50,  moves:['tackle','dragonRage'],                           xpY:67, catchRate:45},
+    /* ── Additional wild Pokémon (Gen 2) ── */
+    sentret:   {name:'Sentret',   types:['normal'],          dexId:161, hp:35, atk:46,def:34, spd:20,  moves:['scratch','growl'],                               xpY:43, catchRate:255},
+    hoothoot:  {name:'Hoothoot',  types:['normal','flying'], dexId:163, hp:60, atk:30,def:30, spd:50,  moves:['tackle','peck'],                                 xpY:52, catchRate:255},
+    ledyba:    {name:'Ledyba',    types:['bug','flying'],    dexId:165, hp:40, atk:20,def:30, spd:55,  moves:['tackle','stringShot'],                           xpY:51, catchRate:255},
+    spinarak:  {name:'Spinarak',  types:['bug','poison'],    dexId:167, hp:40, atk:60,def:40, spd:30,  moves:['poisonSting','stringShot'],                      xpY:51, catchRate:255},
+    mareep:    {name:'Mareep',    types:['electric'],        dexId:179, hp:55, atk:40,def:40, spd:35,  moves:['thunderShock','growl'],                          xpY:56, catchRate:235},
+    aipom:     {name:'Aipom',     types:['normal'],          dexId:190, hp:55, atk:70,def:55, spd:85,  moves:['scratch','quickAtk'],                            xpY:72, catchRate:45},
+    wooper:    {name:'Wooper',    types:['water','ground'],  dexId:194, hp:55, atk:45,def:45, spd:15,  moves:['waterGun','mudSlap'],                            xpY:42, catchRate:255},
+    misdreavus:{name:'Misdreavus',types:['ghost'],           dexId:200, hp:60, atk:60,def:60, spd:85,  moves:['lick','shadowBall'],                             xpY:147,catchRate:45},
+    teddiursa: {name:'Teddiursa', types:['normal'],          dexId:216, hp:60, atk:80,def:50, spd:40,  moves:['scratch','tackle'],                              xpY:66, catchRate:190},
+    slugma:    {name:'Slugma',    types:['fire'],            dexId:218, hp:40, atk:40,def:40, spd:20,  moves:['ember','tackle'],                                xpY:50, catchRate:190},
+    swinub:    {name:'Swinub',    types:['ice','ground'],    dexId:220, hp:50, atk:50,def:40, spd:50,  moves:['tackle','mudSlap'],                              xpY:50, catchRate:225},
+    snubbull:  {name:'Snubbull',  types:['normal'],          dexId:209, hp:60, atk:80,def:50, spd:30,  moves:['tackle','bite'],                                 xpY:63, catchRate:190},
   };
   const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
   function spriteUrl(speciesId, back=false){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `${SPRITE_BASE}${back?'/back/':'/'}`+id+'.png' : ''; }
@@ -1995,6 +2027,13 @@ const pokemonModule = (() => {
     solarBeam:   {name:'Solar Beam',   type:'grass',   power:120,acc:100,cat:'special', pp:10},
     shadowBall:  {name:'Shadow Ball',  type:'ghost',   power:80, acc:100,cat:'special', pp:15},
     sludgeBomb:  {name:'Sludge Bomb',  type:'poison',  power:90, acc:100,cat:'special', pp:10},
+    peck:        {name:'Peck',         type:'flying',  power:35, acc:100,cat:'physical',pp:35},
+    bite:        {name:'Bite',         type:'dark',    power:60, acc:100,cat:'physical',pp:25},
+    psybeam:     {name:'Psybeam',      type:'psychic', power:65, acc:100,cat:'special', pp:20},
+    iceBeam:     {name:'Ice Beam',     type:'ice',     power:90, acc:100,cat:'special', pp:10},
+    dragonRage:  {name:'Dragon Rage',  type:'dragon',  power:40, acc:100,cat:'special', pp:10},
+    confusion:   {name:'Confusion',    type:'psychic', power:50, acc:100,cat:'special', pp:25},
+    bubble:      {name:'Bubble',       type:'water',   power:40, acc:100,cat:'special', pp:30},
   };
 
   const TYPE_COLORS = {normal:'#A8A878',electric:'#F8D030',fire:'#F08030',water:'#6890F0',
@@ -2016,12 +2055,13 @@ const pokemonModule = (() => {
   };
 
   const ZONES = {
-    route1: ['rattata','pidgey','caterpie','weedle','rattata','pidgey'],
-    forest: ['caterpie','weedle','oddish','zubat','oddish','gastly'],
-    rocky:  ['geodude','geodude','zubat','rattata','geodude'],
-    shore:  ['psyduck','magikarp','magikarp','oddish','psyduck'],
-    route2: ['rattata','pidgey','psyduck','oddish','weedle'],
-    route3: ['oddish','zubat','gastly','pidgey','rattata'],
+    route1: ['rattata','pidgey','caterpie','weedle','spearow','meowth','sentret','hoothoot','rattata','pidgey','spearow','meowth'],
+    forest: ['caterpie','weedle','oddish','zubat','gastly','paras','venonat','bellsprout','spinarak','ledyba','oddish','misdreavus'],
+    rocky:  ['geodude','geodude','zubat','rattata','ekans','growlithe','teddiursa','snubbull','slugma','geodude','ekans'],
+    shore:  ['psyduck','magikarp','magikarp','oddish','poliwag','shellder','krabby','horsea','wooper','psyduck','magikarp'],
+    route2: ['rattata','pidgey','psyduck','oddish','weedle','clefairy','jigglypuff','vulpix','mareep','aipom'],
+    route3: ['oddish','zubat','gastly','pidgey','rattata','spearow','hoothoot','swinub','misdreavus','jynx'],
+    rare:   ['electabuzz','magmar','dratini','jynx','clefairy','aipom','misdreavus','growlithe'],
   };
 
   /* ── STATE ── */
@@ -2217,9 +2257,11 @@ const pokemonModule = (() => {
     ctx.restore();
   }
   function getZone(tx,ty){
-    if(tx>=14&&tx<=35&&ty>=10&&ty<=13) return 'shore';
-    if(tx>=3&&tx<=18&&ty>=13&&ty<=27)  return 'forest';
-    if(tx>=33&&tx<=46&&ty>=13&&ty<=27) return 'rocky';
+    // Deep forest top — rare powerful Pokémon
+    if(tx>=3&&tx<=18&&ty>=13&&ty<=17)   return 'rare';
+    if(tx>=14&&tx<=35&&ty>=10&&ty<=13)  return 'shore';
+    if(tx>=3&&tx<=18&&ty>=13&&ty<=27)   return 'forest';
+    if(tx>=33&&tx<=46&&ty>=13&&ty<=27)  return 'rocky';
     if(tx>=9&&tx<=22&&(ty===20||ty===21||ty===25||ty===26)) return 'route3';
     if(tx>=27&&tx<=30&&(ty===18||ty===19||ty===23||ty===24)) return 'route2';
     return 'route1';

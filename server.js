@@ -622,7 +622,23 @@ app.delete('/api/messages/:id', (req, res) => {
 });
 
 /* ── In-memory lobby player map ─────────────────────────── */
-const lobbyPlayers = new Map(); // socketId → { username, x, y, dir, color, bodyColor }
+const lobbyPlayers = new Map(); // socketId → { username, x, y, dir, color, bodyColor, score }
+
+/* ── Star Collector mini-game ────────────────────────────── */
+const lobbyScores = {}; // username → score
+let lobbyStar = null;
+
+function spawnStar() {
+  let x, y, attempts = 0;
+  do {
+    x = 70 + Math.floor(Math.random() * 650);
+    y = 70 + Math.floor(Math.random() * 360);
+    attempts++;
+  } while (Math.hypot(x - 400, y - 250) < 75 && attempts < 20); // avoid fountain
+  lobbyStar = { id: Date.now(), x, y };
+  io.to('lobby').emit('lobby:star', lobbyStar);
+}
+spawnStar();
 
 io.on('connection', (socket) => {
   socket.on('identify', (user) => {
@@ -689,10 +705,13 @@ io.on('connection', (socket) => {
       color: playerData.color || '#00d4ff',
       bodyColor: playerData.bodyColor || '#336699',
     };
+    player.score = lobbyScores[player.username] || 0;
     lobbyPlayers.set(socket.id, player);
     socket.join('lobby');
     // Send current players to the newcomer
     socket.emit('lobby:players', Array.from(lobbyPlayers.values()));
+    // Send current star to the newcomer
+    if (lobbyStar) socket.emit('lobby:star', lobbyStar);
     // Tell everyone else
     socket.to('lobby').emit('lobby:player_joined', player);
   });
@@ -707,7 +726,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('lobby:chat', ({ text }) => {
-    const player = lobbyPlayers.get(socket.id);
+    let player = lobbyPlayers.get(socket.id);
+    // Fallback: if lobby:join was delayed but socket is identified, auto-register
+    if (!player && socket.data.username) {
+      player = {
+        username: socket.data.username, x: 200, y: 200,
+        dir: 'down', color: '#00d4ff', bodyColor: '#336699',
+        score: lobbyScores[socket.data.username] || 0,
+      };
+      lobbyPlayers.set(socket.id, player);
+      socket.join('lobby');
+      socket.emit('lobby:players', Array.from(lobbyPlayers.values()));
+      if (lobbyStar) socket.emit('lobby:star', lobbyStar);
+      socket.to('lobby').emit('lobby:player_joined', player);
+    }
     if (!player || !text) return;
     const msg = {
       username: player.username,
@@ -715,6 +747,21 @@ io.on('connection', (socket) => {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     io.to('lobby').emit('lobby:chat', msg);
+  });
+
+  socket.on('lobby:collect_star', ({ starId }) => {
+    const player = lobbyPlayers.get(socket.id);
+    if (!player || !lobbyStar || lobbyStar.id !== starId) return;
+    const old = lobbyStar;
+    lobbyStar = null; // remove immediately to prevent double-collect
+    lobbyScores[player.username] = (lobbyScores[player.username] || 0) + 1;
+    player.score = lobbyScores[player.username];
+    io.to('lobby').emit('lobby:star_collected', {
+      username: player.username,
+      score: player.score,
+      starId: old.id,
+    });
+    setTimeout(spawnStar, 1500);
   });
 
   socket.on('lobby:leave', () => {

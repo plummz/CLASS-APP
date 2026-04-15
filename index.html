@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -169,6 +169,11 @@
     <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
       <span class="nav-icon">🏫</span>
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
+    </div>
+
+    <div class="nav-item" data-page="pokemon" onclick="goToPage('pokemon')">
+      <span class="nav-icon">⚔️</span>
+      <div class="nav-text"><span class="nav-label">Pokemon</span></div>
     </div>
 
     <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">
@@ -358,6 +363,92 @@
     </div>
   </div>
 
+  <!-- ── POKEMON ──────────────────────────────────────────── -->
+  <div class="page" id="page-pokemon">
+    <div class="pk-wrapper">
+      <canvas id="pk-canvas" width="800" height="560"></canvas>
+      <div class="dpad" id="pk-dpad">
+        <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
+        <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
+        <button class="dpad-btn dpad-center" disabled></button>
+        <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
+        <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
+      </div>
+
+      <!-- Battle Overlay -->
+      <div id="pk-battle" class="pk-battle hidden">
+        <div class="pk-battle-field">
+          <!-- Enemy side -->
+          <div class="pk-enemy-side">
+            <div class="pk-hud pk-hud-enemy">
+              <div class="pk-name-level">
+                <span id="pk-ename" class="pk-name">???</span>
+                <span id="pk-elvl" class="pk-level">Lv.1</span>
+              </div>
+              <div class="pk-hp-row">
+                <span class="pk-hp-label">HP</span>
+                <div class="pk-hp-bar-track"><div id="pk-ehp-bar" class="pk-hp-bar" style="width:100%"></div></div>
+                <span id="pk-ehp-text" class="pk-hp-text">-- / --</span>
+              </div>
+            </div>
+            <div id="pk-esprite" class="pk-sprite pk-esprite">🐀</div>
+          </div>
+          <!-- Player side -->
+          <div class="pk-player-side">
+            <div id="pk-psprite" class="pk-sprite pk-psprite">⚡</div>
+            <div class="pk-hud pk-hud-player">
+              <div class="pk-name-level">
+                <span id="pk-pname" class="pk-name">Pikachu</span>
+                <span id="pk-plvl" class="pk-level">Lv.5</span>
+              </div>
+              <div class="pk-hp-row">
+                <span class="pk-hp-label">HP</span>
+                <div class="pk-hp-bar-track"><div id="pk-php-bar" class="pk-hp-bar" style="width:100%"></div></div>
+                <span id="pk-php-text" class="pk-hp-text">-- / --</span>
+              </div>
+              <div class="pk-xp-row">
+                <span class="pk-xp-label">XP</span>
+                <div class="pk-xp-bar-track"><div id="pk-xp-bar" class="pk-xp-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Battle log -->
+        <div id="pk-log" class="pk-log">
+          <div id="pk-log-line1" class="pk-log-line"></div>
+          <div id="pk-log-line2" class="pk-log-line"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div id="pk-actions" class="pk-actions">
+          <div id="pk-move-btns" class="pk-move-grid">
+            <button class="pk-move-btn" id="pk-move-0" onclick="window.pokemonModule.useMove(0)"></button>
+            <button class="pk-move-btn" id="pk-move-1" onclick="window.pokemonModule.useMove(1)"></button>
+            <button class="pk-move-btn" id="pk-move-2" onclick="window.pokemonModule.useMove(2)"></button>
+            <button class="pk-move-btn" id="pk-move-3" onclick="window.pokemonModule.useMove(3)"></button>
+          </div>
+          <button class="pk-run-btn" onclick="window.pokemonModule.tryRun()">🏃 Run Away</button>
+        </div>
+
+        <!-- Blackout overlay -->
+        <div id="pk-blackout" class="pk-blackout hidden">
+          <div class="pk-blackout-text">You blacked out!</div>
+          <button class="pk-blackout-btn" onclick="window.pokemonModule.dismissBlackout()">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Starter Selection Modal -->
+  <div id="pk-starter-modal" class="pk-starter-modal hidden">
+    <div class="pk-starter-box">
+      <h2 class="pk-starter-title">Choose Your Starter Pokemon!</h2>
+      <p class="pk-starter-sub">Your journey begins now. Choose wisely!</p>
+      <div class="pk-starter-grid" id="pk-starter-grid"></div>
+    </div>
+  </div>
+
   <!-- ── LOBBY ──────────────────────────────────────────── -->
   <div class="page" id="page-lobby">
     <div class="lobby-wrapper">
@@ -401,8 +492,8 @@
       <button class="modal-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
       <h2 id="file-explorer-title" class="modal-title text-blue text-center spaced">Folder Name</h2>
       <div class="file-upload-area">
-         <input type="file" id="file-upload-input" class="file-upload-input">
-         <button class="btn-blue" onclick="uploadFileToFolderAPI()">Upload File</button>
+         <input type="file" id="file-upload-input" class="file-upload-input" multiple>
+         <button class="btn-blue" onclick="uploadFileToFolderAPI()">Upload Files</button>
          <div id="file-upload-status" class="upload-status-text"></div>
       </div>
       <div id="file-list-container" class="file-list-container"></div>

@@ -291,24 +291,24 @@ window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
     const input = document.getElementById('file-upload-input');
     const status = document.getElementById('file-upload-status');
-    const file = input.files[0];
-    
-    if(!file) return customAlert("Please select a file first.");
-    
-    if(status) status.innerText = "Uploading to Supabase Cloud...";
-    
-    try {
+    const files = Array.from(input.files);
+
+    if(files.length === 0) return customAlert("Please select at least one file.");
+
+    let done = 0, failed = 0;
+    if(status) status.innerText = `Uploading 0 / ${files.length}…`;
+
+    for (const file of files) {
+      try {
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-        const filePath = `uploads/${Date.now()}_${safeName}`;
-        
-        const { data, error } = await sb.storage
+        const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
+
+        const { error } = await sb.storage
             .from('portfolio-assets')
             .upload(filePath, file, { contentType: file.type });
-            
+
         if (error) throw error;
 
-        if(status) status.innerText = "Upload 100%. Saving to database...";
-        
         const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
 
         await sb.from('files').insert([{
@@ -319,14 +319,19 @@ window.uploadFileToFolderAPI = async function() {
             uploader: currentUser.username
         }]);
 
-        if(status) status.innerText = "Upload Complete!";
-        input.value = "";
-        fetchAndRenderFiles();
-        
-    } catch(e) {
-        if(status) status.innerText = "Error: " + e.message;
-        console.error(e);
+        done++;
+        if(status) status.innerText = `Uploaded ${done} / ${files.length}…`;
+      } catch(e) {
+        failed++;
+        console.error('Upload error:', file.name, e);
+      }
     }
+
+    input.value = "";
+    if(status) status.innerText = failed === 0
+        ? `All ${done} file${done !== 1 ? 's' : ''} uploaded!`
+        : `${done} uploaded, ${failed} failed.`;
+    fetchAndRenderFiles();
 };
 
 window.deleteFileAPI = function(fileId) {
@@ -1100,6 +1105,7 @@ const pageConfig = {
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
+  pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
 };
 
 let currentPage = 'first';
@@ -1112,6 +1118,8 @@ window.goToPage = function(pageName) {
 
   // Lobby: tear down canvas when leaving
   if (currentPage === 'lobby') lobbyModule.destroy();
+  // Pokemon: tear down when leaving
+  if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -1156,12 +1164,10 @@ window.goToPage = function(pageName) {
   document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
   closeMenu();
 
-  // Hide the floating chat bauble on the Lobby page (it overlaps the Send button)
-  const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = pageName === 'lobby' ? 'none' : '';
-
   // Lobby: start canvas after page is visible
   if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
+  // Pokemon: start after page is visible
+  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
 };
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
@@ -1363,6 +1369,7 @@ const lobbyModule = (() => {
   let moveThrottle = 0;
   let socketReady = false;
   let _kdown, _kup;
+  let currentStar = null; // Star Collector mini-game
 
   function colorFromName(name) {
     let h = 0;
@@ -1376,7 +1383,7 @@ const lobbyModule = (() => {
     return `hsl(${((h % 360) + 360) % 360},55%,40%)`;
   }
 
-  function drawChar(x, y, name, skin, body, moving, frame, bubble) {
+  function drawChar(x, y, name, skin, body, moving, frame, bubble, score) {
     const cx = Math.round(x), cy = Math.round(y);
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
@@ -1404,8 +1411,10 @@ const lobbyModule = (() => {
     ctx.fillStyle = '#1a1010';
     ctx.fillRect(cx + 5, cy + 3, 2, 2);
     ctx.fillRect(cx + 9, cy + 3, 2, 2);
-    // Nametag
-    const label = name.length > 9 ? name.slice(0, 8) + '\u2026' : name;
+    // Nametag (with optional score badge)
+    const scoreSuffix = score ? ` \u2605${score}` : '';
+    const maxLen = score ? 6 : 9;
+    const label = (name.length > maxLen ? name.slice(0, maxLen - 1) + '\u2026' : name) + scoreSuffix;
     ctx.font = '700 9px monospace';
     ctx.textAlign = 'center';
     const tw = ctx.measureText(label).width + 8;
@@ -1423,13 +1432,12 @@ const lobbyModule = (() => {
       const btext = bubble.text.length > 18 ? bubble.text.slice(0, 17) + '\u2026' : bubble.text;
       ctx.font = '700 8px monospace';
       ctx.textAlign = 'center';
-      const tw = ctx.measureText(btext).width + 10;
-      const bw = Math.max(tw, 28), bh = 13;
+      const btw = ctx.measureText(btext).width + 10;
+      const bw = Math.max(btw, 28), bh = 13;
       const bx = cx + CHAR_W / 2 - bw / 2, by2 = cy - 31;
       ctx.fillStyle = `rgba(255,255,255,${alpha * 0.93})`;
       if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by2, bw, bh, 4); ctx.fill(); }
       else { ctx.fillRect(bx, by2, bw, bh); }
-      // Triangle pointer
       ctx.beginPath(); ctx.moveTo(cx + CHAR_W/2 - 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2 + 4, by2 + bh); ctx.lineTo(cx + CHAR_W/2, by2 + bh + 5); ctx.fill();
       ctx.fillStyle = `rgba(20,20,40,${alpha})`;
       ctx.fillText(btext, cx + CHAR_W / 2, by2 + 10);
@@ -1490,6 +1498,42 @@ const lobbyModule = (() => {
     ctx.clearRect(0, 0, W, H);
     drawMap(W, H, ts / 1000);
 
+    // ── Star Collector: draw star ──────────────────────────
+    if (currentStar) {
+      const { x: sx, y: sy } = currentStar;
+      const pulse = 0.55 + Math.sin(ts / 250) * 0.45;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      // Outer glow
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 18);
+      g.addColorStop(0, 'rgba(255, 215, 0, 0.85)');
+      g.addColorStop(1, 'rgba(255, 120, 0, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, 18, 0, Math.PI * 2); ctx.fill();
+      // 5-point star shape
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (i * Math.PI / 5) - Math.PI / 2;
+        const r = i % 2 === 0 ? 9 : 4;
+        if (i === 0) ctx.moveTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+        else ctx.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // ── Star Collector: check if my player walks over star ─
+    if (myPlayer && currentStar && sock && sock.connected) {
+      const dx = (myPlayer.x + CHAR_W / 2) - currentStar.x;
+      const dy = (myPlayer.y + CHAR_H / 2) - currentStar.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 22) {
+        const sid = currentStar.id;
+        currentStar = null; // optimistic clear
+        sock.emit('lobby:collect_star', { starId: sid });
+      }
+    }
+
     if (myPlayer) {
       const up    = keys.ArrowUp    || keys.w || dpad.up;
       const down  = keys.ArrowDown  || keys.s || dpad.down;
@@ -1517,7 +1561,7 @@ const lobbyModule = (() => {
     const all = [...players.values()];
     if (myPlayer) all.push(myPlayer);
     all.sort((a, b) => a.y - b.y);
-    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0, p.bubble);
+    for (const p of all) drawChar(p.x, p.y, p.username, p.color, p.bodyColor, p.moving || false, p.frame || 0, p.bubble, p.score || 0);
   }
 
   function setupDpad() {
@@ -1567,7 +1611,11 @@ const lobbyModule = (() => {
   return {
     setupSocket(s) {
       sock = s;
-      if (socketReady) return;
+      if (socketReady) {
+        // On reconnect: re-emit join so the server re-adds us to the room
+        if (s.connected && myPlayer) emitJoin();
+        return;
+      }
       socketReady = true;
 
       s.on('lobby:players', (all) => {
@@ -1597,6 +1645,15 @@ const lobbyModule = (() => {
         const p = players.get(msg.username);
         if (p) p.bubble = bubbleData;
         if (myPlayer && msg.username === myPlayer.username) myPlayer.bubble = bubbleData;
+      });
+      // ── Star Collector events ──────────────────────────────
+      s.on('lobby:star', (star) => { currentStar = star; });
+      s.on('lobby:star_collected', ({ username, score, starId }) => {
+        if (currentStar && currentStar.id === starId) currentStar = null;
+        const p = players.get(username);
+        if (p) p.score = score;
+        if (myPlayer && username === myPlayer.username) myPlayer.score = score;
+        addMsg('\u2605', `${username} collected a star! (${score} \u2605)`, new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       });
     },
 
@@ -1661,6 +1718,7 @@ const lobbyModule = (() => {
       if (sock && sock.connected && myPlayer) sock.emit('lobby:leave');
       players.clear();
       myPlayer = null;
+      currentStar = null;
       canvas = null; ctx = null;
     }
   };
@@ -1669,8 +1727,13 @@ const lobbyModule = (() => {
 window.sendLobbyChat = function() {
   const input = document.getElementById('lobby-chat-input');
   if (!input || !input.value.trim()) return;
-  const s = _ensureSocket();
-  if (s && s.connected) s.emit('lobby:chat', { text: input.value.trim() });
-  else if (s) s.once('connect', () => { /* message lost — acceptable */ });
+  const text = input.value.trim();
   input.value = '';
+  const s = _ensureSocket();
+  if (s && s.connected) {
+    s.emit('lobby:chat', { text });
+  } else if (s) {
+    // Queue for when connection is established
+    s.once('connect', () => s.emit('lobby:chat', { text }));
+  }
 };

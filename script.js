@@ -1992,8 +1992,8 @@ window.sendLobbyChat = function() {
 const pokemonModule = (() => {
   /* ── TILE TYPES ── */
   const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7 };
-  const TSIZE = 32, MAP_W = 50, MAP_H = 40, CHAR_S = 24;
-  const SPAWN = { x: 25, y: 35 };
+  const TSIZE = 32, CHAR_S = 24;
+  let MAP_W = 50, MAP_H = 40;
   const TILE_COLORS = [
     '#1878b8', // WATER  — clear bright blue
     '#3a8c32', // GRASS  — vibrant field green
@@ -2296,9 +2296,8 @@ const pokemonModule = (() => {
   let coins = 0;              // in-game currency
   let totalCaught = 0;        // all-time Pokémon catch count
   let expBoostActive = false; // EXP Charm effect: next battle 2× XP
+  let currentMapId = 'starterTown'; // active zone map
   const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
-  // Pokémon Center entrance: center-path tiles x=25, y=30-33
-  const PC_TILES = [{x:25,y:30},{x:25,y:31},{x:25,y:32},{x:25,y:33}];
   const ITEM_TYPES = {
     POTION:       {name:'Potion',       heal:20,   color:'#ff80b0',glow:'rgba(255,128,176,0.4)'},
     SUPER_POTION: {name:'Super Potion', heal:50,   color:'#ff40a0',glow:'rgba(255,64,160,0.4)'},
@@ -2307,41 +2306,302 @@ const pokemonModule = (() => {
     GREAT_BALL:   {name:'Great Ball',   heal:0,    color:'#4488ff',glow:'rgba(68,136,255,0.4)'},
   };
 
-  /* ── MAP GENERATION ── */
-  function generateMap() {
-    const m = Array.from({length:MAP_H}, () => new Array(MAP_W).fill(T.TREE));
-    const fill = (x1,y1,x2,y2,tile) => {
-      for(let y=Math.max(0,y1);y<=Math.min(MAP_H-1,y2);y++)
-        for(let x=Math.max(0,x1);x<=Math.min(MAP_W-1,x2);x++) m[y][x]=tile;
-    };
-    fill(2,2,MAP_W-3,MAP_H-3,T.GRASS);
-    // Lake top-center
-    fill(19,2,30,9,T.WATER);
-    fill(16,9,33,10,T.SAND); fill(16,2,18,9,T.SAND); fill(31,2,33,9,T.SAND);
-    fill(14,10,18,13,T.TALL); fill(31,10,35,13,T.TALL);
-    // Starting town
-    fill(20,29,30,MAP_H-3,T.PATH);
-    fill(21,30,24,33,T.BUILDING); fill(26,30,29,33,T.BUILDING);
-    fill(21,34,24,37,T.BUILDING); fill(26,34,29,37,T.BUILDING);
-    fill(19,29,19,MAP_H-3,T.TREE); fill(31,29,31,MAP_H-3,T.TREE);
-    fill(23,25,26,29,T.PATH);
-    // Route 1 north
-    fill(23,11,26,28,T.PATH);
-    fill(20,13,22,27,T.TALL); fill(27,13,29,27,T.TALL);
-    // Western forest
-    fill(3,13,18,27,T.TALL);
-    for(let y=13;y<=27;y+=4) for(let x=3;x<=17;x+=5) m[y][x]=T.TREE;
-    fill(9,22,22,24,T.PATH); fill(9,20,22,21,T.TALL); fill(9,25,22,26,T.TALL);
-    // Eastern rocky
-    fill(30,13,46,27,T.ROCK);
-    fill(30,17,46,19,T.PATH); fill(30,13,32,27,T.PATH);
-    fill(33,13,46,15,T.TALL); fill(33,21,46,24,T.TALL);
-    fill(27,20,30,22,T.PATH); fill(27,18,30,19,T.TALL); fill(27,23,30,24,T.TALL);
-    // Hard borders
-    fill(0,0,MAP_W-1,1,T.TREE); fill(0,MAP_H-2,MAP_W-1,MAP_H-1,T.TREE);
-    fill(0,0,1,MAP_H-1,T.TREE); fill(MAP_W-2,0,MAP_W-1,MAP_H-1,T.TREE);
-    fill(23,38,26,39,T.PATH);
+  /* ── MULTI-ZONE MAP SYSTEM ── */
+  const _mapCache = {};
+  function _newMap(){ return Array.from({length:40},()=>new Array(50).fill(T.TREE)); }
+  function _fill(m,x1,y1,x2,y2,tile){
+    for(let y=Math.max(0,y1);y<=Math.min(39,y2);y++)
+      for(let x=Math.max(0,x1);x<=Math.min(49,x2);x++) m[y][x]=tile;
+  }
+  function _borders(m,nx,ny,sx,sy,ex,ey,wx,wy){
+    // seal edges then reopen exit corridors
+    _fill(m,0,0,49,1,T.TREE); _fill(m,0,38,49,39,T.TREE);
+    _fill(m,0,0,1,39,T.TREE); _fill(m,48,0,49,39,T.TREE);
+    if(nx!==null) _fill(m,nx,0,ny,1,T.PATH);
+    if(sx!==null) _fill(m,sx,38,sy,39,T.PATH);
+    if(ex!==null) _fill(m,48,ex,49,ey,T.PATH);
+    if(wx!==null) _fill(m,0,wx,1,wy,T.PATH);
+  }
+
+  function _buildStarterTown(){
+    const m=_newMap();
+    _fill(m,2,2,47,37,T.GRASS);
+    // Lake
+    _fill(m,18,2,31,9,T.WATER);
+    _fill(m,15,9,34,10,T.SAND); _fill(m,15,2,17,9,T.SAND); _fill(m,32,2,34,9,T.SAND);
+    _fill(m,13,10,17,14,T.TALL); _fill(m,32,10,36,14,T.TALL);
+    // North route corridor
+    _fill(m,22,3,27,22,T.PATH);
+    _fill(m,19,10,21,22,T.TALL); _fill(m,28,10,30,22,T.TALL);
+    // West forest approach
+    _fill(m,2,11,18,22,T.TALL);
+    for(let y=11;y<=22;y+=4) for(let x=2;x<=17;x+=5) m[y][x]=T.TREE;
+    _fill(m,2,17,21,21,T.PATH);
+    // East rocky approach
+    _fill(m,31,11,47,22,T.ROCK);
+    _fill(m,28,17,47,21,T.PATH);
+    // Town plaza
+    _fill(m,12,23,37,37,T.PATH);
+    _fill(m,2,23,11,37,T.TREE); _fill(m,38,23,47,37,T.TREE);
+    // Buildings row 1 (y=25-27): PC(5), HouseA(3), HouseB(3), PokéMart(3), HouseC(3)
+    _fill(m,14,25,18,27,T.BUILDING); _fill(m,20,25,22,27,T.BUILDING);
+    _fill(m,25,25,27,27,T.BUILDING); _fill(m,30,25,32,27,T.BUILDING);
+    _fill(m,34,25,36,27,T.BUILDING);
+    // Buildings row 2 (y=31-33): TownHall(5), HouseD(3), HouseE(3), HouseF(3)
+    _fill(m,14,31,18,33,T.BUILDING); _fill(m,20,31,22,33,T.BUILDING);
+    _fill(m,25,31,27,33,T.BUILDING); _fill(m,30,31,32,33,T.BUILDING);
+    // Exits
+    _fill(m,23,0,26,2,T.PATH); _fill(m,0,17,1,21,T.PATH);
+    _fill(m,48,17,49,21,T.PATH); _fill(m,23,37,26,39,T.PATH);
+    _borders(m,23,26,23,26,17,21,17,21);
     return m;
+  }
+
+  function _buildRoute1(){
+    const m=_newMap();
+    _fill(m,2,2,47,37,T.GRASS);
+    _fill(m,22,0,27,39,T.PATH);
+    _fill(m,16,2,21,37,T.TALL); _fill(m,28,2,33,37,T.TALL);
+    _fill(m,2,5,15,18,T.TALL); _fill(m,2,21,15,35,T.TALL);
+    _fill(m,34,5,47,18,T.TALL); _fill(m,34,21,47,35,T.TALL);
+    _fill(m,14,12,22,14,T.PATH); _fill(m,27,26,34,28,T.PATH);
+    _fill(m,14,18,34,22,T.PATH); // rest area
+    _fill(m,15,18,17,20,T.BUILDING); // rest cabin (PC)
+    for(let y=5;y<=18;y+=5) for(let x=3;x<=14;x+=6) m[y][x]=T.TREE;
+    for(let y=21;y<=35;y+=5) for(let x=3;x<=14;x+=6) m[y][x]=T.TREE;
+    for(let y=5;y<=18;y+=5) for(let x=35;x<=46;x+=6) m[y][x]=T.TREE;
+    for(let y=21;y<=35;y+=5) for(let x=35;x<=46;x+=6) m[y][x]=T.TREE;
+    _borders(m,22,27,22,27,null,null,null,null);
+    return m;
+  }
+
+  function _buildForestZone(){
+    const m=_newMap();
+    _fill(m,0,0,49,39,T.TREE);
+    _fill(m,8,6,41,33,T.TALL);
+    _fill(m,24,4,27,35,T.PATH);
+    _fill(m,8,17,27,21,T.PATH);
+    _fill(m,8,6,12,33,T.PATH); _fill(m,37,6,41,33,T.PATH);
+    _fill(m,8,6,41,8,T.PATH); _fill(m,8,31,41,33,T.PATH);
+    _fill(m,17,9,35,16,T.PATH); // gym plaza
+    _fill(m,19,10,29,12,T.BUILDING); // gym (11 wide × 3 tall)
+    for(let y=8;y<=33;y+=5) for(let x=13;x<=22;x+=5) m[y][x]=T.TREE;
+    for(let y=8;y<=33;y+=5) for(let x=28;x<=36;x+=5) m[y][x]=T.TREE;
+    _fill(m,37,17,49,21,T.PATH);
+    _borders(m,null,null,null,null,17,21,null,null);
+    return m;
+  }
+
+  function _buildRockZone(){
+    const m=_newMap();
+    _fill(m,2,2,47,37,T.GRASS);
+    _fill(m,4,4,45,35,T.ROCK);
+    _fill(m,2,17,47,21,T.PATH); _fill(m,24,4,27,35,T.PATH);
+    _fill(m,4,4,10,9,T.PATH); _fill(m,38,4,44,9,T.PATH);
+    _fill(m,4,29,10,35,T.PATH); _fill(m,38,29,44,35,T.PATH);
+    _fill(m,12,4,22,14,T.TALL); _fill(m,27,4,37,14,T.TALL);
+    _fill(m,12,24,22,35,T.TALL); _fill(m,27,24,37,35,T.TALL);
+    _fill(m,33,8,41,11,T.PATH); // gym plaza
+    _fill(m,34,8,40,10,T.BUILDING); // gym (7 wide × 3 tall)
+    _fill(m,0,17,3,21,T.PATH);
+    _borders(m,null,null,null,null,null,null,17,21);
+    return m;
+  }
+
+  function _buildCoastZone(){
+    const m=_newMap();
+    _fill(m,2,2,47,37,T.SAND);
+    _fill(m,4,4,45,16,T.GRASS);
+    _fill(m,2,18,47,37,T.WATER);
+    _fill(m,2,16,47,18,T.SAND);
+    _fill(m,22,0,27,37,T.PATH);
+    _fill(m,4,10,22,12,T.PATH); _fill(m,27,10,45,12,T.PATH);
+    _fill(m,4,4,8,16,T.TALL); _fill(m,14,4,20,9,T.TALL);
+    _fill(m,30,4,36,9,T.TALL); _fill(m,40,4,45,16,T.TALL);
+    _fill(m,10,4,12,6,T.BUILDING);
+    _borders(m,22,27,null,null,null,null,null,null);
+    return m;
+  }
+
+  function _buildCityZone(){
+    const m=_newMap();
+    _fill(m,2,2,47,37,T.PATH);
+    // Buildings — 6 rows of blocks with greenery strips between
+    _fill(m,4,4,8,6,T.BUILDING); _fill(m,11,4,15,6,T.BUILDING);
+    _fill(m,18,4,22,6,T.BUILDING); _fill(m,25,4,29,6,T.BUILDING);
+    _fill(m,32,4,36,6,T.BUILDING); _fill(m,39,4,43,6,T.BUILDING);
+    _fill(m,4,10,8,13,T.BUILDING); _fill(m,11,10,15,13,T.BUILDING);
+    _fill(m,18,10,24,13,T.BUILDING); // PC center (7 wide)
+    _fill(m,27,10,31,13,T.BUILDING); _fill(m,34,10,38,13,T.BUILDING);
+    _fill(m,41,10,45,13,T.BUILDING);
+    _fill(m,4,17,8,20,T.BUILDING); _fill(m,11,17,17,20,T.BUILDING);
+    _fill(m,20,17,30,20,T.BUILDING); // city gym (11 wide)
+    _fill(m,33,17,37,20,T.BUILDING); _fill(m,40,17,45,20,T.BUILDING);
+    _fill(m,4,24,10,27,T.BUILDING); _fill(m,13,24,17,27,T.BUILDING);
+    _fill(m,20,24,24,27,T.BUILDING); _fill(m,27,24,31,27,T.BUILDING);
+    _fill(m,34,24,38,27,T.BUILDING); _fill(m,41,24,45,27,T.BUILDING);
+    // Greenery strips
+    _fill(m,2,7,47,9,T.GRASS); _fill(m,2,14,47,16,T.GRASS);
+    _fill(m,2,21,47,23,T.GRASS); _fill(m,2,28,47,30,T.GRASS);
+    _fill(m,2,31,47,37,T.GRASS);
+    _fill(m,2,2,3,37,T.TREE); _fill(m,46,2,47,37,T.TREE);
+    _borders(m,null,null,22,27,null,null,null,null);
+    return m;
+  }
+
+  const MAPS_DATA = {
+    starterTown:{
+      spawns:{default:{x:24,y:35},fromRoute1:{x:24,y:3},fromForest:{x:47,y:19},fromRocky:{x:2,y:19},fromCoast:{x:24,y:3}},
+      warps:[
+        {tx:23,ty:1,toMap:'route1',    toSpawn:'fromTown'},{tx:24,ty:1,toMap:'route1',    toSpawn:'fromTown'},{tx:25,ty:1,toMap:'route1',    toSpawn:'fromTown'},{tx:26,ty:1,toMap:'route1',    toSpawn:'fromTown'},
+        {tx:0, ty:17,toMap:'forestZone',toSpawn:'fromTown'},{tx:0,ty:18,toMap:'forestZone',toSpawn:'fromTown'},{tx:0,ty:19,toMap:'forestZone',toSpawn:'fromTown'},{tx:0,ty:20,toMap:'forestZone',toSpawn:'fromTown'},{tx:0,ty:21,toMap:'forestZone',toSpawn:'fromTown'},
+        {tx:49,ty:17,toMap:'rockZone',  toSpawn:'fromTown'},{tx:49,ty:18,toMap:'rockZone',  toSpawn:'fromTown'},{tx:49,ty:19,toMap:'rockZone',  toSpawn:'fromTown'},{tx:49,ty:20,toMap:'rockZone',  toSpawn:'fromTown'},{tx:49,ty:21,toMap:'rockZone',  toSpawn:'fromTown'},
+        {tx:23,ty:38,toMap:'coastZone', toSpawn:'fromTown'},{tx:24,ty:38,toMap:'coastZone', toSpawn:'fromTown'},{tx:25,ty:38,toMap:'coastZone', toSpawn:'fromTown'},{tx:26,ty:38,toMap:'coastZone', toSpawn:'fromTown'},
+      ],
+      pcTiles:[{x:14,y:28},{x:15,y:28},{x:16,y:28},{x:17,y:28},{x:18,y:28}],
+      pcSignPos:{tx:16,ty:25},
+      items:[
+        {tx:24,ty:15,type:'POTION'},{tx:26,ty:20,type:'POTION'},{tx:15,ty:24,type:'POTION'},{tx:20,ty:13,type:'POTION'},
+        {tx:10,ty:25,type:'SUPER_POTION'},{tx:22,ty:10,type:'FULL_RESTORE'},
+        {tx:23,ty:17,type:'POKEBALL'},{tx:25,ty:22,type:'POKEBALL'},
+      ],
+      signs:[
+        {tx:24,ty:10,label:'Route 1',   col:'#3a8a30',arrow:'↑'},
+        {tx:8, ty:18,label:'Forest',    col:'#228822',arrow:'←'},
+        {tx:36,ty:18,label:'Rocky Way', col:'#8a6030',arrow:'→'},
+        {tx:24,ty:36,label:'Coast',     col:'#3060a0',arrow:'↓'},
+      ],
+      encounters:'route1',
+      build:_buildStarterTown,
+    },
+    route1:{
+      spawns:{default:{x:24,y:37},fromTown:{x:24,y:37},fromCity:{x:24,y:3}},
+      warps:[
+        {tx:22,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},{tx:23,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},{tx:24,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},{tx:25,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},{tx:26,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},{tx:27,ty:39,toMap:'starterTown',toSpawn:'fromRoute1'},
+        {tx:22,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},{tx:23,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},{tx:24,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},{tx:25,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},{tx:26,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},{tx:27,ty:0, toMap:'cityZone',   toSpawn:'fromRoute1'},
+      ],
+      pcTiles:[{x:15,y:21},{x:16,y:21},{x:17,y:21}],
+      pcSignPos:{tx:16,ty:18},
+      items:[
+        {tx:18,ty:6,type:'POTION'},{tx:30,ty:8,type:'POTION'},{tx:18,ty:30,type:'POTION'},{tx:30,ty:32,type:'POTION'},
+        {tx:10,ty:14,type:'POKEBALL'},{tx:38,ty:25,type:'POKEBALL'},
+        {tx:6, ty:28,type:'SUPER_POTION'},{tx:42,ty:10,type:'SUPER_POTION'},
+        {tx:24,ty:18,type:'GREAT_BALL'},
+      ],
+      signs:[
+        {tx:24,ty:4, label:'City Zone',    col:'#a03090',arrow:'↑'},
+        {tx:24,ty:34,label:'Starter Town', col:'#305090',arrow:'↓'},
+      ],
+      encounters:'route1',
+      build:_buildRoute1,
+    },
+    forestZone:{
+      spawns:{default:{x:47,y:19},fromTown:{x:47,y:19}},
+      warps:[
+        {tx:48,ty:17,toMap:'starterTown',toSpawn:'fromForest'},{tx:48,ty:18,toMap:'starterTown',toSpawn:'fromForest'},{tx:48,ty:19,toMap:'starterTown',toSpawn:'fromForest'},{tx:48,ty:20,toMap:'starterTown',toSpawn:'fromForest'},{tx:48,ty:21,toMap:'starterTown',toSpawn:'fromForest'},{tx:49,ty:17,toMap:'starterTown',toSpawn:'fromForest'},{tx:49,ty:18,toMap:'starterTown',toSpawn:'fromForest'},{tx:49,ty:19,toMap:'starterTown',toSpawn:'fromForest'},{tx:49,ty:20,toMap:'starterTown',toSpawn:'fromForest'},{tx:49,ty:21,toMap:'starterTown',toSpawn:'fromForest'},
+      ],
+      pcTiles:[],
+      pcSignPos:null,
+      items:[
+        {tx:15,ty:22,type:'POTION'},{tx:32,ty:25,type:'POTION'},{tx:10,ty:15,type:'POTION'},
+        {tx:6, ty:20,type:'SUPER_POTION'},{tx:38,ty:28,type:'SUPER_POTION'},
+        {tx:13,ty:18,type:'POKEBALL'},{tx:35,ty:20,type:'POKEBALL'},
+        {tx:9, ty:28,type:'GREAT_BALL'},{tx:10,ty:12,type:'FULL_RESTORE'},
+      ],
+      signs:[
+        {tx:39,ty:18,label:'← Starter Town',col:'#305090',arrow:'→'},
+        {tx:24,ty:15,label:'Forest Gym',     col:'#228822',arrow:'↑'},
+      ],
+      encounters:'forest',
+      build:_buildForestZone,
+    },
+    rockZone:{
+      spawns:{default:{x:2,y:19},fromTown:{x:2,y:19}},
+      warps:[
+        {tx:0,ty:17,toMap:'starterTown',toSpawn:'fromRocky'},{tx:0,ty:18,toMap:'starterTown',toSpawn:'fromRocky'},{tx:0,ty:19,toMap:'starterTown',toSpawn:'fromRocky'},{tx:0,ty:20,toMap:'starterTown',toSpawn:'fromRocky'},{tx:0,ty:21,toMap:'starterTown',toSpawn:'fromRocky'},{tx:1,ty:17,toMap:'starterTown',toSpawn:'fromRocky'},{tx:1,ty:18,toMap:'starterTown',toSpawn:'fromRocky'},{tx:1,ty:19,toMap:'starterTown',toSpawn:'fromRocky'},{tx:1,ty:20,toMap:'starterTown',toSpawn:'fromRocky'},{tx:1,ty:21,toMap:'starterTown',toSpawn:'fromRocky'},
+      ],
+      pcTiles:[],
+      pcSignPos:null,
+      items:[
+        {tx:8, ty:7,type:'POTION'},{tx:40,ty:7,type:'POTION'},{tx:8,ty:32,type:'POTION'},{tx:40,ty:32,type:'POTION'},
+        {tx:14,ty:10,type:'SUPER_POTION'},{tx:30,ty:10,type:'SUPER_POTION'},
+        {tx:14,ty:28,type:'POKEBALL'},{tx:30,ty:28,type:'POKEBALL'},
+        {tx:25,ty:6,type:'GREAT_BALL'},{tx:38,ty:14,type:'FULL_RESTORE'},
+      ],
+      signs:[
+        {tx:4, ty:18,label:'Starter Town →',col:'#305090',arrow:'←'},
+        {tx:37,ty:12,label:'Rock Gym',       col:'#8a6030',arrow:'→'},
+      ],
+      encounters:'rocky',
+      build:_buildRockZone,
+    },
+    coastZone:{
+      spawns:{default:{x:24,y:3},fromTown:{x:24,y:3}},
+      warps:[
+        {tx:22,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},{tx:23,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},{tx:24,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},{tx:25,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},{tx:26,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},{tx:27,ty:0,toMap:'starterTown',toSpawn:'fromCoast'},
+        {tx:22,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},{tx:23,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},{tx:24,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},{tx:25,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},{tx:26,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},{tx:27,ty:1,toMap:'starterTown',toSpawn:'fromCoast'},
+      ],
+      pcTiles:[{x:10,y:7},{x:11,y:7},{x:12,y:7}],
+      pcSignPos:{tx:11,ty:4},
+      items:[
+        {tx:6, ty:6,type:'POTION'},{tx:16,ty:5,type:'POTION'},{tx:32,ty:6,type:'POTION'},{tx:42,ty:5,type:'POTION'},
+        {tx:14,ty:11,type:'POKEBALL'},{tx:35,ty:11,type:'POKEBALL'},
+        {tx:24,ty:15,type:'SUPER_POTION'},{tx:8,ty:13,type:'GREAT_BALL'},
+      ],
+      signs:[
+        {tx:24,ty:5,label:'← Starter Town',col:'#305090',arrow:'↑'},
+      ],
+      encounters:'shore',
+      build:_buildCoastZone,
+    },
+    cityZone:{
+      spawns:{default:{x:24,y:36},fromRoute1:{x:24,y:36}},
+      warps:[
+        {tx:22,ty:39,toMap:'route1',toSpawn:'fromCity'},{tx:23,ty:39,toMap:'route1',toSpawn:'fromCity'},{tx:24,ty:39,toMap:'route1',toSpawn:'fromCity'},{tx:25,ty:39,toMap:'route1',toSpawn:'fromCity'},{tx:26,ty:39,toMap:'route1',toSpawn:'fromCity'},{tx:27,ty:39,toMap:'route1',toSpawn:'fromCity'},
+        {tx:22,ty:38,toMap:'route1',toSpawn:'fromCity'},{tx:23,ty:38,toMap:'route1',toSpawn:'fromCity'},{tx:24,ty:38,toMap:'route1',toSpawn:'fromCity'},{tx:25,ty:38,toMap:'route1',toSpawn:'fromCity'},{tx:26,ty:38,toMap:'route1',toSpawn:'fromCity'},{tx:27,ty:38,toMap:'route1',toSpawn:'fromCity'},
+      ],
+      pcTiles:[{x:18,y:14},{x:19,y:14},{x:20,y:14},{x:21,y:14},{x:22,y:14},{x:23,y:14},{x:24,y:14}],
+      pcSignPos:{tx:21,ty:10},
+      items:[
+        {tx:9, ty:5,type:'POTION'},{tx:22,ty:5,type:'POTION'},{tx:37,ty:5,type:'POTION'},
+        {tx:9, ty:25,type:'SUPER_POTION'},{tx:37,ty:25,type:'SUPER_POTION'},
+        {tx:24,ty:35,type:'POKEBALL'},{tx:9,ty:11,type:'POKEBALL'},{tx:37,ty:11,type:'POKEBALL'},
+        {tx:24,ty:23,type:'GREAT_BALL'},{tx:9,ty:29,type:'FULL_RESTORE'},
+      ],
+      signs:[
+        {tx:24,ty:35,label:'Route 1',  col:'#3a8a30',arrow:'↓'},
+        {tx:25,ty:21,label:'City Gym', col:'#a03090',arrow:'↑'},
+      ],
+      encounters:'route1',
+      build:_buildCityZone,
+    },
+  };
+
+  function loadZone(mapId){
+    const md=MAPS_DATA[mapId]||MAPS_DATA.starterTown;
+    currentMapId=mapId;
+    if(!_mapCache[mapId]) _mapCache[mapId]=md.build();
+    worldMap=_mapCache[mapId];
+    tileEffects.clear();
+    mapItems=md.items.map(it=>({...it,collected:false}));
+  }
+
+  function checkWarp(tx,ty){
+    const warps=MAPS_DATA[currentMapId]?.warps||[];
+    const w=warps.find(w=>w.tx===tx&&w.ty===ty);
+    if(!w)return;
+    const md=MAPS_DATA[w.toMap]; if(!md)return;
+    const sp=md.spawns[w.toSpawn]||md.spawns.default;
+    // blackout flash
+    const bl=document.getElementById('pk-blackout');
+    if(bl){bl.classList.remove('hidden');bl.style.opacity='1';}
+    setTimeout(()=>{
+      loadZone(w.toMap);
+      player.x=sp.x*TSIZE; player.y=sp.y*TSIZE;
+      if(isSolid(sp.x,sp.y)){player.x=md.spawns.default.x*TSIZE;player.y=md.spawns.default.y*TSIZE;}
+      saveGame();
+      if(bl){bl.style.transition='opacity 0.4s';bl.style.opacity='0';setTimeout(()=>{bl.classList.add('hidden');bl.style.transition='';},420);}
+    },200);
   }
 
   function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
@@ -2349,24 +2609,8 @@ const pokemonModule = (() => {
 
   /* ── ITEMS ── */
   function initMapItems(){
-    mapItems = [
-      // Potions scattered around the route and forest
-      {tx:24,ty:15,type:'POTION'},{tx:26,ty:20,type:'POTION'},
-      {tx:12,ty:18,type:'POTION'},{tx:8,ty:22,type:'POTION'},
-      {tx:15,ty:24,type:'POTION'},{tx:32,ty:18,type:'POTION'},
-      {tx:38,ty:17,type:'POTION'},{tx:40,ty:22,type:'POTION'},
-      // Super Potions in harder areas
-      {tx:5,ty:16,type:'SUPER_POTION'},{tx:10,ty:25,type:'SUPER_POTION'},
-      {tx:35,ty:14,type:'SUPER_POTION'},{tx:42,ty:23,type:'SUPER_POTION'},
-      // Full Restore — rare, near lake shore
-      {tx:22,ty:10,type:'FULL_RESTORE'},{tx:27,ty:11,type:'FULL_RESTORE'},
-      // Pokéballs scattered around routes
-      {tx:23,ty:17,type:'POKEBALL'},{tx:25,ty:22,type:'POKEBALL'},
-      {tx:14,ty:15,type:'POKEBALL'},{tx:7,ty:20,type:'POKEBALL'},
-      {tx:36,ty:16,type:'POKEBALL'},{tx:43,ty:21,type:'POKEBALL'},
-      // Great Balls in tougher zones
-      {tx:6,ty:25,type:'GREAT_BALL'},{tx:44,ty:14,type:'GREAT_BALL'},
-    ].map(it=>({...it,collected:false}));
+    const md=MAPS_DATA[currentMapId]||MAPS_DATA.starterTown;
+    mapItems=md.items.map(it=>({...it,collected:false}));
   }
 
   function showToast(text,color,duration=2200){
@@ -2397,7 +2641,8 @@ const pokemonModule = (() => {
 
   function checkPokeCenter(tx,ty){
     if(battle||pcCooldown>Date.now())return;
-    const atPC=PC_TILES.some(p=>p.x===tx&&p.y===ty);
+    const pcTiles=MAPS_DATA[currentMapId]?.pcTiles||[];
+    const atPC=pcTiles.some(p=>p.x===tx&&p.y===ty);
     if(!atPC)return;
     const needsHeal=team.some(p=>p.hp<p.maxHp);
     if(!needsHeal)return;
@@ -2467,66 +2712,45 @@ const pokemonModule = (() => {
 
   /* ── DRAW POKÉMON CENTER SIGN ── */
   function drawPCSign(){
-    // Draw "PC" label on the upper-right building tile (x=26-29,y=30-33)
-    const sx=27*TSIZE-camX, sy=30*TSIZE-camY;
+    const pos=MAPS_DATA[currentMapId]?.pcSignPos; if(!pos) return;
+    const sx=pos.tx*TSIZE-camX, sy=pos.ty*TSIZE-camY;
     if(sx<-80||sx>canvas.width+80||sy<-80||sy>canvas.height+80)return;
     ctx.save();
     ctx.fillStyle='rgba(255,100,160,0.92)';
     ctx.font='bold 9px monospace';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('🏥 P.C.',sx+2*TSIZE,sy+1.5*TSIZE);
+    ctx.fillText('🏥 P.C.',sx+TSIZE*2,sy+TSIZE*1.5);
     ctx.restore();
   }
   /* ── ZONE / PATH MARKER SIGNS ── */
   function drawZoneSigns(){
-    // Sign posts at key junctions — drawn ON the canvas, world-space
-    const signs=[
-      {tx:24,ty:12,dir:'N',label:'Route 1',  col:'#3a8a30',arrow:'↑'},
-      {tx:10,ty:22,dir:'W',label:'Forest',   col:'#228822',arrow:'←'},
-      {tx:35,ty:18,dir:'E',label:'Rocky Way',col:'#8a6030',arrow:'→'},
-      {tx:24,ty:29,dir:'S',label:'Town',     col:'#305090',arrow:'↓'},
-    ];
-    ctx.save();
-    ctx.lineCap='round';
+    const signs=MAPS_DATA[currentMapId]?.signs||[];
+    ctx.save(); ctx.lineCap='round';
     signs.forEach(s=>{
       const sx=s.tx*TSIZE-camX, sy=s.ty*TSIZE-camY;
       if(sx<-64||sx>canvas.width+64||sy<-64||sy>canvas.height+64) return;
       const cx=sx+TSIZE/2, cy=sy+TSIZE/2;
-      // Sign post
-      ctx.fillStyle='#6a3c10';
-      ctx.fillRect(cx-2,cy,4,TSIZE/2+6);
-      // Board shadow
-      ctx.fillStyle='rgba(0,0,0,0.25)';
-      ctx.fillRect(cx-17,cy-18,34,18);
-      // Board background
-      ctx.fillStyle='#f8f0d0';
-      ctx.fillRect(cx-16,cy-19,32,18);
-      // Colored stripe
-      ctx.fillStyle=s.col;
-      ctx.fillRect(cx-16,cy-19,32,5);
-      // Label text
-      ctx.fillStyle='#2a1a08';
-      ctx.font='bold 7px sans-serif';
-      ctx.textAlign='center';
-      ctx.textBaseline='middle';
+      ctx.fillStyle='#6a3c10'; ctx.fillRect(cx-2,cy,4,TSIZE/2+6);
+      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(cx-17,cy-18,34,18);
+      ctx.fillStyle='#f8f0d0'; ctx.fillRect(cx-16,cy-19,32,18);
+      ctx.fillStyle=s.col; ctx.fillRect(cx-16,cy-19,32,5);
+      ctx.fillStyle='#2a1a08'; ctx.font='bold 7px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(s.label,cx,cy-8);
-      // Arrow
-      ctx.fillStyle=s.col;
-      ctx.font='bold 9px sans-serif';
+      ctx.fillStyle=s.col; ctx.font='bold 9px sans-serif';
       ctx.fillText(s.arrow,cx,cy-2);
     });
     ctx.restore();
   }
 
   function getZone(tx,ty){
-    // Deep forest top — rare powerful Pokémon
-    if(tx>=3&&tx<=18&&ty>=13&&ty<=17)   return 'rare';
-    if(tx>=14&&tx<=35&&ty>=10&&ty<=13)  return 'shore';
-    if(tx>=3&&tx<=18&&ty>=13&&ty<=27)   return 'forest';
-    if(tx>=33&&tx<=46&&ty>=13&&ty<=27)  return 'rocky';
-    if(tx>=9&&tx<=22&&(ty===20||ty===21||ty===25||ty===26)) return 'route3';
-    if(tx>=27&&tx<=30&&(ty===18||ty===19||ty===23||ty===24)) return 'route2';
-    return 'route1';
+    const enc=MAPS_DATA[currentMapId]?.encounters||'route1';
+    // Sub-zones within starterTown
+    if(currentMapId==='starterTown'){
+      if(tx>=13&&tx<=17&&ty>=10&&ty<=14) return 'rare';
+      if(tx>=18&&tx<=31&&ty>=9&&ty<=13)  return 'shore';
+    }
+    return enc;
   }
 
   /* ── GRASS SWAY ANIMATION ── */
@@ -3132,6 +3356,7 @@ const pokemonModule = (() => {
         checkEncounter(ptx,pty);
         checkItemPickup(ptx,pty);
         checkPokeCenter(ptx,pty);
+        checkWarp(ptx,pty);
       }
     } else { player.moving=false; }
     drawOverworld();
@@ -3384,6 +3609,7 @@ const pokemonModule = (() => {
     localStorage.setItem('pkSave',JSON.stringify({
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
       px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
+      mapId:currentMapId,
       pokeballs, coins, totalCaught, expBoostActive,
       savedAt: Date.now()
     }));
@@ -3398,10 +3624,12 @@ const pokemonModule = (() => {
     totalCaught=sv.totalCaught??team.length;
     expBoostActive=sv.expBoostActive??false;
 
-    const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
+    // Load zone first (backward compat: old saves without mapId land in starterTown)
+    loadZone(sv.mapId||'starterTown');
+    const defSpawn=MAPS_DATA[currentMapId].spawns.default;
+    const spx=sv.px||defSpawn.x, spy=sv.py||defSpawn.y;
     player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
-    // Validate saved position — reset to SPAWN if it landed inside a solid tile
-    if(worldMap && isSolid(spx,spy)){ player.x=SPAWN.x*TSIZE; player.y=SPAWN.y*TSIZE; }
+    if(isSolid(spx,spy)){ player.x=defSpawn.x*TSIZE; player.y=defSpawn.y*TSIZE; }
 
     // ── Offline PP regen ──
     // Cap at 40 ticks (~100 minutes) so ultra-long offline sessions still top off PP
@@ -3492,7 +3720,7 @@ const pokemonModule = (() => {
     Object.entries(SP).filter(([,s])=>s.starter).forEach(([id,s])=>{
       const c=document.createElement('div'); c.className='pk-starter-card';
       c.innerHTML=`<span class="pk-starter-emoji">${s.emoji}</span><div class="pk-starter-name">${s.name}</div><div class="pk-starter-type">${s.types.join(' / ')}</div>`;
-      c.onclick=()=>{ team=[mkMon(id,5)]; player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; modal.classList.add('hidden'); saveGame(); };
+      c.onclick=()=>{ team=[mkMon(id,5)]; loadZone('starterTown'); const _sp=MAPS_DATA.starterTown.spawns.default; player={x:_sp.x*TSIZE,y:_sp.y*TSIZE,dir:'down',moving:false,frame:0}; modal.classList.add('hidden'); saveGame(); };
       grid.appendChild(c);
     });
     modal.classList.remove('hidden');
@@ -3516,8 +3744,7 @@ const pokemonModule = (() => {
         if(btl) btl.style.transform=`translate(-50%,-50%) scale(${sc})`;
       };
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
-      if(!worldMap) worldMap=generateMap();
-      if(mapItems.length===0) initMapItems();
+      if(!worldMap) loadZone('starterTown');
       const finishInit = ()=>{
         updateCoinsDisplay();
         _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
@@ -3549,7 +3776,9 @@ const pokemonModule = (() => {
         }
 
         if(!used){
-          player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0};
+          loadZone('starterTown');
+          const sp=MAPS_DATA.starterTown.spawns.default;
+          player={x:sp.x*TSIZE,y:sp.y*TSIZE,dir:'down',moving:false,frame:0};
           showStarterModal();
         }
         if(bootId!==_bootId) return;
@@ -3613,7 +3842,7 @@ const pokemonModule = (() => {
     },
     dismissBlackout(){
       team.forEach(m=>{ m.hp=Math.max(1,Math.floor(m.maxHp/2)); });
-      player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0};
+      const _dsp=MAPS_DATA.starterTown.spawns.default; player={x:_dsp.x*TSIZE,y:_dsp.y*TSIZE,dir:'down',moving:false,frame:0};
       saveGame(); closeBattle();
     },
     toggleDex(){

@@ -3137,6 +3137,7 @@ const pokemonModule = (() => {
     if(anyRestored){
       showToast('+1 PP restored to all moves!','#00ff88',2200);
       if(battle) updateBUI(); // refresh button states if mid-battle
+      saveGame(); // keeps savedAt fresh for offline tick calc
     }
   }, 150000);
 
@@ -3146,7 +3147,8 @@ const pokemonModule = (() => {
     localStorage.setItem('pkSave',JSON.stringify({
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
       px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-      pokeballs, coins, totalCaught, expBoostActive
+      pokeballs, coins, totalCaught, expBoostActive,
+      savedAt: Date.now()
     }));
     syncPkStats();
   }
@@ -3178,6 +3180,16 @@ const pokemonModule = (() => {
       player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
       // Validate saved position — reset to SPAWN if it landed inside a solid tile
       if(worldMap && isSolid(spx,spy)){ player.x=SPAWN.x*TSIZE; player.y=SPAWN.y*TSIZE; }
+      // ── Offline PP regen ──
+      // Cap at 40 ticks (~100 minutes) so ultra-long offline sessions still top off PP
+      if(sv.savedAt){
+        const ticksMissed=Math.min(40, Math.floor((Date.now()-sv.savedAt)/150000));
+        if(ticksMissed>0){
+          let anyRestored=false;
+          team.forEach(mon=>{ mon.moves.forEach(mv=>{ const was=mv.pp; mv.pp=Math.min(mv.maxPp,mv.pp+ticksMissed); if(mv.pp>was)anyRestored=true; }); });
+          if(anyRestored) setTimeout(()=>showToast(`⏰ +${ticksMissed} PP restored while you were away!`,'#00ff88',3000),1500);
+        }
+      }
       return true;
     }catch(e){return false;}
   }
@@ -3404,7 +3416,8 @@ const pokemonModule = (() => {
       localStorage.setItem('pkSave',JSON.stringify({
         team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
         px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-        pokeballs, coins, totalCaught, expBoostActive
+        pokeballs, coins, totalCaught, expBoostActive,
+        savedAt: Date.now()
       }));
       if(!window.currentUser){
         showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);

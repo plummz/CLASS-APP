@@ -476,6 +476,9 @@
           <div class="pk-swap-list" id="pk-swap-list"></div>
         </div>
 
+        <!-- Coin counter — inside pk-screen so it sits over the canvas -->
+        <div id="pk-coins" class="pk-coin-display">💰 0</div>
+
         <!-- Blackout overlay -->
         <div id="pk-blackout" class="pk-blackout hidden">
           <div class="pk-blackout-text">You blacked out!</div>
@@ -492,8 +495,6 @@
       <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
       <!-- Shop button -->
       <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
-      <!-- Coin counter -->
-      <div id="pk-coins" class="pk-coin-display">💰 0</div>
 
       <!-- Shop Overlay -->
       <div id="pk-shop-overlay" class="pk-shop-overlay hidden">

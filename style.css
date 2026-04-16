@@ -2208,9 +2208,9 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 
 /* Shop overlay */
 .pk-shop-overlay {
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   background: rgba(0,0,0,0.88);
-  z-index: 200;
+  z-index: 3000;
   display: flex; align-items: center; justify-content: center; padding: 12px;
 }
 .pk-shop-overlay.hidden { display: none !important; }

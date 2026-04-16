@@ -1994,7 +1994,16 @@ const pokemonModule = (() => {
   const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7 };
   const TSIZE = 32, MAP_W = 50, MAP_H = 40, CHAR_S = 24;
   const SPAWN = { x: 25, y: 35 };
-  const TILE_COLORS = ['#1a6b9e','#3d8b3d','#c8a878','#2d6b2d','#1a3a0a','#8a6a4a','#d4b483','#7a6a5a'];
+  const TILE_COLORS = [
+    '#1878b8', // WATER  — clear bright blue
+    '#3a8c32', // GRASS  — vibrant field green
+    '#c8a860', // PATH   — warm dirt path
+    '#286828', // TALL   — deeper grass green
+    '#1a380a', // TREE   — very dark green (canopy base)
+    '#f5e8c8', // BUILDING — cream wall base
+    '#d8b870', // SAND   — warm sandy tan
+    '#8a7a6a', // ROCK   — grey-brown stone
+  ];
 
   /* ── SPECIES DATA ── */
   const SP = {
@@ -2287,6 +2296,7 @@ const pokemonModule = (() => {
   let coins = 0;              // in-game currency
   let totalCaught = 0;        // all-time Pokémon catch count
   let expBoostActive = false; // EXP Charm effect: next battle 2× XP
+  const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
   // Pokémon Center entrance: center-path tiles x=25, y=30-33
   const PC_TILES = [{x:25,y:30},{x:25,y:31},{x:25,y:32},{x:25,y:33}];
   const ITEM_TYPES = {
@@ -2467,6 +2477,47 @@ const pokemonModule = (() => {
     ctx.fillText('🏥 P.C.',sx+2*TSIZE,sy+1.5*TSIZE);
     ctx.restore();
   }
+  /* ── ZONE / PATH MARKER SIGNS ── */
+  function drawZoneSigns(){
+    // Sign posts at key junctions — drawn ON the canvas, world-space
+    const signs=[
+      {tx:24,ty:12,dir:'N',label:'Route 1',  col:'#3a8a30',arrow:'↑'},
+      {tx:10,ty:22,dir:'W',label:'Forest',   col:'#228822',arrow:'←'},
+      {tx:35,ty:18,dir:'E',label:'Rocky Way',col:'#8a6030',arrow:'→'},
+      {tx:24,ty:29,dir:'S',label:'Town',     col:'#305090',arrow:'↓'},
+    ];
+    ctx.save();
+    ctx.lineCap='round';
+    signs.forEach(s=>{
+      const sx=s.tx*TSIZE-camX, sy=s.ty*TSIZE-camY;
+      if(sx<-64||sx>canvas.width+64||sy<-64||sy>canvas.height+64) return;
+      const cx=sx+TSIZE/2, cy=sy+TSIZE/2;
+      // Sign post
+      ctx.fillStyle='#6a3c10';
+      ctx.fillRect(cx-2,cy,4,TSIZE/2+6);
+      // Board shadow
+      ctx.fillStyle='rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-17,cy-18,34,18);
+      // Board background
+      ctx.fillStyle='#f8f0d0';
+      ctx.fillRect(cx-16,cy-19,32,18);
+      // Colored stripe
+      ctx.fillStyle=s.col;
+      ctx.fillRect(cx-16,cy-19,32,5);
+      // Label text
+      ctx.fillStyle='#2a1a08';
+      ctx.font='bold 7px sans-serif';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(s.label,cx,cy-8);
+      // Arrow
+      ctx.fillStyle=s.col;
+      ctx.font='bold 9px sans-serif';
+      ctx.fillText(s.arrow,cx,cy-2);
+    });
+    ctx.restore();
+  }
+
   function getZone(tx,ty){
     // Deep forest top — rare powerful Pokémon
     if(tx>=3&&tx<=18&&ty>=13&&ty<=17)   return 'rare';
@@ -2478,30 +2529,210 @@ const pokemonModule = (() => {
     return 'route1';
   }
 
+  /* ── GRASS SWAY ANIMATION ── */
+  function touchGrass(tx,ty,strength){
+    for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+      const nx=tx+dx,ny=ty+dy;
+      const t=getTile(nx,ny);
+      if(t!==T.TALL&&t!==T.GRASS)continue;
+      const key=`${nx},${ny}`;
+      let ef=tileEffects.get(key);
+      if(!ef){ef={sway:0,vel:0};tileEffects.set(key,ef);}
+      const dist=Math.sqrt(dx*dx+dy*dy)||1;
+      ef.vel+=strength/(dist*1.4);
+    }
+  }
+  function stepTileEffects(){
+    for(const [key,ef] of tileEffects){
+      ef.sway+=ef.vel;
+      ef.vel*=0.80;
+      ef.sway*=0.86;
+      if(Math.abs(ef.sway)<0.03&&Math.abs(ef.vel)<0.03) tileEffects.delete(key);
+    }
+  }
+
   /* ── RENDERING ── */
   function drawTile(sx,sy,tile,tx,ty){
-    ctx.fillStyle = TILE_COLORS[tile]; ctx.fillRect(sx,sy,TSIZE,TSIZE);
-    if(tile===T.GRASS && (tx+ty)%2===0){ ctx.fillStyle='rgba(0,60,0,0.07)'; ctx.fillRect(sx,sy,TSIZE,TSIZE); }
+    // Fill base color
+    ctx.fillStyle=TILE_COLORS[tile]; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+    const now=Date.now();
+
+    if(tile===T.GRASS){
+      if((tx+ty)%2===0){ctx.fillStyle='rgba(0,50,0,0.07)';ctx.fillRect(sx,sy,TSIZE,TSIZE);}
+      // Tiny ground tufts — idle sway
+      const gt=now/2200+tx*0.6+ty*0.8;
+      const go=Math.sin(gt)*1.2;
+      ctx.fillStyle='rgba(30,110,30,0.30)';
+      [[4,6],[11,5],[18,7],[25,5],[29,6]].forEach(([bx,bh])=>{
+        ctx.fillRect(sx+bx,sy+TSIZE-bh+go,2,bh);
+      });
+    }
     else if(tile===T.TALL){
-      ctx.fillStyle='#1a5c1a';
-      ctx.fillRect(sx+4,sy+8,3,8); ctx.fillRect(sx+10,sy+6,3,10);
-      ctx.fillRect(sx+18,sy+9,3,7); ctx.fillRect(sx+24,sy+7,3,9);
-    } else if(tile===T.TREE){
-      ctx.fillStyle='#2a1a08'; ctx.fillRect(sx+TSIZE/2-4,sy+TSIZE/2,8,TSIZE/2);
-      ctx.fillStyle='#1a4a10'; ctx.beginPath(); ctx.arc(sx+TSIZE/2,sy+TSIZE/2,TSIZE/2-2,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#2d6b20'; ctx.beginPath(); ctx.arc(sx+TSIZE/2-5,sy+TSIZE/2-4,TSIZE/3,0,Math.PI*2); ctx.fill();
-    } else if(tile===T.WATER){
-      const s=Math.sin(Date.now()/800+tx*0.5+ty*0.3)*0.12+0.88;
-      ctx.fillStyle=`rgba(30,120,180,${s*0.28})`; ctx.fillRect(sx,sy+TSIZE/2,TSIZE,TSIZE/2);
-    } else if(tile===T.BUILDING){
-      ctx.fillStyle='#c87840'; ctx.fillRect(sx,sy,TSIZE,TSIZE/2-2);
-      ctx.fillStyle='#e0c8a0'; ctx.fillRect(sx,sy+TSIZE/2-2,TSIZE,TSIZE/2+2);
-      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(sx+TSIZE/2-4,sy+TSIZE/2+4,8,10);
-    } else if(tile===T.PATH && (tx+ty)%2===0){
-      ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
-    } else if(tile===T.ROCK){
-      ctx.fillStyle='rgba(0,0,0,0.12)';
-      ctx.fillRect(sx+2,sy+4,8,6); ctx.fillRect(sx+16,sy+12,9,5); ctx.fillRect(sx+7,sy+21,7,5);
+      // Dark ground under blades
+      ctx.fillStyle='#155015'; ctx.fillRect(sx,sy+Math.floor(TSIZE*0.58),TSIZE,Math.ceil(TSIZE*0.42));
+      // Sway from tileEffects + idle wind
+      const key=`${tx},${ty}`;
+      const ef=tileEffects.get(key);
+      const idle=Math.sin(now/1500+tx*1.1+ty*0.9)*1.8;
+      const sway=(ef?ef.sway:0)+idle;
+      // Six bezier-curve grass blades
+      const blades=[
+        {bx:3, bh:21,w:2.5,col:'#1a5c1a'},
+        {bx:8, bh:23,w:2.0,col:'#237823'},
+        {bx:13,bh:19,w:2.5,col:'#1b651b'},
+        {bx:19,bh:24,w:2.0,col:'#2a8030'},
+        {bx:24,bh:20,w:2.5,col:'#1a5c1a'},
+        {bx:29,bh:22,w:2.0,col:'#206820'},
+      ];
+      ctx.lineCap='round';
+      blades.forEach((b,i)=>{
+        const bs=sway*(0.32+i*0.13);
+        const bx=sx+b.bx+1, by=sy+TSIZE-3;
+        ctx.beginPath();
+        ctx.moveTo(bx,by);
+        ctx.quadraticCurveTo(bx+bs*0.55,by-b.bh*0.52,bx+bs*1.15,by-b.bh);
+        ctx.lineWidth=b.w; ctx.strokeStyle=b.col; ctx.stroke();
+        // Lighter tip accent
+        ctx.beginPath();
+        ctx.moveTo(bx+bs*1.15,by-b.bh);
+        ctx.lineTo(bx+bs*1.35,by-b.bh-4);
+        ctx.lineWidth=1; ctx.strokeStyle='rgba(120,210,80,0.45)'; ctx.stroke();
+      });
+    }
+    else if(tile===T.TREE){
+      // Trunk
+      ctx.fillStyle='#3d2008'; ctx.fillRect(sx+TSIZE/2-4,sy+TSIZE/2+1,8,TSIZE/2-1);
+      ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(sx+TSIZE/2+1,sy+TSIZE/2+1,3,TSIZE/2-1);
+      // Root shadow
+      ctx.fillStyle='rgba(0,0,0,0.18)'; ctx.fillRect(sx+TSIZE/2-6,sy+TSIZE-5,12,5);
+      // Canopy — 3 overlapping circles for depth
+      ctx.fillStyle='#0e3a08';
+      ctx.beginPath();ctx.arc(sx+TSIZE/2,sy+TSIZE/2-1,TSIZE/2-1,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#1a5c10';
+      ctx.beginPath();ctx.arc(sx+TSIZE/2+4,sy+TSIZE/2-3,TSIZE/2-4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2a7a1a';
+      ctx.beginPath();ctx.arc(sx+TSIZE/2-5,sy+TSIZE/2-4,TSIZE/2-5,0,Math.PI*2);ctx.fill();
+      // Highlight shimmer
+      ctx.fillStyle='rgba(90,200,50,0.22)';
+      ctx.beginPath();ctx.arc(sx+TSIZE/2-4,sy+TSIZE/2-7,TSIZE/4,0,Math.PI*2);ctx.fill();
+    }
+    else if(tile===T.WATER){
+      const t=now/1000;
+      // Depth overlay
+      ctx.fillStyle='rgba(0,18,55,0.26)'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+      // 4 animated wave lines at different speeds/depths
+      for(let row=0;row<4;row++){
+        const wy=sy+4+row*8;
+        const spd=t*(0.45+row*0.16);
+        const amp=2.4-row*0.2;
+        ctx.beginPath();
+        ctx.strokeStyle=`rgba(90,200,255,${0.10+row*0.04})`;
+        ctx.lineWidth=1.5;
+        for(let wx=0;wx<=TSIZE;wx+=2){
+          const wvy=wy+Math.sin((wx/TSIZE*2+tx*0.55+ty*0.38+spd)*Math.PI)*amp;
+          if(wx===0)ctx.moveTo(sx,wvy); else ctx.lineTo(sx+wx,wvy);
+        }
+        ctx.stroke();
+      }
+      // Sparkle cross
+      const sp=(t*1.7+tx*2.2+ty*1.5)%3.5;
+      if(sp<0.55){
+        const alpha=sp<0.28?sp/0.28:(0.55-sp)/0.27;
+        const spx=sx+((tx*19+ty*13)%(TSIZE-8))+4;
+        const spy=sy+((tx*13+ty*19)%(TSIZE-8))+4;
+        ctx.fillStyle=`rgba(255,255,255,${alpha*0.80})`;
+        ctx.fillRect(spx,spy-2,1,5); ctx.fillRect(spx-2,spy,5,1);
+      }
+    }
+    else if(tile===T.BUILDING){
+      // Detect position within building block for PSP-style multi-tile rendering
+      const above=getTile(tx,ty-1), below=getTile(tx,ty+1);
+      const left=getTile(tx-1,ty), right=getTile(tx+1,ty);
+      const isRoof=above!==T.BUILDING;
+      const isBase=below!==T.BUILDING;
+      const isLeftEdge=left!==T.BUILDING;
+      const isRightEdge=right!==T.BUILDING;
+
+      if(isRoof){
+        // ── Red tiled roof (PSP style) ──
+        ctx.fillStyle='#c83018'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        // Ridge at top
+        ctx.fillStyle='#a02010'; ctx.fillRect(sx,sy,TSIZE,5);
+        // Tile pattern lines
+        ctx.fillStyle='rgba(0,0,0,0.09)';
+        for(let rx=0;rx<TSIZE;rx+=8) ctx.fillRect(sx+rx,sy+5,1,TSIZE-5);
+        for(let ry=5;ry<TSIZE;ry+=8) ctx.fillRect(sx,sy+ry,TSIZE,1);
+        // Eave shadow at bottom
+        ctx.fillStyle='rgba(0,0,0,0.20)'; ctx.fillRect(sx,sy+TSIZE-4,TSIZE,4);
+        if(isLeftEdge){ctx.fillStyle='rgba(0,0,0,0.16)';ctx.fillRect(sx,sy,3,TSIZE);}
+        if(isRightEdge){ctx.fillStyle='rgba(0,0,0,0.16)';ctx.fillRect(sx+TSIZE-3,sy,3,TSIZE);}
+      } else if(isBase){
+        // ── Ground floor — cream walls + door ──
+        ctx.fillStyle='#f2e6c5'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        // Only tiles that are interior (left+right both building) or single-wide get door
+        if(!isLeftEdge&&!isRightEdge){
+          // Center tile of base — door
+          ctx.fillStyle='#7a4820'; ctx.fillRect(sx+TSIZE/2-5,sy+3,10,TSIZE-3);
+          // Glass upper panel
+          ctx.fillStyle='rgba(140,225,255,0.72)'; ctx.fillRect(sx+TSIZE/2-4,sy+4,8,11);
+          // Reflection line
+          ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fillRect(sx+TSIZE/2-3,sy+5,2,8);
+          // Wood lower panel
+          ctx.fillStyle='#8a5530'; ctx.fillRect(sx+TSIZE/2-4,sy+15,8,TSIZE-15);
+          // Doorknob
+          ctx.fillStyle='#d4a820'; ctx.fillRect(sx+TSIZE/2+2,sy+20,2,2);
+          // Step mat
+          ctx.fillStyle='#c8a860'; ctx.fillRect(sx+TSIZE/2-7,sy+TSIZE-4,14,4);
+        } else {
+          // Side base wall — plain cream
+          ctx.fillStyle='rgba(0,0,0,0.04)'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+          // Low wall sill
+          ctx.fillStyle='rgba(0,0,0,0.07)'; ctx.fillRect(sx,sy,TSIZE,2);
+        }
+        if(isLeftEdge){ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(sx,sy,3,TSIZE);}
+        if(isRightEdge){ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(sx+TSIZE-3,sy,3,TSIZE);}
+      } else {
+        // ── Middle wall tile — cream + window ──
+        ctx.fillStyle='#f2e6c5'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        // Window outer frame
+        ctx.fillStyle='#7a5028'; ctx.fillRect(sx+TSIZE/2-7,sy+TSIZE/2-6,14,12);
+        // Window glass
+        ctx.fillStyle='rgba(140,225,255,0.58)'; ctx.fillRect(sx+TSIZE/2-6,sy+TSIZE/2-5,12,10);
+        // Glass reflection
+        ctx.fillStyle='rgba(255,255,255,0.38)'; ctx.fillRect(sx+TSIZE/2-5,sy+TSIZE/2-4,4,3);
+        // Window cross dividers
+        ctx.fillStyle='rgba(100,68,28,0.40)';
+        ctx.fillRect(sx+TSIZE/2-1,sy+TSIZE/2-5,2,10);
+        ctx.fillRect(sx+TSIZE/2-6,sy+TSIZE/2,12,2);
+        if(isLeftEdge){ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(sx,sy,3,TSIZE);}
+        if(isRightEdge){ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(sx+TSIZE-3,sy,3,TSIZE);}
+      }
+      // Subtle wall texture on all building tiles
+      ctx.fillStyle='rgba(0,0,0,0.025)'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+    }
+    else if(tile===T.PATH){
+      // Subtle worn pebble texture
+      if((tx+ty)%2===0){ctx.fillStyle='rgba(0,0,0,0.05)';ctx.fillRect(sx,sy,TSIZE,TSIZE);}
+      // Path edge darkening where it meets grass
+      const pathAbove=getTile(tx,ty-1)!==T.PATH&&getTile(tx,ty-1)!==T.BUILDING;
+      const pathBelow=getTile(tx,ty+1)!==T.PATH&&getTile(tx,ty+1)!==T.BUILDING;
+      if(pathAbove){ctx.fillStyle='rgba(0,0,0,0.06)';ctx.fillRect(sx,sy,TSIZE,2);}
+      if(pathBelow){ctx.fillStyle='rgba(0,0,0,0.06)';ctx.fillRect(sx,sy+TSIZE-2,TSIZE,2);}
+    }
+    else if(tile===T.ROCK){
+      // Rock shapes with highlights
+      const rocks=[{x:2,y:4,w:9,h:7},{x:16,y:12,w:10,h:6},{x:7,y:20,w:8,h:6}];
+      rocks.forEach(r=>{
+        ctx.fillStyle='rgba(0,0,0,0.14)'; ctx.fillRect(sx+r.x,sy+r.y,r.w,r.h);
+        ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(sx+r.x,sy+r.y,r.w,2);
+      });
+    }
+    else if(tile===T.SAND){
+      // Gentle ripple dots
+      const sd1=((tx*7+ty*3)%5)*5+2, sd2=((tx*3+ty*7)%6)*4+1;
+      ctx.fillStyle='rgba(140,100,40,0.14)';
+      ctx.fillRect(sx+sd1,sy+sd2,3,3);
+      ctx.fillRect(sx+(sd1+14)%TSIZE,sy+(sd2+10)%TSIZE,2,2);
     }
   }
 
@@ -2530,11 +2761,13 @@ const pokemonModule = (() => {
     const tx0=Math.floor(camX/TSIZE), ty0=Math.floor(camY/TSIZE);
     const tx1=Math.min(MAP_W-1,tx0+Math.ceil(W/TSIZE)+1);
     const ty1=Math.min(MAP_H-1,ty0+Math.ceil(H/TSIZE)+1);
+    stepTileEffects();
     for(let ty=ty0;ty<=ty1;ty++)
       for(let tx=tx0;tx<=tx1;tx++)
         drawTile(tx*TSIZE-camX, ty*TSIZE-camY, getTile(tx,ty), tx, ty);
     drawMapItems();
     drawPCSign();
+    drawZoneSigns();
     drawPlayerChar(player.x-camX, player.y-camY);
     drawToast();
   }
@@ -2862,6 +3095,9 @@ const pokemonModule = (() => {
 
   /* ── ENCOUNTER ── */
   function checkEncounter(tx,ty){
+    // Trigger grass sway whenever player is on or adjacent to tall grass
+    const nearGrass=[[0,0],[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const t=getTile(tx+dx,ty+dy);return t===T.TALL||t===T.GRASS;});
+    if(nearGrass) touchGrass(tx,ty,player.moving?3.5:1.2);
     const tile=getTile(tx,ty), key=`${tx},${ty}`;
     if(tile!==T.TALL||key===lastTileKey||battle){lastTileKey=key;return;}
     lastTileKey=key;

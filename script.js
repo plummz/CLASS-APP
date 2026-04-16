@@ -2279,6 +2279,7 @@ const pokemonModule = (() => {
   let moveThrottle = 0, lastTileKey = null;
   let battle = null, battleLocked = false;
   let _kdown, _kup;
+  let _bootId = 0; // used to cancel async init (cloud save loading) on rapid page switches
   let mapItems = [];          // HP restore items + Pokéballs on the overworld
   let pcCooldown = 0;         // ms until PC can heal again
   let itemToast = null;       // {text, expires, color}
@@ -3153,6 +3154,33 @@ const pokemonModule = (() => {
     syncPkStats();
   }
 
+  function restoreFromSaveObject(sv){
+    if(!sv||!sv.team||!sv.team.length)return false;
+    team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
+    pokeballs=sv.pokeballs??5;
+    coins=sv.coins??0;
+    totalCaught=sv.totalCaught??team.length;
+    expBoostActive=sv.expBoostActive??false;
+
+    const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
+    player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
+    // Validate saved position — reset to SPAWN if it landed inside a solid tile
+    if(worldMap && isSolid(spx,spy)){ player.x=SPAWN.x*TSIZE; player.y=SPAWN.y*TSIZE; }
+
+    // ── Offline PP regen ──
+    // Cap at 40 ticks (~100 minutes) so ultra-long offline sessions still top off PP
+    if(sv.savedAt){
+      const ticksMissed=Math.min(40, Math.floor((Date.now()-sv.savedAt)/150000));
+      if(ticksMissed>0){
+        let anyRestored=false;
+        team.forEach(mon=>{ mon.moves.forEach(mv=>{ const was=mv.pp; mv.pp=Math.min(mv.maxPp,mv.pp+ticksMissed); if(mv.pp>was)anyRestored=true; }); });
+        if(anyRestored) setTimeout(()=>showToast(`⏰ +${ticksMissed} PP restored while you were away!`,'#00ff88',3000),1500);
+      }
+    }
+
+    return true;
+  }
+
   /* ── LEADERBOARD SYNC — returns null on success, error string on failure ── */
   async function syncPkStats(){
     if(!currentUser||!team.length) return null;
@@ -3167,31 +3195,44 @@ const pokemonModule = (() => {
       return error ? error.message : null;
     }catch(e){ return e.message; }
   }
+
+  /* ── FULL SAVE SYNC — stores pkSave object to pk_save jsonb ── */
+  async function syncPkSave(sv){
+    if(!currentUser||!sv||!sv.team||!sv.team.length) return 'No save data';
+    try{
+      const pokemonCount=sv.team.length;
+      const totalLevels=sv.team.reduce((s,m)=>s+(m.level||0),0);
+      const {error}=await sb.from('pokemon_saves').upsert({
+        username:currentUser.username,
+        pokemon_count:pokemonCount,
+        total_levels:totalLevels,
+        pk_save:sv,
+        updated_at:new Date().toISOString()
+      },{onConflict:'username'});
+      return error ? error.message : null;
+    }catch(e){ return e.message; }
+  }
+
   function loadGame(){
     try{
       const raw=localStorage.getItem('pkSave'); if(!raw)return false;
-      const sv=JSON.parse(raw); if(!sv.team||!sv.team.length)return false;
-      team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
-      pokeballs=sv.pokeballs??5;
-      coins=sv.coins??0;
-      totalCaught=sv.totalCaught??team.length;
-      expBoostActive=sv.expBoostActive??false;
-      const spx=sv.px||SPAWN.x, spy=sv.py||SPAWN.y;
-      player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
-      // Validate saved position — reset to SPAWN if it landed inside a solid tile
-      if(worldMap && isSolid(spx,spy)){ player.x=SPAWN.x*TSIZE; player.y=SPAWN.y*TSIZE; }
-      // ── Offline PP regen ──
-      // Cap at 40 ticks (~100 minutes) so ultra-long offline sessions still top off PP
-      if(sv.savedAt){
-        const ticksMissed=Math.min(40, Math.floor((Date.now()-sv.savedAt)/150000));
-        if(ticksMissed>0){
-          let anyRestored=false;
-          team.forEach(mon=>{ mon.moves.forEach(mv=>{ const was=mv.pp; mv.pp=Math.min(mv.maxPp,mv.pp+ticksMissed); if(mv.pp>was)anyRestored=true; }); });
-          if(anyRestored) setTimeout(()=>showToast(`⏰ +${ticksMissed} PP restored while you were away!`,'#00ff88',3000),1500);
-        }
-      }
-      return true;
+      const sv=JSON.parse(raw);
+      return restoreFromSaveObject(sv);
     }catch(e){return false;}
+  }
+
+  async function loadRemoteGame(){
+    if(!currentUser) return false;
+    try{
+      const {data,error}=await sb.from('pokemon_saves')
+        .select('pk_save')
+        .eq('username', currentUser.username)
+        .maybeSingle();
+      if(error||!data) return false;
+      return restoreFromSaveObject(data.pk_save);
+    }catch(e){
+      return false;
+    }
   }
 
   /* ── D-PAD ── */
@@ -3241,16 +3282,46 @@ const pokemonModule = (() => {
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
       if(!worldMap) worldMap=generateMap();
       if(mapItems.length===0) initMapItems();
-      if(!loadGame()){ player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0}; showStarterModal(); }
-      updateCoinsDisplay();
-      _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
-      _kup=e=>{ keys[e.key]=false; };
-      document.addEventListener('keydown',_kdown); document.addEventListener('keyup',_kup);
-      setupDpad();
-      if(animFrame)cancelAnimationFrame(animFrame);
-      animFrame=requestAnimationFrame(gameLoop);
+      const finishInit = ()=>{
+        updateCoinsDisplay();
+        _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
+        _kup=e=>{ keys[e.key]=false; };
+        document.addEventListener('keydown',_kdown); document.addEventListener('keyup',_kup);
+        setupDpad();
+        if(animFrame)cancelAnimationFrame(animFrame);
+        animFrame=requestAnimationFrame(gameLoop);
+      };
+
+      const bootId=++_bootId;
+      (async ()=>{
+        // If logged in, always prefer the cloud save (prevents "PC overwrote mobile with older localStorage").
+        // If cloud is missing, fall back to local.
+        let used=false;
+        if(currentUser){
+          const remoteOk=await loadRemoteGame();
+          if(bootId!==_bootId) return;
+          if(remoteOk) used=true;
+          else {
+            const localOk=loadGame();
+            if(bootId!==_bootId) return;
+            used=localOk;
+          }
+        } else {
+          const localOk=loadGame();
+          if(bootId!==_bootId) return;
+          used=localOk;
+        }
+
+        if(!used){
+          player={x:SPAWN.x*TSIZE,y:SPAWN.y*TSIZE,dir:'down',moving:false,frame:0};
+          showStarterModal();
+        }
+        if(bootId!==_bootId) return;
+        finishInit();
+      })();
     },
     destroy(){
+      _bootId++;
       if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
       if(_kdown){document.removeEventListener('keydown',_kdown);_kdown=null;}
       if(_kup){document.removeEventListener('keyup',_kup);_kup=null;}
@@ -3412,21 +3483,24 @@ const pokemonModule = (() => {
     },
     async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
-      // Always persist to localStorage immediately
-      localStorage.setItem('pkSave',JSON.stringify({
+      // Save locally first (instant), then upload the same blob to Supabase.
+      const sv={
         team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
         px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
         pokeballs, coins, totalCaught, expBoostActive,
         savedAt: Date.now()
-      }));
+      };
+      localStorage.setItem('pkSave',JSON.stringify(sv));
+
       if(!currentUser){
-        showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);
+        showToast('Saved locally ✓ (log in to sync cloud progress)','#ffbb00',2800);
         return;
       }
-      showToast('Syncing...','#00d4ff',1000);
-      const err=await syncPkStats();
-      if(err===null) showToast('Saved & synced to leaderboard! 💾','#00ff88',2200);
-      else showToast('Local ✓ — sync error: '+err,'#ff9900',5000);
+
+      showToast('Saving to cloud...','#00d4ff',1000);
+      const err=await syncPkSave(sv);
+      if(err===null) showToast('Saved to cloud! 💾','#00ff88',2200);
+      else showToast('Saved locally ✓ — cloud error: '+err,'#ff9900',5000);
     },
   };
 })();

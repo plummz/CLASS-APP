@@ -3155,7 +3155,7 @@ const pokemonModule = (() => {
 
   /* ── LEADERBOARD SYNC — returns null on success, error string on failure ── */
   async function syncPkStats(){
-    if(!window.currentUser||!team.length) return null;
+    if(!currentUser||!team.length) return null;
     try{
       const totalLevels=team.reduce((s,m)=>s+m.level,0);
       const {error}=await sb.from('pokemon_saves').upsert({
@@ -3360,7 +3360,7 @@ const pokemonModule = (() => {
           list.innerHTML='<div class="pk-lb-empty">No data yet — play Pokémon and save to appear here!</div>';
           return;
         }
-        const me=window.currentUser?.username;
+        const me=currentUser?.username;
         const medals=['🥇','🥈','🥉'];
         list.innerHTML=data.map((row,i)=>{
           const isMe=row.username===me;
@@ -3419,7 +3419,7 @@ const pokemonModule = (() => {
         pokeballs, coins, totalCaught, expBoostActive,
         savedAt: Date.now()
       }));
-      if(!window.currentUser){
+      if(!currentUser){
         showToast('Saved locally ✓ (log in to sync leaderboard)','#ffbb00',2800);
         return;
       }

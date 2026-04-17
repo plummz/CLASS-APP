@@ -185,9 +185,41 @@ window.royaleModule = (function () {
   };
 
   // ── Game state ────────────────────────────────────────────
-  let gamePhase = 'playing'; // 'playing' | 'dead' | 'win'
+  let gamePhase = 'parachute'; // 'parachute'|'playing'|'dead'|'win'
   let gameEndTimer = 0;
   let totalKills   = 0;
+
+  // ── Parachute intro state ─────────────────────────────────
+  const PLANE_Y   = 80 * TILE;          // fixed lat the plane flies
+  let paraPlane   = { x:0, speed:280 }; // plane world-x, px/s
+  let paraDeployed = false;             // player opened chute
+  let paraZ        = 800;               // altitude px (0 = ground)
+  let paraVZ       = 0;                 // vertical speed (positive = falling)
+  let paraLanded   = false;
+
+  // ── Stance system ─────────────────────────────────────────
+  // 'stand' | 'crouch' | 'prone'
+  let stance = 'stand';
+  const STANCE_SPEED  = { stand:190, crouch:110, prone:55 };
+  const STANCE_SPREAD = { stand:1.0, crouch:0.6, prone:0.3 };
+  const STANCE_HEIGHT = { stand:1.0, crouch:0.7, prone:0.45 }; // draw scale
+
+  // ── Screen shake ──────────────────────────────────────────
+  let shakeAmt = 0;   // current shake magnitude px
+  let shakeX=0, shakeY=0;
+
+  // ── Muzzle flash ──────────────────────────────────────────
+  let muzzleFlash = 0; // frames remaining
+
+  // ── Floating damage numbers ───────────────────────────────
+  let dmgNumbers = []; // { x,y,val,life,maxLife,col }
+
+  // ── Hit marker ────────────────────────────────────────────
+  let hitMarker = 0;   // frames to show crosshair hit flash
+
+  // ── Spectate ──────────────────────────────────────────────
+  let spectateTarget = null; // bot object being watched
+  let spectateCam    = { x:0, y:0 };
 
   // ── Camera ────────────────────────────────────────────────
   let cam = { x: 100*TILE, y: 100*TILE };
@@ -209,8 +241,11 @@ window.royaleModule = (function () {
 
     if (!mapTiles) { generateMap(); generateTrees(); }
 
-    player.x=100*TILE; player.y=100*TILE; player.health=100; player.armor=0; player.alive=true; player.kills=0;
-    gamePhase='playing'; gameEndTimer=0; totalKills=0;
+    player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
+    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
+    stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
+    dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
@@ -275,7 +310,12 @@ window.royaleModule = (function () {
   }
 
   // ── Input handlers ────────────────────────────────────────
-  function onKey(e) { keys[e.code] = e.type === 'keydown'; }
+  function onKey(e) {
+    keys[e.code] = e.type === 'keydown';
+    if (e.type==='keydown' && e.code==='Space' && gamePhase==='parachute' && !paraDeployed) {
+      paraDeployed=true;
+    }
+  }
 
   function onTouchStart(e) {
     e.preventDefault();
@@ -286,7 +326,8 @@ window.royaleModule = (function () {
         joy.dx=joy.dy=0;
         joyShow(joy.sx,joy.sy,joy.cx,joy.cy,'rl-joy-base','rl-joy-knob');
       } else if (t.clientX >= canvasW*0.5) {
-        onAimTouchStart(t);
+        if (gamePhase==='parachute' && !paraDeployed) { paraDeployed=true; }
+        else onAimTouchStart(t);
       }
     }
   }
@@ -342,6 +383,28 @@ window.royaleModule = (function () {
   }
 
   function update(dt) {
+    updateShake(dt);
+    updateSpectate(dt);
+    updateDmgNumbers(dt);
+
+    // Parachute phase
+    if (gamePhase === 'parachute') {
+      updateParachute(dt);
+      updateKillFeed(dt);
+      return;
+    }
+    if (gamePhase === 'dead' || gamePhase === 'win') {
+      gameEndTimer += dt;
+      updateKillFeed(dt);
+      return;
+    }
+
+    // Stance toggle
+    if (keys['KeyZ']) stance='prone';
+    else if (keys['KeyC']) stance='crouch';
+    else if (keys['KeyX']) stance='stand';
+    // Auto stand on fast movement handled below
+
     // Build normalised move vector
     let mx = 0, my = 0;
     if (keys['KeyW']||keys['ArrowUp'])    my -= 1;
@@ -354,8 +417,9 @@ window.royaleModule = (function () {
     if (len > 1) { mx /= len; my /= len; }
 
     // Try to move
-    const nx = player.x + mx * PLAYER_SPEED * dt;
-    const ny = player.y + my * PLAYER_SPEED * dt;
+    const spd = STANCE_SPEED[stance];
+    const nx = player.x + mx * spd * dt;
+    const ny = player.y + my * spd * dt;
 
     // Clamp to map
     const cx = Math.max(PLAYER_R, Math.min(MAP_W*TILE-PLAYER_R, nx));
@@ -405,9 +469,8 @@ window.royaleModule = (function () {
     updatePickups();
     updateKillFeed(dt);
     tickAirdropSpawn(dt);
-    checkEndCondition(dt);
+    checkEndCondition();
     broadcastState();
-    if (gamePhase!=='playing') return; // pause updates when dead/win
   }
 
   // ── Tile rendering ────────────────────────────────────────
@@ -619,10 +682,53 @@ window.royaleModule = (function () {
     }
   }
 
+  // ── Parachute render ─────────────────────────────────────
+  function drawParachute() {
+    if (paraLanded) return;
+    const px=player.x, py=player.y;
+    const shadow = paraZ * 0.3; // shadow offset grows with altitude
+
+    // Ground shadow
+    ctx.fillStyle='rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(px+shadow*0.5, py+shadow*0.3, 14+shadow*0.05, 8+shadow*0.03, 0,0,Math.PI*2);
+    ctx.fill();
+
+    // Soldier body (drawn at actual ground position)
+    ctx.fillStyle='#3a3a5a';
+    ctx.beginPath(); ctx.ellipse(px,py,7,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c8a070';
+    ctx.beginPath(); ctx.arc(px,py-8,5.5,0,Math.PI*2); ctx.fill();
+
+    if (paraDeployed) {
+      // Parachute canopy above (offset by altitude)
+      const cy2=py-30-paraZ*0.25;
+      ctx.strokeStyle='rgba(255,200,50,0.9)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(px,cy2,28,Math.PI,Math.PI*2); ctx.stroke();
+      // Rigging lines
+      ctx.beginPath();
+      ctx.moveTo(px-28,cy2); ctx.lineTo(px-6,py-10);
+      ctx.moveTo(px+28,cy2); ctx.lineTo(px+6,py-10);
+      ctx.moveTo(px,cy2+28); ctx.lineTo(px,py-10);
+      ctx.stroke();
+      // Altitude indicator
+      ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='10px monospace'; ctx.textAlign='center';
+      ctx.fillText(`ALT ${Math.round(paraZ)}m`, px, py-38-paraZ*0.25);
+      ctx.textAlign='left';
+    } else {
+      // Free-fall — arms spread
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='10px monospace'; ctx.textAlign='center';
+      ctx.fillText('SPACE / TAP to deploy', px, py-30);
+      ctx.textAlign='left';
+    }
+  }
+
   // ── Player rendering ──────────────────────────────────────
   function drawPlayer() {
+    const sc = STANCE_HEIGHT[stance];
     ctx.save();
     ctx.translate(player.x, player.y);
+    ctx.scale(1, sc);
     ctx.rotate(player.angle - Math.PI/2);
 
     // Shadow
@@ -754,6 +860,14 @@ window.royaleModule = (function () {
       ctx.fillText(`ARMOR ${Math.ceil(player.armor)}`, ax+4, ay+9);
     }
 
+    // ── Stance indicator
+    if (stance !== 'stand') {
+      ctx.fillStyle = stance==='prone' ? 'rgba(200,100,0,0.65)' : 'rgba(0,100,200,0.55)';
+      ctx.fillRect(20, canvasH-80, 76, 18);
+      ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
+      ctx.fillText(stance.toUpperCase(), 28, canvasH-67);
+    }
+
     // ── Hidden indicator
     if (player.hidden) {
       ctx.fillStyle='rgba(0,160,0,0.55)';
@@ -794,16 +908,20 @@ window.royaleModule = (function () {
   function render() {
     ctx.clearRect(0,0,canvasW,canvasH);
 
-    const offX = Math.round(canvasW/2 - cam.x);
-    const offY = Math.round(canvasH/2 - cam.y);
+    // Use spectate cam when dead
+    const renderCam = (gamePhase==='dead' && spectateTarget)
+      ? spectateCam : cam;
+
+    const offX = Math.round(canvasW/2 - renderCam.x) + shakeX;
+    const offY = Math.round(canvasH/2 - renderCam.y) + shakeY;
     ctx.save();
     ctx.translate(offX, offY);
 
     // Visible tile range
-    const tx1=Math.max(0,Math.floor((cam.x-canvasW/2)/TILE)-1);
-    const tx2=Math.min(MAP_W,Math.ceil((cam.x+canvasW/2)/TILE)+1);
-    const ty1=Math.max(0,Math.floor((cam.y-canvasH/2)/TILE)-1);
-    const ty2=Math.min(MAP_H,Math.ceil((cam.y+canvasH/2)/TILE)+1);
+    const tx1=Math.max(0,Math.floor((renderCam.x-canvasW/2)/TILE)-1);
+    const tx2=Math.min(MAP_W,Math.ceil((renderCam.x+canvasW/2)/TILE)+1);
+    const ty1=Math.max(0,Math.floor((renderCam.y-canvasH/2)/TILE)-1);
+    const ty2=Math.min(MAP_H,Math.ceil((renderCam.y+canvasH/2)/TILE)+1);
 
     // World-space viewport for tree culling
     const wx1=(tx1-1)*TILE, wx2=(tx2+1)*TILE;
@@ -836,10 +954,25 @@ window.royaleModule = (function () {
     drawBullets();
     drawExplosions();
     drawAirdrop();
+    drawMuzzleFlash();
+    drawDmgNumbers();
+
+    // Parachute overlay (drawn in world space)
+    if (gamePhase==='parachute') drawParachute();
 
     ctx.restore();
     drawHUD();
+    drawCrosshair();
+    drawSpectateTag();
     drawEndScreen();
+
+    // Parachute instruction HUD
+    if (gamePhase==='parachute' && !paraDeployed) {
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(canvasW/2-120,canvasH/2-20,240,34);
+      ctx.fillStyle='#fff'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
+      ctx.fillText('SPACE / tap right side to deploy chute', canvasW/2, canvasH/2+2);
+      ctx.textAlign='left';
+    }
   }
 
   // ── Weapon definitions ────────────────────────────────────
@@ -966,6 +1099,9 @@ window.royaleModule = (function () {
       if (!ammoCache[weaponKey] || ammoCache[weaponKey] <= 0) { startReload(); return; }
       ammoCache[weaponKey]--;
       lastFireT = now;
+      muzzleFlash = 3;
+      const shakeMap={pistol:3,revolver:7,smg:2,ar:4,battlerifle:6,shotgun:9,sniper:12,rpg:0};
+      addShake(shakeMap[weaponKey]||3);
     }
     if (w.pellets === 0) { throwItem(fromX, fromY, angle, weaponKey, ownerId); return; }
     for (let p = 0; p < w.pellets; p++) {
@@ -1064,6 +1200,7 @@ window.royaleModule = (function () {
         const dx=b.x-player.x, dy=b.y-player.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
           applyDamageToPlayer(b.dmg);
+          addShake(6); spawnDmgNum(player.x, player.y-20, b.dmg, '#ff4444');
           bullets.splice(i,1); continue;
         }
       }
@@ -1073,7 +1210,12 @@ window.royaleModule = (function () {
         const dx=b.x-bt.x, dy=b.y-bt.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
           bt.hp -= b.dmg;
-          if (bt.hp <= 0) { bt.alive=false; killFeed.push({text:`You killed ${bt.name}`,life:4}); }
+          hitMarker = 6;
+          spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
+          if (bt.hp <= 0) {
+            bt.alive=false; player.kills++;
+            killFeed.push({text:`You killed ${bt.name}`,life:4});
+          }
           bullets.splice(i,1); break;
         }
       }
@@ -1107,7 +1249,7 @@ window.royaleModule = (function () {
   function doExplosion(x,y,r,dmg) {
     explosions.push({x,y,r:10,maxR:r,life:0.55,maxLife:0.55});
     const d2=(x-player.x)**2+(y-player.y)**2;
-    if (d2<r*r) applyDamageToPlayer(dmg*Math.max(0,1-Math.sqrt(d2)/r));
+    if (d2<r*r) { applyDamageToPlayer(dmg*Math.max(0,1-Math.sqrt(d2)/r)); addShake(18); }
     for (const bt of bots) {
       if (!bt.alive) continue;
       const bd2=(x-bt.x)**2+(y-bt.y)**2;
@@ -1465,6 +1607,48 @@ window.royaleModule = (function () {
     }
   }
 
+  // ── Parachute update ─────────────────────────────────────
+  function updateParachute(dt) {
+    if (paraLanded) return;
+
+    // Plane advances east
+    paraPlane.x += paraPlane.speed * dt;
+    player.x = paraPlane.x;
+    player.y = PLANE_Y;
+    cam.x += (player.x - cam.x) * 4 * dt;
+    cam.y += (player.y - cam.y) * 4 * dt;
+
+    if (!paraDeployed) {
+      // Tap space / touch right half to deploy chute
+      paraZ = Math.max(0, paraZ - 320 * dt); // free-fall
+      if (paraZ <= 0) paraDeployed = true;   // auto-deploy at ground
+    } else {
+      // Glide down
+      paraVZ = Math.min(paraVZ + 60 * dt, 80);
+      paraZ  = Math.max(0, paraZ - paraVZ * dt);
+
+      // Left joystick / WASD steers horizontally while gliding
+      let mx=0, my=0;
+      if (keys['KeyW']||keys['ArrowUp'])   my-=1;
+      if (keys['KeyS']||keys['ArrowDown']) my+=1;
+      if (keys['KeyA']||keys['ArrowLeft']) mx-=1;
+      if (keys['KeyD']||keys['ArrowRight'])mx+=1;
+      if (joy.active){mx+=joy.dx;my+=joy.dy;}
+      const len=Math.sqrt(mx*mx+my*my)||1;
+      player.x = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.x + (mx/Math.max(len,1))*90*dt));
+      player.y = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.y + (my/Math.max(len,1))*90*dt));
+      cam.x += (player.x - cam.x) * 6 * dt;
+      cam.y += (player.y - cam.y) * 6 * dt;
+
+      if (paraZ <= 0) {
+        paraLanded  = true;
+        gamePhase   = 'playing';
+        stance      = 'stand';
+        killFeed.push({text:'Dropped in! Find weapons!', life:4});
+      }
+    }
+  }
+
   // ── Damage helper ─────────────────────────────────────────
   function applyDamageToPlayer(rawDmg) {
     if (!player.alive) return;
@@ -1482,9 +1666,59 @@ window.royaleModule = (function () {
     }
   }
 
+  // ── Screen shake ─────────────────────────────────────────
+  function addShake(amt) { shakeAmt = Math.max(shakeAmt, amt); }
+
+  function updateShake(dt) {
+    if (shakeAmt > 0) {
+      shakeAmt = Math.max(0, shakeAmt - shakeAmt * 12 * dt);
+      shakeX = (Math.random()-0.5)*shakeAmt;
+      shakeY = (Math.random()-0.5)*shakeAmt;
+    } else { shakeX=0; shakeY=0; }
+  }
+
+  // ── Floating damage numbers ───────────────────────────────
+  function spawnDmgNum(wx, wy, val, col) {
+    dmgNumbers.push({ x:wx, y:wy, val:Math.ceil(val), life:1.2, maxLife:1.2, col:col||'#ff4444' });
+  }
+
+  function updateDmgNumbers(dt) {
+    for (let i=dmgNumbers.length-1;i>=0;i--) {
+      const d=dmgNumbers[i]; d.y-=28*dt; d.life-=dt;
+      if (d.life<=0) dmgNumbers.splice(i,1);
+    }
+  }
+
+  function drawDmgNumbers() {
+    for (const d of dmgNumbers) {
+      const alpha=Math.min(1,d.life/d.maxLife);
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle=d.col;
+      ctx.font=`bold ${14+Math.round((1-d.life/d.maxLife)*6)}px monospace`;
+      ctx.textAlign='center';
+      ctx.fillText(d.val, d.x, d.y);
+    }
+    ctx.globalAlpha=1; ctx.textAlign='left';
+  }
+
+  // ── Muzzle flash ─────────────────────────────────────────
+  function drawMuzzleFlash() {
+    if (muzzleFlash <= 0) return;
+    muzzleFlash--;
+    const barrelDist = 22;
+    const fx = player.x + Math.cos(player.angle)*barrelDist;
+    const fy = player.y + Math.sin(player.angle)*barrelDist;
+    const g = ctx.createRadialGradient(fx,fy,0,fx,fy,16);
+    g.addColorStop(0,'rgba(255,255,180,0.95)');
+    g.addColorStop(0.4,'rgba(255,140,0,0.7)');
+    g.addColorStop(1,'rgba(255,60,0,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(fx,fy,16,0,Math.PI*2); ctx.fill();
+  }
+
   // ── Win / death detection ────────────────────────────────
-  function checkEndCondition(dt) {
-    if (gamePhase !== 'playing') { gameEndTimer += dt; return; }
+  function checkEndCondition() {
+    if (gamePhase !== 'playing') return;
     const aliveCount = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length;
     if (aliveCount === 0 && player.alive) {
       gamePhase = 'win'; gameEndTimer = 0;
@@ -1534,6 +1768,55 @@ window.royaleModule = (function () {
     ctx.fillStyle=`rgba(255,255,255,${alpha*0.7})`;
     ctx.font='13px monospace';
     ctx.fillText('Tap / press any key to exit', cx, row+24);
+    ctx.textAlign='left';
+  }
+
+  // ── Dynamic crosshair ────────────────────────────────────
+  function drawCrosshair() {
+    if (gamePhase !== 'playing') return;
+    const wkey = inventory[activeSlot];
+    const spread = wkey ? (WEAPONS[wkey].spread * 180 * STANCE_SPREAD[stance]) : 20;
+    const size   = Math.max(10, Math.min(60, spread * 12));
+    const cx=canvasW/2, cy=canvasH/2;
+    const col = hitMarker>0 ? 'rgba(255,60,60,0.9)' : 'rgba(255,255,255,0.85)';
+    if (hitMarker>0) hitMarker--;
+
+    ctx.strokeStyle=col; ctx.lineWidth=1.5;
+    ctx.beginPath();
+    // Top
+    ctx.moveTo(cx,cy-size-4); ctx.lineTo(cx,cy-size+8);
+    // Bottom
+    ctx.moveTo(cx,cy+size+4); ctx.lineTo(cx,cy+size-8);
+    // Left
+    ctx.moveTo(cx-size-4,cy); ctx.lineTo(cx-size+8,cy);
+    // Right
+    ctx.moveTo(cx+size+4,cy); ctx.lineTo(cx+size-8,cy);
+    ctx.stroke();
+    // Center dot
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.arc(cx,cy,1.8,0,Math.PI*2); ctx.fill();
+  }
+
+  // ── Spectate camera ───────────────────────────────────────
+  function updateSpectate(dt) {
+    if (gamePhase!=='dead') return;
+    const alive = bots.filter(b=>b.alive);
+    if (!spectateTarget || !spectateTarget.alive) {
+      spectateTarget = alive.length ? alive[Math.floor(Math.random()*alive.length)] : null;
+    }
+    if (spectateTarget) {
+      spectateCam.x += (spectateTarget.x - spectateCam.x) * 3 * dt;
+      spectateCam.y += (spectateTarget.y - spectateCam.y) * 3 * dt;
+    }
+  }
+
+  function drawSpectateTag() {
+    if (gamePhase!=='dead'||!spectateTarget) return;
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillRect(canvasW/2-80, canvasH-44, 160, 26);
+    ctx.fillStyle='rgba(255,200,0,0.9)';
+    ctx.font='bold 12px monospace'; ctx.textAlign='center';
+    ctx.fillText(`SPECTATING: ${spectateTarget.name}`, canvasW/2, canvasH-26);
     ctx.textAlign='left';
   }
 

@@ -24,6 +24,20 @@
   background: #1a2e0a;
 }
 
+/* ── Portrait rotation: spin wrapper so game is always landscape ─ */
+/* When phone is portrait, we rotate the wrapper 90° and swap dims  */
+body.rl-portrait .rl-wrapper {
+  position: absolute;
+  /* swap width/height so the rotated box fills the screen */
+  width: 100vh;
+  height: 100vw;
+  /* anchor to centre then rotate */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
 /* Main canvas */
 #rl-canvas {
   display: block;

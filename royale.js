@@ -238,7 +238,7 @@ window.royaleModule = (function () {
     ctx = canvas.getContext('2d');
 
     document.body.classList.add('rl-active');
-    forceLandscape();
+    checkOrientation(); // set portrait rotation class immediately
 
     if (!mapTiles) { generateMap(); generateTrees(); }
 
@@ -253,8 +253,8 @@ window.royaleModule = (function () {
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); initMultiplayer();
 
-    resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup',   onKey);
     document.addEventListener('keydown', onAnyKeyForExit);
@@ -275,7 +275,8 @@ window.royaleModule = (function () {
   function destroy() {
     running = false;
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    window.removeEventListener('resize', resize);
+    window.removeEventListener('resize', checkOrientation);
+    window.removeEventListener('orientationchange', checkOrientation);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup',   onKey);
     document.removeEventListener('keydown', onAnyKeyForExit);
@@ -290,12 +291,15 @@ window.royaleModule = (function () {
       canvas.removeEventListener('touchcancel',onTouchEnd);
     }
     document.body.classList.remove('rl-active');
-    try { screen.orientation.unlock(); } catch(_) {}
+    document.body.classList.remove('rl-portrait');
     destroyMultiplayer();
   }
 
-  function forceLandscape() {
-    try { screen.orientation.lock('landscape').catch(()=>{}); } catch(_) {}
+  function checkOrientation() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+    document.body.classList.toggle('rl-portrait', isPortrait);
+    // After CSS rotation the logical canvas dims are swapped; resize fixes them
+    resize();
   }
 
   function resize() {

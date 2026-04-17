@@ -1760,7 +1760,7 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   position: absolute;
   top: 72px; left: 0; right: 0; bottom: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: #000;
   overflow: hidden;
@@ -2287,6 +2287,61 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
 .pk-dex-detail-section-body { font-size: 0.82rem; color: #ccc; line-height: 1.5; }
 .pk-dex-detail-type-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
 .pk-dex-detail-close { align-self: flex-end; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 6px 14px; border-radius: 8px; font-family: 'Exo 2',sans-serif; font-size: 0.85rem; cursor: pointer; }
+
+/* Gym Leader Dialog */
+.pk-gym-dialog {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 3500;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 40px;
+}
+.pk-gym-dialog.hidden { display: none; }
+.pk-gym-dialog-box {
+  background: linear-gradient(145deg,#0d0d20,#13132e);
+  border: 2px solid rgba(180,79,255,0.55);
+  border-radius: 16px;
+  width: 92%; max-width: 440px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 0 32px rgba(120,0,255,0.35);
+}
+.pk-gym-dialog-leader {
+  display: flex; align-items: center; gap: 12px;
+}
+.pk-gym-dialog-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  border: 2px solid rgba(180,79,255,0.6);
+  background: rgba(80,0,160,0.3);
+  flex-shrink: 0;
+}
+.pk-gym-dialog-name { font-family: 'Exo 2',sans-serif; font-size: 1rem; font-weight: 800; color: #e0c0ff; }
+.pk-gym-dialog-title { font-family: 'Exo 2',sans-serif; font-size: 0.75rem; color: #a070e0; }
+.pk-gym-dialog-text {
+  font-family: 'Exo 2',sans-serif; font-size: 0.88rem; color: #ddd;
+  line-height: 1.55; padding: 8px 10px;
+  background: rgba(255,255,255,0.04); border-radius: 8px;
+  min-height: 54px;
+}
+.pk-gym-dialog-btns { display: flex; gap: 10px; }
+.pk-gym-dialog-battle {
+  flex: 1; padding: 10px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg,#bf00ff,#7a00cc);
+  color: #fff; font-family: 'Exo 2',sans-serif; font-weight: 700; font-size: 0.9rem;
+  cursor: pointer; transition: opacity .15s;
+}
+.pk-gym-dialog-battle:hover { opacity: 0.88; }
+.pk-gym-dialog-battle:disabled { opacity: 0.35; cursor: not-allowed; }
+.pk-gym-dialog-leave {
+  flex: 1; padding: 10px; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;
+  background: rgba(255,255,255,0.05); color: #bbb;
+  font-family: 'Exo 2',sans-serif; font-weight: 600; font-size: 0.9rem;
+  cursor: pointer; transition: background .15s;
+}
+.pk-gym-dialog-leave:hover { background: rgba(255,255,255,0.1); }
+.pk-gym-dialog-cooldown { font-size: 0.72rem; color: #888; font-family: 'Exo 2',sans-serif; text-align: center; }
 
 /* Shop refresh row */
 .pk-shop-refresh-row {

@@ -546,6 +546,25 @@
     <div class="pk-dex-detail-panel" id="pk-dex-detail-panel"></div>
   </div>
 
+  <!-- Gym Leader Dialog -->
+  <div id="pk-gym-dialog" class="pk-gym-dialog hidden">
+    <div class="pk-gym-dialog-box">
+      <div class="pk-gym-dialog-leader">
+        <div class="pk-gym-dialog-avatar" id="pk-gym-dialog-avatar">⚔️</div>
+        <div>
+          <div class="pk-gym-dialog-name" id="pk-gym-dialog-name">Gym Leader</div>
+          <div class="pk-gym-dialog-title" id="pk-gym-dialog-title">Champion</div>
+        </div>
+      </div>
+      <div class="pk-gym-dialog-text" id="pk-gym-dialog-text">…</div>
+      <div class="pk-gym-dialog-btns">
+        <button class="pk-gym-dialog-battle" id="pk-gym-dialog-battle-btn" onclick="window.pokemonModule.acceptGymBattle()">⚔️ Battle!</button>
+        <button class="pk-gym-dialog-leave" onclick="window.pokemonModule.declineGymBattle()">🏃 Leave</button>
+      </div>
+      <div class="pk-gym-dialog-cooldown hidden" id="pk-gym-dialog-cooldown"></div>
+    </div>
+  </div>
+
   <!-- Leaderboard Overlay -->
   <div id="pk-lb-overlay" class="pk-lb-overlay hidden">
     <div class="pk-lb-panel">

@@ -2336,6 +2336,9 @@ const pokemonModule = (() => {
   let _interiorReturn = null;       // {mapId, spawnId} — set on entering interior
   let healCooldown = 0;             // ms timestamp until quick-heal is available again
   let _healCdInterval = null;
+  let gymDialogOpen = false;
+  let gymTalkCooldown = 0;          // ms timestamp — decline cooldown
+  let _gymCdInterval = null;
   let shopFreeRefreshes = 2;        // free manual refreshes per session
   let shopPaidRefreshes = 3;        // purchasable refreshes (cost coins each)
   let shopCustomSeed = null;        // non-null after a manual refresh
@@ -2809,13 +2812,64 @@ const pokemonModule = (() => {
     }; doFlash();
   }
 
+  const GL_DIALOGUE={
+    sylvia:{
+      intro:'Ah, a challenger approaches! My Bug and Grass Pokémon have been eagerly waiting. Can you withstand the power of nature?',
+      defeated:'You\'ve already earned the Leaf Badge. Your Pokémon are strong — keep growing!',
+    },
+    granite:{
+      intro:'You dare set foot in my gym?! My Rock and Ground Pokémon are as solid as mountains. Prove yourself!',
+      defeated:'You crushed my boulders fair and square. The Boulder Badge is yours to keep, champion!',
+    },
+    marina:{
+      intro:'Welcome, young trainer. The tide waits for no one — and neither does my team. Are you ready to dive in?',
+      defeated:'The ocean bows to your strength! You\'ve earned the Tide Badge and my respect.',
+    },
+    voltex:{
+      intro:'So you\'ve made it this far. Bold! My electric storms have struck down every challenger before you. Let\'s see if you\'re different.',
+      defeated:'Incredible. The Thunder Badge is yours — you\'ve weathered my storm and emerged victorious!',
+    },
+  };
+
   function checkGymLeader(tx,ty){
-    if(currentMapId!=='intGym'||battle)return;
-    if(ty!==10||tx<22||tx>26)return;
-    if(gymLeaderCooldown>Date.now())return;
-    gymLeaderCooldown=Date.now()+3000;
+    if(currentMapId!=='intGym'||battle||gymDialogOpen)return;
+    // Trigger when player steps onto row 10 (2 tiles south of leader platform)
+    if(ty!==12||tx<20||tx>28)return;
+    if(gymTalkCooldown>Date.now())return;
     const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
-    if(leaderId) startLeaderBattle(leaderId);
+    if(leaderId) showGymDialog(leaderId);
+  }
+
+  function showGymDialog(leaderId){
+    const gl=GYM_LEADERS[leaderId]; if(!gl)return;
+    gymDialogOpen=true;
+    const dlg=GL_DIALOGUE[leaderId]||{};
+    const defeated=defeatedLeaders.includes(leaderId);
+    const el_ov=document.getElementById('pk-gym-dialog');
+    const el_name=document.getElementById('pk-gym-dialog-name');
+    const el_title=document.getElementById('pk-gym-dialog-title');
+    const el_av=document.getElementById('pk-gym-dialog-avatar');
+    const el_text=document.getElementById('pk-gym-dialog-text');
+    const el_battleBtn=document.getElementById('pk-gym-dialog-battle-btn');
+    const el_cd=document.getElementById('pk-gym-dialog-cooldown');
+    if(!el_ov)return;
+    el_name.textContent=gl.name;
+    el_title.textContent=gl.title;
+    el_av.textContent=GL_EMOJI[leaderId]||'⭐';
+    el_text.textContent=defeated?(dlg.defeated||'You\'ve already earned my badge!'):(dlg.intro||'...');
+    el_battleBtn.disabled=defeated||team.every(m=>m.hp<=0);
+    el_battleBtn.textContent=defeated?'🏅 Already Won':'⚔️ Battle!';
+    if(el_cd) el_cd.classList.add('hidden');
+    el_ov.classList.remove('hidden');
+    // Store leaderId for accept handler
+    el_ov.dataset.leaderId=leaderId;
+  }
+
+  function closeGymDialog(){
+    gymDialogOpen=false;
+    const el=document.getElementById('pk-gym-dialog');
+    if(el) el.classList.add('hidden');
+    if(_gymCdInterval){clearInterval(_gymCdInterval);_gymCdInterval=null;}
   }
 
   function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
@@ -2966,19 +3020,69 @@ const pokemonModule = (() => {
     ctx.save(); ctx.lineCap='round';
     signs.forEach(s=>{
       const sx=s.tx*TSIZE-camX, sy=s.ty*TSIZE-camY;
-      if(sx<-64||sx>canvas.width+64||sy<-64||sy>canvas.height+64) return;
+      if(sx<-80||sx>canvas.width+80||sy<-80||sy>canvas.height+80) return;
       const cx=sx+TSIZE/2, cy=sy+TSIZE/2;
+      // Post
       ctx.fillStyle='#6a3c10'; ctx.fillRect(cx-2,cy,4,TSIZE/2+6);
-      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(cx-17,cy-18,34,18);
-      ctx.fillStyle='#f8f0d0'; ctx.fillRect(cx-16,cy-19,32,18);
-      ctx.fillStyle=s.col; ctx.fillRect(cx-16,cy-19,32,5);
-      ctx.fillStyle='#2a1a08'; ctx.font='bold 7px sans-serif';
+      // Board shadow
+      ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(cx-24,cy-26,48,26);
+      // Board face
+      ctx.fillStyle='#f8f0d0'; ctx.fillRect(cx-23,cy-27,46,26);
+      // Coloured top stripe
+      ctx.fillStyle=s.col; ctx.fillRect(cx-23,cy-27,46,7);
+      // Label text
+      ctx.fillStyle='#2a1a08'; ctx.font='bold 9px sans-serif';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(s.label,cx,cy-8);
-      ctx.fillStyle=s.col; ctx.font='bold 9px sans-serif';
-      ctx.fillText(s.arrow,cx,cy-2);
+      ctx.fillText(s.label,cx,cy-14);
+      // Arrow
+      ctx.fillStyle=s.col; ctx.font='bold 11px sans-serif';
+      ctx.fillText(s.arrow,cx,cy-4);
     });
     ctx.restore();
+  }
+
+  /* ── GYM LEADER NPC DRAWING ── */
+  const GL_EMOJI={sylvia:'🌿',granite:'🪨',marina:'🌊',voltex:'⚡'};
+  function drawGymLeader(){
+    if(currentMapId!=='intGym')return;
+    const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
+    if(!leaderId)return;
+    const gl=GYM_LEADERS[leaderId]; if(!gl)return;
+    // Leader stands on the platform centre, front edge (tx=24,ty=9)
+    const lx=24*TSIZE-camX, ly=9*TSIZE-camY;
+    if(lx<-32||lx>canvas.width+32||ly<-32||ly>canvas.height+32)return;
+    const cx=lx+TSIZE/2, cy=ly+TSIZE/2;
+    const now=Date.now();
+    // Shadow
+    ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(cx,cy+13,10,3,0,0,Math.PI*2); ctx.fill();
+    // Body (distinctive colour per leader)
+    const bodyColor=leaderId==='sylvia'?'#2d8a2d':leaderId==='granite'?'#8a6030':leaderId==='marina'?'#2060c0':'#c0a000';
+    // Legs
+    const legSway=Math.sin(now/900)*1.5;
+    ctx.fillStyle='#1a1010'; ctx.fillRect(cx-5,cy+4,4,7+legSway); ctx.fillRect(cx+1,cy+4,4,7-legSway);
+    // Body/outfit
+    ctx.fillStyle=bodyColor; ctx.fillRect(cx-7,cy-4,14,9);
+    // Arms (idle sway)
+    ctx.fillStyle=bodyColor; ctx.fillRect(cx-10,cy-3,4,6); ctx.fillRect(cx+6,cy-3,4,6);
+    // Head
+    ctx.fillStyle='#f5c28a'; ctx.fillRect(cx-5,cy-14,10,10);
+    // Eyes
+    ctx.fillStyle='#1a1010'; ctx.fillRect(cx-3,cy-11,2,2); ctx.fillRect(cx+1,cy-11,2,2);
+    // Hair accent
+    ctx.fillStyle=bodyColor; ctx.fillRect(cx-5,cy-15,10,4);
+    // Badge sparkle above head
+    const sparkle=0.5+0.5*Math.sin(now/600);
+    ctx.font=`${11+sparkle*2}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha=0.8+sparkle*0.2;
+    ctx.fillText(GL_EMOJI[leaderId]||'⭐',cx,cy-22);
+    ctx.globalAlpha=1;
+    // Name label
+    ctx.fillStyle='rgba(0,0,0,0.65)';
+    const lw=ctx.measureText(gl.name).width+10;
+    ctx.fillRect(cx-lw/2,cy-32,lw,12);
+    ctx.fillStyle='#ffd0ff'; ctx.font='bold 8px sans-serif';
+    ctx.fillText(gl.name,cx,cy-26);
   }
 
   function getZone(tx,ty){
@@ -3297,6 +3401,7 @@ const pokemonModule = (() => {
     drawPCSign();
     drawZoneSigns();
     drawWarpPortals();
+    drawGymLeader();
     drawPlayerChar(player.x-camX, player.y-camY);
     drawToast();
   }
@@ -3669,7 +3774,7 @@ const pokemonModule = (() => {
   function gameLoop(ts){
     if(!canvas)return;
     animFrame=requestAnimationFrame(gameLoop);
-    if(battle)return;
+    if(battle||gymDialogOpen)return;
     const up=keys.ArrowUp||keys.w||dpad.up, dn=keys.ArrowDown||keys.s||dpad.down;
     const lt=keys.ArrowLeft||keys.a||dpad.left, rt=keys.ArrowRight||keys.d||dpad.right;
     if(up||dn||lt||rt){
@@ -4401,6 +4506,24 @@ const pokemonModule = (() => {
       });
     },
     quickHeal(){ quickHeal(); },
+    acceptGymBattle(){
+      const el=document.getElementById('pk-gym-dialog');
+      const leaderId=el?.dataset.leaderId;
+      closeGymDialog();
+      if(leaderId) startLeaderBattle(leaderId);
+    },
+    declineGymBattle(){
+      gymTalkCooldown=Date.now()+90000;
+      const el_cd=document.getElementById('pk-gym-dialog-cooldown');
+      if(el_cd){ el_cd.classList.remove('hidden'); }
+      // Show countdown then close
+      if(_gymCdInterval)clearInterval(_gymCdInterval);
+      _gymCdInterval=setInterval(()=>{
+        const left=Math.max(0,Math.ceil((gymTalkCooldown-Date.now())/1000));
+        if(el_cd) el_cd.textContent=`Come back in ${left}s…`;
+        if(left<=0){ closeGymDialog(); }
+      },500);
+    },
     showDexDetail(speciesId){
       const mon=team.find(m=>m.speciesId===speciesId)||{speciesId,level:1,hp:0,maxHp:0,atk:0,def:0,spd:0,types:SP[speciesId]?.types||[]};
       const sp=SP[speciesId]; if(!sp)return;

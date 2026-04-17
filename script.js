@@ -2282,6 +2282,18 @@ const pokemonModule = (() => {
                'aerodactyl','bagon','beldum','sneasel','kangaskhan','magnemite','doduo'],
   };
 
+  /* ── GYM LEADERS ── */
+  const GYM_LEADERS = {
+    sylvia:  {name:'Sylvia',  title:'Bug & Grass Master',    badge:'Leaf Badge',    coins:300,
+              team:[{sid:'caterpie',lvl:12},{sid:'bellsprout',lvl:15},{sid:'scyther',lvl:18}]},
+    granite: {name:'Granite', title:'Rock & Ground Expert',  badge:'Boulder Badge', coins:500,
+              team:[{sid:'geodude',lvl:18},{sid:'zubat',lvl:20},{sid:'graveler',lvl:24}]},
+    marina:  {name:'Marina',  title:'Water Wave Rider',      badge:'Tide Badge',    coins:650,
+              team:[{sid:'psyduck',lvl:20},{sid:'tentacool',lvl:24},{sid:'gyarados',lvl:28}]},
+    voltex:  {name:'Voltex',  title:'Electric Storm Leader', badge:'Thunder Badge', coins:900,
+              team:[{sid:'electabuzz',lvl:30},{sid:'haunter',lvl:32},{sid:'raichu',lvl:36}]},
+  };
+
   /* ── STATE ── */
   let canvas, ctx, animFrame;
   let player = null, team = [], worldMap = null;
@@ -2298,6 +2310,8 @@ const pokemonModule = (() => {
   let coins = 0;              // in-game currency
   let totalCaught = 0;        // all-time Pokémon catch count
   let expBoostActive = false; // EXP Charm effect: next battle 2× XP
+  let defeatedLeaders = [], badges = [];
+  let gymLeaderCooldown = 0;
   let currentMapId = 'starterTown'; // active zone map
   let _interiorReturn = null;       // {mapId, spawnId} — set on entering interior
   const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
@@ -2695,6 +2709,10 @@ const pokemonModule = (() => {
   MAPS_DATA.starterTown.pcTiles=[]; MAPS_DATA.starterTown.pcSignPos=null;
   MAPS_DATA.route1.pcTiles=[]; MAPS_DATA.route1.pcSignPos=null;
   // Zone display names
+  MAPS_DATA.forestZone.gymLeaderId='sylvia';
+  MAPS_DATA.rockZone.gymLeaderId='granite';
+  MAPS_DATA.coastZone.gymLeaderId='marina';
+  MAPS_DATA.cityZone.gymLeaderId='voltex';
   Object.assign(MAPS_DATA.starterTown,{displayName:'🏘️ Starter Town'});
   Object.assign(MAPS_DATA.route1,     {displayName:'🌿 Route 1'});
   Object.assign(MAPS_DATA.forestZone, {displayName:'🌲 Forest Zone'});
@@ -2739,6 +2757,40 @@ const pokemonModule = (() => {
       saveGame();
       if(bl){bl.style.transition='opacity 0.4s';bl.style.opacity='0';setTimeout(()=>{bl.classList.add('hidden');bl.style.transition='';},420);}
     },200);
+  }
+
+  function startLeaderBattle(leaderId){
+    const gl=GYM_LEADERS[leaderId]; if(!gl)return;
+    if(defeatedLeaders.includes(leaderId)){showToast(`🏅 ${gl.name} is already defeated!`,'#ffd700',2000);return;}
+    if(team.every(m=>m.hp<=0)){showToast('Heal your Pokémon first!','#ff6060',2000);return;}
+    const queue=[...gl.team]; const first=queue.shift();
+    const em=mkMon(first.sid,first.lvl);
+    const dpadEl=document.getElementById('pk-dpad');
+    if(dpadEl) dpadEl.classList.add('pk-dpad-hidden');
+    const screen=canvas&&canvas.parentElement;
+    const fl=document.createElement('div');
+    fl.style.cssText='position:absolute;inset:0;z-index:48;pointer-events:none;border-radius:8px;';
+    if(screen) screen.appendChild(fl);
+    let f=0; const doFlash=()=>{
+      fl.style.background=f%2===0?'rgba(255,200,50,0.85)':'rgba(0,0,0,0.05)';
+      f++; if(f<8) setTimeout(doFlash,70);
+      else{
+        fl.remove();
+        battle={pm:team[0],em,type:'trainer',leaderId,leaderQueue:queue,phase:'menu'};
+        updateBUI(); enableBtns(true); updateBallBtn();
+        document.getElementById('pk-battle').classList.remove('hidden');
+        setLog(`Gym Leader ${gl.name}!`,gl.title);
+      }
+    }; doFlash();
+  }
+
+  function checkGymLeader(tx,ty){
+    if(currentMapId!=='intGym'||battle)return;
+    if(ty!==10||tx<22||tx>26)return;
+    if(gymLeaderCooldown>Date.now())return;
+    gymLeaderCooldown=Date.now()+3000;
+    const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
+    if(leaderId) startLeaderBattle(leaderId);
   }
 
   function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
@@ -3190,7 +3242,7 @@ const pokemonModule = (() => {
 
   /* ── BATTLE UI ── */
   function setLog(a,b){ const l1=document.getElementById('pk-log-line1'),l2=document.getElementById('pk-log-line2'); if(l1)l1.textContent=a||''; if(l2)l2.textContent=b!==undefined?b:''; }
-  function updateBallBtn(){ const b=document.getElementById('pk-ball-btn'); if(b){b.disabled=!battle||battleLocked||pokeballs<=0; const s=document.getElementById('pk-ball-count'); if(s)s.textContent=`(${pokeballs})`;} }
+  function updateBallBtn(){ const b=document.getElementById('pk-ball-btn'); if(b){b.disabled=!battle||battleLocked||pokeballs<=0||battle?.type==='trainer'; const s=document.getElementById('pk-ball-count'); if(s)s.textContent=`(${pokeballs})`;} }
   function enableBtns(on){
     battleLocked=!on;
     for(let i=0;i<4;i++){ const b=document.getElementById(`pk-move-${i}`); if(b)b.disabled=!on||(battle&&battle.pm.moves[i]&&battle.pm.moves[i].pp<=0); }
@@ -3398,6 +3450,22 @@ const pokemonModule = (() => {
     if(!battle)return;
     const {pm:p,em:e}=battle;
     if(e.hp<=0){
+      // ── Trainer battle: send out next Pokémon or award badge ──
+      if(battle.type==='trainer'){
+        if(battle.leaderQueue?.length>0){
+          const next=battle.leaderQueue.shift();
+          const gl=GYM_LEADERS[battle.leaderId];
+          battle.em=mkMon(next.sid,next.lvl);
+          setLog(`${gl?.name||'Leader'} sent out ${battle.em.name}!`,'');
+          updateBUI(); enableBtns(true); return;
+        }
+        const gl=GYM_LEADERS[battle.leaderId];
+        defeatedLeaders.push(battle.leaderId);
+        if(gl?.badge&&!badges.includes(gl.badge)) badges.push(gl.badge);
+        const prize=gl?.coins||300; coins+=prize; updateCoinsDisplay();
+        setLog(`You defeated ${gl?.name||'the Leader'}!`,`🏅 ${gl?.badge||'Badge'}! +${prize}💰`);
+        saveGame(); setTimeout(closeBattle,2500); return;
+      }
       let xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
       if(expBoostActive){ xg*=2; expBoostActive=false; showToast('EXP Charm activated! 2× XP!','#ffe066',1800); }
       // Award full XP to active battler, half XP to benched alive members (EXP Share)
@@ -3516,6 +3584,7 @@ const pokemonModule = (() => {
         checkItemPickup(ptx,pty);
         checkPokeCenter(ptx,pty);
         checkWarp(ptx,pty);
+        checkGymLeader(ptx,pty);
       }
     } else { player.moving=false; }
     drawOverworld();
@@ -3775,6 +3844,7 @@ const pokemonModule = (() => {
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
       px:savePX, py:savePY, mapId:saveMapId,
       pokeballs, coins, totalCaught, expBoostActive,
+      defeatedLeaders, badges,
       savedAt: Date.now()
     }));
     syncPkStats();
@@ -3787,6 +3857,8 @@ const pokemonModule = (() => {
     coins=sv.coins??0;
     totalCaught=sv.totalCaught??team.length;
     expBoostActive=sv.expBoostActive??false;
+    defeatedLeaders=sv.defeatedLeaders||[];
+    badges=sv.badges||[];
 
     // Load zone first (backward compat: old saves without mapId land in starterTown)
     loadZone(sv.mapId||'starterTown');

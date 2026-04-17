@@ -1765,11 +1765,20 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   background: #000;
   overflow: hidden;
 }
+/* pk-game-column stacks screen above d-pad in portrait, beside in landscape */
+.pk-game-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  transition: flex-direction 0.35s cubic-bezier(0.4,0,0.2,1);
+}
 /* pk-screen is JS-sized to exactly match the canvas */
 .pk-screen {
   position: relative;
   flex-shrink: 0;
   line-height: 0; /* collapse whitespace around canvas */
+  transition: width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);
 }
 #pk-canvas {
   display: block;
@@ -1779,18 +1788,69 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   border: 2px solid rgba(0,180,255,0.35);
   box-shadow: 0 0 32px rgba(0,120,255,0.15), 0 4px 20px rgba(0,0,0,0.5);
 }
-/* D-pad overlaid at bottom-left of canvas */
+/* D-pad: below canvas in portrait, left of canvas in landscape */
 #pk-dpad {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
+  position: relative;
   z-index: 10;
+  margin: 6px auto 0;
+  flex-shrink: 0;
+  transition: margin 0.35s cubic-bezier(0.4,0,0.2,1);
 }
 #pk-dpad.pk-dpad-hidden { display: none !important; }
 /* Desktop: barely visible — keyboard is primary */
 @media (hover: hover) and (pointer: fine) {
   #pk-dpad { opacity: 0.18; }
   #pk-dpad:hover { opacity: 0.7; }
+}
+/* ── Landscape toggle FAB ── */
+.pk-landscape-fab {
+  position: absolute;
+  bottom: 60px;
+  right: 14px;
+  z-index: 30;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0,80,180,0.65);
+  border: 1px solid rgba(0,180,255,0.55);
+  color: #fff;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0,100,255,0.3);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.pk-landscape-fab:hover { background: rgba(0,120,255,0.80); box-shadow: 0 4px 18px rgba(0,140,255,0.5); }
+/* ── Landscape mode overrides (body.pk-lm) ── */
+body.pk-lm { overflow: hidden; }
+body.pk-lm .pk-wrapper {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9990;
+  align-items: center;
+  justify-content: center;
+}
+body.pk-lm .pk-game-column {
+  flex-direction: row;
+  align-items: center;
+  height: 100%;
+}
+body.pk-lm #pk-dpad {
+  order: -1;
+  margin: 0 10px 0 6px;
+}
+body.pk-lm .pk-landscape-fab {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  z-index: 10000;
 }
 
 /* ── Battle Overlay ── keeps 800×560 design-size; JS applies scale() */

@@ -2023,7 +2023,7 @@ const pokemonModule = (() => {
     '#f5e8c8', // BUILDING — cream wall base
     '#d8b870', // SAND   — warm sandy tan
     '#8a7a6a', // ROCK   — grey-brown stone
-    '#c8904a', // FLOOR  — warm wood planks
+    '#c8c0b8', // FLOOR  — base (per-interior override in drawTile)
     '#7a5028', // COUNTER — dark wood furniture
   ];
 
@@ -2988,21 +2988,23 @@ const pokemonModule = (() => {
   function drawToast(){
     if(!itemToast||Date.now()>itemToast.expires)return;
     const alpha=Math.min(1,(itemToast.expires-Date.now())/300);
-    ctx.save(); ctx.globalAlpha=alpha;
-    ctx.font='bold 13px "Exo 2",sans-serif';
-    // Clamp text to fit canvas — truncate with ellipsis if too wide
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,canvas.width,canvas.height); ctx.clip();
+    ctx.globalAlpha=alpha;
+    ctx.font='bold 11px "Exo 2",sans-serif';
     let text=itemToast.text;
-    const maxW=canvas.width-16;
-    while(text.length>4&&ctx.measureText(text).width+24>maxW) text=text.slice(0,-2)+'…';
-    const tw=Math.min(maxW,ctx.measureText(text).width+24);
-    const tx2=Math.max(4,(canvas.width-tw)/2), ty2=18;
-    ctx.fillStyle='rgba(10,5,30,0.88)';
-    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.fill();}
-    else ctx.fillRect(tx2,ty2,tw,28);
-    ctx.strokeStyle=itemToast.color; ctx.lineWidth=2;
-    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.stroke();}
-    ctx.fillStyle='#fff'; ctx.textBaseline='middle';
-    ctx.fillText(text,tx2+12,ty2+14);
+    const maxW=canvas.width-24;
+    while(text.length>4&&ctx.measureText(text).width+20>maxW) text=text.slice(0,-2)+'…';
+    const tw=Math.min(maxW,ctx.measureText(text).width+20);
+    const tx2=Math.max(4,Math.floor((canvas.width-tw)/2));
+    const ty2=10;
+    ctx.fillStyle='rgba(8,4,24,0.90)';
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,24,5);ctx.fill();}
+    else ctx.fillRect(tx2,ty2,tw,24);
+    ctx.strokeStyle=itemToast.color; ctx.lineWidth=1.5;
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,24,5);ctx.stroke();}
+    ctx.fillStyle='#fff'; ctx.textBaseline='middle'; ctx.textAlign='left';
+    ctx.fillText(text,tx2+10,ty2+12);
     ctx.restore();
   }
 
@@ -3048,100 +3050,208 @@ const pokemonModule = (() => {
   /* ── INTERIOR DECORATION OVERLAYS ── */
   function drawInteriorDecor(){
     const now=Date.now();
+    ctx.save();
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+
     if(currentMapId==='intHouse'){
-      // Curtained window on north wall (tx=22..25, ty=14)
+      // ── Curtained windows on north wall ──
       [[22,14],[25,14]].forEach(([tx,ty])=>{
         const sx=tx*TSIZE-camX, sy=ty*TSIZE-camY;
-        ctx.fillStyle='rgba(140,225,255,0.45)'; ctx.fillRect(sx+4,sy+4,TSIZE-8,TSIZE-8);
-        ctx.fillStyle='rgba(220,80,60,0.7)'; ctx.fillRect(sx+3,sy+3,6,TSIZE-6); // left curtain
-        ctx.fillRect(sx+TSIZE-9,sy+3,6,TSIZE-6); // right curtain
-        ctx.strokeStyle='rgba(160,50,30,0.8)'; ctx.lineWidth=2;
-        ctx.strokeRect(sx+2,sy+2,TSIZE-4,TSIZE-4);
+        ctx.fillStyle='#5a3a18'; ctx.fillRect(sx+2,sy+2,TSIZE-4,TSIZE-4);
+        ctx.fillStyle='rgba(180,230,255,0.65)'; ctx.fillRect(sx+5,sy+5,TSIZE-10,TSIZE-10);
+        const grd=ctx.createLinearGradient(sx+5,sy+5,sx+5,sy+TSIZE-5);
+        grd.addColorStop(0,'rgba(120,200,255,0.4)'); grd.addColorStop(1,'rgba(200,240,255,0.1)');
+        ctx.fillStyle=grd; ctx.fillRect(sx+5,sy+5,TSIZE-10,TSIZE-10);
+        ctx.fillStyle='rgba(200,60,60,0.80)';
+        ctx.fillRect(sx+2,sy+2,7,TSIZE-4); ctx.fillRect(sx+TSIZE-9,sy+2,7,TSIZE-4);
+        ctx.fillStyle='#8a5020'; ctx.fillRect(sx+1,sy+1,TSIZE-2,3);
+        ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fillRect(sx+6,sy+6,5,3);
       });
-      // Potted plant (tx=17, ty=25)
-      const px=17*TSIZE-camX, py=25*TSIZE-camY;
-      ctx.fillStyle='#8a5020'; ctx.fillRect(px+8,py+14,16,12); // pot
+      // ── Decorative rug ──
+      const rugX=20*TSIZE-camX, rugY=20*TSIZE-camY, rW=TSIZE*6, rH=TSIZE*4;
+      ctx.fillStyle='rgba(150,40,40,0.22)'; ctx.fillRect(rugX,rugY,rW,rH);
+      ctx.strokeStyle='rgba(160,50,50,0.55)'; ctx.lineWidth=3;
+      ctx.strokeRect(rugX+4,rugY+4,rW-8,rH-8);
+      ctx.strokeStyle='rgba(200,160,60,0.35)'; ctx.lineWidth=1;
+      ctx.strokeRect(rugX+9,rugY+9,rW-18,rH-18);
+      const rcx=rugX+rW/2, rcy=rugY+rH/2;
+      ctx.beginPath(); ctx.moveTo(rcx,rcy-18); ctx.lineTo(rcx+24,rcy); ctx.lineTo(rcx,rcy+18); ctx.lineTo(rcx-24,rcy); ctx.closePath();
+      ctx.fillStyle='rgba(200,80,60,0.20)'; ctx.fill();
+      ctx.strokeStyle='rgba(200,100,60,0.40)'; ctx.lineWidth=1.5; ctx.stroke();
+      // ── Potted plant ──
+      const plx=17*TSIZE-camX+TSIZE/2, ply=24*TSIZE-camY+TSIZE-4;
+      ctx.fillStyle='#a04018';
+      ctx.beginPath(); ctx.moveTo(plx-9,ply-12); ctx.lineTo(plx+9,ply-12); ctx.lineTo(plx+7,ply); ctx.lineTo(plx-7,ply); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(plx-9,ply-14,18,3);
+      ctx.fillStyle='#3a1e08'; ctx.beginPath(); ctx.ellipse(plx,ply-12,8,3,0,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='#1a5c10';
-      [[0,0],[6,-6],[-6,-6],[0,-10]].forEach(([ox,oy])=>{
-        ctx.beginPath(); ctx.arc(px+16+ox,py+14+oy,7,0,Math.PI*2); ctx.fill();
+      [[0,-24],[8,-28],[-8,-28],[0,-36],[10,-34],[-10,-34]].forEach(([ox,oy])=>{
+        ctx.beginPath(); ctx.arc(plx+ox,ply+oy,7,0,Math.PI*2); ctx.fill();
       });
-      // Framed picture (tx=20..21, ty=15)
-      const picX=20*TSIZE-camX, picY=15*TSIZE-camY;
-      ctx.fillStyle='#5a3a10'; ctx.fillRect(picX+2,picY+2,TSIZE*2-4,TSIZE-4);
-      ctx.fillStyle='rgba(100,160,220,0.8)'; ctx.fillRect(picX+5,picY+5,TSIZE*2-10,TSIZE-10);
-      ctx.fillStyle='rgba(255,210,100,0.6)'; ctx.beginPath();
-      ctx.arc(picX+TSIZE,picY+TSIZE/2,10,0,Math.PI*2); ctx.fill();
-      // Rug in center (tx=21..26, ty=21..23)
-      const rugX=21*TSIZE-camX, rugY=21*TSIZE-camY;
-      ctx.fillStyle='rgba(180,60,60,0.25)'; ctx.fillRect(rugX,rugY,TSIZE*5,TSIZE*3);
-      ctx.strokeStyle='rgba(180,60,60,0.5)'; ctx.lineWidth=3; ctx.setLineDash([4,4]);
-      ctx.strokeRect(rugX+4,rugY+4,TSIZE*5-8,TSIZE*3-8);
-      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(60,200,60,0.25)';
+      [[0,-30],[6,-34],[-6,-34]].forEach(([ox,oy])=>{ ctx.beginPath(); ctx.arc(plx+ox,ply+oy,4,0,Math.PI*2); ctx.fill(); });
+      // ── Framed landscape picture ──
+      const picX=19*TSIZE-camX, picY=14*TSIZE-camY;
+      ctx.fillStyle='#6a3e14'; ctx.fillRect(picX+2,picY+3,TSIZE*3-4,TSIZE-6);
+      ctx.fillStyle='#f5deb3'; ctx.fillRect(picX+6,picY+7,TSIZE*3-12,TSIZE-14);
+      ctx.fillStyle='rgba(100,180,255,0.8)'; ctx.fillRect(picX+6,picY+7,TSIZE*3-12,(TSIZE-14)/2);
+      ctx.fillStyle='rgba(80,180,40,0.8)'; ctx.fillRect(picX+6,picY+7+(TSIZE-14)/2,TSIZE*3-12,(TSIZE-14)/2);
+      ctx.fillStyle='rgba(255,220,60,0.9)'; ctx.beginPath(); ctx.arc(picX+TSIZE*1.5,picY+7+8,6,0,Math.PI*2); ctx.fill();
+      // ── Colourful book spines on bookshelf ──
+      const bkColors=['#d04040','#4060c0','#40a040','#c0a020','#a040a0','#406080'];
+      for(let r=0;r<6;r++){
+        const bsx=16*TSIZE-camX+4, bsy=(16+r)*TSIZE-camY+4;
+        ctx.fillStyle=bkColors[r]; ctx.fillRect(bsx,bsy,8,TSIZE-8);
+        ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(bsx+1,bsy+2,2,4);
+      }
+      // ── Bed pillow & blanket ──
+      const bdX=30*TSIZE-camX, bdY=15*TSIZE-camY;
+      ctx.fillStyle='rgba(60,100,200,0.30)'; ctx.fillRect(bdX,bdY+TSIZE,TSIZE*4,TSIZE*3);
+      ctx.strokeStyle='rgba(80,120,220,0.35)'; ctx.lineWidth=1;
+      for(let i=0;i<4;i++) ctx.strokeRect(bdX+i*TSIZE/2,bdY+TSIZE,TSIZE/2,TSIZE*3);
+      ctx.fillStyle='rgba(240,240,255,0.80)'; ctx.fillRect(bdX+4,bdY+TSIZE+4,TSIZE*4-8,TSIZE-8);
+      ctx.strokeStyle='rgba(200,200,240,0.6)'; ctx.lineWidth=1.5; ctx.strokeRect(bdX+6,bdY+TSIZE+6,TSIZE*4-12,TSIZE-12);
     }
+
     else if(currentMapId==='intPC'){
-      // Blue monitor glow on each recovery pod
-      [[15,18],[16,18],[17,18],[30,18],[31,18],[32,18]].forEach(([tx,ty])=>{
-        const sx=tx*TSIZE-camX, sy=ty*TSIZE-camY;
-        const pulse=0.4+0.4*Math.sin(now/700+tx);
-        ctx.fillStyle=`rgba(0,180,255,${pulse*0.35})`;
-        ctx.fillRect(sx,sy-8,TSIZE,TSIZE+8);
-        // Monitor screen
-        ctx.fillStyle=`rgba(80,200,255,${0.7+pulse*0.2})`;
-        ctx.fillRect(sx+4,sy+2,TSIZE-8,12);
-        // Healing cross
-        ctx.fillStyle=`rgba(255,80,160,${0.6+pulse*0.3})`;
-        ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('❤',sx+TSIZE/2,sy-2);
+      // ── Pokémon Center ambient pink glow ──
+      const glowPulse=0.06+0.04*Math.sin(now/1200);
+      const ambGrd=ctx.createRadialGradient(25*TSIZE-camX,14*TSIZE-camY,10,25*TSIZE-camX,14*TSIZE-camY,TSIZE*8);
+      ambGrd.addColorStop(0,`rgba(255,180,220,${glowPulse*2})`); ambGrd.addColorStop(1,'rgba(255,180,220,0)');
+      ctx.fillStyle=ambGrd; ctx.fillRect(camX,camY,canvas.width,canvas.height);
+      // ── NURSE STATION sign ──
+      const deskX=14*TSIZE-camX, deskY=13*TSIZE-camY;
+      ctx.fillStyle='rgba(255,80,160,0.90)';
+      if(ctx.roundRect){ctx.beginPath();ctx.roundRect(deskX+TSIZE*5-20,deskY-18,80,16,4);ctx.fill();}
+      else ctx.fillRect(deskX+TSIZE*5-20,deskY-18,80,16);
+      ctx.fillStyle='#fff'; ctx.font='bold 9px "Exo 2",sans-serif';
+      ctx.fillText('NURSE STATION',deskX+TSIZE*5+20,deskY-10);
+      // ── Nurse NPC ──
+      const nx=25*TSIZE-camX+TSIZE/2, ny=14*TSIZE-camY;
+      ctx.fillStyle='#f5a0c0'; ctx.fillRect(nx-5,ny-8,10,10);
+      ctx.fillStyle='#fff'; ctx.fillRect(nx-4,ny-8,8,4);
+      ctx.fillStyle='#f5c28a'; ctx.fillRect(nx-5,ny-20,10,12);
+      ctx.fillStyle='#cc6688'; ctx.fillRect(nx-5,ny-20,10,4);
+      ctx.fillStyle='#1a1010'; ctx.fillRect(nx-3,ny-16,2,2); ctx.fillRect(nx+1,ny-16,2,2);
+      ctx.fillStyle='#fff'; ctx.fillRect(nx-4,ny-23,8,5);
+      ctx.fillStyle='rgba(255,80,160,0.85)'; ctx.fillRect(nx-2,ny-22,4,2);
+      // ── Recovery pods with pulsing glow ──
+      [[15,18],[30,18]].forEach(([btx,bty])=>{
+        for(let dx=0;dx<5;dx++){
+          const sx=(btx+dx)*TSIZE-camX, sy=bty*TSIZE-camY;
+          const pulse=0.5+0.5*Math.sin(now/600+(btx+dx)*0.8);
+          const podGrd=ctx.createRadialGradient(sx+TSIZE/2,sy+TSIZE/2,2,sx+TSIZE/2,sy+TSIZE/2,TSIZE*0.6);
+          podGrd.addColorStop(0,`rgba(0,200,255,${0.25+pulse*0.15})`); podGrd.addColorStop(1,'rgba(0,150,255,0)');
+          ctx.fillStyle=podGrd; ctx.fillRect(sx,sy-4,TSIZE,TSIZE*3+4);
+          ctx.fillStyle=`rgba(0,180,255,${0.60+pulse*0.3})`; ctx.fillRect(sx+5,sy+3,TSIZE-10,10);
+          ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(sx+6,sy+4,TSIZE/3,3);
+          const hc=`rgba(255,60,140,${0.7+pulse*0.25})`;
+          ctx.fillStyle=hc; ctx.fillRect(sx+TSIZE/2-1,sy-6,2,10); ctx.fillRect(sx+TSIZE/2-5,sy-2,10,2);
+        }
       });
+      // ── Pokéball logo on floor ──
+      const pbx=25*TSIZE-camX, pby=23*TSIZE-camY;
+      ctx.globalAlpha=0.12+0.04*Math.sin(now/1500);
+      ctx.strokeStyle='#ff4488'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(pbx,pby,TSIZE*2,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pbx-TSIZE*2,pby); ctx.lineTo(pbx+TSIZE*2,pby); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pbx,pby,8,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1;
     }
+
     else if(currentMapId==='intGym'){
-      // Arena emblem on the floor (centre of gym ~tx=24, ty=18)
-      const ex=24*TSIZE-camX, ey=18*TSIZE-camY;
       const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
       const em=GL_EMOJI[leaderId]||'⭐';
-      // Large circle emblem
-      ctx.strokeStyle='rgba(200,150,255,0.18)'; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.arc(ex+TSIZE/2,ey+TSIZE/2,TSIZE*3,0,Math.PI*2); ctx.stroke();
-      ctx.strokeStyle='rgba(200,150,255,0.10)'; ctx.lineWidth=6;
-      ctx.beginPath(); ctx.arc(ex+TSIZE/2,ey+TSIZE/2,TSIZE*2,0,Math.PI*2); ctx.stroke();
-      // Big emoji at centre
-      ctx.font=`bold ${TSIZE*1.8}px sans-serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.globalAlpha=0.15+0.07*Math.sin(now/800);
-      ctx.fillText(em,ex+TSIZE/2,ey+TSIZE/2);
+      const gymRGB=leaderId==='sylvia'?[40,160,40]:leaderId==='granite'?[140,110,70]:leaderId==='marina'?[40,120,220]:[220,200,30];
+      const gymHex=leaderId==='sylvia'?'#28a028':leaderId==='granite'?'#8c6e46':leaderId==='marina'?'#2878dc':'#dccc1e';
+      // ── Spotlight beams ──
+      [10,25,40].forEach(txl=>{
+        const slx=txl*TSIZE-camX, sly=6*TSIZE-camY;
+        const slGrd=ctx.createLinearGradient(slx,sly,slx,sly+TSIZE*6);
+        slGrd.addColorStop(0,`rgba(${gymRGB[0]},${gymRGB[1]},${gymRGB[2]},0.12)`); slGrd.addColorStop(1,`rgba(${gymRGB[0]},${gymRGB[1]},${gymRGB[2]},0)`);
+        ctx.fillStyle=slGrd; ctx.fillRect(slx-16,sly,32,TSIZE*6);
+      });
+      // ── Arena floor emblem ──
+      const ex=25*TSIZE-camX, ey=22*TSIZE-camY;
+      const embPulse=0.10+0.05*Math.sin(now/900);
+      ctx.globalAlpha=embPulse*1.6;
+      ctx.strokeStyle=gymHex; ctx.lineWidth=4;
+      ctx.beginPath(); ctx.arc(ex,ey,TSIZE*4,0,Math.PI*2); ctx.stroke();
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(ex,ey,TSIZE*2.5,0,Math.PI*2); ctx.stroke();
+      ctx.font=`bold ${TSIZE*3}px sans-serif`;
+      ctx.fillText(em,ex,ey);
       ctx.globalAlpha=1;
-      // Rope lane dividers
-      ctx.strokeStyle='rgba(180,120,60,0.6)'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
-      [10,16,22].forEach(ty=>{
-        const sy=ty*TSIZE-camY;
-        ctx.beginPath(); ctx.moveTo(8*TSIZE-camX,sy); ctx.lineTo(42*TSIZE-camX,sy); ctx.stroke();
+      // ── Wall banners ──
+      [[6,10],[42,10]].forEach(([btx,bty])=>{
+        const bsx=btx*TSIZE-camX, bsy=bty*TSIZE-camY;
+        ctx.fillStyle=gymHex; ctx.fillRect(bsx+2,bsy,TSIZE*2-4,TSIZE*5);
+        ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(bsx+4,bsy,4,TSIZE*5);
+        ctx.font=`bold ${TSIZE*0.9}px sans-serif`; ctx.globalAlpha=0.7;
+        ctx.fillText(em,bsx+TSIZE,bsy+TSIZE*2.5); ctx.globalAlpha=1;
+      });
+      // ── Lane dividers ──
+      ctx.strokeStyle=`rgba(${gymRGB[0]},${gymRGB[1]},${gymRGB[2]},0.55)`; ctx.lineWidth=3; ctx.setLineDash([8,5]);
+      [14,20,26].forEach(lty=>{
+        const lsy=lty*TSIZE-camY;
+        ctx.beginPath(); ctx.moveTo(8*TSIZE-camX,lsy); ctx.lineTo(42*TSIZE-camX,lsy); ctx.stroke();
       });
       ctx.setLineDash([]);
+      // ── Leader platform glow ──
+      const pfx=20*TSIZE-camX, pfy=7*TSIZE-camY;
+      const pfGrd=ctx.createLinearGradient(pfx,pfy,pfx,pfy+TSIZE*3);
+      pfGrd.addColorStop(0,`rgba(${gymRGB[0]},${gymRGB[1]},${gymRGB[2]},0.20)`); pfGrd.addColorStop(1,`rgba(${gymRGB[0]},${gymRGB[1]},${gymRGB[2]},0)`);
+      ctx.fillStyle=pfGrd; ctx.fillRect(pfx,pfy,TSIZE*9,TSIZE*3);
     }
+
     else if(currentMapId==='intMart'){
-      // Shelf labels and items
-      const labels=[{tx:14,label:'BALLS 🎾'},{tx:20,label:'POTIONS 💊'},{tx:28,label:'ITEMS ⭐'},{tx:34,label:'STONES 💎'}];
-      labels.forEach(({tx,label})=>{
-        const sx=tx*TSIZE-camX, sy=17*TSIZE-camY;
-        ctx.fillStyle='rgba(255,220,100,0.85)';
-        ctx.font='bold 7px "Exo 2",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-        ctx.fillText(label,sx+TSIZE/2,sy+3);
-        // Small price tag
-        const pulse=0.6+0.4*Math.sin(now/900+tx);
-        ctx.fillStyle=`rgba(255,100,60,${pulse})`;
-        ctx.fillRect(sx+4,sy+14,TSIZE-8,6);
-        ctx.fillStyle='#fff'; ctx.font='bold 5px sans-serif';
-        ctx.fillText('ON SALE',sx+TSIZE/2,sy+17);
+      // ── Shelf label boards ──
+      const shelfItems=[
+        {tx:14,icon:'⚾',name:'POKÉ BALLS'},{tx:20,icon:'💊',name:'POTIONS'},
+        {tx:26,icon:'⭐',name:'EXP ITEMS'},{tx:32,icon:'💎',name:'STONES'}
+      ];
+      shelfItems.forEach(({tx,icon,name})=>{
+        const sx=tx*TSIZE-camX, sy=14*TSIZE-camY;
+        ctx.fillStyle='rgba(40,80,200,0.85)';
+        if(ctx.roundRect){ctx.beginPath();ctx.roundRect(sx,sy-20,TSIZE*4,18,4);ctx.fill();}
+        else ctx.fillRect(sx,sy-20,TSIZE*4,18);
+        ctx.fillStyle='#fff'; ctx.font='bold 8px "Exo 2",sans-serif';
+        ctx.fillText(`${icon} ${name}`,sx+TSIZE*2,sy-11);
+        // Coloured item blobs on shelves
+        for(let dx=0;dx<4;dx++){
+          const isx=(tx+dx)*TSIZE-camX+4, isy=sy+8;
+          const icol=['rgba(255,80,80,0.7)','rgba(80,180,80,0.7)','rgba(80,120,255,0.7)','rgba(255,200,40,0.7)'][dx%4];
+          ctx.fillStyle=icol; ctx.beginPath(); ctx.arc(isx+TSIZE/2-4,isy+8,7,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(isx+TSIZE/2-6,isy+6,3,0,Math.PI*2); ctx.fill();
+        }
       });
-      // Welcome mat at entrance
-      const mx=22*TSIZE-camX, my=30*TSIZE-camY;
-      ctx.fillStyle='rgba(255,160,0,0.3)';
-      ctx.fillRect(mx,my,TSIZE*4,TSIZE*1.5);
-      ctx.strokeStyle='rgba(255,160,0,0.55)'; ctx.lineWidth=2;
-      ctx.strokeRect(mx+2,my+2,TSIZE*4-4,TSIZE*1.5-4);
-      ctx.fillStyle='rgba(255,200,50,0.9)'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('WELCOME!',mx+TSIZE*2,my+TSIZE*0.75);
+      // ── Staff NPC at counter ──
+      const sx2=25*TSIZE-camX+TSIZE/2, sy2=14*TSIZE-camY;
+      ctx.fillStyle='#2060c0'; ctx.fillRect(sx2-5,sy2-8,10,10);
+      ctx.fillStyle='#fff'; ctx.fillRect(sx2-3,sy2-7,6,3);
+      ctx.fillStyle='#f5c28a'; ctx.fillRect(sx2-4,sy2-18,8,10);
+      ctx.fillStyle='#1a1a60'; ctx.fillRect(sx2-4,sy2-18,8,4);
+      ctx.fillStyle='#1a1010'; ctx.fillRect(sx2-2,sy2-14,2,2); ctx.fillRect(sx2+1,sy2-14,2,2);
+      // ── Pulsing sale tags ──
+      const stp=0.6+0.4*Math.sin(now/500);
+      ctx.fillStyle=`rgba(255,60,60,${stp})`; ctx.font='bold 6px sans-serif';
+      [[16,15],[22,15],[28,15],[34,15]].forEach(([stx,sty])=>{
+        const ssx=stx*TSIZE-camX, ssy=sty*TSIZE-camY;
+        if(ctx.roundRect){ctx.beginPath();ctx.roundRect(ssx+4,ssy+4,TSIZE-8,10,3);ctx.fill();}
+        else ctx.fillRect(ssx+4,ssy+4,TSIZE-8,10);
+        ctx.fillStyle='#fff'; ctx.fillText('SALE',ssx+TSIZE/2,ssy+10);
+        ctx.fillStyle=`rgba(255,60,60,${stp})`;
+      });
+      // ── Welcome mat ──
+      const mx=21*TSIZE-camX, my=30*TSIZE-camY;
+      ctx.fillStyle='rgba(40,80,200,0.25)'; ctx.fillRect(mx,my,TSIZE*6,TSIZE);
+      ctx.strokeStyle='rgba(60,100,220,0.50)'; ctx.lineWidth=2;
+      ctx.strokeRect(mx+2,my+2,TSIZE*6-4,TSIZE-4);
+      ctx.fillStyle='rgba(100,150,255,0.9)'; ctx.font='bold 10px "Exo 2",sans-serif';
+      ctx.fillText('WELCOME TO THE POKÉMART!',mx+TSIZE*3,my+TSIZE/2);
     }
+
+    ctx.restore();
   }
 
   /* ── GYM LEADER NPC DRAWING ── */
@@ -3404,13 +3514,36 @@ const pokemonModule = (() => {
       ctx.fillRect(sx+(sd1+14)%TSIZE,sy+(sd2+10)%TSIZE,2,2);
     }
     else if(tile===T.FLOOR){
-      // Horizontal wood plank lines
-      ctx.fillStyle='rgba(0,0,0,0.07)';
-      for(let py=0;py<TSIZE;py+=8) ctx.fillRect(sx,sy+py,TSIZE,1);
-      // Alternating plank half-shade
-      if((tx+ty)%2===0){ctx.fillStyle='rgba(0,0,0,0.04)';ctx.fillRect(sx,sy,TSIZE/2,TSIZE);}
-      // Top highlight
-      ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(sx,sy,TSIZE,2);
+      if(currentMapId==='intPC'){
+        // Pokémon Center: pink/white checkerboard
+        ctx.fillStyle=(tx+ty)%2===0?'#fce8f0':'#fff0f6';
+        ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        ctx.fillStyle='rgba(220,100,160,0.10)';
+        ctx.fillRect(sx,sy,TSIZE,1); ctx.fillRect(sx,sy,1,TSIZE);
+      } else if(currentMapId==='intGym'){
+        // Gym: polished stone tiles tinted by leader type
+        const lid=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
+        const gc=lid==='sylvia'?[40,140,40]:lid==='granite'?[120,100,70]:lid==='marina'?[40,100,200]:[200,180,30];
+        ctx.fillStyle=(tx+ty)%2===0?`rgba(${gc[0]},${gc[1]},${gc[2]},0.14)`:'rgba(0,0,0,0)';
+        ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        ctx.fillStyle='rgba(0,0,0,0.06)';
+        ctx.fillRect(sx,sy,TSIZE,1); ctx.fillRect(sx,sy,1,TSIZE);
+        ctx.fillStyle='rgba(255,255,255,0.06)';
+        ctx.fillRect(sx+1,sy+1,TSIZE-1,1); ctx.fillRect(sx+1,sy+1,1,TSIZE-1);
+      } else if(currentMapId==='intMart'){
+        // Mart: bright clean white tiles
+        ctx.fillStyle=(tx+ty)%2===0?'#f4f4f4':'#ececec';
+        ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        ctx.fillStyle='rgba(0,0,0,0.07)';
+        ctx.fillRect(sx,sy,TSIZE,1); ctx.fillRect(sx,sy,1,TSIZE);
+      } else {
+        // House / default: warm wood planks
+        ctx.fillStyle='#c8904a'; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+        ctx.fillStyle='rgba(0,0,0,0.07)';
+        for(let py=0;py<TSIZE;py+=8) ctx.fillRect(sx,sy+py,TSIZE,1);
+        if((tx+ty)%2===0){ctx.fillStyle='rgba(0,0,0,0.04)';ctx.fillRect(sx,sy,TSIZE/2,TSIZE);}
+        ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(sx,sy,TSIZE,2);
+      }
     }
     else if(tile===T.COUNTER){
       // Top surface (lighter brown)
@@ -4394,10 +4527,19 @@ const pokemonModule = (() => {
       canvas=document.getElementById('pk-canvas'); if(!canvas)return;
       ctx=canvas.getContext('2d');
       const resize=()=>{
-        const wrapper=canvas.parentElement&&canvas.parentElement.parentElement;
-        const maxW=wrapper?wrapper.clientWidth:800;
-        const maxH=wrapper?wrapper.clientHeight:560;
-        const sc=Math.min(1,maxW/800,maxH/560);
+        const isLm=document.body.classList.contains('pk-lm');
+        let sc;
+        if(isLm){
+          sc=Math.min(1,window.innerWidth/800,window.innerHeight/560);
+        } else {
+          const pkWrapper=canvas.parentElement?.parentElement?.parentElement;
+          const dpad=document.getElementById('pk-dpad');
+          const dpadHidden=dpad&&dpad.classList.contains('pk-dpad-hidden');
+          const dpadH=dpadHidden?0:(dpad&&dpad.offsetHeight>0?dpad.offsetHeight:138)+8;
+          const maxW=pkWrapper?pkWrapper.clientWidth:800;
+          const maxH=pkWrapper?Math.max(100,pkWrapper.clientHeight-dpadH):560;
+          sc=Math.min(1,maxW/800,maxH/560);
+        }
         const cw=Math.round(800*sc), ch=Math.round(560*sc);
         canvas.style.width=cw+'px'; canvas.style.height=ch+'px';
         const screen=canvas.parentElement;
@@ -4747,6 +4889,18 @@ const pokemonModule = (() => {
       const err=await syncPkSave(sv);
       if(err===null) showToast('Saved to cloud! 💾','#00ff88',2200);
       else showToast('Saved locally ✓ — cloud error: '+err,'#ff9900',5000);
+    },
+    toggleLandscape(){
+      const isLm=document.body.classList.toggle('pk-lm');
+      const fab=document.getElementById('pk-landscape-fab');
+      if(fab) fab.textContent=isLm?'⊡':'⛶';
+      if(isLm){
+        try{ window.screen?.orientation?.lock?.('landscape'); }catch(e){}
+      } else {
+        try{ window.screen?.orientation?.unlock?.(); }catch(e){}
+      }
+      setTimeout(()=>{ canvas?._pkResize?.(); },50);
+      setTimeout(()=>{ canvas?._pkResize?.(); },400);
     },
   };
 })();

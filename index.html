@@ -395,16 +395,10 @@
   <!-- ── POKEMON ──────────────────────────────────────────── -->
   <div class="page" id="page-pokemon">
     <div class="pk-wrapper">
-      <!-- pk-screen is sized by JS to match the canvas; dpad + battle overlay live inside it -->
+      <div class="pk-game-column" id="pk-game-column">
+      <!-- pk-screen is sized by JS to match the canvas; battle overlay lives inside it -->
       <div class="pk-screen">
         <canvas id="pk-canvas" width="800" height="560"></canvas>
-        <div class="dpad" id="pk-dpad">
-          <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
-          <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
-          <button class="dpad-btn dpad-center" disabled></button>
-          <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
-          <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
-        </div>
 
         <!-- Battle Overlay -->
         <div id="pk-battle" class="pk-battle hidden">
@@ -486,6 +480,17 @@
         </div>
       </div>
       </div><!-- /pk-screen -->
+      <div class="dpad" id="pk-dpad">
+        <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
+        <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
+        <button class="dpad-btn dpad-center" disabled></button>
+        <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
+        <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
+      </div>
+      </div><!-- /pk-game-column -->
+
+      <!-- Landscape mode FAB -->
+      <button class="pk-landscape-fab" id="pk-landscape-fab" onclick="window.pokemonModule.toggleLandscape()" title="Toggle Landscape Mode">⛶</button>
 
       <!-- Pokédex toggle button -->
       <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>

@@ -176,10 +176,18 @@ window.royaleModule = (function () {
   // ── Player ────────────────────────────────────────────────
   let player = {
     x: 100*TILE, y: 100*TILE,
-    angle: 0,               // radians facing direction
+    angle: 0,
     health: 100, maxHealth: 100,
-    hidden: false,          // inside bush/tree canopy
+    armor: 0,   maxArmor: 100,
+    hidden: false,
+    alive: true,
+    kills: 0,
   };
+
+  // ── Game state ────────────────────────────────────────────
+  let gamePhase = 'playing'; // 'playing' | 'dead' | 'win'
+  let gameEndTimer = 0;
+  let totalKills   = 0;
 
   // ── Camera ────────────────────────────────────────────────
   let cam = { x: 100*TILE, y: 100*TILE };
@@ -201,7 +209,8 @@ window.royaleModule = (function () {
 
     if (!mapTiles) { generateMap(); generateTrees(); }
 
-    player.x=100*TILE; player.y=100*TILE; player.health=100;
+    player.x=100*TILE; player.y=100*TILE; player.health=100; player.armor=0; player.alive=true; player.kills=0;
+    gamePhase='playing'; gameEndTimer=0; totalKills=0;
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
@@ -212,6 +221,9 @@ window.royaleModule = (function () {
     window.addEventListener('resize', resize);
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup',   onKey);
+    document.addEventListener('keydown', onAnyKeyForExit);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('touchstart', onTouchStart, {passive:false});
     canvas.addEventListener('touchmove',  onTouchMove,  {passive:false});
     canvas.addEventListener('touchend',   onTouchEnd,   {passive:false});
@@ -230,6 +242,11 @@ window.royaleModule = (function () {
     window.removeEventListener('resize', resize);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup',   onKey);
+    document.removeEventListener('keydown', onAnyKeyForExit);
+    if (canvas) {
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mousedown', onMouseDown);
+    }
     if (canvas) {
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove',  onTouchMove);
@@ -383,12 +400,14 @@ window.royaleModule = (function () {
     updateFires(dt);
     updateExplosions(dt);
     updateZone(dt);
-    updateBots(dt);
+    updateBotsAdvanced(dt);
     updateAirdrop(dt);
     updatePickups();
     updateKillFeed(dt);
     tickAirdropSpawn(dt);
+    checkEndCondition(dt);
     broadcastState();
+    if (gamePhase!=='playing') return; // pause updates when dead/win
   }
 
   // ── Tile rendering ────────────────────────────────────────
@@ -724,7 +743,16 @@ window.royaleModule = (function () {
     ctx.fillRect(hx,hy,(player.health/player.maxHealth)*150,14);
     ctx.fillStyle='#fff'; ctx.font='bold 11px monospace';
     ctx.textAlign='left';
-    ctx.fillText(`HP ${player.health}/${player.maxHealth}`, hx+4, hy+11);
+    ctx.fillText(`HP ${Math.ceil(player.health)}/${player.maxHealth}`, hx+4, hy+11);
+    // Armor bar
+    if (player.armor > 0) {
+      const ax=hx, ay=hy-20;
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(ax-2,ay-2,154,14);
+      ctx.fillStyle='#336'; ctx.fillRect(ax,ay,150,10);
+      ctx.fillStyle='#6af'; ctx.fillRect(ax,ay,(player.armor/player.maxArmor)*150,10);
+      ctx.fillStyle='#adf'; ctx.font='9px monospace';
+      ctx.fillText(`ARMOR ${Math.ceil(player.armor)}`, ax+4, ay+9);
+    }
 
     // ── Hidden indicator
     if (player.hidden) {
@@ -811,6 +839,7 @@ window.royaleModule = (function () {
 
     ctx.restore();
     drawHUD();
+    drawEndScreen();
   }
 
   // ── Weapon definitions ────────────────────────────────────
@@ -876,18 +905,24 @@ window.royaleModule = (function () {
 
   // ── Loot & crate spawning ────────────────────────────────
   const LOOT_POOL = ['pistol','smg','ar','shotgun','sniper','revolver','battlerifle','grenade','molotov','rpg'];
+  const SUPPLY_POOL = ['armor_light','armor_heavy','medkit','ammo_box'];
 
   function spawnLoot() {
     loot = []; crates = [];
     const rng = seededRng(99);
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 140; i++) {
       const tx = 3 + rng()*(MAP_W-6), ty = 3 + rng()*(MAP_H-6);
       const tile = mapTiles[Math.floor(ty)][Math.floor(tx)];
       if (tile === T.WATER || tile === T.DEEP_WATER) continue;
-      const key = LOOT_POOL[Math.floor(rng()*LOOT_POOL.length)];
-      loot.push({ x:tx*TILE, y:ty*TILE, key, ammo: WEAPONS[key].ammo*2 });
+      if (rng() < 0.25) {
+        // supply item
+        const key = SUPPLY_POOL[Math.floor(rng()*SUPPLY_POOL.length)];
+        loot.push({ x:tx*TILE, y:ty*TILE, key, ammo:0, supply:true });
+      } else {
+        const key = LOOT_POOL[Math.floor(rng()*LOOT_POOL.length)];
+        loot.push({ x:tx*TILE, y:ty*TILE, key, ammo: WEAPONS[key].ammo*2 });
+      }
     }
-    // Supply crates at fixed POIs
     const pts = [[96,94],[105,93],[148,35],[22,144],[157,158],[70,30],[130,70]];
     for (const [tx,ty] of pts) crates.push({ x:tx*TILE, y:ty*TILE, open:false, lootLeft:3 });
   }
@@ -965,6 +1000,16 @@ window.royaleModule = (function () {
   }
 
   function pickupLoot(item) {
+    if (item.supply) {
+      if (item.key==='medkit')       { player.health=Math.min(player.maxHealth,player.health+60); killFeed.push({text:'Medkit +60 HP',life:2}); }
+      else if (item.key==='armor_light') { player.armor=Math.min(player.maxArmor,player.armor+50); killFeed.push({text:'Light Armor +50',life:2}); }
+      else if (item.key==='armor_heavy') { player.armor=Math.min(player.maxArmor,player.armor+100); killFeed.push({text:'Heavy Armor +100',life:2}); }
+      else if (item.key==='ammo_box') {
+        for (const k of inventory) ammoCache[k]=(ammoCache[k]||0)+WEAPONS[k].ammo*3;
+        killFeed.push({text:'Ammo Box',life:2});
+      }
+      return;
+    }
     if (inventory.length < 2 && !inventory.includes(item.key)) {
       inventory.push(item.key);
       ammoCache[item.key] = (ammoCache[item.key]||0) + item.ammo;
@@ -1018,7 +1063,7 @@ window.royaleModule = (function () {
       if (b.owner !== localId) {
         const dx=b.x-player.x, dy=b.y-player.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
-          player.health = Math.max(0, player.health-b.dmg);
+          applyDamageToPlayer(b.dmg);
           bullets.splice(i,1); continue;
         }
       }
@@ -1062,7 +1107,7 @@ window.royaleModule = (function () {
   function doExplosion(x,y,r,dmg) {
     explosions.push({x,y,r:10,maxR:r,life:0.55,maxLife:0.55});
     const d2=(x-player.x)**2+(y-player.y)**2;
-    if (d2<r*r) player.health=Math.max(0,player.health-dmg*Math.max(0,1-Math.sqrt(d2)/r));
+    if (d2<r*r) applyDamageToPlayer(dmg*Math.max(0,1-Math.sqrt(d2)/r));
     for (const bt of bots) {
       if (!bt.alive) continue;
       const bd2=(x-bt.x)**2+(y-bt.y)**2;
@@ -1075,7 +1120,7 @@ window.royaleModule = (function () {
       const f=fires[i]; f.life -= dt;
       if (f.life<=0) { fires.splice(i,1); continue; }
       const d2=(f.x-player.x)**2+(f.y-player.y)**2;
-      if (d2<f.r*f.r) player.health=Math.max(0,player.health-8*dt);
+      if (d2<f.r*f.r) applyDamageToPlayer(8*dt);
     }
   }
 
@@ -1114,7 +1159,7 @@ window.royaleModule = (function () {
     if (zone.dmgTick >= 0.5) {
       zone.dmgTick = 0;
       const d=Math.sqrt((player.x-zone.cx)**2+(player.y-zone.cy)**2);
-      if (d > zone.r) player.health=Math.max(0,player.health-4*(1+zone.phase*0.5));
+      if (d > zone.r) applyDamageToPlayer(4*(1+zone.phase*0.5));
     }
   }
 
@@ -1216,7 +1261,7 @@ window.royaleModule = (function () {
 
   // ── Render: world effects ─────────────────────────────────
   function drawLoot() {
-    const ICONS = {pistol:'🔫',smg:'🔫',ar:'🔫',shotgun:'🔫',sniper:'🔫',revolver:'🔫',battlerifle:'🔫',grenade:'💣',molotov:'🍾',rpg:'🚀'};
+    const ICONS = {pistol:'🔫',smg:'🔫',ar:'🔫',shotgun:'🔫',sniper:'🔫',revolver:'🔫',battlerifle:'🔫',grenade:'💣',molotov:'🍾',rpg:'🚀',medkit:'💊',armor_light:'🦺',armor_heavy:'🛡️',ammo_box:'📦'};
     for (const it of loot) {
       ctx.fillStyle='rgba(255,220,0,0.18)';
       ctx.beginPath(); ctx.arc(it.x,it.y,16,0,Math.PI*2); ctx.fill();
@@ -1383,7 +1428,7 @@ window.royaleModule = (function () {
       rlChannel.on('broadcast',{event:'hit'},(msg)=>{
         const d=msg.payload;
         if (d&&d.target===localId) {
-          player.health=Math.max(0,player.health-d.dmg);
+          applyDamageToPlayer(d.dmg);
           if (player.health<=0) killFeed.push({text:'You were eliminated!',life:999});
         }
       });
@@ -1417,6 +1462,169 @@ window.royaleModule = (function () {
       airdrop={x:-200, y:MAP_PX/2+(Math.random()-0.5)*MAP_PX*0.3,
                vx:140, vy:0, z:300, phase:'fly'};
       killFeed.push({text:'Airdrop incoming!',life:5});
+    }
+  }
+
+  // ── Damage helper ─────────────────────────────────────────
+  function applyDamageToPlayer(rawDmg) {
+    if (!player.alive) return;
+    let dmg = rawDmg;
+    if (player.armor > 0) {
+      const absorbed = Math.min(dmg * 0.55, player.armor);
+      player.armor = Math.max(0, player.armor - absorbed);
+      dmg -= absorbed;
+    }
+    player.health = Math.max(0, player.health - dmg);
+    if (player.health <= 0) {
+      player.alive = false;
+      gamePhase = 'dead';
+      killFeed.push({text:'You were eliminated!', life:999});
+    }
+  }
+
+  // ── Win / death detection ────────────────────────────────
+  function checkEndCondition(dt) {
+    if (gamePhase !== 'playing') { gameEndTimer += dt; return; }
+    const aliveCount = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length;
+    if (aliveCount === 0 && player.alive) {
+      gamePhase = 'win'; gameEndTimer = 0;
+      killFeed.push({text:'VICTORY ROYALE!', life:999});
+    }
+  }
+
+  // ── End screen ────────────────────────────────────────────
+  function drawEndScreen() {
+    if (gamePhase === 'playing') return;
+    const alpha = Math.min(1, gameEndTimer / 1.2);
+    ctx.fillStyle = `rgba(0,0,0,${alpha*0.78})`;
+    ctx.fillRect(0,0,canvasW,canvasH);
+    if (alpha < 0.3) return;
+
+    const cx=canvasW/2, cy=canvasH/2;
+    if (gamePhase === 'win') {
+      ctx.fillStyle=`rgba(255,220,0,${alpha})`;
+      ctx.font=`bold ${Math.round(canvasH*0.1)}px monospace`;
+      ctx.textAlign='center';
+      ctx.fillText('VICTORY ROYALE', cx, cy-40);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+      ctx.font=`bold 22px monospace`;
+      ctx.fillText(`Kills: ${player.kills}`, cx, cy+10);
+    } else {
+      ctx.fillStyle=`rgba(220,60,60,${alpha})`;
+      ctx.font=`bold ${Math.round(canvasH*0.09)}px monospace`;
+      ctx.textAlign='center';
+      ctx.fillText('ELIMINATED', cx, cy-40);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+      ctx.font='bold 18px monospace';
+      ctx.fillText(`Kills: ${player.kills}`, cx, cy+10);
+    }
+
+    // Scoreboard
+    const sorted = bots.slice().sort((a,b)=>(!a.alive?1:0)-(!b.alive?1:0));
+    ctx.font='12px monospace'; ctx.fillStyle=`rgba(200,200,200,${alpha})`;
+    let row=cy+50;
+    ctx.fillText('NAME            HP', cx, row); row+=18;
+    ctx.fillText('─────────────────────', cx, row); row+=18;
+    for (const b of sorted.slice(0,8)) {
+      const hp = b.alive ? b.hp : 0;
+      ctx.fillStyle = b.alive ? `rgba(150,255,150,${alpha})` : `rgba(180,180,180,${alpha*0.6})`;
+      ctx.fillText(`${(b.name||'Bot').padEnd(16)} ${hp}`, cx, row); row+=16;
+    }
+
+    ctx.fillStyle=`rgba(255,255,255,${alpha*0.7})`;
+    ctx.font='13px monospace';
+    ctx.fillText('Tap / press any key to exit', cx, row+24);
+    ctx.textAlign='left';
+  }
+
+  // ── Mouse aim + click-to-fire (desktop) ──────────────────
+  function onMouseMove(e) {
+    if (gamePhase !== 'playing') return;
+    const rect=canvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const my=(e.clientY-rect.top)*(canvas.height/rect.height);
+    player.angle=Math.atan2(my-canvasH/2, mx-canvasW/2);
+  }
+
+  function onMouseDown(e) {
+    if (gamePhase !== 'playing') return;
+    if (e.button!==0) return;
+    const key=inventory[activeSlot];
+    if (key) tryFire(player.x,player.y,player.angle,key,localId);
+  }
+
+  function onAnyKeyForExit(e) {
+    if (gamePhase==='dead'||gamePhase==='win') {
+      if (gameEndTimer>1.5) goToPage('first');
+    }
+  }
+
+  // ── Advanced bot AI: zone-flee + loot-seek ────────────────
+  function updateBotsAdvanced(dt) {
+    const now=performance.now();
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+
+      // Zone flee — move toward zone center if outside
+      const dz=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
+      if (dz > zone.r*0.85) {
+        const az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
+        bt.x+=Math.cos(az)*160*dt; bt.y+=Math.sin(az)*160*dt;
+        bt.angle=az;
+        bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
+        bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
+        continue;
+      }
+
+      // Loot-seek if unarmed or low ammo
+      if (!bt.weapon || bt.ammo<=0) {
+        let closest=null, cdist=Infinity;
+        for (const it of loot) {
+          if (it.supply) continue;
+          const d=Math.sqrt((it.x-bt.x)**2+(it.y-bt.y)**2);
+          if (d<cdist){cdist=d;closest=it;}
+        }
+        if (closest && cdist<400) {
+          const al=Math.atan2(closest.y-bt.y,closest.x-bt.x);
+          bt.x+=Math.cos(al)*130*dt; bt.y+=Math.sin(al)*130*dt; bt.angle=al;
+          if (cdist<30) { bt.weapon=closest.key; bt.ammo=WEAPONS[closest.key].ammo; loot.splice(loot.indexOf(closest),1); }
+          continue;
+        }
+      }
+
+      const dx=player.x-bt.x, dy=player.y-bt.y;
+      const distToPlayer=Math.sqrt(dx*dx+dy*dy);
+      if (distToPlayer<350) bt.state='chase'; else if (distToPlayer>550) bt.state='roam';
+
+      if (bt.state==='chase') {
+        bt.angle=Math.atan2(dy,dx);
+        bt.x+=Math.cos(bt.angle)*125*dt; bt.y+=Math.sin(bt.angle)*125*dt;
+        if (distToPlayer<320 && bt.ammo>0 && now>bt.fireT) {
+          tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*0.14,bt.weapon||'pistol',bt.id);
+          bt.ammo=Math.max(0,bt.ammo-1);
+          bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*1.6;
+        }
+      } else {
+        const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
+        const wd=Math.sqrt(wx*wx+wy*wy);
+        if (wd<20) {
+          const rng=seededRng(now*0.001+bt.id.charCodeAt(4)||0);
+          bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
+          bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
+        } else {
+          bt.angle=Math.atan2(wy,wx);
+          bt.x+=Math.cos(bt.angle)*85*dt; bt.y+=Math.sin(bt.angle)*85*dt;
+        }
+      }
+      bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
+      bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
+
+      const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
+      if (zd>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
+      if (bt.hp<=0) {
+        bt.alive=false; player.kills++;
+        killFeed.push({text:`You killed ${bt.name}`,life:4});
+      }
     }
   }
 

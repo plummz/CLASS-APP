@@ -201,8 +201,12 @@ window.royaleModule = (function () {
 
     if (!mapTiles) { generateMap(); generateTrees(); }
 
-    player.x = 100*TILE; player.y = 100*TILE;
-    cam.x = player.x;    cam.y = player.y;
+    player.x=100*TILE; player.y=100*TILE; player.health=100;
+    cam.x=player.x; cam.y=player.y;
+    inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
+    bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
+    airdrop=null; airdropTimer=0; broadcastThrottle=0;
+    spawnLoot(); spawnBots(); initZone(); initMultiplayer();
 
     resize();
     window.addEventListener('resize', resize);
@@ -234,6 +238,7 @@ window.royaleModule = (function () {
     }
     document.body.classList.remove('rl-active');
     try { screen.orientation.unlock(); } catch(_) {}
+    destroyMultiplayer();
   }
 
   function forceLandscape() {
@@ -259,11 +264,12 @@ window.royaleModule = (function () {
     e.preventDefault();
     for (const t of e.changedTouches) {
       if (t.clientX < canvasW * 0.5 && !joy.active) {
-        joy.active = true; joy.id = t.identifier;
-        joy.sx = joy.cx = t.clientX;
-        joy.sy = joy.cy = t.clientY;
-        joy.dx = joy.dy = 0;
-        joyShow(joy.sx, joy.sy, joy.cx, joy.cy, 'rl-joy-base','rl-joy-knob');
+        joy.active=true; joy.id=t.identifier;
+        joy.sx=joy.cx=t.clientX; joy.sy=joy.cy=t.clientY;
+        joy.dx=joy.dy=0;
+        joyShow(joy.sx,joy.sy,joy.cx,joy.cy,'rl-joy-base','rl-joy-knob');
+      } else if (t.clientX >= canvasW*0.5) {
+        onAimTouchStart(t);
       }
     }
   }
@@ -271,17 +277,17 @@ window.royaleModule = (function () {
   function onTouchMove(e) {
     e.preventDefault();
     for (const t of e.changedTouches) {
-      if (joy.active && t.identifier === joy.id) {
-        joy.cx = t.clientX; joy.cy = t.clientY;
-        const dx = joy.cx-joy.sx, dy = joy.cy-joy.sy;
-        const len = Math.sqrt(dx*dx+dy*dy) || 1;
-        const max = 45;
-        joy.dx = dx/Math.max(len,max);
-        joy.dy = dy/Math.max(len,max);
-        joyShow(joy.sx, joy.sy,
+      if (joy.active && t.identifier===joy.id) {
+        joy.cx=t.clientX; joy.cy=t.clientY;
+        const dx=joy.cx-joy.sx, dy=joy.cy-joy.sy;
+        const len=Math.sqrt(dx*dx+dy*dy)||1, max=45;
+        joy.dx=dx/Math.max(len,max); joy.dy=dy/Math.max(len,max);
+        joyShow(joy.sx,joy.sy,
           joy.sx+dx/Math.max(len/max,1),
           joy.sy+dy/Math.max(len/max,1),
           'rl-joy-base','rl-joy-knob');
+      } else {
+        onAimTouchMove(t);
       }
     }
   }
@@ -289,9 +295,11 @@ window.royaleModule = (function () {
   function onTouchEnd(e) {
     e.preventDefault();
     for (const t of e.changedTouches) {
-      if (joy.active && t.identifier === joy.id) {
+      if (joy.active && t.identifier===joy.id) {
         joy.active=false; joy.dx=0; joy.dy=0;
         joyHide('rl-joy-base','rl-joy-knob');
+      } else {
+        onAimTouchEnd(t);
       }
     }
   }
@@ -361,6 +369,26 @@ window.royaleModule = (function () {
     const ls = 5;
     cam.x += (player.x - cam.x) * ls * dt;
     cam.y += (player.y - cam.y) * ls * dt;
+
+    // ── Keyboard fire (space / mouse implied via F key)
+    const wkey = inventory[activeSlot];
+    if (wkey && keys['Space'] && WEAPONS[wkey]) tryFire(player.x,player.y,player.angle,wkey,localId);
+    if (keys['KeyR']) startReload();
+    if (keys['Digit1']) activeSlot=0;
+    if (keys['Digit2']) activeSlot=1;
+
+    updateReload();
+    updateBullets(dt);
+    updateThrowables(dt);
+    updateFires(dt);
+    updateExplosions(dt);
+    updateZone(dt);
+    updateBots(dt);
+    updateAirdrop(dt);
+    updatePickups();
+    updateKillFeed(dt);
+    tickAirdropSpawn(dt);
+    broadcastState();
   }
 
   // ── Tile rendering ────────────────────────────────────────
@@ -612,6 +640,64 @@ window.royaleModule = (function () {
     ctx.restore();
   }
 
+  // ── HUD extras ───────────────────────────────────────────
+  function drawWeaponHUD() {
+    const slotW=110, slotH=44, gap=8, startX=canvasW/2-slotW-gap/2, y=canvasH-slotH-12;
+    for (let i=0;i<2;i++) {
+      const x=startX+i*(slotW+gap);
+      const active=i===activeSlot;
+      ctx.fillStyle=active?'rgba(255,255,255,0.18)':'rgba(0,0,0,0.5)';
+      ctx.strokeStyle=active?'rgba(255,220,80,0.9)':'rgba(255,255,255,0.25)';
+      ctx.lineWidth=active?2:1;
+      ctx.fillRect(x,y,slotW,slotH);
+      ctx.strokeRect(x,y,slotW,slotH);
+      const key=inventory[i];
+      if (key) {
+        const w=WEAPONS[key];
+        ctx.fillStyle='#fff'; ctx.font=`bold 13px monospace`; ctx.textAlign='center';
+        ctx.fillText(w.name, x+slotW/2, y+16);
+        ctx.fillStyle=reloading&&active?'#fa0':'#8fce50';
+        ctx.font='11px monospace';
+        ctx.fillText(reloading&&active?'RELOADING…':`${ammoCache[key]||0} / ${w.maxAmmo}`, x+slotW/2, y+32);
+      } else {
+        ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='12px monospace'; ctx.textAlign='center';
+        ctx.fillText(`SLOT ${i+1}`, x+slotW/2, y+26);
+      }
+    }
+    ctx.textAlign='left';
+  }
+
+  function drawKillFeed() {
+    let ky=80;
+    for (const kf of killFeed) {
+      const alpha=Math.min(1,kf.life);
+      ctx.fillStyle=`rgba(0,0,0,${alpha*0.5})`;
+      ctx.fillRect(canvasW-210,ky-14,200,18);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+      ctx.font='11px monospace'; ctx.textAlign='right';
+      ctx.fillText(kf.text, canvasW-10, ky);
+      ky+=22;
+    }
+    ctx.textAlign='left';
+  }
+
+  function drawZoneHUD() {
+    if (zone.phase >= ZONE_PHASES.length) return;
+    const ph=ZONE_PHASES[zone.phase];
+    const tot=zone.shrinking?ph.shrink:ph.wait;
+    const pct=Math.min(1,zone.timer/tot);
+    const label=zone.shrinking?'ZONE CLOSING':'NEXT ZONE IN';
+    const secs=Math.ceil(tot-zone.timer);
+    const bw=160, bh=16, bx=canvasW/2-bw/2, by=36;
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx-2,by-2,bw+4,bh+4);
+    ctx.fillStyle=zone.shrinking?'rgba(0,100,255,0.7)':'rgba(0,180,80,0.5)';
+    ctx.fillRect(bx,by,bw*pct,bh);
+    ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,bh);
+    ctx.fillStyle='#fff'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText(`${label}  ${secs}s  (P${zone.phase+1})`, canvasW/2, by+bh-3);
+    ctx.textAlign='left';
+  }
+
   // ── Minimap ───────────────────────────────────────────────
   let mmCanvas = null;
 
@@ -670,6 +756,10 @@ window.royaleModule = (function () {
     ctx.textAlign='center';
     ctx.fillText('BATTLE ROYALE', canvasW/2, 21);
     ctx.textAlign='left';
+
+    drawZoneHUD();
+    drawWeaponHUD();
+    drawKillFeed();
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -692,10 +782,19 @@ window.royaleModule = (function () {
     const wy1=(ty1-1)*TILE, wy2=(ty2+1)*TILE;
 
     drawTiles(tx1, tx2, ty1, ty2);
+    drawZone();
+    drawLoot();
+    drawCrates();
+    drawFires();
     drawTreeBases(wx1,wx2,wy1,wy2);
     drawBuildings(ty1, ty2);
+    drawBots();
+    drawThrowables();
 
-    // Player — drawn before canopies so trees overlay it when hidden
+    // Remote players
+    for (const id in remotePlayers) drawRemotePlayer(remotePlayers[id]);
+
+    // Local player — drawn before canopies so trees overlay it when hidden
     if (!player.hidden) drawPlayer();
 
     drawTreeCanopies(wx1,wx2,wy1,wy2);
@@ -706,8 +805,619 @@ window.royaleModule = (function () {
       ctx.globalAlpha=1;
     }
 
+    drawBullets();
+    drawExplosions();
+    drawAirdrop();
+
     ctx.restore();
     drawHUD();
+  }
+
+  // ── Weapon definitions ────────────────────────────────────
+  const WEAPONS = {
+    pistol:  {name:'Pistol',   dmg:25,  rof:400,  spd:520, range:380, spread:0.06, ammo:12, maxAmmo:60,  auto:false, pellets:1, reload:1400},
+    revolver:{name:'Revolver', dmg:55,  rof:700,  spd:560, range:420, spread:0.04, ammo:6,  maxAmmo:36,  auto:false, pellets:1, reload:2000},
+    smg:     {name:'SMG',      dmg:18,  rof:110,  spd:580, range:300, spread:0.12, ammo:25, maxAmmo:150, auto:true,  pellets:1, reload:1800},
+    ar:      {name:'AR',       dmg:28,  rof:180,  spd:620, range:480, spread:0.07, ammo:30, maxAmmo:180, auto:true,  pellets:1, reload:2200},
+    battlerifle:{name:'Battle Rifle',dmg:42,rof:280,spd:650,range:560,spread:0.05,ammo:20,maxAmmo:100,auto:false,pellets:1,reload:2400},
+    shotgun: {name:'Shotgun',  dmg:16,  rof:900,  spd:480, range:200, spread:0.20, ammo:8,  maxAmmo:48,  auto:false, pellets:8, reload:600},
+    sniper:  {name:'Sniper',   dmg:95,  rof:1800, spd:900, range:900, spread:0.01, ammo:5,  maxAmmo:30,  auto:false, pellets:1, reload:3000},
+    grenade: {name:'Grenade',  dmg:120, rof:3000, spd:0,   range:0,   spread:0,    ammo:2,  maxAmmo:6,   auto:false, pellets:0, reload:0},
+    molotov: {name:'Molotov',  dmg:8,   rof:4000, spd:0,   range:0,   spread:0,    ammo:2,  maxAmmo:4,   auto:false, pellets:0, reload:0},
+    rpg:     {name:'RPG',      dmg:200, rof:5000, spd:260, range:800, spread:0.02, ammo:1,  maxAmmo:4,   auto:false, pellets:0, reload:4000},
+  };
+
+  // ── Runtime arrays ────────────────────────────────────────
+  let bullets    = [];   // { x,y,vx,vy,dmg,range,dist,owner,tracer }
+  let throwables = [];   // { x,y,vx,vy,vy3,z,type,timer,ownerId }
+  let fires      = [];   // { x,y,r,life,maxLife }
+  let explosions = [];   // { x,y,r,maxR,life,maxLife }
+  let loot       = [];   // { x,y,type,key,ammo }
+  let crates     = [];   // { x,y,open,lootLeft }
+  let airdrop    = null; // { x,y,vx,vy,z,phase:'fly'|'fall'|'land' }
+  let bots       = [];   // { id,x,y,angle,hp,weapon,ammo,state,target,reloadT,fireT }
+
+  // ── Player loadout ────────────────────────────────────────
+  let inventory  = [];            // weapon keys player is holding (max 2)
+  let activeSlot = 0;
+  let ammoCache  = {};            // { weaponKey: count }
+  let lastFireT  = 0;
+  let reloading  = false;
+  let reloadEnd  = 0;
+
+  // ── Safe zone ─────────────────────────────────────────────
+  const ZONE_PHASES = [
+    {wait:60,  shrink:60,  toR:2400},
+    {wait:60,  shrink:50,  toR:1600},
+    {wait:50,  shrink:45,  toR:900},
+    {wait:45,  shrink:40,  toR:480},
+    {wait:40,  shrink:35,  toR:220},
+    {wait:30,  shrink:30,  toR:80},
+  ];
+  const MAP_PX = MAP_W * TILE;
+  let zone = {
+    cx: MAP_PX/2, cy: MAP_PX/2,
+    r:  MAP_PX*0.72,
+    nextCx: MAP_PX/2, nextCy: MAP_PX/2, nextR: 2400,
+    phase:0, timer:0, shrinking:false,
+    dmgTick:0,
+  };
+
+  // ── Kill feed ─────────────────────────────────────────────
+  let killFeed = [];   // { text, life }
+
+  // ── Multiplayer ───────────────────────────────────────────
+  let rlChannel  = null;
+  let localId    = Math.random().toString(36).slice(2,9);
+  let remotePlayers = {}; // id → { x,y,angle,hp }
+
+  // ── Right aim joystick ────────────────────────────────────
+  const aimJoy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
+
+  // ── Loot & crate spawning ────────────────────────────────
+  const LOOT_POOL = ['pistol','smg','ar','shotgun','sniper','revolver','battlerifle','grenade','molotov','rpg'];
+
+  function spawnLoot() {
+    loot = []; crates = [];
+    const rng = seededRng(99);
+    for (let i = 0; i < 120; i++) {
+      const tx = 3 + rng()*(MAP_W-6), ty = 3 + rng()*(MAP_H-6);
+      const tile = mapTiles[Math.floor(ty)][Math.floor(tx)];
+      if (tile === T.WATER || tile === T.DEEP_WATER) continue;
+      const key = LOOT_POOL[Math.floor(rng()*LOOT_POOL.length)];
+      loot.push({ x:tx*TILE, y:ty*TILE, key, ammo: WEAPONS[key].ammo*2 });
+    }
+    // Supply crates at fixed POIs
+    const pts = [[96,94],[105,93],[148,35],[22,144],[157,158],[70,30],[130,70]];
+    for (const [tx,ty] of pts) crates.push({ x:tx*TILE, y:ty*TILE, open:false, lootLeft:3 });
+  }
+
+  function spawnBots() {
+    bots = [];
+    const rng = seededRng(55);
+    const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hawk'];
+    for (let i = 0; i < 8; i++) {
+      const tx = 20 + rng()*(MAP_W-40), ty = 20 + rng()*(MAP_H-40);
+      const key = LOOT_POOL[Math.floor(rng()*5)]; // bots get basic weapons
+      bots.push({
+        id:'bot_'+i, name:names[i],
+        x:tx*TILE, y:ty*TILE, angle:0,
+        hp:100, maxHp:100,
+        weapon:key, ammo: WEAPONS[key].ammo,
+        state:'roam', target:null,
+        fireT:0, reloadT:0,
+        waypointX:tx*TILE, waypointY:ty*TILE,
+        alive:true,
+      });
+    }
+  }
+
+  function initZone() {
+    zone.r = MAP_PX * 0.72;
+    zone.cx = MAP_PX/2; zone.cy = MAP_PX/2;
+    zone.nextCx = MAP_PX/2; zone.nextCy = MAP_PX/2;
+    zone.nextR = ZONE_PHASES[0].toR;
+    zone.phase = 0; zone.timer = 0; zone.shrinking = false;
+  }
+
+  // ── Shooting ─────────────────────────────────────────────
+  function tryFire(fromX, fromY, angle, weaponKey, ownerId) {
+    const w = WEAPONS[weaponKey];
+    if (!w) return;
+    const now = performance.now();
+    if (ownerId === localId) {
+      if (reloading) return;
+      if (now - lastFireT < w.rof) return;
+      if (!ammoCache[weaponKey] || ammoCache[weaponKey] <= 0) { startReload(); return; }
+      ammoCache[weaponKey]--;
+      lastFireT = now;
+    }
+    if (w.pellets === 0) { throwItem(fromX, fromY, angle, weaponKey, ownerId); return; }
+    for (let p = 0; p < w.pellets; p++) {
+      const a = angle + (Math.random()-0.5)*w.spread;
+      bullets.push({
+        x:fromX, y:fromY,
+        vx: Math.cos(a)*w.spd, vy: Math.sin(a)*w.spd,
+        dmg:w.dmg, range:w.range, dist:0,
+        owner:ownerId,
+        tracer: weaponKey==='sniper',
+      });
+    }
+  }
+
+  function throwItem(fromX, fromY, angle, weaponKey, ownerId) {
+    const spd = weaponKey==='rpg' ? 260 : 220;
+    throwables.push({
+      x:fromX, y:fromY,
+      vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd,
+      z:0, vz: weaponKey==='rpg' ? 0 : 120,
+      type:weaponKey, timer:0, ownerId,
+      armed: weaponKey==='rpg',
+    });
+  }
+
+  function startReload() {
+    if (reloading) return;
+    const key = inventory[activeSlot];
+    if (!key) return;
+    reloading = true;
+    reloadEnd = performance.now() + WEAPONS[key].reload;
+  }
+
+  function pickupLoot(item) {
+    if (inventory.length < 2 && !inventory.includes(item.key)) {
+      inventory.push(item.key);
+      ammoCache[item.key] = (ammoCache[item.key]||0) + item.ammo;
+    } else {
+      ammoCache[item.key] = (ammoCache[item.key]||0) + item.ammo;
+    }
+  }
+
+  // ── Right joystick (aim) ──────────────────────────────────
+  function onAimTouchStart(t) {
+    if (aimJoy.active) return;
+    aimJoy.active=true; aimJoy.id=t.identifier;
+    aimJoy.sx=aimJoy.cx=t.clientX; aimJoy.sy=aimJoy.cy=t.clientY;
+    aimJoy.dx=0; aimJoy.dy=0;
+    joyShow(aimJoy.sx,aimJoy.sy,aimJoy.cx,aimJoy.cy,'rl-aim-base','rl-aim-knob');
+  }
+  function onAimTouchMove(t) {
+    if (!aimJoy.active||t.identifier!==aimJoy.id) return;
+    aimJoy.cx=t.clientX; aimJoy.cy=t.clientY;
+    const dx=aimJoy.cx-aimJoy.sx, dy=aimJoy.cy-aimJoy.sy;
+    const len=Math.sqrt(dx*dx+dy*dy)||1, max=40;
+    aimJoy.dx=dx/Math.max(len,max);
+    aimJoy.dy=dy/Math.max(len,max);
+    if (len>8) player.angle=Math.atan2(dy,dx);
+    joyShow(aimJoy.sx,aimJoy.sy,
+      aimJoy.sx+dx/Math.max(len/max,1),
+      aimJoy.sy+dy/Math.max(len/max,1),
+      'rl-aim-base','rl-aim-knob');
+    // fire when aim stick pushed beyond threshold
+    if (len>20) {
+      const key = inventory[activeSlot];
+      if (key && WEAPONS[key]) tryFire(player.x,player.y,player.angle,key,localId);
+    }
+  }
+  function onAimTouchEnd(t) {
+    if (!aimJoy.active||t.identifier!==aimJoy.id) return;
+    aimJoy.active=false; aimJoy.dx=0; aimJoy.dy=0;
+    joyHide('rl-aim-base','rl-aim-knob');
+  }
+
+  // ── Physics updates ───────────────────────────────────────
+  function updateBullets(dt) {
+    for (let i = bullets.length-1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += b.vx*dt; b.y += b.vy*dt;
+      b.dist += Math.sqrt(b.vx*b.vx+b.vy*b.vy)*dt;
+      if (b.dist > b.range || b.x<0||b.x>MAP_PX||b.y<0||b.y>MAP_PX) {
+        bullets.splice(i,1); continue;
+      }
+      // Hit player
+      if (b.owner !== localId) {
+        const dx=b.x-player.x, dy=b.y-player.y;
+        if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
+          player.health = Math.max(0, player.health-b.dmg);
+          bullets.splice(i,1); continue;
+        }
+      }
+      // Hit bots
+      for (let j=bots.length-1; j>=0; j--) {
+        const bt=bots[j]; if (!bt.alive) continue;
+        const dx=b.x-bt.x, dy=b.y-bt.y;
+        if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
+          bt.hp -= b.dmg;
+          if (bt.hp <= 0) { bt.alive=false; killFeed.push({text:`You killed ${bt.name}`,life:4}); }
+          bullets.splice(i,1); break;
+        }
+      }
+    }
+  }
+
+  function updateThrowables(dt) {
+    for (let i=throwables.length-1; i>=0; i--) {
+      const t=throwables[i];
+      t.x += t.vx*dt; t.y += t.vy*dt;
+      t.z = Math.max(0, t.z + t.vz*dt);
+      t.vz -= 280*dt; // gravity
+      t.timer += dt;
+      // Friction
+      t.vx *= 0.92; t.vy *= 0.92;
+      if (t.type==='rpg') {
+        // RPG keeps moving, explodes on hit or range
+        const d2 = (t.x-player.x)**2+(t.y-player.y)**2;
+        if (t.timer>0.3 && d2<(PLAYER_R+8)**2 && t.ownerId!==localId) {
+          doExplosion(t.x,t.y,160,200); throwables.splice(i,1); continue;
+        }
+        if (t.timer>4) { doExplosion(t.x,t.y,160,200); throwables.splice(i,1); continue; }
+      } else if (t.z <= 0) {
+        if (t.type==='grenade') { doExplosion(t.x,t.y,120,120); throwables.splice(i,1); }
+        else if (t.type==='molotov') { fires.push({x:t.x,y:t.y,r:55,life:8,maxLife:8}); throwables.splice(i,1); }
+        else throwables.splice(i,1);
+      }
+    }
+  }
+
+  function doExplosion(x,y,r,dmg) {
+    explosions.push({x,y,r:10,maxR:r,life:0.55,maxLife:0.55});
+    const d2=(x-player.x)**2+(y-player.y)**2;
+    if (d2<r*r) player.health=Math.max(0,player.health-dmg*Math.max(0,1-Math.sqrt(d2)/r));
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+      const bd2=(x-bt.x)**2+(y-bt.y)**2;
+      if (bd2<r*r) bt.hp=Math.max(0,bt.hp-dmg*Math.max(0,1-Math.sqrt(bd2)/r));
+    }
+  }
+
+  function updateFires(dt) {
+    for (let i=fires.length-1; i>=0; i--) {
+      const f=fires[i]; f.life -= dt;
+      if (f.life<=0) { fires.splice(i,1); continue; }
+      const d2=(f.x-player.x)**2+(f.y-player.y)**2;
+      if (d2<f.r*f.r) player.health=Math.max(0,player.health-8*dt);
+    }
+  }
+
+  function updateExplosions(dt) {
+    for (let i=explosions.length-1; i>=0; i--) {
+      const e=explosions[i]; e.life-=dt;
+      e.r = e.maxR*(1-e.life/e.maxLife);
+      if (e.life<=0) explosions.splice(i,1);
+    }
+  }
+
+  function updateZone(dt) {
+    if (zone.phase >= ZONE_PHASES.length) return;
+    zone.timer += dt;
+    const ph = ZONE_PHASES[zone.phase];
+    if (!zone.shrinking) {
+      if (zone.timer >= ph.wait) { zone.shrinking=true; zone.timer=0; }
+    } else {
+      const t = Math.min(zone.timer/ph.shrink, 1);
+      zone.cx = lerp(zone.cx, zone.nextCx, t);
+      zone.cy = lerp(zone.cy, zone.nextCy, t);
+      zone.r  = lerp(zone.r,  zone.nextR,  t);
+      if (zone.timer >= ph.shrink) {
+        zone.shrinking=false; zone.timer=0; zone.phase++;
+        if (zone.phase < ZONE_PHASES.length) {
+          zone.nextR  = ZONE_PHASES[zone.phase].toR;
+          const rng=seededRng(zone.phase*17+33);
+          const off = zone.r*0.25;
+          zone.nextCx = MAP_PX/2+(rng()-0.5)*off;
+          zone.nextCy = MAP_PX/2+(rng()-0.5)*off;
+        }
+      }
+    }
+    // Out-of-zone damage
+    zone.dmgTick += dt;
+    if (zone.dmgTick >= 0.5) {
+      zone.dmgTick = 0;
+      const d=Math.sqrt((player.x-zone.cx)**2+(player.y-zone.cy)**2);
+      if (d > zone.r) player.health=Math.max(0,player.health-4*(1+zone.phase*0.5));
+    }
+  }
+
+  function lerp(a,b,t) { return a+(b-a)*t; }
+
+  function updateBots(dt) {
+    const now = performance.now();
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+      const dx=player.x-bt.x, dy=player.y-bt.y;
+      const distToPlayer=Math.sqrt(dx*dx+dy*dy);
+
+      // State machine
+      if (distToPlayer < 350) bt.state='chase';
+      else if (bt.state==='chase' && distToPlayer>500) bt.state='roam';
+
+      if (bt.state==='chase') {
+        bt.angle=Math.atan2(dy,dx);
+        bt.x += Math.cos(bt.angle)*120*dt;
+        bt.y += Math.sin(bt.angle)*120*dt;
+        // Shoot
+        if (distToPlayer<320 && now>bt.fireT) {
+          tryFire(bt.x,bt.y,bt.angle+( Math.random()-0.5)*0.15,bt.weapon,bt.id);
+          bt.fireT=now+WEAPONS[bt.weapon].rof*1.8;
+        }
+      } else {
+        // Roam to waypoint
+        const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
+        const wd=Math.sqrt(wx*wx+wy*wy);
+        if (wd<20) {
+          const rng=seededRng(now*0.001+bt.id.charCodeAt(4));
+          bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
+          bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
+        } else {
+          bt.angle=Math.atan2(wy,wx);
+          bt.x+=Math.cos(bt.angle)*80*dt;
+          bt.y+=Math.sin(bt.angle)*80*dt;
+        }
+      }
+      bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
+      bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
+
+      // Zone damage to bots
+      const d=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
+      if (d>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
+      if (bt.hp<=0) { bt.alive=false; killFeed.push({text:`${bt.name} eliminated`,life:4}); }
+    }
+  }
+
+  function updateAirdrop(dt) {
+    if (!airdrop) return;
+    if (airdrop.phase==='fly') {
+      airdrop.x += airdrop.vx*dt;
+      if (airdrop.x > MAP_PX+200) { airdrop=null; return; }
+      if (Math.abs(airdrop.x-MAP_PX/2)<60) airdrop.phase='fall';
+    } else if (airdrop.phase==='fall') {
+      airdrop.z = Math.max(0, airdrop.z - 80*dt);
+      if (airdrop.z<=0) {
+        airdrop.phase='land';
+        crates.push({x:airdrop.x,y:airdrop.y,open:false,lootLeft:5,airdrop:true});
+        killFeed.push({text:'Airdrop landed!',life:5});
+      }
+    }
+  }
+
+  function updateKillFeed(dt) {
+    for (let i=killFeed.length-1;i>=0;i--) {
+      killFeed[i].life-=dt;
+      if (killFeed[i].life<=0) killFeed.splice(i,1);
+    }
+  }
+
+  function updatePickups() {
+    for (let i=loot.length-1;i>=0;i--) {
+      const it=loot[i];
+      const dx=player.x-it.x, dy=player.y-it.y;
+      if (Math.sqrt(dx*dx+dy*dy)<30) { pickupLoot(it); loot.splice(i,1); }
+    }
+    for (const cr of crates) {
+      if (cr.open) continue;
+      const dx=player.x-cr.x, dy=player.y-cr.y;
+      if (Math.sqrt(dx*dx+dy*dy)<40 && keys['KeyF']) {
+        cr.open=true;
+        for (let i=0;i<cr.lootLeft;i++) {
+          const key=LOOT_POOL[Math.floor(Math.random()*LOOT_POOL.length)];
+          loot.push({x:cr.x+(Math.random()-0.5)*60,y:cr.y+(Math.random()-0.5)*60,key,ammo:WEAPONS[key].ammo});
+        }
+      }
+    }
+  }
+
+  function updateReload() {
+    if (reloading && performance.now() >= reloadEnd) {
+      reloading=false;
+      const key=inventory[activeSlot];
+      if (key) ammoCache[key]=(ammoCache[key]||0)+WEAPONS[key].ammo;
+    }
+  }
+
+  // ── Render: world effects ─────────────────────────────────
+  function drawLoot() {
+    const ICONS = {pistol:'🔫',smg:'🔫',ar:'🔫',shotgun:'🔫',sniper:'🔫',revolver:'🔫',battlerifle:'🔫',grenade:'💣',molotov:'🍾',rpg:'🚀'};
+    for (const it of loot) {
+      ctx.fillStyle='rgba(255,220,0,0.18)';
+      ctx.beginPath(); ctx.arc(it.x,it.y,16,0,Math.PI*2); ctx.fill();
+      ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(ICONS[it.key]||'?', it.x, it.y);
+    }
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
+
+  function drawCrates() {
+    for (const cr of crates) {
+      ctx.fillStyle = cr.open ? '#6b5030' : (cr.airdrop ? '#5a8b3d' : '#8b6030');
+      ctx.fillRect(cr.x-16,cr.y-16,32,32);
+      ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2;
+      ctx.strokeRect(cr.x-16,cr.y-16,32,32);
+      if (!cr.open) {
+        ctx.fillStyle='rgba(255,255,255,0.6)';
+        ctx.fillRect(cr.x-1,cr.y-16,2,32); ctx.fillRect(cr.x-16,cr.y-1,32,2);
+      }
+    }
+  }
+
+  function drawBullets() {
+    for (const b of bullets) {
+      if (b.tracer) {
+        ctx.strokeStyle='rgba(255,255,180,0.85)'; ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(b.x-b.vx*0.04, b.y-b.vy*0.04);
+        ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.fillStyle='rgba(255,240,100,0.9)';
+      ctx.beginPath(); ctx.arc(b.x,b.y,b.tracer?3:2,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawThrowables() {
+    for (const t of throwables) {
+      const s = 1 + (t.z/200)*0.6;
+      ctx.save(); ctx.translate(t.x,t.y); ctx.scale(s,s);
+      ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      const icons={grenade:'💣',molotov:'🍾',rpg:'🚀'};
+      ctx.fillText(icons[t.type]||'●',0,0);
+      ctx.restore();
+    }
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
+
+  function drawFires() {
+    for (const f of fires) {
+      const alpha = Math.min(1, f.life/f.maxLife);
+      for (let i=0;i<3;i++) {
+        const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r*(0.6+i*0.2));
+        g.addColorStop(0,`rgba(255,200,0,${alpha*0.6})`);
+        g.addColorStop(0.5,`rgba(255,60,0,${alpha*0.4})`);
+        g.addColorStop(1,`rgba(100,0,0,0)`);
+        ctx.fillStyle=g;
+        ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  function drawExplosions() {
+    for (const e of explosions) {
+      const p=1-e.life/e.maxLife;
+      const g=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r);
+      g.addColorStop(0,`rgba(255,255,200,${(1-p)*0.9})`);
+      g.addColorStop(0.4,`rgba(255,120,0,${(1-p)*0.7})`);
+      g.addColorStop(1,'rgba(80,20,0,0)');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawZone() {
+    // Blue danger zone overlay outside the safe circle
+    ctx.save();
+    ctx.fillStyle='rgba(0,80,200,0.18)';
+    ctx.fillRect(-cam.x+canvasW/2-MAP_PX, -cam.y+canvasH/2-MAP_PX, MAP_PX*3, MAP_PX*3);
+    ctx.globalCompositeOperation='destination-out';
+    ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    // Zone ring
+    ctx.strokeStyle='rgba(0,160,255,0.8)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.stroke();
+    // Next zone ring (dashed)
+    if (zone.phase < ZONE_PHASES.length) {
+      ctx.strokeStyle='rgba(255,255,0,0.45)'; ctx.lineWidth=1.5;
+      ctx.setLineDash([12,8]);
+      ctx.beginPath(); ctx.arc(zone.nextCx,zone.nextCy,zone.nextR,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  function drawBots() {
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+      ctx.save(); ctx.translate(bt.x,bt.y); ctx.rotate(bt.angle-Math.PI/2);
+      ctx.fillStyle='#8b2020'; // enemy red
+      ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#c87050';
+      ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#2a2a2a'; ctx.fillRect(-2,-18,4,14);
+      ctx.restore();
+      // HP bar above bot
+      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(bt.x-18,bt.y-28,36,6);
+      ctx.fillStyle='#c00'; ctx.fillRect(bt.x-18,bt.y-28,36,6);
+      ctx.fillStyle='#0c0'; ctx.fillRect(bt.x-18,bt.y-28,(bt.hp/bt.maxHp)*36,6);
+    }
+  }
+
+  function drawAirdrop() {
+    if (!airdrop) return;
+    const { x, y, z, phase } = airdrop;
+    ctx.save();
+    // Plane silhouette
+    if (phase==='fly') {
+      ctx.fillStyle='rgba(180,180,180,0.9)';
+      ctx.save(); ctx.translate(x,y-z);
+      ctx.beginPath();
+      ctx.moveTo(-30,0); ctx.lineTo(30,0); ctx.lineTo(20,8);
+      ctx.lineTo(-20,8); ctx.closePath(); ctx.fill();
+      // Wings
+      ctx.fillRect(-8,-12,16,24);
+      ctx.restore();
+    } else if (phase==='fall') {
+      // Parachute
+      ctx.strokeStyle='rgba(255,200,0,0.9)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(x,y-z-30,25,Math.PI,Math.PI*2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x-25,y-z-30); ctx.lineTo(x,y-z);
+      ctx.moveTo(x+25,y-z-30); ctx.lineTo(x,y-z); ctx.stroke();
+      ctx.fillStyle='#5a8b3d';
+      ctx.fillRect(x-12,y-z-8,24,16);
+    }
+    ctx.restore();
+  }
+
+  // ── Remote players ────────────────────────────────────────
+  function drawRemotePlayer(rp) {
+    ctx.save(); ctx.translate(rp.x,rp.y); ctx.rotate((rp.angle||0)-Math.PI/2);
+    ctx.fillStyle='#4a8b2a';  // friendly green
+    ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#c8a070';
+    ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    // name tag
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(rp.x-20,rp.y-32,40,12);
+    ctx.fillStyle='#7eff7e'; ctx.font='9px monospace'; ctx.textAlign='center';
+    ctx.fillText(rp.name||'Player', rp.x, rp.y-22); ctx.textAlign='left';
+  }
+
+  // ── Supabase multiplayer ──────────────────────────────────
+  let broadcastThrottle=0;
+
+  function initMultiplayer() {
+    if (!window.sb) return;
+    try {
+      rlChannel = sb.channel('royale-room', {config:{broadcast:{self:false}}});
+      rlChannel.on('broadcast',{event:'state'},(msg)=>{
+        const d=msg.payload;
+        if (!d||d.id===localId) return;
+        remotePlayers[d.id]={ x:d.x, y:d.y, angle:d.angle, hp:d.hp, name:d.name };
+      });
+      rlChannel.on('broadcast',{event:'hit'},(msg)=>{
+        const d=msg.payload;
+        if (d&&d.target===localId) {
+          player.health=Math.max(0,player.health-d.dmg);
+          if (player.health<=0) killFeed.push({text:'You were eliminated!',life:999});
+        }
+      });
+      rlChannel.subscribe();
+    } catch(e) { console.warn('Royale multiplayer unavailable',e); }
+  }
+
+  function broadcastState() {
+    const now=performance.now();
+    if (now-broadcastThrottle<80||!rlChannel) return;
+    broadcastThrottle=now;
+    const name=window.currentUser?.username||'Player';
+    rlChannel.send({type:'broadcast',event:'state',
+      payload:{id:localId,x:Math.round(player.x),y:Math.round(player.y),
+               angle:+player.angle.toFixed(2),hp:player.health,name}
+    }).catch(()=>{});
+  }
+
+  function destroyMultiplayer() {
+    if (rlChannel) { try { rlChannel.unsubscribe(); } catch(_){} rlChannel=null; }
+    remotePlayers={};
+  }
+
+  // ── Schedule airdrop ─────────────────────────────────────
+  let airdropTimer=0;
+  function tickAirdropSpawn(dt) {
+    if (airdrop) return;
+    airdropTimer+=dt;
+    if (airdropTimer>180) { // every 3 min
+      airdropTimer=0;
+      airdrop={x:-200, y:MAP_PX/2+(Math.random()-0.5)*MAP_PX*0.3,
+               vx:140, vy:0, z:300, phase:'fly'};
+      killFeed.push({text:'Airdrop incoming!',life:5});
+    }
   }
 
   // ── Public API ────────────────────────────────────────────

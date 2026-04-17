@@ -2989,16 +2989,20 @@ const pokemonModule = (() => {
     if(!itemToast||Date.now()>itemToast.expires)return;
     const alpha=Math.min(1,(itemToast.expires-Date.now())/300);
     ctx.save(); ctx.globalAlpha=alpha;
-    ctx.fillStyle='rgba(10,5,30,0.88)';
     ctx.font='bold 13px "Exo 2",sans-serif';
-    const tw=ctx.measureText(itemToast.text).width+24;
-    const tx2=(canvas.width-tw)/2, ty2=18;
+    // Clamp text to fit canvas — truncate with ellipsis if too wide
+    let text=itemToast.text;
+    const maxW=canvas.width-16;
+    while(text.length>4&&ctx.measureText(text).width+24>maxW) text=text.slice(0,-2)+'…';
+    const tw=Math.min(maxW,ctx.measureText(text).width+24);
+    const tx2=Math.max(4,(canvas.width-tw)/2), ty2=18;
+    ctx.fillStyle='rgba(10,5,30,0.88)';
     if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.fill();}
     else ctx.fillRect(tx2,ty2,tw,28);
     ctx.strokeStyle=itemToast.color; ctx.lineWidth=2;
     if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,28,6);ctx.stroke();}
     ctx.fillStyle='#fff'; ctx.textBaseline='middle';
-    ctx.fillText(itemToast.text,tx2+12,ty2+14);
+    ctx.fillText(text,tx2+12,ty2+14);
     ctx.restore();
   }
 
@@ -3039,6 +3043,105 @@ const pokemonModule = (() => {
       ctx.fillText(s.arrow,cx,cy-4);
     });
     ctx.restore();
+  }
+
+  /* ── INTERIOR DECORATION OVERLAYS ── */
+  function drawInteriorDecor(){
+    const now=Date.now();
+    if(currentMapId==='intHouse'){
+      // Curtained window on north wall (tx=22..25, ty=14)
+      [[22,14],[25,14]].forEach(([tx,ty])=>{
+        const sx=tx*TSIZE-camX, sy=ty*TSIZE-camY;
+        ctx.fillStyle='rgba(140,225,255,0.45)'; ctx.fillRect(sx+4,sy+4,TSIZE-8,TSIZE-8);
+        ctx.fillStyle='rgba(220,80,60,0.7)'; ctx.fillRect(sx+3,sy+3,6,TSIZE-6); // left curtain
+        ctx.fillRect(sx+TSIZE-9,sy+3,6,TSIZE-6); // right curtain
+        ctx.strokeStyle='rgba(160,50,30,0.8)'; ctx.lineWidth=2;
+        ctx.strokeRect(sx+2,sy+2,TSIZE-4,TSIZE-4);
+      });
+      // Potted plant (tx=17, ty=25)
+      const px=17*TSIZE-camX, py=25*TSIZE-camY;
+      ctx.fillStyle='#8a5020'; ctx.fillRect(px+8,py+14,16,12); // pot
+      ctx.fillStyle='#1a5c10';
+      [[0,0],[6,-6],[-6,-6],[0,-10]].forEach(([ox,oy])=>{
+        ctx.beginPath(); ctx.arc(px+16+ox,py+14+oy,7,0,Math.PI*2); ctx.fill();
+      });
+      // Framed picture (tx=20..21, ty=15)
+      const picX=20*TSIZE-camX, picY=15*TSIZE-camY;
+      ctx.fillStyle='#5a3a10'; ctx.fillRect(picX+2,picY+2,TSIZE*2-4,TSIZE-4);
+      ctx.fillStyle='rgba(100,160,220,0.8)'; ctx.fillRect(picX+5,picY+5,TSIZE*2-10,TSIZE-10);
+      ctx.fillStyle='rgba(255,210,100,0.6)'; ctx.beginPath();
+      ctx.arc(picX+TSIZE,picY+TSIZE/2,10,0,Math.PI*2); ctx.fill();
+      // Rug in center (tx=21..26, ty=21..23)
+      const rugX=21*TSIZE-camX, rugY=21*TSIZE-camY;
+      ctx.fillStyle='rgba(180,60,60,0.25)'; ctx.fillRect(rugX,rugY,TSIZE*5,TSIZE*3);
+      ctx.strokeStyle='rgba(180,60,60,0.5)'; ctx.lineWidth=3; ctx.setLineDash([4,4]);
+      ctx.strokeRect(rugX+4,rugY+4,TSIZE*5-8,TSIZE*3-8);
+      ctx.setLineDash([]);
+    }
+    else if(currentMapId==='intPC'){
+      // Blue monitor glow on each recovery pod
+      [[15,18],[16,18],[17,18],[30,18],[31,18],[32,18]].forEach(([tx,ty])=>{
+        const sx=tx*TSIZE-camX, sy=ty*TSIZE-camY;
+        const pulse=0.4+0.4*Math.sin(now/700+tx);
+        ctx.fillStyle=`rgba(0,180,255,${pulse*0.35})`;
+        ctx.fillRect(sx,sy-8,TSIZE,TSIZE+8);
+        // Monitor screen
+        ctx.fillStyle=`rgba(80,200,255,${0.7+pulse*0.2})`;
+        ctx.fillRect(sx+4,sy+2,TSIZE-8,12);
+        // Healing cross
+        ctx.fillStyle=`rgba(255,80,160,${0.6+pulse*0.3})`;
+        ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('❤',sx+TSIZE/2,sy-2);
+      });
+    }
+    else if(currentMapId==='intGym'){
+      // Arena emblem on the floor (centre of gym ~tx=24, ty=18)
+      const ex=24*TSIZE-camX, ey=18*TSIZE-camY;
+      const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
+      const em=GL_EMOJI[leaderId]||'⭐';
+      // Large circle emblem
+      ctx.strokeStyle='rgba(200,150,255,0.18)'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(ex+TSIZE/2,ey+TSIZE/2,TSIZE*3,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='rgba(200,150,255,0.10)'; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.arc(ex+TSIZE/2,ey+TSIZE/2,TSIZE*2,0,Math.PI*2); ctx.stroke();
+      // Big emoji at centre
+      ctx.font=`bold ${TSIZE*1.8}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.globalAlpha=0.15+0.07*Math.sin(now/800);
+      ctx.fillText(em,ex+TSIZE/2,ey+TSIZE/2);
+      ctx.globalAlpha=1;
+      // Rope lane dividers
+      ctx.strokeStyle='rgba(180,120,60,0.6)'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+      [10,16,22].forEach(ty=>{
+        const sy=ty*TSIZE-camY;
+        ctx.beginPath(); ctx.moveTo(8*TSIZE-camX,sy); ctx.lineTo(42*TSIZE-camX,sy); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+    else if(currentMapId==='intMart'){
+      // Shelf labels and items
+      const labels=[{tx:14,label:'BALLS 🎾'},{tx:20,label:'POTIONS 💊'},{tx:28,label:'ITEMS ⭐'},{tx:34,label:'STONES 💎'}];
+      labels.forEach(({tx,label})=>{
+        const sx=tx*TSIZE-camX, sy=17*TSIZE-camY;
+        ctx.fillStyle='rgba(255,220,100,0.85)';
+        ctx.font='bold 7px "Exo 2",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText(label,sx+TSIZE/2,sy+3);
+        // Small price tag
+        const pulse=0.6+0.4*Math.sin(now/900+tx);
+        ctx.fillStyle=`rgba(255,100,60,${pulse})`;
+        ctx.fillRect(sx+4,sy+14,TSIZE-8,6);
+        ctx.fillStyle='#fff'; ctx.font='bold 5px sans-serif';
+        ctx.fillText('ON SALE',sx+TSIZE/2,sy+17);
+      });
+      // Welcome mat at entrance
+      const mx=22*TSIZE-camX, my=30*TSIZE-camY;
+      ctx.fillStyle='rgba(255,160,0,0.3)';
+      ctx.fillRect(mx,my,TSIZE*4,TSIZE*1.5);
+      ctx.strokeStyle='rgba(255,160,0,0.55)'; ctx.lineWidth=2;
+      ctx.strokeRect(mx+2,my+2,TSIZE*4-4,TSIZE*1.5-4);
+      ctx.fillStyle='rgba(255,200,50,0.9)'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('WELCOME!',mx+TSIZE*2,my+TSIZE*0.75);
+    }
   }
 
   /* ── GYM LEADER NPC DRAWING ── */
@@ -3400,6 +3503,7 @@ const pokemonModule = (() => {
     drawMapItems();
     drawPCSign();
     drawZoneSigns();
+    drawInteriorDecor();
     drawWarpPortals();
     drawGymLeader();
     drawPlayerChar(player.x-camX, player.y-camY);
@@ -3657,7 +3761,14 @@ const pokemonModule = (() => {
           const gl=GYM_LEADERS[battle.leaderId];
           battle.em=mkMon(next.sid,next.lvl);
           setLog(`${gl?.name||'Leader'} sent out ${battle.em.name}!`,'');
-          updateBUI(); enableBtns(true); return;
+          updateBUI();
+          // Don't enable buttons if player's pokémon also fainted (mutual KO)
+          if(p.hp<=0){
+            const alive=team.filter(m=>m.hp>0);
+            if(alive.length) setTimeout(()=>showSwapPanel(true),600);
+            else { setLog('You have no more Pokémon!','You blacked out! 💀'); enableBtns(false); setTimeout(()=>{ const bl=document.getElementById('pk-blackout'); if(bl) bl.classList.remove('hidden'); setTimeout(()=>window.pokemonModule.dismissBlackout(),3000); },1400); }
+          } else { enableBtns(true); }
+          return;
         }
         const gl=GYM_LEADERS[battle.leaderId];
         defeatedLeaders.push(battle.leaderId);
@@ -3697,8 +3808,14 @@ const pokemonModule = (() => {
       if(alive.length){
         setTimeout(()=>{ setLog(`${p.name} fainted!`,'Send out another?'); showSwapPanel(true); },1200);
       } else {
-        setLog(`${p.name} fainted!`,'You blacked out!');
-        setTimeout(()=>document.getElementById('pk-blackout').classList.remove('hidden'),1400);
+        setLog('You have no more Pokémon!','You blacked out! 💀');
+        enableBtns(false);
+        // Show blackout overlay and auto-dismiss after 3s as fallback
+        setTimeout(()=>{
+          const bl=document.getElementById('pk-blackout');
+          if(bl) bl.classList.remove('hidden');
+          setTimeout(()=>window.pokemonModule.dismissBlackout(),3000);
+        },1400);
       }
     } else { enableBtns(true); }
   }
@@ -4513,16 +4630,19 @@ const pokemonModule = (() => {
       if(leaderId) startLeaderBattle(leaderId);
     },
     declineGymBattle(){
+      const el=document.getElementById('pk-gym-dialog');
+      const leaderId=el?.dataset.leaderId;
+      const gl=GYM_LEADERS[leaderId];
+      // Show farewell line briefly, then close and set cooldown
+      const el_text=document.getElementById('pk-gym-dialog-text');
+      const el_btns=document.querySelector('.pk-gym-dialog-btns');
+      if(el_text) el_text.textContent=`${gl?.name||'The Leader'}: "Very well... come back when you're ready, trainer."`;
+      if(el_btns) el_btns.style.display='none';
       gymTalkCooldown=Date.now()+90000;
-      const el_cd=document.getElementById('pk-gym-dialog-cooldown');
-      if(el_cd){ el_cd.classList.remove('hidden'); }
-      // Show countdown then close
-      if(_gymCdInterval)clearInterval(_gymCdInterval);
-      _gymCdInterval=setInterval(()=>{
-        const left=Math.max(0,Math.ceil((gymTalkCooldown-Date.now())/1000));
-        if(el_cd) el_cd.textContent=`Come back in ${left}s…`;
-        if(left<=0){ closeGymDialog(); }
-      },500);
+      setTimeout(()=>{
+        closeGymDialog();
+        if(el_btns) el_btns.style.display='';
+      },1800);
     },
     showDexDetail(speciesId){
       const mon=team.find(m=>m.speciesId===speciesId)||{speciesId,level:1,hp:0,maxHp:0,atk:0,def:0,spd:0,types:SP[speciesId]?.types||[]};

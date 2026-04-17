@@ -1991,7 +1991,7 @@ window.sendLobbyChat = function() {
    ============================================================ */
 const pokemonModule = (() => {
   /* ── TILE TYPES ── */
-  const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7 };
+  const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7, FLOOR:8, COUNTER:9 };
   const TSIZE = 32, CHAR_S = 24;
   let MAP_W = 50, MAP_H = 40;
   const TILE_COLORS = [
@@ -2003,6 +2003,8 @@ const pokemonModule = (() => {
     '#f5e8c8', // BUILDING — cream wall base
     '#d8b870', // SAND   — warm sandy tan
     '#8a7a6a', // ROCK   — grey-brown stone
+    '#c8904a', // FLOOR  — warm wood planks
+    '#7a5028', // COUNTER — dark wood furniture
   ];
 
   /* ── SPECIES DATA ── */
@@ -2297,6 +2299,7 @@ const pokemonModule = (() => {
   let totalCaught = 0;        // all-time Pokémon catch count
   let expBoostActive = false; // EXP Charm effect: next battle 2× XP
   let currentMapId = 'starterTown'; // active zone map
+  let _interiorReturn = null;       // {mapId, spawnId} — set on entering interior
   const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
   const ITEM_TYPES = {
     POTION:       {name:'Potion',       heal:20,   color:'#ff80b0',glow:'rgba(255,128,176,0.4)'},
@@ -2577,6 +2580,128 @@ const pokemonModule = (() => {
     },
   };
 
+  /* ── INTERIOR ZONE BUILDERS ── */
+  function _buildIntPC(){
+    const m=_newMap();
+    _fill(m,12,10,37,32,T.FLOOR);     // main room floor
+    _fill(m,14,12,35,13,T.COUNTER);   // reception desk
+    _fill(m,12,14,13,27,T.COUNTER);   // left wall unit
+    _fill(m,36,14,37,27,T.COUNTER);   // right wall unit
+    _fill(m,15,18,19,25,T.COUNTER);   // recovery pod left
+    _fill(m,30,18,34,25,T.COUNTER);   // recovery pod right
+    _fill(m,14,27,35,27,T.COUNTER);   // lower bench
+    _fill(m,12,10,37,11,T.COUNTER);   // top wall detail
+    return m;
+  }
+  function _buildIntHouse(){
+    const m=_newMap();
+    _fill(m,16,14,33,32,T.FLOOR);     // room floor
+    _fill(m,16,15,17,22,T.COUNTER);   // bookshelf
+    _fill(m,30,15,33,19,T.COUNTER);   // bed
+    _fill(m,20,18,28,21,T.COUNTER);   // dining table
+    _fill(m,30,24,33,27,T.COUNTER);   // wardrobe
+    _fill(m,16,25,18,28,T.COUNTER);   // plant / lamp corner
+    _fill(m,16,14,33,15,T.COUNTER);   // top wall detail
+    return m;
+  }
+  function _buildIntGym(){
+    const m=_newMap();
+    _fill(m,6,5,43,36,T.FLOOR);       // arena
+    for(let y=11;y<=30;y+=4)_fill(m,6,y,43,y+1,T.PATH); // gym stripe pattern
+    _fill(m,6,5,43,6,T.COUNTER);      // top wall
+    _fill(m,20,7,28,9,T.COUNTER);     // leader platform
+    _fill(m,6,7,7,30,T.BUILDING);     // left banner
+    _fill(m,42,7,43,30,T.BUILDING);   // right banner
+    return m;
+  }
+  function _buildIntMart(){
+    const m=_newMap();
+    _fill(m,14,12,35,32,T.FLOOR);     // shop floor
+    _fill(m,14,14,35,15,T.COUNTER);   // service counter
+    _fill(m,14,12,35,13,T.COUNTER);   // top wall detail
+    _fill(m,14,17,15,28,T.COUNTER);   // shelf col 1
+    _fill(m,20,17,21,28,T.COUNTER);   // shelf col 2
+    _fill(m,28,17,29,28,T.COUNTER);   // shelf col 3
+    _fill(m,34,17,35,28,T.COUNTER);   // shelf col 4
+    return m;
+  }
+
+  /* ── REGISTER INTERIOR ZONES ── */
+  const _intExitWarps=(x1,x2,ty)=>[x1,x1+1,x2-1,x2].map(x=>({tx:x,ty,toMap:'__return__'}));
+  MAPS_DATA.intPC={
+    isInterior:true, displayName:'🏥 Pokémon Center',
+    spawns:{default:{x:24,y:30}},
+    warps:_intExitWarps(22,26,32),
+    pcTiles:[{x:22,y:14},{x:23,y:14},{x:24,y:14},{x:25,y:14},{x:26,y:14}],
+    pcSignPos:{tx:24,ty:11},
+    items:[], signs:[], encounters:'route1', build:_buildIntPC,
+  };
+  MAPS_DATA.intHouse={
+    isInterior:true, displayName:'🏠 House',
+    spawns:{default:{x:24,y:30}},
+    warps:_intExitWarps(22,26,32),
+    pcTiles:[], pcSignPos:null,
+    items:[], signs:[], encounters:'route1', build:_buildIntHouse,
+  };
+  MAPS_DATA.intGym={
+    isInterior:true, displayName:'🏟️ Gym',
+    spawns:{default:{x:24,y:34}},
+    warps:_intExitWarps(22,26,36),
+    pcTiles:[], pcSignPos:null,
+    items:[], signs:[], encounters:'route1', build:_buildIntGym,
+  };
+  MAPS_DATA.intMart={
+    isInterior:true, displayName:'🛒 PokéMart',
+    spawns:{default:{x:24,y:30}},
+    warps:_intExitWarps(22,26,32),
+    pcTiles:[], pcSignPos:null,
+    items:[], signs:[], encounters:'route1', build:_buildIntMart,
+  };
+
+  /* ── INJECT BUILDING-ENTRY WARPS INTO EXTERIOR ZONES ── */
+  (()=>{
+    const _w=(z,arr)=>arr.forEach(e=>MAPS_DATA[z].warps.push(e));
+    const _e=(x,y,z,rs)=>({tx:x,ty:y,toMap:z,returnSpawn:rs});
+    // starterTown row-1 doors (path tile y=28 in front of building base y=27)
+    _w('starterTown',[
+      _e(15,28,'intPC','fromIntPC'),_e(16,28,'intPC','fromIntPC'),_e(17,28,'intPC','fromIntPC'),
+      _e(21,28,'intHouse','fromIntHouse'),_e(26,28,'intHouse','fromIntHouse'),
+      _e(31,28,'intMart','fromIntMart'),_e(35,28,'intHouse','fromIntHouse'),
+    ]);
+    // starterTown row-2 doors (path tile y=34 in front of building base y=33)
+    _w('starterTown',[
+      _e(15,34,'intHouse','fromIntHouse'),_e(16,34,'intHouse','fromIntHouse'),_e(17,34,'intHouse','fromIntHouse'),
+      _e(21,34,'intHouse','fromIntHouse'),_e(26,34,'intHouse','fromIntHouse'),_e(31,34,'intHouse','fromIntHouse'),
+    ]);
+    // route1 rest cabin (building y=18-20, door step y=21)
+    _w('route1',[_e(15,21,'intPC','fromIntPC'),_e(16,21,'intPC','fromIntPC'),_e(17,21,'intPC','fromIntPC')]);
+    // forestZone gym (building y=10-12, door step y=13)
+    _w('forestZone',[_e(23,13,'intGym','fromIntGym'),_e(24,13,'intGym','fromIntGym'),_e(25,13,'intGym','fromIntGym')]);
+    // rockZone gym (building y=8-10, door step y=11)
+    _w('rockZone',[_e(36,11,'intGym','fromIntGym'),_e(37,11,'intGym','fromIntGym'),_e(38,11,'intGym','fromIntGym')]);
+    // cityZone PC (building y=10-13, door step y=14)
+    [20,21,22,23,24].forEach(x=>MAPS_DATA.cityZone.warps.push(_e(x,14,'intPC','fromIntPC')));
+    // cityZone gym (building y=17-20, door step y=21)
+    [23,24,25,26,27].forEach(x=>MAPS_DATA.cityZone.warps.push(_e(x,21,'intGym','fromIntGym')));
+  })();
+
+  /* ── ADD RETURN SPAWNS + DISPLAY NAMES + CLEAR EXTERIOR PC TILES ── */
+  Object.assign(MAPS_DATA.starterTown.spawns,{fromIntPC:{x:16,y:29},fromIntHouse:{x:24,y:35},fromIntMart:{x:31,y:29}});
+  Object.assign(MAPS_DATA.route1.spawns,{fromIntPC:{x:16,y:22}});
+  Object.assign(MAPS_DATA.forestZone.spawns,{fromIntGym:{x:24,y:14}});
+  Object.assign(MAPS_DATA.rockZone.spawns,{fromIntGym:{x:37,y:12}});
+  Object.assign(MAPS_DATA.cityZone.spawns,{fromIntPC:{x:21,y:15},fromIntGym:{x:25,y:22}});
+  // Healing now happens inside PC interior — clear outdoor heal triggers
+  MAPS_DATA.starterTown.pcTiles=[]; MAPS_DATA.starterTown.pcSignPos=null;
+  MAPS_DATA.route1.pcTiles=[]; MAPS_DATA.route1.pcSignPos=null;
+  // Zone display names
+  Object.assign(MAPS_DATA.starterTown,{displayName:'🏘️ Starter Town'});
+  Object.assign(MAPS_DATA.route1,     {displayName:'🌿 Route 1'});
+  Object.assign(MAPS_DATA.forestZone, {displayName:'🌲 Forest Zone'});
+  Object.assign(MAPS_DATA.rockZone,   {displayName:'🪨 Rock Zone'});
+  Object.assign(MAPS_DATA.coastZone,  {displayName:'🌊 Coast Zone'});
+  Object.assign(MAPS_DATA.cityZone,   {displayName:'🏙️ City Zone'});
+
   function loadZone(mapId){
     const md=MAPS_DATA[mapId]||MAPS_DATA.starterTown;
     currentMapId=mapId;
@@ -2587,25 +2712,37 @@ const pokemonModule = (() => {
   }
 
   function checkWarp(tx,ty){
+    if(battle)return;
     const warps=MAPS_DATA[currentMapId]?.warps||[];
     const w=warps.find(w=>w.tx===tx&&w.ty===ty);
     if(!w)return;
-    const md=MAPS_DATA[w.toMap]; if(!md)return;
-    const sp=md.spawns[w.toSpawn]||md.spawns.default;
-    // blackout flash
+
+    // Resolve __return__ (exit from interior back to exterior)
+    let toMap=w.toMap, toSpawn=w.toSpawn||'default';
+    if(toMap==='__return__'){
+      if(!_interiorReturn)return;
+      toMap=_interiorReturn.mapId; toSpawn=_interiorReturn.spawnId;
+      _interiorReturn=null;
+    } else if(MAPS_DATA[toMap]?.isInterior){
+      _interiorReturn={mapId:currentMapId, spawnId:w.returnSpawn||'default'};
+    }
+
+    const md=MAPS_DATA[toMap]; if(!md)return;
+    const sp=md.spawns[toSpawn]||md.spawns.default;
     const bl=document.getElementById('pk-blackout');
     if(bl){bl.classList.remove('hidden');bl.style.opacity='1';}
     setTimeout(()=>{
-      loadZone(w.toMap);
+      loadZone(toMap);
       player.x=sp.x*TSIZE; player.y=sp.y*TSIZE;
       if(isSolid(sp.x,sp.y)){player.x=md.spawns.default.x*TSIZE;player.y=md.spawns.default.y*TSIZE;}
+      if(md.displayName) showToast('📍 '+md.displayName,'#ffd700',2000);
       saveGame();
       if(bl){bl.style.transition='opacity 0.4s';bl.style.opacity='0';setTimeout(()=>{bl.classList.add('hidden');bl.style.transition='';},420);}
     },200);
   }
 
   function getTile(tx,ty){ return (tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) ? T.TREE : worldMap[ty][tx]; }
-  function isSolid(tx,ty){ const t=getTile(tx,ty); return t===T.TREE||t===T.BUILDING||t===T.WATER; }
+  function isSolid(tx,ty){ const t=getTile(tx,ty); return t===T.TREE||t===T.BUILDING||t===T.WATER||t===T.COUNTER; }
 
   /* ── ITEMS ── */
   function initMapItems(){
@@ -2957,6 +3094,28 @@ const pokemonModule = (() => {
       ctx.fillStyle='rgba(140,100,40,0.14)';
       ctx.fillRect(sx+sd1,sy+sd2,3,3);
       ctx.fillRect(sx+(sd1+14)%TSIZE,sy+(sd2+10)%TSIZE,2,2);
+    }
+    else if(tile===T.FLOOR){
+      // Horizontal wood plank lines
+      ctx.fillStyle='rgba(0,0,0,0.07)';
+      for(let py=0;py<TSIZE;py+=8) ctx.fillRect(sx,sy+py,TSIZE,1);
+      // Alternating plank half-shade
+      if((tx+ty)%2===0){ctx.fillStyle='rgba(0,0,0,0.04)';ctx.fillRect(sx,sy,TSIZE/2,TSIZE);}
+      // Top highlight
+      ctx.fillStyle='rgba(255,255,255,0.07)'; ctx.fillRect(sx,sy,TSIZE,2);
+    }
+    else if(tile===T.COUNTER){
+      // Top surface (lighter brown)
+      ctx.fillStyle='#8a5030'; ctx.fillRect(sx,sy,TSIZE,TSIZE-6);
+      // Front face drop-shadow
+      ctx.fillStyle='rgba(0,0,0,0.40)'; ctx.fillRect(sx,sy+TSIZE-6,TSIZE,6);
+      // Highlight edges
+      ctx.fillStyle='rgba(255,255,255,0.14)';
+      ctx.fillRect(sx,sy,TSIZE,2); ctx.fillRect(sx,sy,2,TSIZE-6);
+      // Wood grain dividers
+      ctx.fillStyle='rgba(0,0,0,0.07)';
+      ctx.fillRect(sx+Math.floor(TSIZE/3),sy,1,TSIZE-6);
+      ctx.fillRect(sx+Math.floor(2*TSIZE/3),sy,1,TSIZE-6);
     }
   }
 
@@ -3606,10 +3765,15 @@ const pokemonModule = (() => {
   /* ── SAVE / LOAD ── */
   function saveGame(){
     if(!player||!team.length)return;
+    // Always save the exterior mapId so reload never strands player in an interior
+    const isInt=MAPS_DATA[currentMapId]?.isInterior;
+    const saveMapId=isInt?(_interiorReturn?.mapId||'starterTown'):currentMapId;
+    const saveSp=MAPS_DATA[saveMapId]?.spawns?.default;
+    const savePX=isInt?(saveSp?.x??24):Math.floor(player.x/TSIZE);
+    const savePY=isInt?(saveSp?.y??35):Math.floor(player.y/TSIZE);
     localStorage.setItem('pkSave',JSON.stringify({
       team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
-      px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-      mapId:currentMapId,
+      px:savePX, py:savePY, mapId:saveMapId,
       pokeballs, coins, totalCaught, expBoostActive,
       savedAt: Date.now()
     }));

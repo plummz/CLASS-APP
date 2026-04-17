@@ -801,9 +801,16 @@ window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
     const player = document.getElementById('audio-player');
     
     if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
-        if (!skipIndexUpdate && currentPlaylist.length > 0) {
-            currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
-            if (currentTrackIndex === -1) currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
+        if (!skipIndexUpdate) {
+            if (currentPlaylist.length > 0) {
+                currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
+                if (currentTrackIndex === -1) currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
+            }
+            // If still not found, seed a single-item playlist so loop still triggers
+            if (currentPlaylist.length === 0 || currentTrackIndex === -1) {
+                currentPlaylist = [{ url, name }];
+                currentTrackIndex = 0;
+            }
         }
         
         if(player) {
@@ -907,6 +914,13 @@ window.searchMusicFiles = async function() {
         const folderMap = {};
         (folders || []).forEach(f => { folderMap[f.id] = f; });
 
+        // Populate playlist with audio results so loop/next work after search play
+        const audioResults = files.filter(f => f.type && f.type.startsWith('audio'));
+        if (audioResults.length > 0) {
+            currentPlaylist = audioResults;
+            currentTrackIndex = -1;
+        }
+
         resBox.innerHTML = files.map(f => {
             const folder = folderMap[f.folder_id];
             const folderPath = folder ? folder.name : 'Unknown folder';
@@ -934,8 +948,8 @@ window.toggleLoop = function() {
     const btn = document.getElementById('btn-loop');
     if(btn) {
         btn.innerText = `🔁 Loop All: ${isLoop ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('neon-active', isLoop);
         btn.style.color = isLoop ? 'var(--neon-green)' : 'white';
-        btn.style.borderColor = isLoop ? 'var(--neon-green)' : 'white';
     }
 };
 
@@ -945,8 +959,8 @@ window.toggleRepeat = function() {
     const player = document.getElementById('audio-player');
     if(btn) {
         btn.innerText = `🔂 Repeat 1: ${isRepeat ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('neon-active', isRepeat);
         btn.style.color = isRepeat ? 'var(--neon-green)' : 'white';
-        btn.style.borderColor = isRepeat ? 'var(--neon-green)' : 'white';
     }
     if(player) player.loop = isRepeat;
 };
@@ -1518,6 +1532,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const player = document.getElementById('audio-player');
   if(player) player.addEventListener('ended', () => { if (!player.loop) window.playNextSong(); });
+
+  // Reflect initial toggle states on buttons
+  const loopBtn = document.getElementById('btn-loop');
+  if(loopBtn) loopBtn.classList.toggle('neon-active', isLoop);
+  const repeatBtn = document.getElementById('btn-repeat');
+  if(repeatBtn) repeatBtn.classList.toggle('neon-active', isRepeat);
 
   if (customPageBgs[currentPage]) {
       document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));

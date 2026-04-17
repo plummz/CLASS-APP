@@ -1007,6 +1007,27 @@ body {
     transition: 0.3s;
 }
 
+/* Spinning neon border for active loop/repeat toggle buttons */
+#btn-loop.neon-active, #btn-repeat.neon-active {
+    position: relative;
+    isolation: isolate;
+    background: rgba(10,10,20,0.92) !important;
+    border: 1.5px solid transparent !important;
+    color: var(--neon-green) !important;
+}
+#btn-loop.neon-active::after, #btn-repeat.neon-active::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 10px;
+    background: conic-gradient(from 0deg, #00ff88, #00d4ff, #bf00ff, #ff4400, #ffd700, #00ff88);
+    z-index: -1;
+    animation: neon-border-rotate 1.8s linear infinite;
+}
+@keyframes neon-border-rotate {
+    to { transform: rotate(360deg); }
+}
+
 .btn-blue { background: var(--neon-blue); color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .btn-red { background: #ff6b6b; color: black; border: none; padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .btn-yellow { background: #ffd700; color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }

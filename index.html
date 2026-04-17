@@ -495,6 +495,9 @@
       <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
       <!-- Shop button -->
       <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
+      <!-- Heal button -->
+      <button class="pk-heal-fab" id="pk-heal-fab" onclick="window.pokemonModule.quickHeal()" title="Heal Team (90s cooldown)">💊</button>
+      <span class="pk-heal-cooldown hidden" id="pk-heal-cooldown"></span>
 
       <!-- Shop Overlay -->
       <div id="pk-shop-overlay" class="pk-shop-overlay hidden">
@@ -506,9 +509,14 @@
           </div>
           <div class="pk-shop-tabs">
             <button class="pk-shop-tab active" id="pk-shop-tab-buy" onclick="window.pokemonModule.showShopTab('buy')">🛒 Buy</button>
+            <button class="pk-shop-tab" id="pk-shop-tab-pokemon" onclick="window.pokemonModule.showShopTab('pokemon')">🐾 Pokémon</button>
             <button class="pk-shop-tab" id="pk-shop-tab-sell" onclick="window.pokemonModule.showShopTab('sell')">💰 Sell</button>
           </div>
           <div class="pk-shop-timer" id="pk-shop-timer">Stock refreshes in: --</div>
+          <div class="pk-shop-refresh-row">
+            <button class="pk-shop-refresh-btn" id="pk-shop-refresh-btn" onclick="window.pokemonModule.refreshShop()">🔄 Refresh Stock</button>
+            <span class="pk-shop-refresh-info" id="pk-shop-refresh-info"></span>
+          </div>
           <!-- Target picker (revive / rare candy / stone) -->
           <div id="pk-shop-picker" class="pk-shop-picker hidden">
             <div class="pk-shop-picker-title" id="pk-shop-picker-title">Choose a Pokémon:</div>
@@ -531,6 +539,11 @@
       <div class="pk-dex-subtitle" id="pk-dex-subtitle">Loading…</div>
       <div class="pk-dex-grid" id="pk-dex-grid"></div>
     </div>
+  </div>
+
+  <!-- Pokédex Detail Modal -->
+  <div id="pk-dex-detail-overlay" class="pk-dex-detail-overlay hidden">
+    <div class="pk-dex-detail-panel" id="pk-dex-detail-panel"></div>
   </div>
 
   <!-- Leaderboard Overlay -->

@@ -2334,6 +2334,11 @@ const pokemonModule = (() => {
   let gymLeaderCooldown = 0;
   let currentMapId = 'starterTown'; // active zone map
   let _interiorReturn = null;       // {mapId, spawnId} — set on entering interior
+  let healCooldown = 0;             // ms timestamp until quick-heal is available again
+  let _healCdInterval = null;
+  let shopFreeRefreshes = 2;        // free manual refreshes per session
+  let shopPaidRefreshes = 3;        // purchasable refreshes (cost coins each)
+  let shopCustomSeed = null;        // non-null after a manual refresh
   const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
   const ITEM_TYPES = {
     POTION:       {name:'Potion',       heal:20,   color:'#ff80b0',glow:'rgba(255,128,176,0.4)'},
@@ -2796,7 +2801,7 @@ const pokemonModule = (() => {
       f++; if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
-        battle={pm:team[0],em,type:'trainer',leaderId,leaderQueue:queue,phase:'menu'};
+        battle={pm:team[0],em,type:'trainer',leaderId,leaderQueue:queue,phase:'menu',participants:new Set([team[0]])};
         updateBUI(); enableBtns(true); updateBallBtn();
         document.getElementById('pk-battle').classList.remove('hidden');
         setLog(`Gym Leader ${gl.name}!`,gl.title);
@@ -2874,6 +2879,30 @@ const pokemonModule = (() => {
         saveGame();
       }
     },interval);
+  }
+
+  function quickHeal(){
+    if(battle){ showToast('Cannot heal during battle!','#ff6060',1800); return; }
+    if(Date.now()<healCooldown){ return; }
+    const needsHeal=team.some(m=>m.hp<m.maxHp);
+    if(!needsHeal){ showToast('Pokémon are already at full HP!','#00ff88',1800); return; }
+    healCooldown=Date.now()+90000;
+    team.forEach(m=>{ m.hp=m.maxHp; });
+    showToast('💊 All Pokémon healed!','#ff80b0',2000);
+    saveGame();
+    // Update button + start countdown
+    const btn=document.getElementById('pk-heal-fab');
+    const cd=document.getElementById('pk-heal-cooldown');
+    if(btn) btn.disabled=true;
+    if(_healCdInterval) clearInterval(_healCdInterval);
+    _healCdInterval=setInterval(()=>{
+      const left=Math.max(0,Math.ceil((healCooldown-Date.now())/1000));
+      if(cd){ if(left>0){cd.textContent=left+'s';cd.classList.remove('hidden');}else{cd.classList.add('hidden');} }
+      if(left<=0){
+        if(btn) btn.disabled=false;
+        clearInterval(_healCdInterval); _healCdInterval=null;
+      }
+    },500);
   }
 
   /* ── DRAW ITEMS ON OVERWORLD ── */
@@ -3417,7 +3446,7 @@ const pokemonModule = (() => {
       if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
-        battle={pm:team[0],em,phase:'menu'};
+        battle={pm:team[0],em,phase:'menu',participants:new Set([team[0]])};
         updateBUI(); enableBtns(true);
         document.getElementById('pk-battle').classList.remove('hidden');
         setLog(`A wild ${em.name} appeared!`,'');
@@ -3475,6 +3504,7 @@ const pokemonModule = (() => {
     if(panel) panel.classList.add('hidden');
     const incoming=team[teamIdx];
     battle.pm=incoming;
+    if(battle.participants) battle.participants.add(incoming);
     setLog(`Go, ${incoming.name}!`,'');
     playCry(SP[incoming.speciesId]?.dexId);
     updateBUI();
@@ -3533,16 +3563,17 @@ const pokemonModule = (() => {
       }
       let xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
       if(expBoostActive){ xg*=2; expBoostActive=false; showToast('EXP Charm activated! 2× XP!','#ffe066',1800); }
-      // Award full XP to active battler, half XP to benched alive members (EXP Share)
-      const benched=team.filter(m=>m!==p&&m.hp>0);
-      benched.forEach(m=>{
-        m.xp+=Math.floor(xg/2);
+      // Share XP equally among all battle participants (active + anyone who swapped in)
+      const participants=battle.participants?[...battle.participants].filter(m=>m.hp>0||m===p):[p];
+      const share=Math.max(1,Math.floor(xg/participants.length));
+      participants.forEach(m=>{
+        m.xp+=share;
         while(m.xp>=m.xpToNext){ m.level++; applyLevelUp(m); const evo=tryEvolve(m); if(evo) showToast(`${m.name} evolved!`,'#ffd700',2500); }
       });
       // Award coins for winning the battle
       const battleCoins=5+e.level*2+Math.floor((SP[e.speciesId]?.xpY||50)*0.3);
       coins+=battleCoins; updateCoinsDisplay();
-      p.xp+=xg; setLog(`${e.name} fainted!`,`+${xg} XP  +${battleCoins}💰`);
+      setLog(`${e.name} fainted!`,`+${xg} XP (${participants.length} shared)  +${battleCoins}💰`);
       const doLvl=()=>{
         if(p.xp>=p.xpToNext){
           const lvlCoins=p.level*2;
@@ -3629,7 +3660,8 @@ const pokemonModule = (() => {
     const zone=getZone(tx,ty);
     const pool=ZONES[zone]||ZONES.route1;
     const sid=pool[Math.floor(Math.random()*pool.length)];
-    const wlvl=Math.max(2,(team[0]?team[0].level:5)+Math.floor(Math.random()*3)-1);
+    const avgLvl=team.length?Math.floor(team.reduce((s,m)=>s+m.level,0)/team.length):5;
+    const wlvl=Math.max(2,avgLvl+Math.floor(Math.random()*3)-1);
     startBattle(sid,wlvl);
   }
 
@@ -3685,10 +3717,11 @@ const pokemonModule = (() => {
   const STONE_IDS = ['thunderStone','fireStone','waterStone','moonStone','leafStone'];
 
   function getShopItems(){
-    const seed=Math.floor(Date.now()/(4*60*60*1000));
+    // Use manual refresh seed if set, else time-window seed (4h slots anchored to midnight)
+    const seed=shopCustomSeed!==null?shopCustomSeed:Math.floor(msFromMidnight()/(4*60*60*1000));
     const pool=[...SHOP_POOL];
     const picked=[];
-    let s=seed;
+    let s=seed+1;
     while(picked.length<5&&pool.length){
       s=Math.abs((s*1664525+1013904223)&0x7fffffff);
       const idx=s%pool.length;
@@ -3697,9 +3730,31 @@ const pokemonModule = (() => {
     return picked;
   }
 
+  function msFromMidnight(){
+    const now=new Date();
+    const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate(),0,0,0,0);
+    return Date.now()-midnight.getTime();
+  }
+
   function msUntilRestock(){
     const w=4*60*60*1000;
-    return w-(Date.now()%w);
+    return w-(msFromMidnight()%w);
+  }
+
+  function updateRefreshBtn(){
+    const btn=document.getElementById('pk-shop-refresh-btn');
+    const info=document.getElementById('pk-shop-refresh-info');
+    if(!btn||!info)return;
+    if(shopFreeRefreshes>0){
+      btn.disabled=false;
+      info.textContent=`${shopFreeRefreshes} free · ${shopPaidRefreshes} paid (100💰)`;
+    } else if(shopPaidRefreshes>0){
+      btn.disabled=coins<100;
+      info.textContent=`${shopPaidRefreshes} paid left · 100💰 each`;
+    } else {
+      btn.disabled=true;
+      info.textContent='No refreshes left';
+    }
   }
 
   function fmtMs(ms){
@@ -3711,6 +3766,55 @@ const pokemonModule = (() => {
   function renderShopTimer(){
     const el=document.getElementById('pk-shop-timer');
     if(el) el.textContent='Stock refreshes in: '+fmtMs(msUntilRestock());
+  }
+
+  // Pokemon for sale by tier
+  const SHOP_POKEMON = [
+    // common
+    {sid:'rattata',   tier:'common',   price:500},
+    {sid:'pidgey',    tier:'common',   price:500},
+    {sid:'caterpie',  tier:'common',   price:500},
+    {sid:'weedle',    tier:'common',   price:500},
+    {sid:'oddish',    tier:'common',   price:500},
+    {sid:'psyduck',   tier:'common',   price:500},
+    {sid:'geodude',   tier:'common',   price:500},
+    {sid:'zubat',     tier:'common',   price:500},
+    // rare
+    {sid:'eevee',     tier:'rare',     price:2000},
+    {sid:'dratini',   tier:'rare',     price:2000},
+    {sid:'gastly',    tier:'rare',     price:2000},
+    {sid:'electabuzz',tier:'rare',     price:2000},
+    {sid:'magmar',    tier:'rare',     price:2000},
+    {sid:'scyther',   tier:'rare',     price:2000},
+    {sid:'jynx',      tier:'rare',     price:2000},
+    // epic
+    {sid:'gyarados',  tier:'epic',     price:6000},
+    {sid:'raichu',    tier:'epic',     price:6000},
+    {sid:'venusaur',  tier:'epic',     price:6000},
+    {sid:'blastoise', tier:'epic',     price:6000},
+    {sid:'arcanine',  tier:'epic',     price:6000},
+    // legendary
+    {sid:'jolteon',   tier:'legendary',price:15000},
+    {sid:'flareon',   tier:'legendary',price:15000},
+    {sid:'vaporeon',  tier:'legendary',price:15000},
+    {sid:'chansey',   tier:'legendary',price:15000},
+    {sid:'kangaskhan',tier:'legendary',price:15000},
+  ];
+  const TIER_COLOR={common:'#aaaaaa',rare:'#4fc3f7',epic:'#ce93d8',legendary:'#ffd700'};
+
+  function refreshShop(){
+    if(shopFreeRefreshes>0){
+      shopFreeRefreshes--;
+    } else if(shopPaidRefreshes>0&&coins>=100){
+      shopPaidRefreshes--; coins-=100; updateCoinsDisplay();
+    } else {
+      showToast('No refreshes available!','#ff6b6b',2000); return;
+    }
+    // New random seed so inventory changes
+    shopCustomSeed=Math.floor(Math.random()*0x7fffff)+1;
+    renderShopItems(document.getElementById('pk-shop-tab-sell')?.classList.contains('active')?'sell':
+                    document.getElementById('pk-shop-tab-pokemon')?.classList.contains('active')?'pokemon':'buy');
+    showToast('🔄 Shop stock refreshed!','#00d4ff',1800);
   }
 
   function applyStoneEvo(stoneName){
@@ -3843,14 +3947,41 @@ const pokemonModule = (() => {
   function renderShopItems(tab){
     const buyTab=document.getElementById('pk-shop-tab-buy');
     const sellTab=document.getElementById('pk-shop-tab-sell');
-    if(buyTab) buyTab.classList.toggle('active',tab!=='sell');
+    const pokTab=document.getElementById('pk-shop-tab-pokemon');
+    if(buyTab) buyTab.classList.toggle('active',tab==='buy');
     if(sellTab) sellTab.classList.toggle('active',tab==='sell');
+    if(pokTab) pokTab.classList.toggle('active',tab==='pokemon');
     // Update coins in shop header
     const cd=document.getElementById('pk-shop-coins-display');
     if(cd) cd.textContent='💰 '+coins.toLocaleString();
+    updateRefreshBtn();
     const container=document.getElementById('pk-shop-items');
     if(!container)return;
 
+    if(tab==='pokemon'){
+      container.innerHTML='';
+      const note=document.createElement('div');
+      note.style.cssText='font-family:"Exo 2",sans-serif;font-size:0.75rem;color:#888;padding:4px 4px 8px;text-align:center';
+      note.textContent='Purchased Pokémon join your party at Lv.5 — grind hard!';
+      container.appendChild(note);
+      SHOP_POKEMON.forEach(entry=>{
+        const sp=SP[entry.sid]; if(!sp)return;
+        const canAfford=coins>=entry.price;
+        const card=document.createElement('div');
+        card.className='pk-shop-item'+(canAfford?'':' pk-shop-item-poor');
+        card.innerHTML=`<img src="${spriteUrl(entry.sid)}" style="width:44px;height:44px;image-rendering:pixelated;object-fit:contain" onerror="this.style.display='none'">
+          <div class="pk-shop-item-info">
+            <div class="pk-shop-item-name">${sp.name} <span style="font-size:0.7rem;font-weight:700;color:${TIER_COLOR[entry.tier]||'#aaa'}">[${entry.tier}]</span></div>
+            <div class="pk-shop-item-desc">${(sp.types||[]).join(' / ')} type · Lv.5</div>
+          </div>
+          <div class="pk-shop-item-right">
+            <div class="pk-shop-item-price">${entry.price.toLocaleString()}💰</div>
+            <button class="pk-shop-buy-btn" ${canAfford&&team.length<6?'':'disabled'} onclick="window.pokemonModule._buyPokemon('${entry.sid}',${entry.price})">${team.length>=6?'Full':'Buy'}</button>
+          </div>`;
+        container.appendChild(card);
+      });
+      return;
+    }
     if(tab==='sell'){
       if(!team.length){ container.innerHTML='<div class="pk-lb-empty">No Pokémon to sell.</div>'; return; }
       container.innerHTML='<div class="pk-shop-sell-note">Selling permanently removes the Pokémon from your party.</div>';
@@ -4177,7 +4308,9 @@ const pokemonModule = (() => {
             <div class="pk-dex-level">Lv. ${mon.level}</div>
             <div class="pk-dex-types">${typeBadges}</div>
             <div class="pk-dex-stats">HP ${mon.hp}/${mon.maxHp}<br>Atk ${mon.atk} Def ${mon.def}<br>Spd ${mon.spd}</div>
+            <div style="font-size:0.65rem;color:#777;margin-top:2px;font-family:'Exo 2',sans-serif">Tap for details</div>
           `;
+          card.onclick=()=>window.pokemonModule.showDexDetail(mon.speciesId);
           grid.appendChild(card);
         });
       }
@@ -4241,7 +4374,19 @@ const pokemonModule = (() => {
       }
     },
     showShopTab(tab){ renderShopItems(tab); },
+    refreshShop(){ refreshShop(); },
     _buyItem(id){ buyItem(id); },
+    _buyPokemon(sid, price){
+      if(coins<price){ showToast('Not enough coins!','#ff6b6b',1800); return; }
+      if(team.length>=6){ showToast('Party is full (6 max)!','#ff6b6b',1800); return; }
+      coins-=price; updateCoinsDisplay();
+      const newMon=mkMon(sid,5);
+      team.push(newMon);
+      saveGame();
+      showToast(`${newMon.name} joined your party! ✨`,'#ffd700',2500);
+      playCry(SP[sid]?.dexId);
+      renderShopItems('pokemon');
+    },
     _sellPokemon(idx){
       const mon=team[idx]; if(!mon||team.length<=1)return;
       customConfirm(`Sell ${mon.name} (Lv.${mon.level}) for ${getSellPrice(mon)} coins?`, ()=>{
@@ -4254,6 +4399,90 @@ const pokemonModule = (() => {
         showToast(`Sold ${mon.name} for ${price}💰`,'#ffd700',2000);
         renderShopItems('sell');
       });
+    },
+    quickHeal(){ quickHeal(); },
+    showDexDetail(speciesId){
+      const mon=team.find(m=>m.speciesId===speciesId)||{speciesId,level:1,hp:0,maxHp:0,atk:0,def:0,spd:0,types:SP[speciesId]?.types||[]};
+      const sp=SP[speciesId]; if(!sp)return;
+      const types=mon.types||sp.types||[];
+      // Derive advantages and counters from TYPE_EFF
+      const advantages=[],counters=[];
+      types.forEach(t=>{
+        const eff=TYPE_EFF[t]||{};
+        Object.entries(eff).forEach(([dt,v])=>{ if(v>=2&&!advantages.includes(dt)) advantages.push(dt); if(v<=0.5&&!counters.includes(dt)) counters.push(dt); });
+      });
+      // What beats this pokemon (attacks super-effective against its types)
+      const weakTo=[];
+      Object.entries(TYPE_EFF).forEach(([atk,tbl])=>{
+        let e=1; types.forEach(t=>{ e*=(tbl[t]!==undefined?tbl[t]:1); });
+        if(e>=2&&!weakTo.includes(atk)) weakTo.push(atk);
+      });
+      const DEX_INFO={
+        pikachu:   'A Mouse Pokémon that stores electricity in its cheek pouches. Pikachu are often found in forests charging up by rubbing their tails against each other.',
+        bulbasaur: 'A Seed Pokémon with a plant bulb on its back that grows larger as the Pokémon evolves, absorbing sunlight for energy.',
+        squirtle:  'A Tiny Turtle Pokémon that withdraws into its round shell for protection and shoots precise streams of water from its mouth.',
+        chikorita: 'A Leaf Pokémon from Johto that uses the sweet scent from its leaf to check air quality and soothe its surroundings.',
+        torchic:   'A Chick Pokémon that launches fire from its beak. It hides behind its Trainer, being very clingy to those it trusts.',
+        cyndaquil: 'A Fire Mouse Pokémon that curls up and uses the flames on its back as a defence mechanism when threatened.',
+        totodile:  'A Big Jaw Pokémon with powerful jaws that can chomp through hard objects. It bites everything it sees as play.',
+        mudkip:    'A Mud Fish Pokémon that uses the fin on its head to sense moisture and water flow, even underground.',
+        treecko:   'A Wood Gecko Pokémon that can scale vertical walls using tiny hooks on its feet, living high in treetops.',
+        eevee:     'An Evolution Pokémon with irregular genetic structure — its DNA reacts differently to various stimuli allowing it to evolve into many forms.',
+        rattata:   'A Mouse Pokémon that gnaws on anything with its sharp fangs. Colonies nest on the outskirts of towns.',
+        pidgey:    'A Tiny Bird Pokémon that raises sand clouds to protect itself and navigates by sensing changes in air current.',
+        caterpie:  'A Worm Pokémon that emits a horrible stench from its red antennae to drive away predators. It sheds its skin often.',
+        weedle:    'A Hairy Bug Pokémon with a poisonous stinger on its head. It eats its own weight in leaves every day.',
+        oddish:    'A Weed Pokémon that buries itself in soil by day and wanders at night, scattering spores from its leaves.',
+        psyduck:   'A Duck Pokémon that constantly suffers headaches; when the pain peaks it accidentally releases powerful psychic energy.',
+        geodude:   'A Rock Pokémon found sleeping on rocky mountain paths. Travellers often stub their toes on sleeping Geodude.',
+        zubat:     'A Bat Pokémon that lacks eyes but navigates perfectly using ultrasonic waves. Large colonies roost in dark caves.',
+        magikarp:  'A Fish Pokémon considered useless in battle — yet endurance through hardship enables its awe-inspiring evolution.',
+        gastly:    'A Gas Pokémon whose body is made of toxic gas. A Gastly can surround a large horse and knock it out.',
+        raichu:    'A Mouse Pokémon that is the evolved form of Pikachu. Its tail acts as a lightning rod, grounding excess electricity.',
+        gyarados:  'An Atrocious Pokémon that devastates towns when it goes on a rampage — evolution radically reshapes its brain chemistry.',
+        scyther:   'A Mantis Pokémon whose twin scythes slice through thick logs. It moves so fast it seems to teleport.',
+        electabuzz:'A Electric Pokémon that appears during thunderstorms, absorbing lightning. Causes blackouts wherever it lives.',
+        haunter:   'A Gas Pokémon that can pass through solid walls. Touching a Haunter causes unstoppable shaking.',
+        dratini:   'A Dragon Pokémon that sheds its skin repeatedly as it grows, sometimes reaching lengths of six feet.',
+        jolteon:   'A Lightning Pokémon with electrically-charged fur that shoots sharp needles. Reacts to slightest movement.',
+        flareon:   'A Flame Pokémon that stores flame sacs in its body, raising its temperature to over 3000°F when it attacks.',
+        vaporeon:  'A Bubble Jet Pokémon that can melt into water and become invisible, living near clean water sources.',
+      };
+      const story=DEX_INFO[speciesId]||`${sp.name} is a ${types.join('/')} type Pokémon with a catchRate of ${sp.catchRate||'??'}. It can be found in various habitats and is known for its unique battle style.`;
+      const tc=TYPE_COLORS;
+      const typeBadges=types.map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#aaa'}">${t}</span>`).join('');
+      const advBadges=advantages.length?advantages.map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#888'}">${t}</span>`).join(''):'—';
+      const wkBadges=weakTo.length?weakTo.map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#888'}">${t}</span>`).join(''):'—';
+      const panel=document.getElementById('pk-dex-detail-panel');
+      if(!panel)return;
+      panel.innerHTML=`
+        <div class="pk-dex-detail-header">
+          <img src="${spriteUrl(speciesId)}" alt="${sp.name}" onerror="this.style.display='none'">
+          <div class="pk-dex-detail-info">
+            <div class="pk-dex-detail-name">${sp.name}</div>
+            <div class="pk-dex-detail-type-row">${typeBadges}</div>
+            <div style="font-size:0.75rem;color:#aaa;margin-top:4px;font-family:'Exo 2',sans-serif">Lv.${mon.level} · HP ${mon.hp}/${mon.maxHp}</div>
+          </div>
+        </div>
+        <div class="pk-dex-detail-section">
+          <div class="pk-dex-detail-section-title">Description</div>
+          <div class="pk-dex-detail-section-body">${story}</div>
+        </div>
+        <div class="pk-dex-detail-section">
+          <div class="pk-dex-detail-section-title">Strong Against</div>
+          <div class="pk-dex-detail-type-row">${advBadges}</div>
+        </div>
+        <div class="pk-dex-detail-section">
+          <div class="pk-dex-detail-section-title">Weak To</div>
+          <div class="pk-dex-detail-type-row">${wkBadges}</div>
+        </div>
+        <div class="pk-dex-detail-section">
+          <div class="pk-dex-detail-section-title">Stats</div>
+          <div class="pk-dex-detail-section-body">HP ${sp.hp} · Atk ${sp.atk} · Def ${sp.def} · Spd ${sp.spd}</div>
+        </div>
+        <button class="pk-dex-detail-close" onclick="document.getElementById('pk-dex-detail-overlay').classList.add('hidden')">Close</button>
+      `;
+      document.getElementById('pk-dex-detail-overlay').classList.remove('hidden');
     },
     async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }

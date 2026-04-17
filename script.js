@@ -1356,6 +1356,7 @@ const pageConfig = {
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
+  royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
   witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 WIT FB Page' },
 };
 
@@ -1371,6 +1372,8 @@ window.goToPage = function(pageName) {
   if (currentPage === 'lobby') lobbyModule.destroy();
   // Pokemon: tear down when leaving
   if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
+  // Royale: tear down when leaving
+  if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -1391,7 +1394,7 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on Pokémon page (FABs occupy bottom-right)
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = pageName === 'pokemon' ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -1430,6 +1433,8 @@ window.goToPage = function(pageName) {
   if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
   // Pokemon: start after page is visible
   if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
+  // Royale: start after page is visible
+  if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
 };
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };

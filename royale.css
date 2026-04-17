@@ -1,0 +1,213 @@
+/* ============================================================
+   BATTLE ROYALE — Full-screen landscape game styles
+   ============================================================ */
+
+/* Page container: fixed full-screen when active */
+#page-royale {
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9995;
+  overflow: hidden;
+  background: #000;
+  display: none;
+}
+#page-royale.active {
+  display: block;
+}
+
+/* Wrapper fills entire viewport */
+.rl-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a2e0a;
+}
+
+/* Main canvas */
+#rl-canvas {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ── Back button ─────────────────────────────────────────── */
+.rl-back-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.65);
+  border: 2px solid rgba(255,255,255,0.4);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.rl-back-btn:hover,
+.rl-back-btn:active {
+  background: rgba(200,0,0,0.75);
+}
+
+/* ── Virtual Joystick ────────────────────────────────────── */
+.rl-joy-base,
+.rl-joy-knob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: none;
+  z-index: 50;
+}
+
+.rl-joy-base {
+  width: 100px;
+  height: 100px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.35);
+}
+
+.rl-joy-knob {
+  width: 46px;
+  height: 46px;
+  background: rgba(255,255,255,0.4);
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+/* ── Aim Joystick (right side) ───────────────────────────── */
+.rl-aim-base,
+.rl-aim-knob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: none;
+  z-index: 50;
+}
+
+.rl-aim-base {
+  width: 90px;
+  height: 90px;
+  background: rgba(255,100,0,0.08);
+  border: 2px solid rgba(255,150,0,0.35);
+}
+
+.rl-aim-knob {
+  width: 40px;
+  height: 40px;
+  background: rgba(255,150,0,0.4);
+  border: 2px solid rgba(255,200,0,0.7);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+/* ── Shoot button (bottom-right) ─────────────────────────── */
+.rl-shoot-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 60;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(220,30,30,0.75);
+  border: 3px solid rgba(255,100,100,0.6);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(200,0,0,0.5);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.rl-shoot-btn:active {
+  background: rgba(255,60,60,0.9);
+  transform: scale(0.95);
+}
+
+/* Prevent the page from scrolling under the game */
+body.rl-active {
+  overflow: hidden;
+}
+
+/* ── Orientation warning (shown if stuck in portrait) ───── */
+.rl-rotate-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+}
+.rl-rotate-prompt.visible {
+  display: flex;
+}
+.rl-rotate-prompt .rl-rotate-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: rl-spin 1.5s ease-in-out infinite alternate;
+}
+@keyframes rl-spin {
+  from { transform: rotate(-30deg); }
+  to   { transform: rotate(30deg); }
+}
+.rl-rotate-prompt p {
+  font-size: 18px;
+  opacity: 0.85;
+  max-width: 260px;
+}
+
+/* ── Loading overlay ─────────────────────────────────────── */
+.rl-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  background: #0d1a05;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8fce50;
+  font-family: 'Rajdhani', monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  gap: 20px;
+  transition: opacity 0.6s;
+}
+.rl-loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.rl-loading .rl-loading-bar-track {
+  width: 220px;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rl-loading .rl-loading-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4aaa20, #8fce50);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}

@@ -1,11 +1,13 @@
-const CACHE_NAME = 'school-portfolio-v41';
+const CACHE_NAME = 'school-portfolio-v42';
 const ASSETS = [
   '/',
   'index.html',
   'style.css',
   'pokemon.css',
+  'royale.css',
   'script.js',
   'pokemon.js',
+  'royale.js',
   'manifest.json',
   'icons/icon-192.png',
   'icons/icon-512.png'

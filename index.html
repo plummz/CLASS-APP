@@ -9,6 +9,7 @@
   
   <link rel="stylesheet" href="style.css?v=13">
   <link rel="stylesheet" href="pokemon.css?v=1">
+  <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -190,6 +191,10 @@
         <div class="nav-item" data-page="pokemon" onclick="goToPage('pokemon')">
           <span class="nav-icon">⚔️</span>
           <div class="nav-text"><span class="nav-label">Pokemon</span></div>
+        </div>
+        <div class="nav-item" data-page="royale" onclick="goToPage('royale')">
+          <span class="nav-icon">🎯</span>
+          <div class="nav-text"><span class="nav-label">Battle Royale</span></div>
         </div>
       </div>
     </div>
@@ -535,6 +540,33 @@
     </div>
   </div>
 
+  <!-- ── BATTLE ROYALE ─────────────────────────────────────── -->
+  <div class="page" id="page-royale">
+    <div class="rl-wrapper">
+      <canvas id="rl-canvas"></canvas>
+
+      <!-- Loading screen -->
+      <div id="rl-loading" class="rl-loading">
+        <div>BATTLE ROYALE</div>
+        <div class="rl-loading-bar-track"><div class="rl-loading-bar" style="width:100%"></div></div>
+        <div style="font-size:13px;opacity:0.6">Generating map…</div>
+      </div>
+
+      <!-- Rotate prompt (portrait fallback) -->
+      <div id="rl-rotate-prompt" class="rl-rotate-prompt">
+        <div class="rl-rotate-icon">📱</div>
+        <p>Rotate your device to landscape to play</p>
+      </div>
+
+      <!-- Back button -->
+      <button class="rl-back-btn" onclick="goToPage('first')" title="Exit game">✕</button>
+
+      <!-- Joystick elements -->
+      <div id="rl-joy-base"  class="rl-joy-base"></div>
+      <div id="rl-joy-knob"  class="rl-joy-knob"></div>
+    </div>
+  </div>
+
   <!-- Pokédex Overlay -->
   <div id="pk-dex-overlay" class="pk-dex-overlay hidden">
     <div class="pk-dex-panel">
@@ -723,6 +755,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js?v=16"></script>
   <script src="pokemon.js?v=1"></script>
+  <script src="royale.js?v=1"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

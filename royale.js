@@ -226,6 +226,7 @@ window.royaleModule = (function () {
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
+  const keysJustDown = new Set(); // cleared each frame — used for semi-auto fire
 
   // ── Left joystick (move) ──────────────────────────────────
   const joy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
@@ -312,8 +313,9 @@ window.royaleModule = (function () {
   // ── Input handlers ────────────────────────────────────────
   function onKey(e) {
     keys[e.code] = e.type === 'keydown';
-    if (e.type==='keydown' && e.code==='Space' && gamePhase==='parachute' && !paraDeployed) {
-      paraDeployed=true;
+    if (e.type === 'keydown') {
+      keysJustDown.add(e.code);
+      if (e.code === 'Space' && gamePhase === 'parachute' && !paraDeployed) paraDeployed = true;
     }
   }
 
@@ -451,9 +453,14 @@ window.royaleModule = (function () {
     cam.x += (player.x - cam.x) * ls * dt;
     cam.y += (player.y - cam.y) * ls * dt;
 
-    // ── Keyboard fire (space / mouse implied via F key)
+    // ── Keyboard fire — auto weapons fire while held; semi-auto require a fresh keypress
     const wkey = inventory[activeSlot];
-    if (wkey && keys['Space'] && WEAPONS[wkey]) tryFire(player.x,player.y,player.angle,wkey,localId);
+    if (wkey && WEAPONS[wkey]) {
+      const w = WEAPONS[wkey];
+      const fireNow = w.auto ? keys['Space'] : keysJustDown.has('Space');
+      if (fireNow) tryFire(player.x, player.y, player.angle, wkey, localId);
+    }
+    keysJustDown.clear();
     if (keys['KeyR']) startReload();
     if (keys['Digit1']) activeSlot=0;
     if (keys['Digit2']) activeSlot=1;
@@ -860,20 +867,20 @@ window.royaleModule = (function () {
       ctx.fillText(`ARMOR ${Math.ceil(player.armor)}`, ax+4, ay+9);
     }
 
-    // ── Stance indicator
+    // ── Stance + Hidden indicators (stacked, no overlap)
+    let badgeY = canvasH - 80;
     if (stance !== 'stand') {
       ctx.fillStyle = stance==='prone' ? 'rgba(200,100,0,0.65)' : 'rgba(0,100,200,0.55)';
-      ctx.fillRect(20, canvasH-80, 76, 18);
+      ctx.fillRect(20, badgeY, 76, 18);
       ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
-      ctx.fillText(stance.toUpperCase(), 28, canvasH-67);
+      ctx.fillText(stance.toUpperCase(), 28, badgeY+13);
+      badgeY -= 22;
     }
-
-    // ── Hidden indicator
     if (player.hidden) {
       ctx.fillStyle='rgba(0,160,0,0.55)';
-      ctx.fillRect(20,canvasH-76,76,18);
+      ctx.fillRect(20, badgeY, 76, 18);
       ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
-      ctx.fillText('HIDDEN',27,canvasH-63);
+      ctx.fillText('HIDDEN', 27, badgeY+13);
     }
 
     // ── Minimap
@@ -886,6 +893,24 @@ window.royaleModule = (function () {
     // Player dot
     const pdx=mx+(player.x/(MAP_W*TILE))*mw;
     const pdy=my+(player.y/(MAP_H*TILE))*mh;
+    // Zone ring on minimap
+    const mmScale = mw / (MAP_W*TILE);
+    const zmx = mx + zone.cx*mmScale;
+    const zmy = my + zone.cy*mmScale;
+    const zmr = zone.r * mmScale;
+    ctx.strokeStyle='rgba(0,120,255,0.7)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(zmx,zmy,Math.max(zmr,1),0,Math.PI*2); ctx.stroke();
+
+    // Bot dots on minimap
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+      ctx.fillStyle='#f55';
+      ctx.beginPath();
+      ctx.arc(mx+bt.x*mmScale, my+bt.y*mmScale, 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Player dot
     ctx.fillStyle='#fff';
     ctx.beginPath(); ctx.arc(pdx,pdy,3,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.5)';
@@ -961,8 +986,10 @@ window.royaleModule = (function () {
     if (gamePhase==='parachute') drawParachute();
 
     ctx.restore();
-    drawHUD();
-    drawCrosshair();
+    if (gamePhase !== 'dead' && gamePhase !== 'win') {
+      drawHUD();
+      drawCrosshair();
+    }
     drawSpectateTag();
     drawEndScreen();
 
@@ -1003,7 +1030,7 @@ window.royaleModule = (function () {
   let inventory  = [];            // weapon keys player is holding (max 2)
   let activeSlot = 0;
   let ammoCache  = {};            // { weaponKey: count }
-  let lastFireT  = 0;
+  let lastFireT  = {}; // keyed by weaponKey so ROF doesn't bleed between weapons
   let reloading  = false;
   let reloadEnd  = 0;
 
@@ -1095,10 +1122,10 @@ window.royaleModule = (function () {
     const now = performance.now();
     if (ownerId === localId) {
       if (reloading) return;
-      if (now - lastFireT < w.rof) return;
+      if (now - (lastFireT[weaponKey]||0) < w.rof) return;
       if (!ammoCache[weaponKey] || ammoCache[weaponKey] <= 0) { startReload(); return; }
       ammoCache[weaponKey]--;
-      lastFireT = now;
+      lastFireT[weaponKey] = now;
       muzzleFlash = 3;
       const shakeMap={pistol:3,revolver:7,smg:2,ar:4,battlerifle:6,shotgun:9,sniper:12,rpg:0};
       addShake(shakeMap[weaponKey]||3);
@@ -1229,8 +1256,8 @@ window.royaleModule = (function () {
       t.z = Math.max(0, t.z + t.vz*dt);
       t.vz -= 280*dt; // gravity
       t.timer += dt;
-      // Friction
-      t.vx *= 0.92; t.vy *= 0.92;
+      // Friction (not for RPG — it maintains constant velocity)
+      if (t.type !== 'rpg') { t.vx *= 0.92; t.vy *= 0.92; }
       if (t.type==='rpg') {
         // RPG keeps moving, explodes on hit or range
         const d2 = (t.x-player.x)**2+(t.y-player.y)**2;
@@ -1307,50 +1334,6 @@ window.royaleModule = (function () {
 
   function lerp(a,b,t) { return a+(b-a)*t; }
 
-  function updateBots(dt) {
-    const now = performance.now();
-    for (const bt of bots) {
-      if (!bt.alive) continue;
-      const dx=player.x-bt.x, dy=player.y-bt.y;
-      const distToPlayer=Math.sqrt(dx*dx+dy*dy);
-
-      // State machine
-      if (distToPlayer < 350) bt.state='chase';
-      else if (bt.state==='chase' && distToPlayer>500) bt.state='roam';
-
-      if (bt.state==='chase') {
-        bt.angle=Math.atan2(dy,dx);
-        bt.x += Math.cos(bt.angle)*120*dt;
-        bt.y += Math.sin(bt.angle)*120*dt;
-        // Shoot
-        if (distToPlayer<320 && now>bt.fireT) {
-          tryFire(bt.x,bt.y,bt.angle+( Math.random()-0.5)*0.15,bt.weapon,bt.id);
-          bt.fireT=now+WEAPONS[bt.weapon].rof*1.8;
-        }
-      } else {
-        // Roam to waypoint
-        const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
-        const wd=Math.sqrt(wx*wx+wy*wy);
-        if (wd<20) {
-          const rng=seededRng(now*0.001+bt.id.charCodeAt(4));
-          bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
-          bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
-        } else {
-          bt.angle=Math.atan2(wy,wx);
-          bt.x+=Math.cos(bt.angle)*80*dt;
-          bt.y+=Math.sin(bt.angle)*80*dt;
-        }
-      }
-      bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
-      bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
-
-      // Zone damage to bots
-      const d=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
-      if (d>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
-      if (bt.hp<=0) { bt.alive=false; killFeed.push({text:`${bt.name} eliminated`,life:4}); }
-    }
-  }
-
   function updateAirdrop(dt) {
     if (!airdrop) return;
     if (airdrop.phase==='fly') {
@@ -1360,9 +1343,9 @@ window.royaleModule = (function () {
     } else if (airdrop.phase==='fall') {
       airdrop.z = Math.max(0, airdrop.z - 80*dt);
       if (airdrop.z<=0) {
-        airdrop.phase='land';
         crates.push({x:airdrop.x,y:airdrop.y,open:false,lootLeft:5,airdrop:true});
         killFeed.push({text:'Airdrop landed!',life:5});
+        airdrop = null; // done — crate handles it from here
       }
     }
   }
@@ -1397,7 +1380,7 @@ window.royaleModule = (function () {
     if (reloading && performance.now() >= reloadEnd) {
       reloading=false;
       const key=inventory[activeSlot];
-      if (key) ammoCache[key]=(ammoCache[key]||0)+WEAPONS[key].ammo;
+      if (key) ammoCache[key]=Math.min((ammoCache[key]||0)+WEAPONS[key].ammo, WEAPONS[key].maxAmmo);
     }
   }
 
@@ -1478,19 +1461,19 @@ window.royaleModule = (function () {
   }
 
   function drawZone() {
-    // Blue danger zone overlay outside the safe circle
     ctx.save();
-    ctx.fillStyle='rgba(0,80,200,0.18)';
-    ctx.fillRect(-cam.x+canvasW/2-MAP_PX, -cam.y+canvasH/2-MAP_PX, MAP_PX*3, MAP_PX*3);
+    // Fill entire world with blue haze, then punch out the safe circle
+    ctx.fillStyle='rgba(0,80,200,0.20)';
+    ctx.fillRect(-MAP_PX, -MAP_PX, MAP_PX*3, MAP_PX*3);
     ctx.globalCompositeOperation='destination-out';
     ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.fill();
     ctx.restore();
     // Zone ring
-    ctx.strokeStyle='rgba(0,160,255,0.8)'; ctx.lineWidth=3;
+    ctx.strokeStyle='rgba(0,160,255,0.85)'; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.stroke();
-    // Next zone ring (dashed)
+    // Next zone ring (dashed yellow)
     if (zone.phase < ZONE_PHASES.length) {
-      ctx.strokeStyle='rgba(255,255,0,0.45)'; ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(255,255,0,0.50)'; ctx.lineWidth=1.5;
       ctx.setLineDash([12,8]);
       ctx.beginPath(); ctx.arc(zone.nextCx,zone.nextCy,zone.nextR,0,Math.PI*2); ctx.stroke();
       ctx.setLineDash([]);
@@ -1891,7 +1874,7 @@ window.royaleModule = (function () {
         const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
         const wd=Math.sqrt(wx*wx+wy*wy);
         if (wd<20) {
-          const rng=seededRng(now*0.001+bt.id.charCodeAt(4)||0);
+          const rng=seededRng(now*0.001+(bt.id.charCodeAt(4)||0));
           bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
           bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
         } else {

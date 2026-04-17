@@ -3205,6 +3205,50 @@ const pokemonModule = (() => {
     ctx.fillStyle='#cc2222'; ctx.fillRect(cx+3,cy,10,3);
   }
 
+  function drawWarpPortals(){
+    const warps=MAPS_DATA[currentMapId]?.warps||[];
+    if(!warps.length)return;
+    const now=Date.now();
+    warps.forEach(w=>{
+      const sx=w.tx*TSIZE-camX, sy=w.ty*TSIZE-camY;
+      if(sx<-TSIZE||sy<-TSIZE||sx>canvas.width+TSIZE||sy>canvas.height+TSIZE)return;
+      const isReturn=w.toMap==='__return__';
+      const isInterior=MAPS_DATA[w.toMap]?.isInterior;
+      // Color: gold for zone exits, cyan for building entries, purple for interior exits
+      const [r,g,b]=isReturn?[180,80,255]:isInterior?[0,230,255]:[255,210,30];
+      // Pulsing glow ring
+      const pulse=0.45+Math.sin(now/500+w.tx+w.ty)*0.35;
+      const grd=ctx.createRadialGradient(sx+TSIZE/2,sy+TSIZE/2,2,sx+TSIZE/2,sy+TSIZE/2,TSIZE*0.72);
+      grd.addColorStop(0,`rgba(${r},${g},${b},${pulse*0.55})`);
+      grd.addColorStop(1,`rgba(${r},${g},${b},0)`);
+      ctx.fillStyle=grd; ctx.fillRect(sx,sy,TSIZE,TSIZE);
+      // Animated spinning border dashes
+      ctx.save();
+      ctx.translate(sx+TSIZE/2,sy+TSIZE/2);
+      ctx.rotate((now/800)%(Math.PI*2));
+      ctx.strokeStyle=`rgba(${r},${g},${b},${0.65+pulse*0.25})`;
+      ctx.lineWidth=2;
+      ctx.setLineDash([4,4]);
+      ctx.strokeRect(-TSIZE/2+2,-TSIZE/2+2,TSIZE-4,TSIZE-4);
+      ctx.setLineDash([]);
+      ctx.restore();
+      // Arrow pointing inward
+      const arrowPulse=Math.abs(Math.sin(now/400+w.tx));
+      const ay=sy+TSIZE/2+Math.sin(now/400+w.tx)*3;
+      const ax=sx+TSIZE/2;
+      const as=6+arrowPulse*2;
+      ctx.fillStyle=`rgba(${r},${g},${b},${0.8+arrowPulse*0.2})`;
+      ctx.beginPath();
+      ctx.moveTo(ax,ay-as); ctx.lineTo(ax+as,ay+as*0.5); ctx.lineTo(ax-as,ay+as*0.5);
+      ctx.closePath(); ctx.fill();
+      // "ENTER"/"EXIT" label
+      ctx.font='bold 7px monospace';
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillStyle=`rgba(${r},${g},${b},0.9)`;
+      ctx.fillText(isReturn?'EXIT':'ENTER',sx+TSIZE/2,sy+TSIZE-2);
+    });
+  }
+
   function drawOverworld(){
     if(!canvas||!ctx) return;
     const W=canvas.width, H=canvas.height;
@@ -3223,6 +3267,7 @@ const pokemonModule = (() => {
     drawMapItems();
     drawPCSign();
     drawZoneSigns();
+    drawWarpPortals();
     drawPlayerChar(player.x-camX, player.y-camY);
     drawToast();
   }
@@ -3570,9 +3615,17 @@ const pokemonModule = (() => {
     const nearGrass=[[0,0],[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const t=getTile(tx+dx,ty+dy);return t===T.TALL||t===T.GRASS;});
     if(nearGrass) touchGrass(tx,ty,player.moving?3.5:1.2);
     const tile=getTile(tx,ty), key=`${tx},${ty}`;
-    if(tile!==T.TALL||key===lastTileKey||battle){lastTileKey=key;return;}
+    if(key===lastTileKey||battle){lastTileKey=key;return;}
     lastTileKey=key;
-    if(Math.random()>0.28)return;  // ~28% per step in tall grass
+    const isInterior=MAPS_DATA[currentMapId]?.isInterior;
+    // Outdoor: 10% in tall grass only; Interior: 5% on floor tiles
+    if(isInterior){
+      if(tile!==T.FLOOR)return;
+      if(Math.random()>0.05)return;
+    } else {
+      if(tile!==T.TALL)return;
+      if(Math.random()>0.10)return;
+    }
     const zone=getZone(tx,ty);
     const pool=ZONES[zone]||ZONES.route1;
     const sid=pool[Math.floor(Math.random()*pool.length)];

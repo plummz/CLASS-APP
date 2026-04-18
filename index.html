@@ -180,23 +180,10 @@
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
 
-    <!-- Games dropdown — Pokemon lives here -->
-    <div class="nav-dropdown-group games-theme">
-      <div class="nav-dropdown-header" onclick="toggleYear('games')">
-        <span class="nav-icon">🎮</span>
-        <div class="nav-text"><span class="nav-label">Games</span></div>
-        <span class="dropdown-arrow">▼</span>
-      </div>
-      <div id="dropdown-games" class="nav-dropdown-content">
-        <div class="nav-item" data-page="pokemon" onclick="goToPage('pokemon')">
-          <span class="nav-icon">⚔️</span>
-          <div class="nav-text"><span class="nav-label">Pokemon</span></div>
-        </div>
-        <div class="nav-item" data-page="royale" onclick="goToPage('royale')">
-          <span class="nav-icon">🎯</span>
-          <div class="nav-text"><span class="nav-label">Battle Royale</span></div>
-        </div>
-      </div>
+    <!-- Games hub — direct link to game selection page -->
+    <div class="nav-item" data-page="games" onclick="goToPage('games')">
+      <span class="nav-icon">🎮</span>
+      <div class="nav-text"><span class="nav-label">Games</span></div>
     </div>
 
     <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">
@@ -394,6 +381,84 @@
 
       <div id="visualizer-container" class="visualizer-wrapper" style="margin-top: 20px; height: 250px; background: black; border-radius: 12px; overflow: hidden;">
         <canvas id="block-canvas" style="width: 100%; height: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GAMES HUB ─────────────────────────────────────────── -->
+  <div class="page" id="page-games">
+    <div class="games-hub">
+      <div class="games-hub-header">
+        <div class="games-hub-title-row">
+          <span class="games-hub-icon-large">🎮</span>
+          <h1 class="games-hub-title">ARCADE</h1>
+        </div>
+        <p class="games-hub-sub">Pick a game and start playing</p>
+      </div>
+
+      <div class="games-grid">
+
+        <!-- Pokémon -->
+        <div class="game-card" onclick="goToPage('pokemon')">
+          <div class="game-thumb pokemon-thumb">
+            <img
+              src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png"
+              alt="Pokémon" class="game-thumb-img"
+              onerror="this.style.display='none'">
+            <div class="game-thumb-badge">RPG</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">TURN-BASED</span><span class="game-tag">ADVENTURE</span></div>
+            <h3 class="game-name">Pokémon</h3>
+            <p class="game-desc">Explore the overworld, battle wild Pokémon, level up your team, and rise to become champion.</p>
+            <button class="game-play-btn pokemon-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Battle Royale -->
+        <div class="game-card" onclick="goToPage('royale')">
+          <div class="game-thumb royale-thumb">
+            <canvas id="games-royale-preview" class="royale-mini-canvas"></canvas>
+            <div class="game-thumb-badge royale-badge">LIVE</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">BATTLE ROYALE</span><span class="game-tag">40 PLAYERS</span></div>
+            <h3 class="game-name">Battle Royale</h3>
+            <p class="game-desc">Drop in, loot weapons, survive the zone. Customize your skin, earn coins, and be the last one standing.</p>
+            <button class="game-play-btn royale-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Placeholder slot 1 -->
+        <div class="game-card game-card-soon">
+          <div class="game-thumb soon-thumb">
+            <div class="soon-question">?</div>
+            <div class="game-thumb-badge soon-badge">SOON</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">COMING SOON</span></div>
+            <h3 class="game-name">Mystery Game</h3>
+            <p class="game-desc">A new adventure is in development. Stay tuned for something epic...</p>
+            <button class="game-play-btn" disabled>🔒  LOCKED</button>
+          </div>
+        </div>
+
+        <!-- Placeholder slot 2 -->
+        <div class="game-card game-card-soon">
+          <div class="game-thumb soon-thumb">
+            <div class="soon-question">?</div>
+            <div class="game-thumb-badge soon-badge">SOON</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">COMING SOON</span></div>
+            <h3 class="game-name">???</h3>
+            <p class="game-desc">More games are on the way. Check back soon!</p>
+            <button class="game-play-btn" disabled>🔒  LOCKED</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

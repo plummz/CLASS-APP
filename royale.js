@@ -2407,7 +2407,7 @@ window.royaleModule = (function () {
         restartGame(); return true;
       }
       if (endBtnQuit && gx>=endBtnQuit.x && gx<=endBtnQuit.x+endBtnQuit.w && gy>=endBtnQuit.y && gy<=endBtnQuit.y+endBtnQuit.h) {
-        goToPage('first'); return true;
+        goToPage('games'); return true;
       }
     }
     return false;
@@ -2444,7 +2444,7 @@ window.royaleModule = (function () {
 
   function onAnyKeyForExit(e) {
     if (gamePhase==='dead'||gamePhase==='win') {
-      if (gameEndTimer>1.5) goToPage('first');
+      if (gameEndTimer>1.5) goToPage('games');
     }
   }
 
@@ -2532,7 +2532,7 @@ window.royaleModule = (function () {
   function restartGame() {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
-    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
     paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};

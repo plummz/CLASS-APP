@@ -15,9 +15,6 @@ require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const sharp   = require('sharp');
-const ffmpeg  = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
 const pLimit  = require('p-limit');
 const fetch   = require('node-fetch');
 const fs      = require('fs');
@@ -26,7 +23,18 @@ const os      = require('os');
 const stream  = require('stream');
 const { promisify } = require('util');
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+// Optional compression — skipped gracefully if native binaries unavailable (e.g. Android)
+let sharp = null;
+try { sharp = require('sharp'); } catch (_) {}
+
+let ffmpeg = null;
+try {
+  ffmpeg = require('fluent-ffmpeg');
+  const ffmpegPath = require('ffmpeg-static');
+  if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
+  else { const { execSync } = require('child_process'); ffmpeg.setFfmpegPath(execSync('which ffmpeg').toString().trim()); }
+} catch (_) {}
+
 const pipeline = promisify(stream.pipeline);
 
 // ── Config ────────────────────────────────────────────────
@@ -85,34 +93,24 @@ async function downloadToBuffer(url) {
 
 // ── Compression ───────────────────────────────────────────
 async function compressImage(buffer, filename) {
+  if (!sharp) return buffer; // no sharp available, upload original
   const ext = path.extname(filename).toLowerCase();
   let img = sharp(buffer);
-
   switch (ext) {
-    case '.jpg':
-    case '.jpeg':
-      img = img.jpeg({ quality: 75, mozjpeg: true });
-      break;
-    case '.png':
-      img = img.png({ quality: 75, compressionLevel: 8 });
-      break;
-    case '.gif':
-      img = img.gif();
-      break;
-    case '.webp':
-      img = img.webp({ quality: 75 });
-      break;
-    default:
-      img = img.jpeg({ quality: 75 });
+    case '.jpg': case '.jpeg': img = img.jpeg({ quality: 75, mozjpeg: true }); break;
+    case '.png':  img = img.png({ quality: 75, compressionLevel: 8 }); break;
+    case '.gif':  img = img.gif(); break;
+    case '.webp': img = img.webp({ quality: 75 }); break;
+    default:      img = img.jpeg({ quality: 75 });
   }
   return img.toBuffer();
 }
 
 function compressVideo(inputPath, outputPath) {
+  if (!ffmpeg) { fs.copyFileSync(inputPath, outputPath); return Promise.resolve(); }
   return new Promise((resolve, reject) => {
     const ext = path.extname(inputPath).toLowerCase();
     const isWebm = ext === '.webm';
-
     ffmpeg(inputPath)
       .videoCodec(isWebm ? 'libvpx-vp9' : 'libx264')
       .audioCodec(isWebm ? 'libopus' : 'aac')
@@ -121,7 +119,7 @@ function compressVideo(inputPath, outputPath) {
         : ['-crf 26', '-preset fast', '-movflags +faststart']
       )
       .save(outputPath)
-      .on('end',   resolve)
+      .on('end', resolve)
       .on('error', reject);
   });
 }

@@ -99,6 +99,9 @@ window.royaleModule = (function () {
         for (let bx = b.tx; bx < b.tx+b.tw; bx++)
           setTile(bx, by, T.FLOOR);
     }
+
+    generateTrees();
+    generateBoulders();
   }
 
   // ── Buildings ─────────────────────────────────────────────
@@ -140,6 +143,65 @@ window.royaleModule = (function () {
   // { x, y — world px; r — canopy radius px; type: 'oak'|'pine'|'bush' }
   let trees = [];
 
+  // ── Boulders ──────────────────────────────────────────────
+  let boulders = [];
+
+  // ── Blood splatters ───────────────────────────────────────
+  let bloodSplatters = [];
+
+  // ── Trail particles ───────────────────────────────────────
+  let trailParticles = [];
+
+  // ── Animated water time ───────────────────────────────────
+  let gameTime = 0;
+
+  // ── Active throwable type ─────────────────────────────────
+  let activeThrowable = 'grenade';
+
+  // ── End screen button rects ───────────────────────────────
+  let endBtnPlay = null, endBtnQuit = null;
+
+  // ── Skin & Coin system ────────────────────────────────────
+  const COIN_KEY = 'rl_coins_v1';
+  const SKIN_KEY = 'rl_skin_v1';
+  let coins = parseInt(localStorage.getItem(COIN_KEY)||'150', 10);
+  let playerSkin = JSON.parse(localStorage.getItem(SKIN_KEY)||'{"head":"default","body":"gray","pants":"dark","trail":"none"}');
+  function saveCoins() { try { localStorage.setItem(COIN_KEY, String(coins)); } catch(_){} }
+  function saveSkin()  { try { localStorage.setItem(SKIN_KEY, JSON.stringify(playerSkin)); } catch(_){} }
+
+  const HEADS = [
+    {id:'default',name:'Default',price:0,color:'#c8a070'},
+    {id:'chicken', name:'Chicken',price:150,color:'#f5c842',beak:true},
+    {id:'zombie',  name:'Zombie', price:200,color:'#7aaa6a',eyes:'red'},
+    {id:'skull',   name:'Skull',  price:250,color:'#e8e8e8',eyes:'black'},
+    {id:'ninja',   name:'Ninja',  price:300,color:'#2a2a2a',mask:true},
+    {id:'crown',   name:'Crown',  price:500,color:'#c8a070',crown:true},
+  ];
+  const BODIES = [
+    {id:'gray',  name:'Gray',  price:0,   color:'#6a7a8a'},
+    {id:'red',   name:'Red',   price:100, color:'#c83030'},
+    {id:'blue',  name:'Blue',  price:100, color:'#3060c0'},
+    {id:'green', name:'Green', price:100, color:'#308050'},
+    {id:'gold',  name:'Gold',  price:300, color:'#c89820'},
+    {id:'camo',  name:'Camo',  price:250, color:'#4a6a3a'},
+  ];
+  const PANTS = [
+    {id:'dark',  name:'Dark',  price:0,  color:'#2a2a3a'},
+    {id:'tan',   name:'Tan',   price:50, color:'#8a7a5a'},
+    {id:'black', name:'Black', price:80, color:'#151515'},
+    {id:'camo',  name:'Camo',  price:150,color:'#3a5a2a'},
+    {id:'white', name:'White', price:120,color:'#d8d8d8'},
+  ];
+  const TRAILS = [
+    {id:'none',    name:'None',    price:0},
+    {id:'fire',    name:'Fire',    price:400},
+    {id:'sparkle', name:'Sparkle', price:300},
+    {id:'rainbow', name:'Rainbow', price:600},
+  ];
+  let skinMenuTab = 'head';
+  let ownedSkins = JSON.parse(localStorage.getItem('rl_owned_v1')||'{"head":["default"],"body":["gray"],"pants":["dark"],"trail":["none"]}');
+  function saveOwned() { try { localStorage.setItem('rl_owned_v1', JSON.stringify(ownedSkins)); } catch(_){} }
+
   function generateTrees() {
     trees = [];
     const rng = seededRng(77);
@@ -171,6 +233,19 @@ window.royaleModule = (function () {
     const ix = Math.floor(Math.min(tx, MAP_W-1)), iy = Math.floor(Math.min(ty, MAP_H-1));
     const t = mapTiles[iy][ix];
     return t === T.GRASS || t === T.DIRT;
+  }
+
+  function generateBoulders() {
+    boulders = [];
+    const rng = seededRng(99);
+    for (let i = 0; i < 18; i++) {
+      const tx = 15 + rng()*(MAP_W-30), ty = 15 + rng()*(MAP_H-30);
+      const ix = Math.floor(tx), iy = Math.floor(ty);
+      if (!mapTiles[iy] || mapTiles[iy][ix] === T.WATER || mapTiles[iy][ix] === T.DEEP_WATER) continue;
+      let near = false;
+      for (const b of BUILDINGS) { if (tx>b.tx-3&&tx<b.tx+b.tw+3&&ty>b.ty-3&&ty<b.ty+b.th+3) { near=true; break; } }
+      if (!near) boulders.push({ x: tx*TILE, y: ty*TILE, r: 22+rng()*16 });
+    }
   }
 
   // ── Player ────────────────────────────────────────────────
@@ -240,7 +315,7 @@ window.royaleModule = (function () {
     document.body.classList.add('rl-active');
     checkOrientation(); // set portrait rotation class immediately
 
-    if (!mapTiles) { generateMap(); generateTrees(); }
+    if (!mapTiles) { generateMap(); }
 
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
     gamePhase='parachute'; gameEndTimer=0; totalKills=0;
@@ -410,9 +485,11 @@ window.royaleModule = (function () {
   }
 
   function update(dt) {
+    gameTime += dt;
     updateShake(dt);
     updateSpectate(dt);
     updateDmgNumbers(dt);
+    bloodSplatters = bloodSplatters.filter(s => { s.life -= dt; return s.life > 0; });
 
     // Parachute phase
     if (gamePhase === 'parachute') {
@@ -470,8 +547,26 @@ window.royaleModule = (function () {
       }
     }
 
+    // Boulder collision
+    for (const bo of boulders) {
+      const bdx = player.x - bo.x, bdy = player.y - bo.y;
+      const bd = Math.sqrt(bdx*bdx+bdy*bdy);
+      if (bd < PLAYER_R + bo.r) {
+        const push = (PLAYER_R + bo.r - bd) / bd || 0;
+        player.x += bdx * push; player.y += bdy * push;
+      }
+    }
+
     // Update facing angle when moving
     if (len > 0.05) player.angle = Math.atan2(my, mx);
+
+    // Trail particles
+    if (len > 0.1 && playerSkin.trail !== 'none') {
+      const colors = {fire:['#ff6600','#ff3300','#ffaa00'],sparkle:['#ffffff','#ffffaa','#aaaaff'],rainbow:[`hsl(${(gameTime*200)%360},100%,60%)`,'#fff',`hsl(${(gameTime*200+120)%360},100%,60%)`]};
+      const cols = colors[playerSkin.trail]||['#fff'];
+      trailParticles.push({x:player.x+(Math.random()-0.5)*8, y:player.y+(Math.random()-0.5)*8, r:2+Math.random()*3, col:cols[Math.floor(Math.random()*cols.length)], life:0.5+Math.random()*0.4, maxLife:0.9});
+    }
+    trailParticles = trailParticles.filter(p=>{p.life-=0.016; return p.life>0;});
 
     // Check bush/tree hiding
     player.hidden = false;
@@ -527,7 +622,18 @@ window.royaleModule = (function () {
           case T.GRASS: {
             ctx.fillStyle = GRASS_V[(tx*3+ty*7)%GRASS_V.length];
             ctx.fillRect(px,py,TILE,TILE);
-            if ((tx+ty)%5===0) {
+            // Subtle shade variation
+            if ((tx*5+ty*3)%7===0) {
+              ctx.fillStyle='rgba(0,0,0,0.06)';
+              ctx.fillRect(px,py,TILE,TILE);
+            }
+            // Grass blades
+            if ((tx*7+ty*11)%9===0) {
+              ctx.fillStyle='rgba(80,160,40,0.55)';
+              ctx.fillRect(px+6,py+4,2,8);
+              ctx.fillRect(px+14,py+8,2,6);
+              ctx.fillRect(px+22,py+5,2,7);
+            } else if ((tx+ty)%5===0) {
               ctx.fillStyle='rgba(0,0,0,0.04)';
               ctx.fillRect(px+3,py+5,2,TILE-10);
             }
@@ -552,13 +658,21 @@ window.royaleModule = (function () {
             break;
           }
           case T.WATER: {
-            ctx.fillStyle='#2a6aa0'; ctx.fillRect(px,py,TILE,TILE);
-            ctx.fillStyle='rgba(100,180,255,0.14)';
-            ctx.fillRect(px+4,py+4,TILE-8,4);
+            const wave = Math.sin(gameTime * 1.8 + tx * 0.6 + ty * 0.4) * 0.5 + 0.5;
+            ctx.fillStyle=`rgb(${30+wave*15|0},${100+wave*30|0},${160+wave*20|0})`;
+            ctx.fillRect(px,py,TILE,TILE);
+            ctx.fillStyle=`rgba(140,220,255,${0.08+wave*0.14})`;
+            ctx.fillRect(px+2, py+4+wave*6|0, TILE-4, 2);
+            if ((tx*3+ty*7+Math.floor(gameTime*3))%11===0) {
+              ctx.fillStyle=`rgba(255,255,255,${0.5+wave*0.5})`;
+              ctx.fillRect(px+(tx*5)%20+4, py+(ty*7)%18+4, 2, 2);
+            }
             break;
           }
           case T.DEEP_WATER: {
-            ctx.fillStyle='#1a3a6a'; ctx.fillRect(px,py,TILE,TILE);
+            const wave = Math.sin(gameTime * 1.4 + tx * 0.5 + ty * 0.6) * 0.5 + 0.5;
+            ctx.fillStyle=`rgb(${18+wave*8|0},${48+wave*15|0},${100+wave*15|0})`;
+            ctx.fillRect(px,py,TILE,TILE);
             break;
           }
           case T.FLOOR: {
@@ -594,53 +708,85 @@ window.royaleModule = (function () {
   }
 
   function drawBuilding(px, py, pw, ph, roof, wall) {
-    // Ground shadow
-    ctx.fillStyle='rgba(0,0,0,0.16)';
+    // Drop shadow
+    ctx.fillStyle='rgba(0,0,0,0.20)';
     ctx.beginPath();
-    ctx.ellipse(px+pw/2, py+ph+WALL_H/2, pw/2+5, WALL_H/2+4, 0,0,Math.PI*2);
+    ctx.ellipse(px+pw/2+8, py+ph+WALL_H+4, pw/2+10, WALL_H/2+5, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // South wall
+    // South wall with texture
     ctx.fillStyle = wall;
     ctx.fillRect(px, py+ph, pw, WALL_H);
-    ctx.fillStyle='rgba(0,0,0,0.22)';
-    ctx.fillRect(px, py+ph+WALL_H-3, pw, 3);
+    // Brick pattern on south wall
+    ctx.fillStyle='rgba(0,0,0,0.08)';
+    for (let brow=0; brow<2; brow++) {
+      const by2 = py+ph + brow*(WALL_H/2);
+      const off = brow%2===0 ? 0 : 14;
+      for (let bx2=px+off; bx2<px+pw; bx2+=28) {
+        ctx.fillRect(bx2, by2, 26, WALL_H/2-1);
+      }
+    }
+    // Windows on south wall
     drawWallWindows(px, py+ph, pw, WALL_H);
+    // Door (center-ish of south wall)
+    const dw=10, dh=WALL_H-4, dx=px+pw/2-dw/2;
+    ctx.fillStyle='rgba(20,12,5,0.85)';
+    ctx.fillRect(dx, py+ph+2, dw, dh);
+    ctx.strokeStyle='rgba(160,120,60,0.6)'; ctx.lineWidth=1;
+    ctx.strokeRect(dx, py+ph+2, dw, dh);
+    ctx.fillStyle='rgba(200,170,80,0.7)';
+    ctx.fillRect(dx+dw-3, py+ph+dh/2, 2, 2);
+    // Wall bottom shadow
+    ctx.fillStyle='rgba(0,0,0,0.24)';
+    ctx.fillRect(px, py+ph+WALL_H-3, pw, 3);
 
-    // East wall (darker)
-    ctx.fillStyle = shade(wall,-18);
-    ctx.fillRect(px+pw, py+WALL_H/2, WALL_DEPTH, ph);
-    ctx.fillStyle='rgba(0,0,0,0.18)';
-    ctx.fillRect(px+pw+WALL_DEPTH-2, py+WALL_H/2, 2, ph);
+    // East wall (right side depth)
+    const wallD = WALL_DEPTH + 4;
+    ctx.fillStyle = shade(wall,-30);
+    ctx.fillRect(px+pw, py+WALL_H/2, wallD, ph+WALL_H/2);
+    ctx.fillStyle='rgba(0,0,0,0.22)';
+    ctx.fillRect(px+pw+wallD-2, py+WALL_H/2, 2, ph+WALL_H/2);
 
-    // Roof
+    // Roof face
     ctx.fillStyle = roof;
     ctx.fillRect(px, py, pw, ph);
-    // Roof highlight edge
-    ctx.fillStyle = shade(roof, 28);
-    ctx.fillRect(px, py, pw, 3);
-    ctx.fillRect(px, py, 3, ph);
-    // Shingle lines
-    ctx.fillStyle = shade(roof,-14);
-    for (let ry=py+8; ry<py+ph; ry+=8) ctx.fillRect(px+1,ry,pw-2,1);
-    ctx.fillStyle = shade(roof,-10);
-    for (let rx=px+16; rx<px+pw-1; rx+=16) ctx.fillRect(rx,py+1,1,ph-2);
+    // Roof tiles pattern
+    ctx.fillStyle = shade(roof,-18);
+    for (let ry=py+6; ry<py+ph; ry+=7) ctx.fillRect(px+1, ry, pw-2, 1);
+    ctx.fillStyle = shade(roof,-8);
+    for (let rx=px+14; rx<px+pw-1; rx+=14) ctx.fillRect(rx, py+1, 1, ph-2);
+    // Roof highlight
+    ctx.fillStyle = shade(roof,36);
+    ctx.fillRect(px, py, pw, 2);
+    ctx.fillRect(px, py, 2, ph);
     // Roof border
-    ctx.strokeStyle = shade(roof,22);
-    ctx.lineWidth=1;
-    ctx.strokeRect(px+0.5,py+0.5,pw-1,ph-1);
+    ctx.strokeStyle = shade(roof,20); ctx.lineWidth=1.5;
+    ctx.strokeRect(px+0.5, py+0.5, pw-1, ph-1);
+    // Chimney
+    if (pw > 64) {
+      const cx2 = px+pw*0.75, cy2 = py+ph*0.2;
+      ctx.fillStyle=shade(wall,8); ctx.fillRect(cx2,cy2-10,10,12);
+      ctx.fillStyle=shade(wall,-10); ctx.fillRect(cx2+8,cy2-10,3,12);
+      ctx.fillStyle='#222'; ctx.fillRect(cx2-1,cy2-11,12,3);
+    }
   }
 
   function drawWallWindows(px, py, pw, wh) {
-    const ww=8, whh=wh-6;
-    for (let wx=px+10; wx+ww<px+pw-4; wx+=20) {
-      ctx.fillStyle='rgba(20,30,60,0.7)';
+    const ww=8, whh=wh-7;
+    for (let wx=px+18; wx+ww<px+pw-18; wx+=22) {
+      // Window frame
+      ctx.fillStyle='rgba(120,90,40,0.6)';
+      ctx.fillRect(wx-1, py+2, ww+2, whh+2);
+      // Glass
+      const lit = Math.random() > 0.4;
+      ctx.fillStyle= lit ? 'rgba(255,240,160,0.55)' : 'rgba(20,30,60,0.8)';
       ctx.fillRect(wx, py+3, ww, whh);
-      ctx.strokeStyle='rgba(180,160,100,0.55)';
-      ctx.lineWidth=1;
-      ctx.strokeRect(wx, py+3, ww, whh);
-      ctx.fillStyle='rgba(255,255,255,0.18)';
+      // Glass reflection
+      ctx.fillStyle='rgba(255,255,255,0.22)';
       ctx.fillRect(wx+1, py+4, 2, 3);
+      // Window sill
+      ctx.fillStyle='rgba(180,150,80,0.4)';
+      ctx.fillRect(wx-1, py+3+whh, ww+2, 2);
     }
   }
 
@@ -722,6 +868,43 @@ window.royaleModule = (function () {
     for (const tr of trees) {
       if (tr.x<wx1||tr.x>wx2||tr.y<wy1||tr.y>wy2) continue;
       drawTreeCanopy(tr);
+    }
+  }
+
+  // ── Boulder rendering ─────────────────────────────────────
+  function drawBoulders() {
+    for (const bo of boulders) {
+      ctx.fillStyle='rgba(0,0,0,0.22)';
+      ctx.beginPath(); ctx.ellipse(bo.x+bo.r*0.3, bo.y+bo.r*0.25, bo.r*0.9, bo.r*0.4, 0, 0, Math.PI*2); ctx.fill();
+      const g = ctx.createRadialGradient(bo.x-bo.r*0.25, bo.y-bo.r*0.3, 0, bo.x, bo.y, bo.r);
+      g.addColorStop(0,'#9a9a9a'); g.addColorStop(0.5,'#6a6a6a'); g.addColorStop(1,'#3a3a3a');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.ellipse(bo.x, bo.y, bo.r, bo.r*0.8, -0.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.ellipse(bo.x-bo.r*0.25, bo.y-bo.r*0.28, bo.r*0.35, bo.r*0.22, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(bo.x-bo.r*0.1, bo.y-bo.r*0.3); ctx.lineTo(bo.x+bo.r*0.2, bo.y+bo.r*0.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bo.x+bo.r*0.15, bo.y-bo.r*0.2); ctx.lineTo(bo.x-bo.r*0.1, bo.y+bo.r*0.2); ctx.stroke();
+    }
+  }
+
+  // ── Blood effects ─────────────────────────────────────────
+  function spawnBlood(x, y) {
+    const parts = [];
+    for (let i=0; i<12; i++) {
+      const a = Math.random()*Math.PI*2, d = 4+Math.random()*22;
+      parts.push({ ox:Math.cos(a)*d, oy:Math.sin(a)*d, r:2+Math.random()*4, alpha:0.7+Math.random()*0.3 });
+    }
+    bloodSplatters.push({ x, y, particles:parts, life:8, maxLife:8 });
+  }
+
+  function drawBloodSplatters() {
+    for (const s of bloodSplatters) {
+      const fade = s.life / s.maxLife;
+      for (const p of s.particles) {
+        ctx.fillStyle = `rgba(180,0,0,${p.alpha * fade * 0.85})`;
+        ctx.beginPath(); ctx.arc(s.x+p.ox, s.y+p.oy, p.r, 0, Math.PI*2); ctx.fill();
+      }
     }
   }
 
@@ -1012,12 +1195,21 @@ window.royaleModule = (function () {
     drawCrates();
     drawFires();
     drawTreeBases(wx1,wx2,wy1,wy2);
+    drawBoulders();
     drawBuildings(ty1, ty2);
     drawBots();
     drawThrowables();
 
     // Remote players
     for (const id in remotePlayers) drawRemotePlayer(remotePlayers[id]);
+
+    // Trail particles (drawn behind player)
+    for (const p of trailParticles) {
+      ctx.globalAlpha = Math.max(0, p.life/p.maxLife)*0.7;
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(p.life/p.maxLife), 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
 
     // Local player — drawn before canopies so trees overlay it when hidden
     if (!player.hidden) drawPlayer();
@@ -1032,6 +1224,7 @@ window.royaleModule = (function () {
 
     drawBullets();
     drawExplosions();
+    drawBloodSplatters();
     drawAirdrop();
     drawMuzzleFlash();
     drawDmgNumbers();
@@ -1310,6 +1503,7 @@ window.royaleModule = (function () {
           spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
           if (bt.hp <= 0) {
             bt.alive=false; player.kills++;
+            spawnBlood(bt.x, bt.y);
             killFeed.push({text:`You killed ${bt.name}`,life:4});
           }
           bullets.splice(i,1); break;
@@ -1714,6 +1908,7 @@ window.royaleModule = (function () {
     if (player.health <= 0) {
       player.alive = false;
       gamePhase = 'dead';
+      spawnBlood(player.x, player.y);
       killFeed.push({text:'You were eliminated!', life:999});
     }
   }
@@ -1954,10 +2149,20 @@ window.royaleModule = (function () {
       bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
       bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
 
+      for (const bo of boulders) {
+        const bdx=bt.x-bo.x, bdy=bt.y-bo.y;
+        const bd=Math.sqrt(bdx*bdx+bdy*bdy);
+        if (bd < PLAYER_R + bo.r) {
+          const push=(PLAYER_R+bo.r-bd)/bd||0;
+          bt.x+=bdx*push; bt.y+=bdy*push;
+        }
+      }
+
       const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (zd>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
       if (bt.hp<=0) {
         bt.alive=false; player.kills++;
+        spawnBlood(bt.x, bt.y);
         killFeed.push({text:`You killed ${bt.name}`,life:4});
       }
     }

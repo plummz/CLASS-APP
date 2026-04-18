@@ -1417,9 +1417,13 @@ window.goToPage = function(pageName) {
     setTimeout(() => { if (window.FB && window.FB.XFBML) window.FB.XFBML.parse(); }, 400);
   }
 
-  // Hide chat bauble on Pokémon page (FABs occupy bottom-right)
+  // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'lobby') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'lobby' || pageName === 'ai') ? 'none' : '';
+
+  // Hide live clock on AI page — it overlaps the chat header
+  const liveClock = document.getElementById('live-clock');
+  if (liveClock) liveClock.style.display = (pageName === 'ai') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);

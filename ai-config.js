@@ -14,9 +14,9 @@ const AI_REGISTRY = {
     baseUrl:   'https://generativelanguage.googleapis.com/v1beta/models',
     // Ordered by preference — first entry is tried first
     models: [
-      { id: 'gemini-2.0-flash',    label: 'Gemini 2.0 Flash'    },
-      { id: 'gemini-1.5-flash',    label: 'Gemini 1.5 Flash'    },
-      { id: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B' },
+      { id: 'gemini-2.0-flash',      label: 'Gemini 2.0 Flash'      },
+      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite'  },
+      { id: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash'       },
     ],
   },
 

@@ -260,7 +260,7 @@ window.royaleModule = (function () {
   };
 
   // ── Game state ────────────────────────────────────────────
-  let gamePhase = 'parachute'; // 'parachute'|'playing'|'dead'|'win'
+  let gamePhase = 'parachute'; // 'parachute'|'playing'|'dead'|'win'  (skinSelect added in Phase 3)
   let gameEndTimer = 0;
   let totalKills   = 0;
 
@@ -358,6 +358,37 @@ window.royaleModule = (function () {
     if (reloadBtn) {
       reloadBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); startReload(); }, {passive: true});
       reloadBtn.addEventListener('mousedown', () => startReload());
+    }
+    const throwBtn = document.getElementById('rl-throw-btn');
+    if (throwBtn) {
+      throwBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        // Cycle type on long-hold, throw on tap (handled by tracking)
+        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+      }, {passive: true});
+      throwBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        if (gamePhase === 'playing') {
+          // Find throwable in inventory and throw, or throw from ammo
+          const tKey = activeThrowable;
+          if (ammoCache[tKey] && ammoCache[tKey] > 0) {
+            ammoCache[tKey]--;
+            throwItem(player.x, player.y, player.angle, tKey, localId);
+          }
+        }
+      }, {passive: true});
+      throwBtn.addEventListener('mousedown', (e) => {
+        if (gamePhase !== 'playing') return;
+        const tKey = activeThrowable;
+        if (ammoCache[tKey] && ammoCache[tKey] > 0) {
+          ammoCache[tKey]--;
+          throwItem(player.x, player.y, player.angle, tKey, localId);
+        } else {
+          activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+          throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+        }
+      });
     }
 
     hideLoading();
@@ -460,6 +491,15 @@ window.royaleModule = (function () {
         joyHide('rl-joy-base','rl-joy-knob');
       } else {
         onAimTouchEnd(t);
+        // Convert touch screen coords to game coords for button checks
+        const rect=canvas.getBoundingClientRect();
+        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
+        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        const port = canvas.height > canvas.width;
+        const gx = port ? sy : sx;
+        const gy = port ? (canvas.width - sx) : sy;
+        checkEndBtnClick(gx, gy);
+        if (gamePhase==='playing') checkWeaponSlotClick(gx, gy);
       }
     }
   }
@@ -2012,9 +2052,29 @@ window.royaleModule = (function () {
       ctx.fillText(`${(b.name||'Bot').padEnd(16)} ${hp}`, cx, row); row+=16;
     }
 
-    ctx.fillStyle=`rgba(255,255,255,${alpha*0.7})`;
-    ctx.font='13px monospace';
-    ctx.fillText('Tap / press any key to exit', cx, row+24);
+    if (gameEndTimer > 1) {
+      // Play Again button
+      const bw=160, bh=44, gap=16;
+      const playX = cx - bw - gap/2, quitX = cx + gap/2, btnY = canvasH - 80;
+      ctx.fillStyle=`rgba(20,160,60,${alpha*0.9})`;
+      ctx.fillRect(playX, btnY, bw, bh);
+      ctx.strokeStyle=`rgba(80,255,120,${alpha})`; ctx.lineWidth=2;
+      ctx.strokeRect(playX, btnY, bw, bh);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace'; ctx.textAlign='center';
+      ctx.fillText('▶ PLAY AGAIN', playX+bw/2, btnY+28);
+      endBtnPlay = {x:playX, y:btnY, w:bw, h:bh};
+
+      // Quit button
+      ctx.fillStyle=`rgba(180,30,30,${alpha*0.9})`;
+      ctx.fillRect(quitX, btnY, bw, bh);
+      ctx.strokeStyle=`rgba(255,80,80,${alpha})`; ctx.lineWidth=2;
+      ctx.strokeRect(quitX, btnY, bw, bh);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace';
+      ctx.fillText('✕ QUIT', quitX+bw/2, btnY+28);
+      endBtnQuit = {x:quitX, y:btnY, w:bw, h:bh};
+    } else {
+      endBtnPlay = null; endBtnQuit = null;
+    }
     ctx.textAlign='left';
   }
 
@@ -2076,9 +2136,42 @@ window.royaleModule = (function () {
     player.angle=Math.atan2(my-canvasH/2, mx-canvasW/2);
   }
 
+  function checkEndBtnClick(gx, gy) {
+    if ((gamePhase==='dead'||gamePhase==='win') && gameEndTimer>1) {
+      if (endBtnPlay && gx>=endBtnPlay.x && gx<=endBtnPlay.x+endBtnPlay.w && gy>=endBtnPlay.y && gy<=endBtnPlay.y+endBtnPlay.h) {
+        restartGame(); return true;
+      }
+      if (endBtnQuit && gx>=endBtnQuit.x && gx<=endBtnQuit.x+endBtnQuit.w && gy>=endBtnQuit.y && gy<=endBtnQuit.y+endBtnQuit.h) {
+        goToPage('first'); return true;
+      }
+    }
+    return false;
+  }
+
+  function checkWeaponSlotClick(gx, gy) {
+    const slotW=110, slotH=44, gap=8, startX=canvasW/2-slotW-gap/2, y=canvasH-slotH-12;
+    for (let i=0; i<2; i++) {
+      const sx = startX + i*(slotW+gap);
+      if (gx>=sx && gx<=sx+slotW && gy>=y && gy<=y+slotH) {
+        activeSlot = i; return true;
+      }
+    }
+    return false;
+  }
+
   function onMouseDown(e) {
-    if (gamePhase !== 'playing') return;
     if (e.button!==0) return;
+    // Convert mouse coords to game coords (portrait rotation handled)
+    const rect=canvas.getBoundingClientRect();
+    const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    const port = canvas.height > canvas.width;
+    const gx = port ? sy : sx;
+    const gy = port ? (canvas.width - sx) : sy;
+
+    if (checkEndBtnClick(gx, gy)) return;
+    if (gamePhase !== 'playing') return;
+    if (checkWeaponSlotClick(gx, gy)) return;
     const key=inventory[activeSlot];
     if (key) tryFire(player.x,player.y,player.angle,key,localId);
   }
@@ -2166,6 +2259,25 @@ window.royaleModule = (function () {
         killFeed.push({text:`You killed ${bt.name}`,life:4});
       }
     }
+  }
+
+  // ── Restart game (no re-adding event listeners) ───────────
+  function restartGame() {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
+    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
+    stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
+    dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
+    cam.x=player.x; cam.y=player.y;
+    inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
+    bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
+    bloodSplatters=[]; trailParticles=[]; endBtnPlay=null; endBtnQuit=null;
+    airdrop=null; airdropTimer=0; broadcastThrottle=0;
+    spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();
+    running = true;
+    lastTime = performance.now();
+    animId = requestAnimationFrame(loop);
   }
 
   // ── Public API ────────────────────────────────────────────

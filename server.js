@@ -30,8 +30,8 @@ if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// MULTER CONFIG: memory storage — files go straight to R2, not disk
-const upload = multer({ storage: multer.memoryStorage() });
+// MULTER CONFIG: memory storage — files go straight to R2, not disk (500 MB max)
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {

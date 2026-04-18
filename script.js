@@ -389,20 +389,32 @@ window.uploadFileToFolderAPI = async function() {
     for (const file of files) {
       try {
         const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-        // Unique path: ms timestamp + 6-char random suffix prevents any collision
-        const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+        const isMedia = file.type.startsWith('audio/') ||
+                        file.type.startsWith('video/') ||
+                        file.type.startsWith('image/');
+        let fileUrl;
 
-        const { error: storErr } = await sb.storage
-            .from('portfolio-assets')
-            .upload(filePath, file, { contentType: file.type });
-        if(storErr) throw new Error(`Storage: ${storErr.message}`);
-
-        const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath);
+        if (isMedia) {
+          // Large media → Cloudflare R2 (10 GB free, no egress fees)
+          const fd = new FormData();
+          fd.append('file', file);
+          const r = await fetch('/api/upload', { method: 'POST', body: fd });
+          if (!r.ok) throw new Error(`R2: ${(await r.json()).error || r.status}`);
+          fileUrl = (await r.json()).url;
+        } else {
+          // Docs / PDFs / other → Supabase Storage
+          const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
+          const { error: storErr } = await sb.storage
+              .from('portfolio-assets')
+              .upload(filePath, file, { contentType: file.type });
+          if (storErr) throw new Error(`Storage: ${storErr.message}`);
+          fileUrl = sb.storage.from('portfolio-assets').getPublicUrl(filePath).data.publicUrl;
+        }
 
         const { error: dbErr } = await sb.from('files').insert([{
             folder_id: folderId,
             name: file.name,
-            url: urlData.publicUrl,
+            url: fileUrl,
             type: file.type,
             uploader: currentUser.username
         }]);

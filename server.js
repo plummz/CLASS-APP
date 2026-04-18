@@ -660,14 +660,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     if (isImage) {
       finalBuffer = await compressImage(req.file.buffer, ext);
-
-    } else if (isVideo) {
-      tmpIn  = path.join(os.tmpdir(), `up_in_${Date.now()}${ext}`);
-      tmpOut = path.join(os.tmpdir(), `up_out_${Date.now()}${ext}`);
-      fs.writeFileSync(tmpIn, req.file.buffer);
-      await compressVideo(tmpIn, tmpOut, ext);
-      finalBuffer = fs.readFileSync(tmpOut);
     }
+    // Videos: skip re-encoding — phone videos are already H.264; FFmpeg pass is too slow
 
     await r2.send(new PutObjectCommand({
       Bucket:      R2_BUCKET,

@@ -1251,6 +1251,13 @@ body {
     font-size: 24px; cursor: pointer;
     z-index: 21000;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: opacity 0.2s, transform 0.2s;
+}
+/* Hide chat bubble on pages where it blocks game controls */
+body.page-lobby .chat-bauble,
+body.page-royale .chat-bauble,
+body.page-pokemon .chat-bauble {
+    display: none;
 }
 
 /* ============================================================

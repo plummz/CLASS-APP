@@ -7,6 +7,18 @@ const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');
 const { Server } = require('socket.io');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+
+// ── Cloudflare R2 client ──────────────────────────────────
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId:     process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
+const R2_BUCKET = process.env.R2_BUCKET || 'class-app-storage';
 
 const ADMIN_USERNAME = 'Marquillero';
 const ADMIN_PASSWORD = '120524';
@@ -18,18 +30,8 @@ if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// MULTER CONFIG: Preserves original file extensions (.pdf, .mp3, etc.)
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'file-' + uniqueSuffix + ext);
-  }
-});
-const upload = multer({ storage: storage });
+// MULTER CONFIG: memory storage — files go straight to R2, not disk
+const upload = multer({ storage: multer.memoryStorage() });
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {
@@ -57,7 +59,19 @@ const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'P
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
-app.use('/uploads', express.static(UPLOAD_DIR));
+// Serve uploads: local disk first (backward compat), then R2
+app.get('/uploads/:key', async (req, res) => {
+  const localPath = path.join(UPLOAD_DIR, req.params.key);
+  if (fs.existsSync(localPath)) return res.sendFile(localPath);
+  try {
+    const data = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: req.params.key }));
+    res.setHeader('Content-Type', data.ContentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    data.Body.pipe(res);
+  } catch {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
 
 // Prevent browsers and service workers from caching ANY API response.
 // This stops the 'Unexpected token <' bug where a cold-start HTML page
@@ -582,10 +596,22 @@ app.post('/api/messages', (req, res) => {
   res.json(message);
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: fileUrl });
+  const ext = path.extname(req.file.originalname);
+  const key = 'file-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + ext;
+  try {
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+    }));
+    res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: `/uploads/${key}` });
+  } catch (err) {
+    console.error('R2 upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
 app.put('/api/messages/:id', (req, res) => {

@@ -29,10 +29,4 @@ A school portfolio web app with real-time chat, user profiles, attachments, and 
    http://localhost:3000
    ```
 
-## Notes
 
-- Uploaded files are stored in the `uploads/` folder.
-- The backend stores app data in `data.json`.
-- Use the admin credentials to access admin controls:
-  - username: `Marquillero`
-  - password: `120524`

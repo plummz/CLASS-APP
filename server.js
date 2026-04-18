@@ -1,13 +1,19 @@
-require('dotenv').config(); // loads .env for local dev; on Render set vars in the dashboard
-const express = require('express');
-const http = require('http');
-const https = require('https');
-const path = require('path');
-const fs = require('fs');
-const cors = require('cors');
-const multer = require('multer');
+require('dotenv').config();
+const express  = require('express');
+const http     = require('http');
+const https    = require('https');
+const path     = require('path');
+const fs       = require('fs');
+const os       = require('os');
+const cors     = require('cors');
+const multer   = require('multer');
+const sharp    = require('sharp');
+const ffmpeg   = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
 const { Server } = require('socket.io');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 // ── Cloudflare R2 client ──────────────────────────────────
 const r2 = new S3Client({
@@ -59,18 +65,29 @@ const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'P
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
-// Serve uploads: local disk first (backward compat), then R2
-app.get('/uploads/:key', async (req, res) => {
-  const localPath = path.join(UPLOAD_DIR, req.params.key);
+// Serve uploads — local disk fallback then R2 (supports /uploads/filename and subfolders)
+app.get('/uploads/*', async (req, res) => {
+  const filename = req.params[0]; // everything after /uploads/
+  // Local fallback (old files before migration)
+  const localPath = path.join(UPLOAD_DIR, path.basename(filename));
   if (fs.existsSync(localPath)) return res.sendFile(localPath);
-  try {
-    const data = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: req.params.key }));
-    res.setHeader('Content-Type', data.ContentType || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
-    data.Body.pipe(res);
-  } catch {
-    res.status(404).json({ error: 'File not found' });
+  // Try R2: exact key first, then subfolder variants
+  const candidates = [
+    filename,
+    `uploads/images/${path.basename(filename)}`,
+    `uploads/videos/${path.basename(filename)}`,
+    `uploads/other/${path.basename(filename)}`,
+  ];
+  for (const key of candidates) {
+    try {
+      const data = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+      res.setHeader('Content-Type', data.ContentType || 'application/octet-stream');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      data.Body.pipe(res);
+      return;
+    } catch { /* try next */ }
   }
+  res.status(404).json({ error: 'File not found' });
 });
 
 // Prevent browsers and service workers from caching ANY API response.
@@ -596,21 +613,83 @@ app.post('/api/messages', (req, res) => {
   res.json(message);
 });
 
+// ── Compression helpers ───────────────────────────────────
+const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
+const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
+
+async function compressImage(buffer, ext) {
+  let img = sharp(buffer);
+  switch (ext) {
+    case '.jpg': case '.jpeg': return img.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
+    case '.png':               return img.png({ quality: 75, compressionLevel: 8 }).toBuffer();
+    case '.webp':              return img.webp({ quality: 75 }).toBuffer();
+    case '.gif':               return img.gif().toBuffer();
+    default:                   return img.jpeg({ quality: 75 }).toBuffer();
+  }
+}
+
+function compressVideo(inputPath, outputPath, ext) {
+  return new Promise((resolve, reject) => {
+    const isWebm = ext === '.webm';
+    ffmpeg(inputPath)
+      .videoCodec(isWebm ? 'libvpx-vp9' : 'libx264')
+      .audioCodec(isWebm ? 'libopus' : 'aac')
+      .addOutputOptions(isWebm
+        ? ['-crf 33', '-b:v 0', '-row-mt 1']
+        : ['-crf 26', '-preset fast', '-movflags +faststart']
+      )
+      .save(outputPath)
+      .on('end', resolve)
+      .on('error', reject);
+  });
+}
+
+// ── Upload endpoint (compress → R2) ───────────────────────
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
-  const ext = path.extname(req.file.originalname);
-  const key = 'file-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + ext;
+
+  const ext      = path.extname(req.file.originalname).toLowerCase();
+  const isImage  = IMAGE_EXTS.has(ext);
+  const isVideo  = VIDEO_EXTS.has(ext);
+  const folder   = isImage ? 'uploads/images' : isVideo ? 'uploads/videos' : 'uploads/other';
+  const key      = `${folder}/file-${Date.now()}-${Math.round(Math.random()*1e9)}${ext}`;
+
+  let finalBuffer = req.file.buffer;
+  let tmpIn, tmpOut;
+
   try {
+    if (isImage) {
+      finalBuffer = await compressImage(req.file.buffer, ext);
+
+    } else if (isVideo) {
+      tmpIn  = path.join(os.tmpdir(), `up_in_${Date.now()}${ext}`);
+      tmpOut = path.join(os.tmpdir(), `up_out_${Date.now()}${ext}`);
+      fs.writeFileSync(tmpIn, req.file.buffer);
+      await compressVideo(tmpIn, tmpOut, ext);
+      finalBuffer = fs.readFileSync(tmpOut);
+    }
+
     await r2.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      Body: req.file.buffer,
+      Bucket:      R2_BUCKET,
+      Key:         key,
+      Body:        finalBuffer,
       ContentType: req.file.mimetype,
     }));
-    res.json({ name: req.file.originalname, type: req.file.mimetype, size: req.file.size, url: `/uploads/${key}` });
+
+    const url = `/uploads/${path.basename(key)}`;
+    res.json({
+      name: req.file.originalname,
+      type: req.file.mimetype,
+      size: finalBuffer.length,
+      url,
+    });
+
   } catch (err) {
-    console.error('R2 upload error:', err);
+    console.error('Upload/compress error:', err);
     res.status(500).json({ error: 'Upload failed' });
+  } finally {
+    if (tmpIn  && fs.existsSync(tmpIn))  fs.unlinkSync(tmpIn);
+    if (tmpOut && fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);
   }
 });
 

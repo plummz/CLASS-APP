@@ -43,7 +43,25 @@
   <div class="wave-container" id="wave-container">
     <div class="wave"></div><div class="wave"></div><div class="wave"></div>
   </div>
- 
+
+  <!-- ── SPLASH SCREEN ──────────────────────────────────────── -->
+  <div id="splash-screen">
+    <div class="splash-bg"></div>
+    <canvas id="splash-canvas"></canvas>
+    <div class="splash-content">
+      <div class="splash-logo-wrap">
+        <div class="splash-ring splash-ring-1"></div>
+        <div class="splash-ring splash-ring-2"></div>
+        <div class="splash-ring splash-ring-3"></div>
+        <div class="splash-scan"></div>
+        <img src="icons/icon-512.png" class="splash-logo" alt="BSIT">
+      </div>
+      <div class="splash-title">BSIT</div>
+      <div class="splash-sub">Bachelor of Science in Information Technology</div>
+      <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+    </div>
+  </div>
+
   <div class="particles particle-mountain" id="particles-mountain"></div>
   <div class="particles particle-ocean"    id="particles-ocean"></div>
   <div class="particles particle-aerial"   id="particles-aerial"></div>
@@ -820,6 +838,67 @@
   <div id="live-clock"></div>
 
   <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
+
+  <script>
+  // ── Splash screen particle canvas + auto-dismiss ──────────
+  (function() {
+    const canvas = document.getElementById('splash-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [], raf;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Neon floating particles
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.8 + 0.4,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        color: ['#00d4ff','#00ff88','#a855f7','#ff6b35'][Math.floor(Math.random()*4)],
+        alpha: Math.random() * 0.6 + 0.2,
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      });
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Dismiss after 2.8s
+    function dismissSplash() {
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      splash.classList.add('splash-out');
+      setTimeout(() => { splash.remove(); cancelAnimationFrame(raf); }, 650);
+    }
+    setTimeout(dismissSplash, 2800);
+    // Also dismiss on tap for impatient users
+    document.getElementById('splash-screen').addEventListener('click', dismissSplash);
+  })();
+  </script>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

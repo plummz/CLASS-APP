@@ -836,15 +836,15 @@ window.royaleModule = (function () {
   }
 
   function drawKillFeed() {
-    let ky=80;
+    let ky=canvasH-80; // game bottom-left = portrait top-left area (safe)
     for (const kf of killFeed) {
       const alpha=Math.min(1,kf.life);
       ctx.fillStyle=`rgba(0,0,0,${alpha*0.5})`;
-      ctx.fillRect(canvasW-210,ky-14,200,18);
+      ctx.fillRect(10,ky-14,200,18);
       ctx.fillStyle=`rgba(255,255,255,${alpha})`;
-      ctx.font='11px monospace'; ctx.textAlign='right';
-      ctx.fillText(kf.text, canvasW-10, ky);
-      ky+=22;
+      ctx.font='11px monospace'; ctx.textAlign='left';
+      ctx.fillText(kf.text, 14, ky);
+      ky-=22;
     }
     ctx.textAlign='left';
   }
@@ -861,8 +861,14 @@ window.royaleModule = (function () {
     ctx.fillStyle=zone.shrinking?'rgba(0,100,255,0.7)':'rgba(0,180,80,0.5)';
     ctx.fillRect(bx,by,bw*pct,bh);
     ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,bh);
+    const aliveTotal = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length + 1;
     ctx.fillStyle='#fff'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
-    ctx.fillText(`${label}  ${secs}s  (P${zone.phase+1})`, canvasW/2, by+bh-3);
+    ctx.fillText(`${label}  ${secs}s`, canvasW/2, by+bh-3);
+    ctx.textAlign='left';
+    // Alive count badge (right of zone bar)
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx+bw+6, by-2, 52, bh+4);
+    ctx.fillStyle='#8fce50'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText(`👥 ${aliveTotal}`, bx+bw+32, by+bh-3);
     ctx.textAlign='left';
   }
 
@@ -919,9 +925,10 @@ window.royaleModule = (function () {
       ctx.fillText('HIDDEN', 27, badgeY+13);
     }
 
-    // ── Minimap
+    // ── Minimap — positioned at game top-LEFT so it appears at portrait top-right,
+    // safely away from the FIRE/RELOAD buttons at portrait bottom-right
     if (!mmCanvas) buildMinimap();
-    const mx=canvasW-130, my=10, mw=120, mh=120;
+    const mx=10, my=10, mw=110, mh=110;
     ctx.globalAlpha=0.85;
     ctx.fillStyle='#000'; ctx.fillRect(mx,my,mw,mh);
     ctx.drawImage(mmCanvas,mx,my);
@@ -1142,12 +1149,19 @@ window.royaleModule = (function () {
   function spawnBots() {
     bots = [];
     const rng = seededRng(55);
-    const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hawk'];
-    for (let i = 0; i < 8; i++) {
-      const tx = 20 + rng()*(MAP_W-40), ty = 20 + rng()*(MAP_H-40);
-      const key = LOOT_POOL[Math.floor(rng()*5)]; // bots get basic weapons
+    const names = [
+      'Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hawk',
+      'Indigo','Juliet','Kilo','Lima','Mike','Nova','Oscar','Phoenix',
+      'Quinn','Ranger','Sierra','Tango','Umbra','Victor','Whiskey','Xavier',
+      'Yankee','Zulu','Apex','Blade','Cipher','Dusk','Ember','Frost',
+      'Glitch','Hydra','Ivory','Jinx','Karma','Lynx',
+    ]; // 38 names → 38 bots + 1 player = 39 total (lobby of 40 fills with remotes)
+    const weaponKeys = ['pistol','smg','ar','shotgun','revolver'];
+    for (let i = 0; i < 39; i++) {
+      const tx = 10 + rng()*(MAP_W-20), ty = 10 + rng()*(MAP_H-20);
+      const key = weaponKeys[Math.floor(rng()*weaponKeys.length)];
       bots.push({
-        id:'bot_'+i, name:names[i],
+        id:'bot_'+i, name: names[i] || ('Bot'+(i+1)),
         x:tx*TILE, y:ty*TILE, angle:0,
         hp:100, maxHp:100,
         weapon:key, ammo: WEAPONS[key].ammo,

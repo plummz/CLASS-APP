@@ -1382,6 +1382,7 @@ const pageConfig = {
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
   royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
   witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 WIT FB Page' },
+  ai:       { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🤖 AI Assistants' },
 };
 
 let currentPage = 'first';
@@ -1464,6 +1465,8 @@ window.goToPage = function(pageName) {
   // Event Pictures & Random Pictures: reset and render year cards
   if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
   if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
+  // AI Assistants hub
+  if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
 };
 
 function drawRoyalePreviewCanvas() {
@@ -2371,3 +2374,169 @@ function epOpenPhoto(url, name) {
   requestAnimationFrame(() => overlay.classList.add('ep-lightbox-in'));
 }
 
+
+// ── AI Assistants System ──────────────────────────────────────────────────────
+
+const AI_PROVIDERS = {
+  gemini: {
+    name: 'Gemini AI', tag: 'Smart Assistant', icon: '✨',
+    model: 'Gemini 1.5 Flash', accent: '#8b5cf6',
+    bg: 'linear-gradient(135deg,#1a0533 0%,#2d1054 100%)',
+    endpoint: '/api/gemini',
+    desc: 'Best for explanations, school work, and structured answers',
+    placeholder: 'Ask Gemini anything…',
+  },
+  groq: {
+    name: 'Groq AI', tag: 'Fast Assistant', icon: '⚡',
+    model: 'LLaMA 3 · 8B', accent: '#f97316',
+    bg: 'linear-gradient(135deg,#1a0a00 0%,#3d1800 100%)',
+    endpoint: '/api/groq',
+    desc: 'Ultra-fast responses for quick Q&A and chat',
+    placeholder: 'Ask Groq anything…',
+  },
+};
+
+let aiView = 'hub';
+let aiTyping = false;
+const aiChats = { gemini: [], groq: [] };
+
+function aiGoHub()           { aiView = 'hub'; renderAI(); }
+function aiOpenChat(p)       { aiView = p; renderAI(); }
+function aiClearChat(p)      {
+  customConfirm('Clear this chat history?', () => {
+    aiChats[p] = []; aiTyping = false; renderAIChat(document.getElementById('ai-view'), p);
+  });
+}
+
+function renderAI() {
+  const view = document.getElementById('ai-view');
+  const bc   = document.getElementById('ai-breadcrumb');
+  if (!view || !bc) return;
+
+  if (aiView === 'hub') {
+    bc.innerHTML = `<span class="ai-bc">🤖 AI Assistants</span>`;
+    renderAIHub(view);
+  } else {
+    const p = AI_PROVIDERS[aiView];
+    bc.innerHTML = `
+      <span class="ai-bc ai-bc-link" onclick="aiGoHub()">🤖 AI Assistants</span>
+      <span class="ai-bc-sep">›</span>
+      <span class="ai-bc ai-bc-active">${p.icon} ${p.name}</span>`;
+    renderAIChat(view, aiView);
+  }
+}
+
+function renderAIHub(view) {
+  view.innerHTML = `
+    <div class="ai-hub">
+      <div class="ai-hub-header">
+        <div class="ai-hub-title">AI Assistants</div>
+        <div class="ai-hub-sub">Choose an AI to start chatting</div>
+      </div>
+      <div class="ai-cards">
+        ${Object.entries(AI_PROVIDERS).map(([key, p]) => `
+          <div class="ai-card" style="--ai-accent:${p.accent};background:${p.bg}" onclick="aiOpenChat('${key}')">
+            <div class="ai-card-glow"></div>
+            <div class="ai-card-top">
+              <span class="ai-card-icon">${p.icon}</span>
+              <span class="ai-card-tag">${p.tag}</span>
+            </div>
+            <div class="ai-card-name">${p.name}</div>
+            <div class="ai-card-model">${p.model}</div>
+            <div class="ai-card-desc">${p.desc}</div>
+            <div class="ai-card-btn">Open Chat →</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderAIChat(view, provider) {
+  const p    = AI_PROVIDERS[provider];
+  const msgs = aiChats[provider];
+
+  const bubbles = msgs.map(m => `
+    <div class="ai-msg ${m.role === 'user' ? 'ai-msg-user' : 'ai-msg-ai'}">
+      ${m.role !== 'user' ? `<div class="ai-msg-av">${p.icon}</div>` : ''}
+      <div class="ai-bubble">${aiFormat(m.content)}</div>
+      ${m.role === 'user' ? `<div class="ai-msg-av">👤</div>` : ''}
+    </div>`).join('');
+
+  view.innerHTML = `
+    <div class="ai-chat-wrap">
+      <div class="ai-chat-head" style="--ai-accent:${p.accent}">
+        <span class="ai-head-icon">${p.icon}</span>
+        <div class="ai-head-info">
+          <div class="ai-head-name">${p.name}</div>
+          <div class="ai-head-sub">${p.tag} · ${p.model}</div>
+        </div>
+        ${msgs.length ? `<button class="ai-clear-btn" onclick="aiClearChat('${provider}')">Clear</button>` : ''}
+      </div>
+
+      <div class="ai-messages" id="ai-messages">
+        ${msgs.length === 0 ? `
+          <div class="ai-welcome">
+            <div class="ai-welcome-icon">${p.icon}</div>
+            <div class="ai-welcome-name">${p.name}</div>
+            <div class="ai-welcome-desc">${p.desc}</div>
+          </div>` : bubbles}
+        <div id="ai-typing-ind" class="ai-typing-ind${aiTyping ? '' : ' hidden'}">
+          <div class="ai-msg-av">${p.icon}</div>
+          <div class="ai-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <div class="ai-input-area">
+        <div class="ai-input-row">
+          <textarea id="ai-input" class="ai-textarea" rows="1"
+            placeholder="${p.placeholder}"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend('${provider}');}"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,130)+'px'"></textarea>
+          <button class="ai-send-btn" style="--ai-accent:${p.accent}" onclick="aiSend('${provider}')">↑</button>
+        </div>
+        <div class="ai-hint">Enter to send · Shift+Enter for new line</div>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    const m = document.getElementById('ai-messages');
+    if (m) m.scrollTop = m.scrollHeight;
+    const inp = document.getElementById('ai-input');
+    if (inp && !aiTyping) inp.focus();
+  }, 60);
+}
+
+function aiFormat(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+async function aiSend(provider) {
+  const inp  = document.getElementById('ai-input');
+  const text = inp?.value?.trim();
+  if (!text || aiTyping) return;
+
+  aiChats[provider].push({ role:'user', content:text });
+  inp.value = ''; inp.style.height = 'auto';
+  aiTyping = true;
+  renderAIChat(document.getElementById('ai-view'), provider);
+
+  try {
+    const res  = await fetch(AI_PROVIDERS[provider].endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: aiChats[provider] }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'AI error');
+    aiChats[provider].push({ role:'assistant', content: data.text });
+  } catch(e) {
+    aiChats[provider].push({ role:'assistant', content:`⚠️ ${e.message}` });
+  }
+
+  aiTyping = false;
+  renderAIChat(document.getElementById('ai-view'), provider);
+}

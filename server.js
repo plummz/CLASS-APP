@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { getAIProvider } = require('./ai-config');
+const { tryWithFallback } = require('./ai-service');
 const express  = require('express');
 const http     = require('http');
 const https    = require('https');
@@ -725,29 +725,8 @@ app.delete('/api/messages/:id', (req, res) => {
 app.post('/api/gemini', express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
-
-  const cfg    = getAIProvider('gemini');
-  const apiKey = process.env[cfg.apiKeyEnv];
-  if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not set on server' });
-
-  const contents = messages.map(m => ({
-    role:  m.role === 'user' ? 'user' : 'model',
-    parts: [{ text: m.content }],
-  }));
-
-  async function tryGemini(model) {
-    const r = await fetch(
-      `${cfg.baseUrl}/${model}:generateContent?key=${apiKey}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents }) }
-    );
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || `Gemini ${model} error`);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  }
-
   try {
-    const text = await tryGemini(cfg.primary).catch(() => tryGemini(cfg.fallback));
-    res.json({ text });
+    res.json(await tryWithFallback('gemini', messages));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -756,27 +735,8 @@ app.post('/api/gemini', express.json(), async (req, res) => {
 app.post('/api/groq', express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
-
-  const cfg    = getAIProvider('groq');
-  const apiKey = process.env[cfg.apiKeyEnv];
-  if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY not set on server' });
-
-  const mapped = messages.map(m => ({ role: m.role, content: m.content }));
-
-  async function tryGroq(model) {
-    const r = await fetch(cfg.url, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages: mapped, temperature: cfg.temperature, max_tokens: cfg.max_tokens }),
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || `Groq ${model} error`);
-    return data.choices?.[0]?.message?.content || '';
-  }
-
   try {
-    const text = await tryGroq(cfg.primary).catch(() => tryGroq(cfg.fallback));
-    res.json({ text });
+    res.json(await tryWithFallback('groq', messages));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

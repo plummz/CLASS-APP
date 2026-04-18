@@ -161,6 +161,9 @@ window.royaleModule = (function () {
   // ── End screen button rects ───────────────────────────────
   let endBtnPlay = null, endBtnQuit = null;
 
+  // ── Skin menu state ───────────────────────────────────────
+  let skinBtnPlay = null, skinTabRects = [], skinItemRects = [];
+
   // ── Skin & Coin system ────────────────────────────────────
   const COIN_KEY = 'rl_coins_v1';
   const SKIN_KEY = 'rl_skin_v1';
@@ -260,7 +263,7 @@ window.royaleModule = (function () {
   };
 
   // ── Game state ────────────────────────────────────────────
-  let gamePhase = 'parachute'; // 'parachute'|'playing'|'dead'|'win'  (skinSelect added in Phase 3)
+  let gamePhase = 'skinSelect'; // 'skinSelect'|'parachute'|'playing'|'dead'|'win'
   let gameEndTimer = 0;
   let totalKills   = 0;
 
@@ -318,7 +321,7 @@ window.royaleModule = (function () {
     if (!mapTiles) { generateMap(); }
 
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
-    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
     paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
@@ -361,34 +364,52 @@ window.royaleModule = (function () {
     }
     const throwBtn = document.getElementById('rl-throw-btn');
     if (throwBtn) {
-      throwBtn.addEventListener('touchstart', (e) => {
-        e.stopPropagation();
-        // Cycle type on long-hold, throw on tap (handled by tracking)
-        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
-        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
-      }, {passive: true});
-      throwBtn.addEventListener('touchend', (e) => {
-        e.stopPropagation();
-        if (gamePhase === 'playing') {
-          // Find throwable in inventory and throw, or throw from ammo
-          const tKey = activeThrowable;
-          if (ammoCache[tKey] && ammoCache[tKey] > 0) {
-            ammoCache[tKey]--;
-            throwItem(player.x, player.y, player.angle, tKey, localId);
-          }
-        }
-      }, {passive: true});
-      throwBtn.addEventListener('mousedown', (e) => {
+      // Quick tap = throw current item. Hold 350ms = switch grenade ↔ molotov.
+      let throwHoldTimer = null;
+      let throwDidSwitch = false;
+
+      function doThrow() {
         if (gamePhase !== 'playing') return;
         const tKey = activeThrowable;
         if (ammoCache[tKey] && ammoCache[tKey] > 0) {
           ammoCache[tKey]--;
           throwItem(player.x, player.y, player.angle, tKey, localId);
-        } else {
-          activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
-          throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
         }
+      }
+      function doSwitch() {
+        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+        throwBtn.classList.add('pressed');
+        setTimeout(() => throwBtn.classList.remove('pressed'), 200);
+      }
+
+      throwBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        throwDidSwitch = false;
+        throwHoldTimer = setTimeout(() => {
+          throwDidSwitch = true;
+          doSwitch();
+        }, 350);
+      }, {passive: true});
+
+      throwBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        if (!throwDidSwitch) doThrow();
+        throwDidSwitch = false;
+      }, {passive: true});
+
+      throwBtn.addEventListener('touchcancel', () => {
+        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        throwDidSwitch = false;
+      }, {passive: true});
+
+      // Desktop: click = throw, right-click = switch
+      throwBtn.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { e.preventDefault(); doSwitch(); }
+        else doThrow();
       });
+      throwBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     hideLoading();
@@ -451,6 +472,18 @@ window.royaleModule = (function () {
 
   function onTouchStart(e) {
     e.preventDefault();
+    // Skin menu: handle taps immediately on touchstart for responsiveness
+    if (gamePhase === 'skinSelect') {
+      const rect=canvas.getBoundingClientRect();
+      for (const t of e.changedTouches) {
+        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
+        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        const port=canvas.height>canvas.width;
+        const gx=port?sy:sx, gy=port?(canvas.width-sx):sy;
+        checkSkinMenuClick(gx, gy);
+      }
+      return;
+    }
     const splitX = window.innerWidth * 0.5; // always screen space
     for (const t of e.changedTouches) {
       if (t.clientX < splitX && !joy.active) {
@@ -530,6 +563,9 @@ window.royaleModule = (function () {
     updateSpectate(dt);
     updateDmgNumbers(dt);
     bloodSplatters = bloodSplatters.filter(s => { s.life -= dt; return s.life > 0; });
+
+    // Skin select — no game logic
+    if (gamePhase === 'skinSelect') return;
 
     // Parachute phase
     if (gamePhase === 'parachute') {
@@ -992,6 +1028,9 @@ window.royaleModule = (function () {
   // ── Player rendering ──────────────────────────────────────
   function drawPlayer() {
     const sc = STANCE_HEIGHT[stance];
+    const hd=HEADS.find(h=>h.id===playerSkin.head)||HEADS[0];
+    const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
+    const pd=PANTS.find(p=>p.id===playerSkin.pants)||PANTS[0];
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.scale(1, sc);
@@ -1006,9 +1045,12 @@ window.royaleModule = (function () {
     ctx.beginPath(); ctx.ellipse(-7,2,3,5,0.3,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse( 7,2,3,5,-0.3,0,Math.PI*2); ctx.fill();
 
-    // Body (vest)
-    ctx.fillStyle='#3a3a5a';
+    // Body
+    ctx.fillStyle=bd.color;
     ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    // Pants
+    ctx.fillStyle=pd.color;
+    ctx.beginPath(); ctx.ellipse(0,8,6,5,0,0,Math.PI*2); ctx.fill();
     // Vest highlight
     ctx.fillStyle='rgba(255,255,255,0.07)';
     ctx.beginPath(); ctx.ellipse(-1,-1,4,6,0,0,Math.PI*2); ctx.fill();
@@ -1016,17 +1058,41 @@ window.royaleModule = (function () {
     // Rifle barrel
     ctx.fillStyle='#222';
     ctx.fillRect(-1.5,-20,3,14);
-    // Rifle body
     ctx.fillRect(-2,-12,4,8);
 
     // Head
-    ctx.fillStyle='#c8a070';
+    ctx.fillStyle=hd.color;
     ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
-    // Helmet
-    ctx.fillStyle='#4a4a2a';
-    ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
-    // Helmet brim
-    ctx.fillRect(-7,-9,14,2);
+
+    if (hd.crown) {
+      ctx.fillStyle='#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(-4,-13); ctx.lineTo(-2,-17); ctx.lineTo(0,-14); ctx.lineTo(2,-17); ctx.lineTo(4,-13); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle='rgba(255,255,100,0.6)'; ctx.lineWidth=0.8; ctx.strokeRect(-4,-14,8,2);
+    } else if (hd.beak) {
+      ctx.fillStyle='#ff8c00';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#cc6000';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-8); ctx.closePath(); ctx.fill();
+    } else if (hd.mask) {
+      ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(-4,-12,8,7);
+      ctx.fillStyle='rgba(255,0,0,0.25)'; ctx.fillRect(-4,-12,8,2);
+    } else {
+      ctx.fillStyle='#4a4a2a';
+      ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
+      ctx.fillRect(-7,-9,14,2);
+    }
+
+    if (hd.eyes==='red') {
+      ctx.fillStyle='rgba(255,30,30,0.9)';
+      ctx.beginPath(); ctx.arc(-2,-9,1.2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.2,0,Math.PI*2); ctx.fill();
+    } else if (hd.eyes==='black') {
+      ctx.fillStyle='#080808';
+      ctx.beginPath(); ctx.arc(-2,-9,1.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.5,0,Math.PI*2); ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -1208,6 +1274,13 @@ window.royaleModule = (function () {
       ctx.save();
       ctx.translate(canvas.width, 0);
       ctx.rotate(Math.PI / 2);
+    }
+
+    // Skin select screen — render locker UI then return
+    if (gamePhase === 'skinSelect') {
+      drawSkinMenu();
+      if (port) ctx.restore();
+      return;
     }
 
     // Use spectate cam when dead
@@ -1544,7 +1617,8 @@ window.royaleModule = (function () {
           if (bt.hp <= 0) {
             bt.alive=false; player.kills++;
             spawnBlood(bt.x, bt.y);
-            killFeed.push({text:`You killed ${bt.name}`,life:4});
+            coins+=15; saveCoins();
+            killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
           }
           bullets.splice(i,1); break;
         }
@@ -2009,8 +2083,199 @@ window.royaleModule = (function () {
     const aliveCount = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length;
     if (aliveCount === 0 && player.alive) {
       gamePhase = 'win'; gameEndTimer = 0;
-      killFeed.push({text:'VICTORY ROYALE!', life:999});
+      coins += 100; saveCoins();
+      killFeed.push({text:'VICTORY ROYALE! (+100 💰)', life:999});
     }
+  }
+
+  // ── Skin locker ───────────────────────────────────────────
+  function drawSkinPreview(px, py, scale) {
+    const hd=HEADS.find(h=>h.id===playerSkin.head)||HEADS[0];
+    const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
+    const pd=PANTS.find(p=>p.id===playerSkin.pants)||PANTS[0];
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(scale, scale);
+    ctx.fillStyle=bd.color;
+    ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=pd.color;
+    ctx.beginPath(); ctx.ellipse(0,9,5.5,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=hd.color;
+    ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
+    if (hd.crown) {
+      ctx.fillStyle='#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(-4,-13); ctx.lineTo(-2,-17); ctx.lineTo(0,-14); ctx.lineTo(2,-17); ctx.lineTo(4,-13); ctx.closePath();
+      ctx.fill();
+    } else if (hd.beak) {
+      ctx.fillStyle='#ff8c00';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-5); ctx.closePath(); ctx.fill();
+    } else if (hd.mask) {
+      ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(-4,-12,8,6);
+    } else {
+      ctx.fillStyle='#4a4a2a';
+      ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
+      ctx.fillRect(-6,-9,12,2);
+    }
+    if (hd.eyes==='red') {
+      ctx.fillStyle='#ff2020';
+      ctx.beginPath(); ctx.arc(-2,-9,1.2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.2,0,Math.PI*2); ctx.fill();
+    } else if (hd.eyes==='black') {
+      ctx.fillStyle='#151515';
+      ctx.beginPath(); ctx.arc(-2,-9,1.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.5,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSkinMenu() {
+    const bg=ctx.createLinearGradient(0,0,0,canvasH);
+    bg.addColorStop(0,'#080f18'); bg.addColorStop(1,'#101e2a');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,canvasW,canvasH);
+
+    // Stars
+    const srng=seededRng(42);
+    ctx.globalAlpha=1;
+    for (let i=0;i<90;i++) {
+      const a=0.12+srng()*0.35, sz=0.8+srng()*1.6;
+      ctx.fillStyle=`rgba(255,255,255,${a})`;
+      ctx.fillRect(srng()*canvasW, srng()*canvasH, sz, sz);
+    }
+
+    // Title
+    ctx.shadowColor='rgba(255,215,0,0.55)'; ctx.shadowBlur=16;
+    ctx.fillStyle='#ffd700';
+    ctx.font=`bold 26px monospace`; ctx.textAlign='center';
+    ctx.fillText('⚔  BATTLE ROYALE  LOCKER', canvasW/2, 28);
+    ctx.shadowBlur=0;
+
+    // Coins badge (top-right)
+    const cbx=canvasW-158, cby=8, cbw=148, cbh=26;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(cbx,cby,cbw,cbh);
+    ctx.strokeStyle='rgba(255,215,0,0.45)'; ctx.lineWidth=1.5; ctx.strokeRect(cbx,cby,cbw,cbh);
+    ctx.fillStyle='#ffd700'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
+    ctx.fillText(`💰  ${coins} coins`, cbx+cbw/2, cby+18);
+
+    // Player preview badge
+    const pvX=cbx-52, pvY=cby+13;
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.arc(pvX,pvY,22,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(255,215,0,0.4)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(pvX,pvY,22,0,Math.PI*2); ctx.stroke();
+    drawSkinPreview(pvX, pvY, 1.7);
+
+    // Tab bar
+    const tabs=['head','body','pants','trail'];
+    const tabLabels=['👤 HEAD','👕 BODY','👖 PANTS','✨ TRAIL'];
+    const tbY=44, tbH=30, tbW=(canvasW-40)/4;
+    skinTabRects=[];
+    for (let i=0;i<4;i++) {
+      const tx=20+i*tbW;
+      const active=skinMenuTab===tabs[i];
+      ctx.fillStyle=active?'rgba(255,215,0,0.22)':'rgba(255,255,255,0.05)';
+      ctx.fillRect(tx,tbY,tbW-5,tbH);
+      ctx.strokeStyle=active?'rgba(255,215,0,0.85)':'rgba(255,255,255,0.15)';
+      ctx.lineWidth=active?2:1; ctx.strokeRect(tx,tbY,tbW-5,tbH);
+      ctx.fillStyle=active?'#ffd700':'rgba(200,200,200,0.7)';
+      ctx.font=`bold 12px monospace`; ctx.textAlign='center';
+      ctx.fillText(tabLabels[i], tx+(tbW-5)/2, tbY+20);
+      skinTabRects.push({x:tx,y:tbY,w:tbW-5,h:tbH,tab:tabs[i]});
+    }
+
+    // Item grid
+    const items=skinMenuTab==='head'?HEADS:skinMenuTab==='body'?BODIES:skinMenuTab==='pants'?PANTS:TRAILS;
+    const cols=3, gx=20, gy=tbY+tbH+8;
+    const iw=Math.floor((canvasW-40)/cols);
+    const ih=Math.min(70, Math.floor((canvasH-gy-68)/Math.ceil(items.length/cols))-6);
+    skinItemRects=[];
+    for (let i=0;i<items.length;i++) {
+      const itm=items[i];
+      const col=i%cols, row=Math.floor(i/cols);
+      const ix=gx+col*iw, iy=gy+row*(ih+6);
+      const owned=(ownedSkins[skinMenuTab]||[]).includes(itm.id);
+      const selected=playerSkin[skinMenuTab]===itm.id;
+      const canAfford=coins>=itm.price;
+
+      ctx.fillStyle=selected?'rgba(255,215,0,0.17)':(owned?'rgba(80,200,80,0.08)':'rgba(0,0,0,0.42)');
+      ctx.fillRect(ix,iy,iw-6,ih);
+      ctx.strokeStyle=selected?'rgba(255,215,0,0.9)':(owned?'rgba(100,220,100,0.45)':'rgba(255,255,255,0.1)');
+      ctx.lineWidth=selected?2.5:1; ctx.strokeRect(ix,iy,iw-6,ih);
+
+      // Swatch
+      const sw=ih*0.44;
+      if (skinMenuTab==='trail') {
+        const ti={none:'—',fire:'🔥',sparkle:'✨',rainbow:'🌈'};
+        ctx.font=`${sw*0.85}px serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText(ti[itm.id]||'?', ix+8, iy+ih/2);
+        ctx.textBaseline='alphabetic';
+      } else {
+        ctx.fillStyle=itm.color||'#888';
+        ctx.beginPath(); ctx.arc(ix+8+sw/2, iy+ih/2, sw/2, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(ix+8+sw/2, iy+ih/2, sw/2, 0, Math.PI*2); ctx.stroke();
+      }
+
+      const tx2=ix+10+sw;
+      ctx.fillStyle='#fff'; ctx.font=`bold 12px monospace`; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      ctx.fillText(itm.name, tx2, iy+ih*0.42);
+
+      if (selected) {
+        ctx.fillStyle='#ffd700'; ctx.font='10px monospace';
+        ctx.fillText('✓ EQUIPPED', tx2, iy+ih*0.75);
+      } else if (owned) {
+        ctx.fillStyle='#8fce50'; ctx.font='10px monospace';
+        ctx.fillText('OWNED', tx2, iy+ih*0.75);
+      } else {
+        ctx.fillStyle=canAfford?'#ffd700':'#777'; ctx.font='10px monospace';
+        ctx.fillText(`💰 ${itm.price}`, tx2, iy+ih*0.75);
+        if (!canAfford) {
+          ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(ix,iy,iw-6,ih);
+        }
+      }
+      skinItemRects.push({x:ix,y:iy,w:iw-6,h:ih,item:itm,owned,selected});
+    }
+
+    // PLAY button
+    const bw=200, bh=44, bx2=canvasW/2-bw/2, by2=canvasH-bh-12;
+    const playGrad=ctx.createLinearGradient(bx2,by2,bx2,by2+bh);
+    playGrad.addColorStop(0,'rgba(30,200,80,0.95)'); playGrad.addColorStop(1,'rgba(15,140,50,0.95)');
+    ctx.fillStyle=playGrad; ctx.fillRect(bx2,by2,bw,bh);
+    ctx.shadowColor='rgba(0,255,80,0.5)'; ctx.shadowBlur=14;
+    ctx.strokeStyle='rgba(80,255,130,0.9)'; ctx.lineWidth=2.5; ctx.strokeRect(bx2,by2,bw,bh);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#fff'; ctx.font='bold 17px monospace'; ctx.textAlign='center';
+    ctx.fillText('▶  BATTLE ROYALE', bx2+bw/2, by2+bh*0.65);
+    skinBtnPlay={x:bx2,y:by2,w:bw,h:bh};
+    ctx.textAlign='left';
+  }
+
+  function checkSkinMenuClick(gx, gy) {
+    if (gamePhase !== 'skinSelect') return false;
+    for (const tr of skinTabRects) {
+      if (gx>=tr.x&&gx<=tr.x+tr.w&&gy>=tr.y&&gy<=tr.y+tr.h) {
+        skinMenuTab=tr.tab; return true;
+      }
+    }
+    for (const ir of skinItemRects) {
+      if (gx>=ir.x&&gx<=ir.x+ir.w&&gy>=ir.y&&gy<=ir.y+ir.h) {
+        const cat=skinMenuTab;
+        if (ir.owned) {
+          playerSkin[cat]=ir.item.id; saveSkin();
+        } else if (coins>=ir.item.price) {
+          coins-=ir.item.price; saveCoins();
+          if (!ownedSkins[cat]) ownedSkins[cat]=[];
+          if (!ownedSkins[cat].includes(ir.item.id)) ownedSkins[cat].push(ir.item.id);
+          saveOwned();
+          playerSkin[cat]=ir.item.id; saveSkin();
+        }
+        return true;
+      }
+    }
+    if (skinBtnPlay && gx>=skinBtnPlay.x&&gx<=skinBtnPlay.x+skinBtnPlay.w&&gy>=skinBtnPlay.y&&gy<=skinBtnPlay.y+skinBtnPlay.h) {
+      gamePhase='parachute'; return true;
+    }
+    return false;
   }
 
   // ── End screen ────────────────────────────────────────────
@@ -2170,6 +2435,7 @@ window.royaleModule = (function () {
     const gy = port ? (canvas.width - sx) : sy;
 
     if (checkEndBtnClick(gx, gy)) return;
+    if (checkSkinMenuClick(gx, gy)) return;
     if (gamePhase !== 'playing') return;
     if (checkWeaponSlotClick(gx, gy)) return;
     const key=inventory[activeSlot];
@@ -2256,7 +2522,8 @@ window.royaleModule = (function () {
       if (bt.hp<=0) {
         bt.alive=false; player.kills++;
         spawnBlood(bt.x, bt.y);
-        killFeed.push({text:`You killed ${bt.name}`,life:4});
+        coins+=15; saveCoins();
+        killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
       }
     }
   }

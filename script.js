@@ -285,6 +285,13 @@ window.backToFoldersAPI = function() {
     }
 };
 
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
 function fetchAndRenderFiles() {
     sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
     .then(({ data: files, error }) => {
@@ -306,7 +313,7 @@ function fetchAndRenderFiles() {
             <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
                 <div style="flex: 1; overflow: hidden;">
                     <div style="color: white; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${f.name}</div>
-                    <div style="color: gray; font-size: 11px;">Uploaded by: ${f.uploader}</div>
+                    <div style="color: gray; font-size: 11px;">${f.size ? `<span style="color:#00ff88;font-weight:bold;">${formatFileSize(f.size)}</span> · ` : ''}Uploaded by: ${f.uploader}</div>
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <button onclick="window.playOrOpenFileAPI('${f.url}', '${safeName}')" style="background:#00ff88; color:black; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">Open</button>
@@ -392,7 +399,7 @@ window.uploadFileToFolderAPI = async function() {
         const isMedia = file.type.startsWith('audio/') ||
                         file.type.startsWith('video/') ||
                         file.type.startsWith('image/');
-        let fileUrl;
+        let fileUrl, fileSize;
 
         if (isMedia) {
           // Large media → Cloudflare R2 (10 GB free, no egress fees)
@@ -400,7 +407,9 @@ window.uploadFileToFolderAPI = async function() {
           fd.append('file', file);
           const r = await fetch('/api/upload', { method: 'POST', body: fd });
           if (!r.ok) throw new Error(`R2: ${(await r.json()).error || r.status}`);
-          fileUrl = (await r.json()).url;
+          const rData = await r.json();
+          fileUrl = rData.url;
+          fileSize = rData.size;
         } else {
           // Docs / PDFs / other → Supabase Storage
           const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
@@ -409,6 +418,7 @@ window.uploadFileToFolderAPI = async function() {
               .upload(filePath, file, { contentType: file.type });
           if (storErr) throw new Error(`Storage: ${storErr.message}`);
           fileUrl = sb.storage.from('portfolio-assets').getPublicUrl(filePath).data.publicUrl;
+          fileSize = file.size;
         }
 
         const { error: dbErr } = await sb.from('files').insert([{
@@ -416,7 +426,8 @@ window.uploadFileToFolderAPI = async function() {
             name: file.name,
             url: fileUrl,
             type: file.type,
-            uploader: currentUser.username
+            uploader: currentUser.username,
+            size: fileSize
         }]);
         // Supabase v2 returns {data, error} — it does NOT throw on failure
         if(dbErr) throw new Error(`Database: ${dbErr.message}`);

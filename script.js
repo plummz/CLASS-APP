@@ -1461,6 +1461,8 @@ window.goToPage = function(pageName) {
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();
+  // Event Pictures: reset and render year cards
+  if (pageName === 'events') { epState = { level:'years', year:null, sem:null, folder:null }; renderEP(); }
 };
 
 function drawRoyalePreviewCanvas() {
@@ -1609,7 +1611,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buildSubjectCards('grid-y3second', y3secondSem);
   buildSubjectCards('grid-y4first',  y4firstSem);
   buildSubjectCards('grid-y4second', y4secondSem);
-  buildFolderCards('grid-events', eventCount, 'Event');
+  // Event Pictures now handled by EP system (renderEP on page nav)
   buildFolderCards('grid-random', randomCount, 'Random');
   fetchCalendarNotes(); updateClock();
 
@@ -2088,4 +2090,256 @@ window.sendLobbyChat = function() {
     s.once('connect', () => s.emit('lobby:chat', { text }));
   }
 };
+
+// ── Event Pictures System ─────────────────────────────────────────────────────
+
+const EP_YEARS = [
+  { key:'y1', label:'First Year',   emoji:'🌱', accent:'#00d4ff', bg:'linear-gradient(135deg,#001a2e 0%,#002d4a 100%)' },
+  { key:'y2', label:'Second Year',  emoji:'📚', accent:'#00ff88', bg:'linear-gradient(135deg,#001a10 0%,#002d1a 100%)' },
+  { key:'y3', label:'Third Year',   emoji:'🔬', accent:'#ff6b35', bg:'linear-gradient(135deg,#1a0800 0%,#2d1200 100%)' },
+  { key:'y4', label:'Fourth Year',  emoji:'🎓', accent:'#a855f7', bg:'linear-gradient(135deg,#12001a 0%,#20002d 100%)' },
+];
+const EP_SEMS = [
+  { key:'sem1', label:'First Semester',  emoji:'☀️', accent:'#00d4ff', bg:'linear-gradient(135deg,#001428 0%,#002040 100%)' },
+  { key:'sem2', label:'Second Semester', emoji:'🌙', accent:'#c084fc', bg:'linear-gradient(135deg,#100020 0%,#1e0038 100%)' },
+];
+
+let epState = { level:'years', year:null, sem:null, folder:null };
+
+function epSelectYear(key) {
+  const year = EP_YEARS.find(y => y.key === key);
+  epState = { level:'sems', year, sem:null, folder:null };
+  renderEP();
+}
+function epSelectSem(key) {
+  const sem = EP_SEMS.find(s => s.key === key);
+  epState = { ...epState, level:'folders', sem, folder:null };
+  renderEP();
+}
+function epSelectFolder(id, name) {
+  epState = { ...epState, level:'files', folder:{ id, name } };
+  renderEP();
+}
+function epBcClick(level) {
+  if (level === 'years')   epState = { level:'years', year:null, sem:null, folder:null };
+  else if (level === 'sems')    { epState.level='sems'; epState.sem=null; epState.folder=null; }
+  else if (level === 'folders') { epState.level='folders'; epState.folder=null; }
+  renderEP();
+}
+
+function renderEP() {
+  const view = document.getElementById('ep-view');
+  const bc   = document.getElementById('ep-breadcrumb');
+  if (!view || !bc) return;
+
+  // Breadcrumb
+  let bcHtml = `<span class="ep-bc" onclick="epBcClick('years')">📷 Event Pictures</span>`;
+  if (epState.year) {
+    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="epBcClick('sems')">${epState.year.label}</span>`;
+  }
+  if (epState.sem) {
+    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="epBcClick('folders')">${epState.sem.label}</span>`;
+  }
+  if (epState.folder) {
+    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc ep-bc-active">${epState.folder.name}</span>`;
+  }
+  bc.innerHTML = bcHtml;
+
+  view.style.opacity = '0';
+  view.style.transform = 'translateY(12px)';
+
+  if      (epState.level === 'years')   renderEPYears(view);
+  else if (epState.level === 'sems')    renderEPSems(view);
+  else if (epState.level === 'folders') renderEPFolders(view);
+  else if (epState.level === 'files')   renderEPFiles(view);
+
+  requestAnimationFrame(() => {
+    view.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    view.style.opacity = '1';
+    view.style.transform = 'translateY(0)';
+  });
+}
+
+function renderEPYears(view) {
+  view.innerHTML = `
+    <div class="ep-section-title">Select Year Level</div>
+    <div class="ep-grid ep-grid-4">
+      ${EP_YEARS.map(y => `
+        <div class="ep-card" style="--ep-accent:${y.accent};background:${y.bg}" onclick="epSelectYear('${y.key}')">
+          <div class="ep-card-emoji">${y.emoji}</div>
+          <div class="ep-card-label">${y.label}</div>
+          <div class="ep-card-sub">View semesters</div>
+          <div class="ep-card-glow"></div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderEPSems(view) {
+  view.innerHTML = `
+    <div class="ep-section-title">${epState.year.label}</div>
+    <div class="ep-grid ep-grid-2">
+      ${EP_SEMS.map(s => `
+        <div class="ep-card ep-card-sem" style="--ep-accent:${s.accent};background:${s.bg}" onclick="epSelectSem('${s.key}')">
+          <div class="ep-card-emoji">${s.emoji}</div>
+          <div class="ep-card-label">${s.label}</div>
+          <div class="ep-card-sub">View albums</div>
+          <div class="ep-card-glow"></div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderEPFolders(view) {
+  const parentKey = `ep_${epState.year.key}_${epState.sem.key}`;
+  sb.from('folders').select('*').eq('parent', parentKey).then(({ data:folders, error }) => {
+    if (error) return;
+    let cards = (folders || []).map(f => {
+      const safeName = f.name.replace(/'/g, "\\'");
+      const ownerActions = currentUser && (f.owner === currentUser.username || isAdmin)
+        ? `<div class="ep-card-actions" onclick="event.stopPropagation()">
+             <button class="ep-action-btn" onclick="epRenameFolder('${f.id}','${safeName}')">Rename</button>
+             <button class="ep-action-btn ep-btn-del" onclick="epDeleteFolder('${f.id}')">Delete</button>
+           </div>` : '';
+      return `
+        <div class="ep-card ep-card-folder" style="--ep-accent:#00d4ff" onclick="epSelectFolder('${f.id}','${safeName}')">
+          <div class="ep-card-emoji">📁</div>
+          <div class="ep-card-label">${f.name}</div>
+          <div class="ep-card-sub">By ${f.owner}</div>
+          ${ownerActions}
+          <div class="ep-card-glow"></div>
+        </div>`;
+    }).join('');
+
+    const addCard = currentUser ? `
+      <div class="ep-card ep-card-add" style="--ep-accent:#ffffff55" onclick="epCreateFolder('${parentKey}')">
+        <div class="ep-card-emoji">➕</div>
+        <div class="ep-card-label">New Album</div>
+        <div class="ep-card-sub">Create folder</div>
+      </div>` : '';
+
+    view.innerHTML = `
+      <div class="ep-section-title">${epState.year.label} · ${epState.sem.label}</div>
+      <div class="ep-grid ep-grid-4">${cards}${addCard}</div>`;
+  });
+}
+
+function renderEPFiles(view) {
+  const folderId = epState.folder.id;
+  sb.from('files').select('*').eq('folder_id', folderId).then(({ data:files, error }) => {
+    if (error) return;
+
+    const uploadBar = currentUser ? `
+      <label class="ep-upload-btn">
+        <input type="file" multiple accept="image/*,video/*" style="display:none" onchange="epUploadFiles(this.files,'${folderId}',this)">
+        📸 Upload Photos / Videos
+      </label>` : '';
+
+    const photoGrid = !files || files.length === 0
+      ? `<div class="ep-empty">No photos yet.${currentUser ? ' Upload some!' : ''}</div>`
+      : `<div class="ep-photo-grid">${files.map(f => {
+          const isImg = f.type && f.type.startsWith('image/');
+          const isVid = f.type && f.type.startsWith('video/');
+          const safeName = f.name.replace(/'/g, "\\'");
+          const deleteBtn = currentUser && (f.uploader === currentUser.username || isAdmin)
+            ? `<button class="ep-photo-delete" onclick="epDeleteFile('${f.id}')">✕</button>` : '';
+          return `
+            <div class="ep-photo-card">
+              ${isImg ? `<img src="${f.url}" class="ep-photo-thumb" loading="lazy" onclick="epOpenPhoto('${f.url}','${safeName}')">` :
+                isVid ? `<video src="${f.url}" class="ep-photo-thumb" controls playsinline></video>` :
+                `<div class="ep-photo-placeholder">📄</div>`}
+              <div class="ep-photo-info">
+                <div class="ep-photo-name">${f.name}</div>
+                ${f.size ? `<div class="ep-photo-size">${formatFileSize(f.size)}</div>` : ''}
+              </div>
+              ${deleteBtn}
+            </div>`;
+        }).join('')}</div>`;
+
+    view.innerHTML = `
+      <div class="ep-section-title">${epState.folder.name}</div>
+      <div class="ep-upload-bar">${uploadBar}</div>
+      ${photoGrid}`;
+  });
+}
+
+function epCreateFolder(parentKey) {
+  if (!currentUser) return customAlert('Please log in.');
+  customPrompt('Album name:', function(name) {
+    if (!name) return;
+    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username }])
+      .then(({ error }) => { if (error) return customAlert(error.message); renderEP(); });
+  });
+}
+
+function epRenameFolder(id, currentName) {
+  customPrompt('New album name:', function(name) {
+    if (!name || name === currentName) return;
+    sb.from('folders').update({ name }).eq('id', id)
+      .then(({ error }) => { if (error) return customAlert(error.message); renderEP(); });
+  }, currentName);
+}
+
+function epDeleteFolder(id) {
+  customConfirm('Delete this album and all its photos?', function() {
+    sb.from('files').delete().eq('folder_id', id)
+      .then(() => sb.from('folders').delete().eq('id', id))
+      .then(() => renderEP());
+  });
+}
+
+async function epUploadFiles(fileList, folderId, inputEl) {
+  if (!currentUser) return customAlert('Please log in.');
+  const files = Array.from(fileList);
+  if (files.length === 0) return;
+
+  const view = document.getElementById('ep-view');
+  const bar = view.querySelector('.ep-upload-bar');
+  if (bar) bar.innerHTML = `<div class="ep-uploading">Uploading 0 / ${files.length}…</div>`;
+
+  let done = 0, failed = 0;
+  for (const file of files) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch('/api/upload', { method:'POST', body:fd });
+      if (!r.ok) throw new Error('Upload failed');
+      const data = await r.json();
+      const { error } = await sb.from('files').insert([{
+        folder_id: folderId,
+        name: file.name,
+        url: data.url,
+        type: file.type,
+        uploader: currentUser.username,
+        size: data.size,
+      }]);
+      if (error) throw new Error(error.message);
+      done++;
+      if (bar) bar.innerHTML = `<div class="ep-uploading">Uploading ${done} / ${files.length}…</div>`;
+    } catch(e) {
+      failed++;
+      console.error('EP upload error:', e);
+    }
+  }
+  if (failed > 0) customAlert(`${done} uploaded, ${failed} failed.`);
+  renderEP();
+}
+
+function epDeleteFile(id) {
+  customConfirm('Delete this photo?', function() {
+    sb.from('files').delete().eq('id', id).then(() => renderEP());
+  });
+}
+
+function epOpenPhoto(url, name) {
+  const overlay = document.createElement('div');
+  overlay.className = 'ep-lightbox';
+  overlay.onclick = () => overlay.remove();
+  overlay.innerHTML = `
+    <div class="ep-lightbox-inner" onclick="event.stopPropagation()">
+      <img src="${url}" class="ep-lightbox-img">
+      <div class="ep-lightbox-name">${name}</div>
+      <button class="ep-lightbox-close" onclick="this.closest('.ep-lightbox').remove()">✕</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('ep-lightbox-in'));
+}
 

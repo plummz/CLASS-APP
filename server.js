@@ -618,13 +618,13 @@ const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
 const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
 
 async function compressImage(buffer, ext) {
-  let img = sharp(buffer);
+  let img = sharp(buffer).resize({ width: 1920, withoutEnlargement: true });
   switch (ext) {
-    case '.jpg': case '.jpeg': return img.jpeg({ quality: 75, mozjpeg: true }).toBuffer();
-    case '.png':               return img.png({ quality: 75, compressionLevel: 8 }).toBuffer();
-    case '.webp':              return img.webp({ quality: 75 }).toBuffer();
+    case '.jpg': case '.jpeg': return img.jpeg({ quality: 70, mozjpeg: true }).toBuffer();
+    case '.png':               return img.png({ quality: 70, compressionLevel: 9 }).toBuffer();
+    case '.webp':              return img.webp({ quality: 70 }).toBuffer();
     case '.gif':               return img.gif().toBuffer();
-    default:                   return img.jpeg({ quality: 75 }).toBuffer();
+    default:                   return img.jpeg({ quality: 70 }).toBuffer();
   }
 }
 

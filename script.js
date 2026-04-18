@@ -1355,6 +1355,7 @@ const pageConfig = {
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
+  games:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎮 Arcade' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
   royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
   witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 WIT FB Page' },
@@ -1435,7 +1436,61 @@ window.goToPage = function(pageName) {
   if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
   // Royale: start after page is visible
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
+  // Games hub: draw royale preview canvas
+  if (pageName === 'games') drawRoyalePreviewCanvas();
 };
+
+function drawRoyalePreviewCanvas() {
+  const c = document.getElementById('games-royale-preview');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  c.width = c.offsetWidth || 360;
+  c.height = c.offsetHeight || 180;
+  const W = c.width, H = c.height;
+
+  // Sky/ground gradient
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0a1a05'); bg.addColorStop(1,'#1a3a0a');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  // Grid of terrain dots
+  ctx.fillStyle='rgba(60,130,30,0.3)';
+  for(let x=0;x<W;x+=18) for(let y=0;y<H;y+=18) {
+    if((x*3+y*7)%11===0) ctx.fillRect(x,y,4,4);
+  }
+
+  // Zone ring
+  ctx.strokeStyle='rgba(0,160,255,0.55)'; ctx.lineWidth=2;
+  ctx.setLineDash([8,6]);
+  ctx.beginPath(); ctx.arc(W*0.5, H*0.48, H*0.38, 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Trees
+  const trees=[[0.15,0.25],[0.82,0.6],[0.7,0.15],[0.25,0.75],[0.9,0.3],[0.05,0.65],[0.55,0.85]];
+  for(const [tx,ty] of trees){
+    ctx.fillStyle='#1f5010'; ctx.beginPath();
+    ctx.moveTo(tx*W,ty*H-14); ctx.lineTo(tx*W-10,ty*H+6); ctx.lineTo(tx*W+10,ty*H+6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#2a7018'; ctx.beginPath();
+    ctx.moveTo(tx*W,ty*H-20); ctx.lineTo(tx*W-7,ty*H-4); ctx.lineTo(tx*W+7,ty*H-4); ctx.closePath(); ctx.fill();
+  }
+
+  // Bots (red dots)
+  const bots=[[0.3,0.4],[0.65,0.3],[0.45,0.65],[0.72,0.55],[0.2,0.6],[0.58,0.2]];
+  for(const [bx,by] of bots){
+    ctx.fillStyle='rgba(220,40,40,0.8)'; ctx.beginPath(); ctx.arc(bx*W,by*H,3.5,0,Math.PI*2); ctx.fill();
+  }
+
+  // Player (white dot with glow)
+  ctx.shadowColor='rgba(0,255,80,0.9)'; ctx.shadowBlur=12;
+  ctx.fillStyle='#7fff7f'; ctx.beginPath(); ctx.arc(W*0.48, H*0.5, 5, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+
+  // Overlay text
+  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(0,H-28,W,28);
+  ctx.fillStyle='rgba(143,206,80,0.9)'; ctx.font='bold 11px monospace';
+  ctx.textAlign='center'; ctx.fillText('40 PLAYERS · CUSTOM SKINS · EARN COINS', W/2, H-11);
+  ctx.textAlign='left';
+}
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
 window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };

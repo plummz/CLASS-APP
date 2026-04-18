@@ -265,6 +265,26 @@ window.royaleModule = (function () {
     canvas.addEventListener('touchend',   onTouchEnd,   {passive:false});
     canvas.addEventListener('touchcancel',onTouchEnd,   {passive:false});
 
+    // Fire button: touchstart = press, touchend = release
+    const fireBtn = document.getElementById('rl-fire-btn');
+    if (fireBtn) {
+      fireBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        if (gamePhase === 'parachute' && !paraDeployed) { paraDeployed = true; return; }
+        shootPressed = true; shootJustDown = true;
+      }, {passive: true});
+      fireBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation(); shootPressed = false;
+      }, {passive: true});
+      fireBtn.addEventListener('mousedown', () => { shootPressed = true; shootJustDown = true; });
+      fireBtn.addEventListener('mouseup',   () => { shootPressed = false; });
+    }
+    const reloadBtn = document.getElementById('rl-reload-btn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); startReload(); }, {passive: true});
+      reloadBtn.addEventListener('mousedown', () => startReload());
+    }
+
     hideLoading();
 
     running  = true;
@@ -291,22 +311,22 @@ window.royaleModule = (function () {
       canvas.removeEventListener('touchcancel',onTouchEnd);
     }
     document.body.classList.remove('rl-active');
-    document.body.classList.remove('rl-portrait');
+    shootPressed = false; shootJustDown = false;
     destroyMultiplayer();
   }
 
   function checkOrientation() {
-    const isPortrait = window.innerHeight > window.innerWidth;
-    document.body.classList.toggle('rl-portrait', isPortrait);
-    // After CSS rotation the logical canvas dims are swapped; resize fixes them
-    resize();
+    resize(); // canvas transform handles portrait; no CSS class needed
   }
 
   function resize() {
-    canvasW = window.innerWidth;
-    canvasH = window.innerHeight;
-    canvas.width  = canvasW;
-    canvas.height = canvasH;
+    // Canvas always matches the physical screen size
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Game logic always uses landscape dims (swapped when portrait)
+    const port = canvas.height > canvas.width;
+    canvasW = port ? canvas.height : canvas.width;
+    canvasH = port ? canvas.width  : canvas.height;
   }
 
   function hideLoading() {
@@ -325,13 +345,14 @@ window.royaleModule = (function () {
 
   function onTouchStart(e) {
     e.preventDefault();
+    const splitX = window.innerWidth * 0.5; // always screen space
     for (const t of e.changedTouches) {
-      if (t.clientX < canvasW * 0.5 && !joy.active) {
+      if (t.clientX < splitX && !joy.active) {
         joy.active=true; joy.id=t.identifier;
         joy.sx=joy.cx=t.clientX; joy.sy=joy.cy=t.clientY;
         joy.dx=joy.dy=0;
         joyShow(joy.sx,joy.sy,joy.cx,joy.cy,'rl-joy-base','rl-joy-knob');
-      } else if (t.clientX >= canvasW*0.5) {
+      } else if (t.clientX >= splitX) {
         if (gamePhase==='parachute' && !paraDeployed) { paraDeployed=true; }
         else onAimTouchStart(t);
       }
@@ -417,7 +438,16 @@ window.royaleModule = (function () {
     if (keys['KeyS']||keys['ArrowDown'])  my += 1;
     if (keys['KeyA']||keys['ArrowLeft'])  mx -= 1;
     if (keys['KeyD']||keys['ArrowRight']) mx += 1;
-    if (joy.active) { mx += joy.dx; my += joy.dy; }
+    if (joy.active) {
+      // Portrait: canvas is rotated 90° CW in render(), so screen +Y = game +X, screen +X = game -Y
+      if (canvas.height > canvas.width) {
+        mx += joy.dy;
+        my -= joy.dx;
+      } else {
+        mx += joy.dx;
+        my += joy.dy;
+      }
+    }
 
     const len = Math.sqrt(mx*mx+my*my);
     if (len > 1) { mx /= len; my /= len; }
@@ -457,14 +487,16 @@ window.royaleModule = (function () {
     cam.x += (player.x - cam.x) * ls * dt;
     cam.y += (player.y - cam.y) * ls * dt;
 
-    // ── Keyboard fire — auto weapons fire while held; semi-auto require a fresh keypress
+    // ── Fire — auto: held button/key; semi-auto: single tap per press
     const wkey = inventory[activeSlot];
     if (wkey && WEAPONS[wkey]) {
       const w = WEAPONS[wkey];
-      const fireNow = w.auto ? keys['Space'] : keysJustDown.has('Space');
-      if (fireNow) tryFire(player.x, player.y, player.angle, wkey, localId);
+      const held  = keys['Space'] || shootPressed;
+      const tapped = keysJustDown.has('Space') || shootJustDown;
+      if (w.auto ? held : tapped) tryFire(player.x, player.y, player.angle, wkey, localId);
     }
     keysJustDown.clear();
+    shootJustDown = false;
     if (keys['KeyR']) startReload();
     if (keys['Digit1']) activeSlot=0;
     if (keys['Digit2']) activeSlot=1;
@@ -935,7 +967,18 @@ window.royaleModule = (function () {
 
   // ── Render ────────────────────────────────────────────────
   function render() {
-    ctx.clearRect(0,0,canvasW,canvasH);
+    // Clear the physical screen (canvas.width × canvas.height = screen size)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Portrait: rotate canvas 90° CW so the game renders in landscape orientation.
+    // canvas.width < canvas.height means portrait phone.
+    // After this transform, all drawing uses canvasW × canvasH (landscape game dims).
+    const port = canvas.height > canvas.width;
+    if (port) {
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+    }
 
     // Use spectate cam when dead
     const renderCam = (gamePhase==='dead' && spectateTarget)
@@ -1004,6 +1047,9 @@ window.royaleModule = (function () {
       ctx.fillText('SPACE / tap right side to deploy chute', canvasW/2, canvasH/2+2);
       ctx.textAlign='left';
     }
+
+    // Close portrait rotation transform
+    if (port) ctx.restore();
   }
 
   // ── Weapon definitions ────────────────────────────────────
@@ -1034,9 +1080,11 @@ window.royaleModule = (function () {
   let inventory  = [];            // weapon keys player is holding (max 2)
   let activeSlot = 0;
   let ammoCache  = {};            // { weaponKey: count }
-  let lastFireT  = {}; // keyed by weaponKey so ROF doesn't bleed between weapons
-  let reloading  = false;
-  let reloadEnd  = 0;
+  let lastFireT     = {}; // keyed by weaponKey so ROF doesn't bleed between weapons
+  let reloading     = false;
+  let reloadEnd     = 0;
+  let shootPressed  = false; // fire button held (auto weapons)
+  let shootJustDown = false; // fire button just tapped (semi-auto, cleared each frame)
 
   // ── Safe zone ─────────────────────────────────────────────
   const ZONE_PHASES = [
@@ -1200,16 +1248,19 @@ window.royaleModule = (function () {
     const len=Math.sqrt(dx*dx+dy*dy)||1, max=40;
     aimJoy.dx=dx/Math.max(len,max);
     aimJoy.dy=dy/Math.max(len,max);
-    if (len>8) player.angle=Math.atan2(dy,dx);
+    if (len>8) {
+      // Portrait: canvas rotated 90° CW → screen +Y = game +X, screen +X = game -Y
+      if (canvas.height > canvas.width) {
+        player.angle = Math.atan2(-dx, dy);
+      } else {
+        player.angle = Math.atan2(dy, dx);
+      }
+    }
     joyShow(aimJoy.sx,aimJoy.sy,
       aimJoy.sx+dx/Math.max(len/max,1),
       aimJoy.sy+dy/Math.max(len/max,1),
       'rl-aim-base','rl-aim-knob');
-    // fire when aim stick pushed beyond threshold
-    if (len>20) {
-      const key = inventory[activeSlot];
-      if (key && WEAPONS[key]) tryFire(player.x,player.y,player.angle,key,localId);
-    }
+    // Aim stick no longer auto-fires — use the FIRE button
   }
   function onAimTouchEnd(t) {
     if (!aimJoy.active||t.identifier!==aimJoy.id) return;

@@ -2464,6 +2464,7 @@ function renderAIChat(view, provider) {
   view.innerHTML = `
     <div class="ai-chat-wrap">
       <div class="ai-chat-head" style="--ai-accent:${p.accent}">
+        <button class="ai-back-btn" onclick="aiGoHub()">← Back</button>
         <span class="ai-head-icon">${p.icon}</span>
         <div class="ai-head-info">
           <div class="ai-head-name">${p.name}</div>

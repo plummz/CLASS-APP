@@ -364,34 +364,52 @@ window.royaleModule = (function () {
     }
     const throwBtn = document.getElementById('rl-throw-btn');
     if (throwBtn) {
-      throwBtn.addEventListener('touchstart', (e) => {
-        e.stopPropagation();
-        // Cycle type on long-hold, throw on tap (handled by tracking)
-        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
-        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
-      }, {passive: true});
-      throwBtn.addEventListener('touchend', (e) => {
-        e.stopPropagation();
-        if (gamePhase === 'playing') {
-          // Find throwable in inventory and throw, or throw from ammo
-          const tKey = activeThrowable;
-          if (ammoCache[tKey] && ammoCache[tKey] > 0) {
-            ammoCache[tKey]--;
-            throwItem(player.x, player.y, player.angle, tKey, localId);
-          }
-        }
-      }, {passive: true});
-      throwBtn.addEventListener('mousedown', (e) => {
+      // Quick tap = throw current item. Hold 350ms = switch grenade ↔ molotov.
+      let throwHoldTimer = null;
+      let throwDidSwitch = false;
+
+      function doThrow() {
         if (gamePhase !== 'playing') return;
         const tKey = activeThrowable;
         if (ammoCache[tKey] && ammoCache[tKey] > 0) {
           ammoCache[tKey]--;
           throwItem(player.x, player.y, player.angle, tKey, localId);
-        } else {
-          activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
-          throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
         }
+      }
+      function doSwitch() {
+        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+        throwBtn.classList.add('pressed');
+        setTimeout(() => throwBtn.classList.remove('pressed'), 200);
+      }
+
+      throwBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        throwDidSwitch = false;
+        throwHoldTimer = setTimeout(() => {
+          throwDidSwitch = true;
+          doSwitch();
+        }, 350);
+      }, {passive: true});
+
+      throwBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        if (!throwDidSwitch) doThrow();
+        throwDidSwitch = false;
+      }, {passive: true});
+
+      throwBtn.addEventListener('touchcancel', () => {
+        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        throwDidSwitch = false;
+      }, {passive: true});
+
+      // Desktop: click = throw, right-click = switch
+      throwBtn.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { e.preventDefault(); doSwitch(); }
+        else doThrow();
       });
+      throwBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     hideLoading();

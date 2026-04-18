@@ -99,6 +99,9 @@ window.royaleModule = (function () {
         for (let bx = b.tx; bx < b.tx+b.tw; bx++)
           setTile(bx, by, T.FLOOR);
     }
+
+    generateTrees();
+    generateBoulders();
   }
 
   // ── Buildings ─────────────────────────────────────────────
@@ -140,6 +143,68 @@ window.royaleModule = (function () {
   // { x, y — world px; r — canopy radius px; type: 'oak'|'pine'|'bush' }
   let trees = [];
 
+  // ── Boulders ──────────────────────────────────────────────
+  let boulders = [];
+
+  // ── Blood splatters ───────────────────────────────────────
+  let bloodSplatters = [];
+
+  // ── Trail particles ───────────────────────────────────────
+  let trailParticles = [];
+
+  // ── Animated water time ───────────────────────────────────
+  let gameTime = 0;
+
+  // ── Active throwable type ─────────────────────────────────
+  let activeThrowable = 'grenade';
+
+  // ── End screen button rects ───────────────────────────────
+  let endBtnPlay = null, endBtnQuit = null;
+
+  // ── Skin menu state ───────────────────────────────────────
+  let skinBtnPlay = null, skinTabRects = [], skinItemRects = [];
+
+  // ── Skin & Coin system ────────────────────────────────────
+  const COIN_KEY = 'rl_coins_v1';
+  const SKIN_KEY = 'rl_skin_v1';
+  let coins = parseInt(localStorage.getItem(COIN_KEY)||'150', 10);
+  let playerSkin = JSON.parse(localStorage.getItem(SKIN_KEY)||'{"head":"default","body":"gray","pants":"dark","trail":"none"}');
+  function saveCoins() { try { localStorage.setItem(COIN_KEY, String(coins)); } catch(_){} }
+  function saveSkin()  { try { localStorage.setItem(SKIN_KEY, JSON.stringify(playerSkin)); } catch(_){} }
+
+  const HEADS = [
+    {id:'default',name:'Default',price:0,color:'#c8a070'},
+    {id:'chicken', name:'Chicken',price:150,color:'#f5c842',beak:true},
+    {id:'zombie',  name:'Zombie', price:200,color:'#7aaa6a',eyes:'red'},
+    {id:'skull',   name:'Skull',  price:250,color:'#e8e8e8',eyes:'black'},
+    {id:'ninja',   name:'Ninja',  price:300,color:'#2a2a2a',mask:true},
+    {id:'crown',   name:'Crown',  price:500,color:'#c8a070',crown:true},
+  ];
+  const BODIES = [
+    {id:'gray',  name:'Gray',  price:0,   color:'#6a7a8a'},
+    {id:'red',   name:'Red',   price:100, color:'#c83030'},
+    {id:'blue',  name:'Blue',  price:100, color:'#3060c0'},
+    {id:'green', name:'Green', price:100, color:'#308050'},
+    {id:'gold',  name:'Gold',  price:300, color:'#c89820'},
+    {id:'camo',  name:'Camo',  price:250, color:'#4a6a3a'},
+  ];
+  const PANTS = [
+    {id:'dark',  name:'Dark',  price:0,  color:'#2a2a3a'},
+    {id:'tan',   name:'Tan',   price:50, color:'#8a7a5a'},
+    {id:'black', name:'Black', price:80, color:'#151515'},
+    {id:'camo',  name:'Camo',  price:150,color:'#3a5a2a'},
+    {id:'white', name:'White', price:120,color:'#d8d8d8'},
+  ];
+  const TRAILS = [
+    {id:'none',    name:'None',    price:0},
+    {id:'fire',    name:'Fire',    price:400},
+    {id:'sparkle', name:'Sparkle', price:300},
+    {id:'rainbow', name:'Rainbow', price:600},
+  ];
+  let skinMenuTab = 'head';
+  let ownedSkins = JSON.parse(localStorage.getItem('rl_owned_v1')||'{"head":["default"],"body":["gray"],"pants":["dark"],"trail":["none"]}');
+  function saveOwned() { try { localStorage.setItem('rl_owned_v1', JSON.stringify(ownedSkins)); } catch(_){} }
+
   function generateTrees() {
     trees = [];
     const rng = seededRng(77);
@@ -173,6 +238,19 @@ window.royaleModule = (function () {
     return t === T.GRASS || t === T.DIRT;
   }
 
+  function generateBoulders() {
+    boulders = [];
+    const rng = seededRng(99);
+    for (let i = 0; i < 18; i++) {
+      const tx = 15 + rng()*(MAP_W-30), ty = 15 + rng()*(MAP_H-30);
+      const ix = Math.floor(tx), iy = Math.floor(ty);
+      if (!mapTiles[iy] || mapTiles[iy][ix] === T.WATER || mapTiles[iy][ix] === T.DEEP_WATER) continue;
+      let near = false;
+      for (const b of BUILDINGS) { if (tx>b.tx-3&&tx<b.tx+b.tw+3&&ty>b.ty-3&&ty<b.ty+b.th+3) { near=true; break; } }
+      if (!near) boulders.push({ x: tx*TILE, y: ty*TILE, r: 22+rng()*16 });
+    }
+  }
+
   // ── Player ────────────────────────────────────────────────
   let player = {
     x: 100*TILE, y: 100*TILE,
@@ -185,7 +263,7 @@ window.royaleModule = (function () {
   };
 
   // ── Game state ────────────────────────────────────────────
-  let gamePhase = 'parachute'; // 'parachute'|'playing'|'dead'|'win'
+  let gamePhase = 'skinSelect'; // 'skinSelect'|'parachute'|'playing'|'dead'|'win'
   let gameEndTimer = 0;
   let totalKills   = 0;
 
@@ -226,6 +304,7 @@ window.royaleModule = (function () {
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
+  const keysJustDown = new Set(); // cleared each frame — used for semi-auto fire
 
   // ── Left joystick (move) ──────────────────────────────────
   const joy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
@@ -237,12 +316,12 @@ window.royaleModule = (function () {
     ctx = canvas.getContext('2d');
 
     document.body.classList.add('rl-active');
-    forceLandscape();
+    checkOrientation(); // set portrait rotation class immediately
 
-    if (!mapTiles) { generateMap(); generateTrees(); }
+    if (!mapTiles) { generateMap(); }
 
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
-    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
     paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
@@ -252,8 +331,8 @@ window.royaleModule = (function () {
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); initMultiplayer();
 
-    resize();
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup',   onKey);
     document.addEventListener('keydown', onAnyKeyForExit);
@@ -263,6 +342,57 @@ window.royaleModule = (function () {
     canvas.addEventListener('touchmove',  onTouchMove,  {passive:false});
     canvas.addEventListener('touchend',   onTouchEnd,   {passive:false});
     canvas.addEventListener('touchcancel',onTouchEnd,   {passive:false});
+
+    // Fire button: touchstart = press, touchend = release
+    const fireBtn = document.getElementById('rl-fire-btn');
+    if (fireBtn) {
+      fireBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        if (gamePhase === 'parachute' && !paraDeployed) { paraDeployed = true; return; }
+        shootPressed = true; shootJustDown = true;
+      }, {passive: true});
+      fireBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation(); shootPressed = false;
+      }, {passive: true});
+      fireBtn.addEventListener('mousedown', () => { shootPressed = true; shootJustDown = true; });
+      fireBtn.addEventListener('mouseup',   () => { shootPressed = false; });
+    }
+    const reloadBtn = document.getElementById('rl-reload-btn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); startReload(); }, {passive: true});
+      reloadBtn.addEventListener('mousedown', () => startReload());
+    }
+    const throwBtn = document.getElementById('rl-throw-btn');
+    if (throwBtn) {
+      throwBtn.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        // Cycle type on long-hold, throw on tap (handled by tracking)
+        activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+        throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+      }, {passive: true});
+      throwBtn.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        if (gamePhase === 'playing') {
+          // Find throwable in inventory and throw, or throw from ammo
+          const tKey = activeThrowable;
+          if (ammoCache[tKey] && ammoCache[tKey] > 0) {
+            ammoCache[tKey]--;
+            throwItem(player.x, player.y, player.angle, tKey, localId);
+          }
+        }
+      }, {passive: true});
+      throwBtn.addEventListener('mousedown', (e) => {
+        if (gamePhase !== 'playing') return;
+        const tKey = activeThrowable;
+        if (ammoCache[tKey] && ammoCache[tKey] > 0) {
+          ammoCache[tKey]--;
+          throwItem(player.x, player.y, player.angle, tKey, localId);
+        } else {
+          activeThrowable = activeThrowable === 'grenade' ? 'molotov' : 'grenade';
+          throwBtn.textContent = activeThrowable === 'grenade' ? '💣' : '🍾';
+        }
+      });
+    }
 
     hideLoading();
 
@@ -274,7 +404,8 @@ window.royaleModule = (function () {
   function destroy() {
     running = false;
     if (animId) { cancelAnimationFrame(animId); animId = null; }
-    window.removeEventListener('resize', resize);
+    window.removeEventListener('resize', checkOrientation);
+    window.removeEventListener('orientationchange', checkOrientation);
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup',   onKey);
     document.removeEventListener('keydown', onAnyKeyForExit);
@@ -289,19 +420,22 @@ window.royaleModule = (function () {
       canvas.removeEventListener('touchcancel',onTouchEnd);
     }
     document.body.classList.remove('rl-active');
-    try { screen.orientation.unlock(); } catch(_) {}
+    shootPressed = false; shootJustDown = false;
     destroyMultiplayer();
   }
 
-  function forceLandscape() {
-    try { screen.orientation.lock('landscape').catch(()=>{}); } catch(_) {}
+  function checkOrientation() {
+    resize(); // canvas transform handles portrait; no CSS class needed
   }
 
   function resize() {
-    canvasW = window.innerWidth;
-    canvasH = window.innerHeight;
-    canvas.width  = canvasW;
-    canvas.height = canvasH;
+    // Canvas always matches the physical screen size
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Game logic always uses landscape dims (swapped when portrait)
+    const port = canvas.height > canvas.width;
+    canvasW = port ? canvas.height : canvas.width;
+    canvasH = port ? canvas.width  : canvas.height;
   }
 
   function hideLoading() {
@@ -312,20 +446,34 @@ window.royaleModule = (function () {
   // ── Input handlers ────────────────────────────────────────
   function onKey(e) {
     keys[e.code] = e.type === 'keydown';
-    if (e.type==='keydown' && e.code==='Space' && gamePhase==='parachute' && !paraDeployed) {
-      paraDeployed=true;
+    if (e.type === 'keydown') {
+      keysJustDown.add(e.code);
+      if (e.code === 'Space' && gamePhase === 'parachute' && !paraDeployed) paraDeployed = true;
     }
   }
 
   function onTouchStart(e) {
     e.preventDefault();
+    // Skin menu: handle taps immediately on touchstart for responsiveness
+    if (gamePhase === 'skinSelect') {
+      const rect=canvas.getBoundingClientRect();
+      for (const t of e.changedTouches) {
+        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
+        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        const port=canvas.height>canvas.width;
+        const gx=port?sy:sx, gy=port?(canvas.width-sx):sy;
+        checkSkinMenuClick(gx, gy);
+      }
+      return;
+    }
+    const splitX = window.innerWidth * 0.5; // always screen space
     for (const t of e.changedTouches) {
-      if (t.clientX < canvasW * 0.5 && !joy.active) {
+      if (t.clientX < splitX && !joy.active) {
         joy.active=true; joy.id=t.identifier;
         joy.sx=joy.cx=t.clientX; joy.sy=joy.cy=t.clientY;
         joy.dx=joy.dy=0;
         joyShow(joy.sx,joy.sy,joy.cx,joy.cy,'rl-joy-base','rl-joy-knob');
-      } else if (t.clientX >= canvasW*0.5) {
+      } else if (t.clientX >= splitX) {
         if (gamePhase==='parachute' && !paraDeployed) { paraDeployed=true; }
         else onAimTouchStart(t);
       }
@@ -358,6 +506,15 @@ window.royaleModule = (function () {
         joyHide('rl-joy-base','rl-joy-knob');
       } else {
         onAimTouchEnd(t);
+        // Convert touch screen coords to game coords for button checks
+        const rect=canvas.getBoundingClientRect();
+        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
+        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        const port = canvas.height > canvas.width;
+        const gx = port ? sy : sx;
+        const gy = port ? (canvas.width - sx) : sy;
+        checkEndBtnClick(gx, gy);
+        if (gamePhase==='playing') checkWeaponSlotClick(gx, gy);
       }
     }
   }
@@ -383,9 +540,14 @@ window.royaleModule = (function () {
   }
 
   function update(dt) {
+    gameTime += dt;
     updateShake(dt);
     updateSpectate(dt);
     updateDmgNumbers(dt);
+    bloodSplatters = bloodSplatters.filter(s => { s.life -= dt; return s.life > 0; });
+
+    // Skin select — no game logic
+    if (gamePhase === 'skinSelect') return;
 
     // Parachute phase
     if (gamePhase === 'parachute') {
@@ -411,7 +573,16 @@ window.royaleModule = (function () {
     if (keys['KeyS']||keys['ArrowDown'])  my += 1;
     if (keys['KeyA']||keys['ArrowLeft'])  mx -= 1;
     if (keys['KeyD']||keys['ArrowRight']) mx += 1;
-    if (joy.active) { mx += joy.dx; my += joy.dy; }
+    if (joy.active) {
+      // Portrait: canvas is rotated 90° CW in render(), so screen +Y = game +X, screen +X = game -Y
+      if (canvas.height > canvas.width) {
+        mx += joy.dy;
+        my -= joy.dx;
+      } else {
+        mx += joy.dx;
+        my += joy.dy;
+      }
+    }
 
     const len = Math.sqrt(mx*mx+my*my);
     if (len > 1) { mx /= len; my /= len; }
@@ -434,8 +605,26 @@ window.royaleModule = (function () {
       }
     }
 
+    // Boulder collision
+    for (const bo of boulders) {
+      const bdx = player.x - bo.x, bdy = player.y - bo.y;
+      const bd = Math.sqrt(bdx*bdx+bdy*bdy);
+      if (bd < PLAYER_R + bo.r) {
+        const push = (PLAYER_R + bo.r - bd) / bd || 0;
+        player.x += bdx * push; player.y += bdy * push;
+      }
+    }
+
     // Update facing angle when moving
     if (len > 0.05) player.angle = Math.atan2(my, mx);
+
+    // Trail particles
+    if (len > 0.1 && playerSkin.trail !== 'none') {
+      const colors = {fire:['#ff6600','#ff3300','#ffaa00'],sparkle:['#ffffff','#ffffaa','#aaaaff'],rainbow:[`hsl(${(gameTime*200)%360},100%,60%)`,'#fff',`hsl(${(gameTime*200+120)%360},100%,60%)`]};
+      const cols = colors[playerSkin.trail]||['#fff'];
+      trailParticles.push({x:player.x+(Math.random()-0.5)*8, y:player.y+(Math.random()-0.5)*8, r:2+Math.random()*3, col:cols[Math.floor(Math.random()*cols.length)], life:0.5+Math.random()*0.4, maxLife:0.9});
+    }
+    trailParticles = trailParticles.filter(p=>{p.life-=0.016; return p.life>0;});
 
     // Check bush/tree hiding
     player.hidden = false;
@@ -451,9 +640,16 @@ window.royaleModule = (function () {
     cam.x += (player.x - cam.x) * ls * dt;
     cam.y += (player.y - cam.y) * ls * dt;
 
-    // ── Keyboard fire (space / mouse implied via F key)
+    // ── Fire — auto: held button/key; semi-auto: single tap per press
     const wkey = inventory[activeSlot];
-    if (wkey && keys['Space'] && WEAPONS[wkey]) tryFire(player.x,player.y,player.angle,wkey,localId);
+    if (wkey && WEAPONS[wkey]) {
+      const w = WEAPONS[wkey];
+      const held  = keys['Space'] || shootPressed;
+      const tapped = keysJustDown.has('Space') || shootJustDown;
+      if (w.auto ? held : tapped) tryFire(player.x, player.y, player.angle, wkey, localId);
+    }
+    keysJustDown.clear();
+    shootJustDown = false;
     if (keys['KeyR']) startReload();
     if (keys['Digit1']) activeSlot=0;
     if (keys['Digit2']) activeSlot=1;
@@ -484,7 +680,18 @@ window.royaleModule = (function () {
           case T.GRASS: {
             ctx.fillStyle = GRASS_V[(tx*3+ty*7)%GRASS_V.length];
             ctx.fillRect(px,py,TILE,TILE);
-            if ((tx+ty)%5===0) {
+            // Subtle shade variation
+            if ((tx*5+ty*3)%7===0) {
+              ctx.fillStyle='rgba(0,0,0,0.06)';
+              ctx.fillRect(px,py,TILE,TILE);
+            }
+            // Grass blades
+            if ((tx*7+ty*11)%9===0) {
+              ctx.fillStyle='rgba(80,160,40,0.55)';
+              ctx.fillRect(px+6,py+4,2,8);
+              ctx.fillRect(px+14,py+8,2,6);
+              ctx.fillRect(px+22,py+5,2,7);
+            } else if ((tx+ty)%5===0) {
               ctx.fillStyle='rgba(0,0,0,0.04)';
               ctx.fillRect(px+3,py+5,2,TILE-10);
             }
@@ -509,13 +716,21 @@ window.royaleModule = (function () {
             break;
           }
           case T.WATER: {
-            ctx.fillStyle='#2a6aa0'; ctx.fillRect(px,py,TILE,TILE);
-            ctx.fillStyle='rgba(100,180,255,0.14)';
-            ctx.fillRect(px+4,py+4,TILE-8,4);
+            const wave = Math.sin(gameTime * 1.8 + tx * 0.6 + ty * 0.4) * 0.5 + 0.5;
+            ctx.fillStyle=`rgb(${30+wave*15|0},${100+wave*30|0},${160+wave*20|0})`;
+            ctx.fillRect(px,py,TILE,TILE);
+            ctx.fillStyle=`rgba(140,220,255,${0.08+wave*0.14})`;
+            ctx.fillRect(px+2, py+4+wave*6|0, TILE-4, 2);
+            if ((tx*3+ty*7+Math.floor(gameTime*3))%11===0) {
+              ctx.fillStyle=`rgba(255,255,255,${0.5+wave*0.5})`;
+              ctx.fillRect(px+(tx*5)%20+4, py+(ty*7)%18+4, 2, 2);
+            }
             break;
           }
           case T.DEEP_WATER: {
-            ctx.fillStyle='#1a3a6a'; ctx.fillRect(px,py,TILE,TILE);
+            const wave = Math.sin(gameTime * 1.4 + tx * 0.5 + ty * 0.6) * 0.5 + 0.5;
+            ctx.fillStyle=`rgb(${18+wave*8|0},${48+wave*15|0},${100+wave*15|0})`;
+            ctx.fillRect(px,py,TILE,TILE);
             break;
           }
           case T.FLOOR: {
@@ -551,53 +766,85 @@ window.royaleModule = (function () {
   }
 
   function drawBuilding(px, py, pw, ph, roof, wall) {
-    // Ground shadow
-    ctx.fillStyle='rgba(0,0,0,0.16)';
+    // Drop shadow
+    ctx.fillStyle='rgba(0,0,0,0.20)';
     ctx.beginPath();
-    ctx.ellipse(px+pw/2, py+ph+WALL_H/2, pw/2+5, WALL_H/2+4, 0,0,Math.PI*2);
+    ctx.ellipse(px+pw/2+8, py+ph+WALL_H+4, pw/2+10, WALL_H/2+5, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // South wall
+    // South wall with texture
     ctx.fillStyle = wall;
     ctx.fillRect(px, py+ph, pw, WALL_H);
-    ctx.fillStyle='rgba(0,0,0,0.22)';
-    ctx.fillRect(px, py+ph+WALL_H-3, pw, 3);
+    // Brick pattern on south wall
+    ctx.fillStyle='rgba(0,0,0,0.08)';
+    for (let brow=0; brow<2; brow++) {
+      const by2 = py+ph + brow*(WALL_H/2);
+      const off = brow%2===0 ? 0 : 14;
+      for (let bx2=px+off; bx2<px+pw; bx2+=28) {
+        ctx.fillRect(bx2, by2, 26, WALL_H/2-1);
+      }
+    }
+    // Windows on south wall
     drawWallWindows(px, py+ph, pw, WALL_H);
+    // Door (center-ish of south wall)
+    const dw=10, dh=WALL_H-4, dx=px+pw/2-dw/2;
+    ctx.fillStyle='rgba(20,12,5,0.85)';
+    ctx.fillRect(dx, py+ph+2, dw, dh);
+    ctx.strokeStyle='rgba(160,120,60,0.6)'; ctx.lineWidth=1;
+    ctx.strokeRect(dx, py+ph+2, dw, dh);
+    ctx.fillStyle='rgba(200,170,80,0.7)';
+    ctx.fillRect(dx+dw-3, py+ph+dh/2, 2, 2);
+    // Wall bottom shadow
+    ctx.fillStyle='rgba(0,0,0,0.24)';
+    ctx.fillRect(px, py+ph+WALL_H-3, pw, 3);
 
-    // East wall (darker)
-    ctx.fillStyle = shade(wall,-18);
-    ctx.fillRect(px+pw, py+WALL_H/2, WALL_DEPTH, ph);
-    ctx.fillStyle='rgba(0,0,0,0.18)';
-    ctx.fillRect(px+pw+WALL_DEPTH-2, py+WALL_H/2, 2, ph);
+    // East wall (right side depth)
+    const wallD = WALL_DEPTH + 4;
+    ctx.fillStyle = shade(wall,-30);
+    ctx.fillRect(px+pw, py+WALL_H/2, wallD, ph+WALL_H/2);
+    ctx.fillStyle='rgba(0,0,0,0.22)';
+    ctx.fillRect(px+pw+wallD-2, py+WALL_H/2, 2, ph+WALL_H/2);
 
-    // Roof
+    // Roof face
     ctx.fillStyle = roof;
     ctx.fillRect(px, py, pw, ph);
-    // Roof highlight edge
-    ctx.fillStyle = shade(roof, 28);
-    ctx.fillRect(px, py, pw, 3);
-    ctx.fillRect(px, py, 3, ph);
-    // Shingle lines
-    ctx.fillStyle = shade(roof,-14);
-    for (let ry=py+8; ry<py+ph; ry+=8) ctx.fillRect(px+1,ry,pw-2,1);
-    ctx.fillStyle = shade(roof,-10);
-    for (let rx=px+16; rx<px+pw-1; rx+=16) ctx.fillRect(rx,py+1,1,ph-2);
+    // Roof tiles pattern
+    ctx.fillStyle = shade(roof,-18);
+    for (let ry=py+6; ry<py+ph; ry+=7) ctx.fillRect(px+1, ry, pw-2, 1);
+    ctx.fillStyle = shade(roof,-8);
+    for (let rx=px+14; rx<px+pw-1; rx+=14) ctx.fillRect(rx, py+1, 1, ph-2);
+    // Roof highlight
+    ctx.fillStyle = shade(roof,36);
+    ctx.fillRect(px, py, pw, 2);
+    ctx.fillRect(px, py, 2, ph);
     // Roof border
-    ctx.strokeStyle = shade(roof,22);
-    ctx.lineWidth=1;
-    ctx.strokeRect(px+0.5,py+0.5,pw-1,ph-1);
+    ctx.strokeStyle = shade(roof,20); ctx.lineWidth=1.5;
+    ctx.strokeRect(px+0.5, py+0.5, pw-1, ph-1);
+    // Chimney
+    if (pw > 64) {
+      const cx2 = px+pw*0.75, cy2 = py+ph*0.2;
+      ctx.fillStyle=shade(wall,8); ctx.fillRect(cx2,cy2-10,10,12);
+      ctx.fillStyle=shade(wall,-10); ctx.fillRect(cx2+8,cy2-10,3,12);
+      ctx.fillStyle='#222'; ctx.fillRect(cx2-1,cy2-11,12,3);
+    }
   }
 
   function drawWallWindows(px, py, pw, wh) {
-    const ww=8, whh=wh-6;
-    for (let wx=px+10; wx+ww<px+pw-4; wx+=20) {
-      ctx.fillStyle='rgba(20,30,60,0.7)';
+    const ww=8, whh=wh-7;
+    for (let wx=px+18; wx+ww<px+pw-18; wx+=22) {
+      // Window frame
+      ctx.fillStyle='rgba(120,90,40,0.6)';
+      ctx.fillRect(wx-1, py+2, ww+2, whh+2);
+      // Glass
+      const lit = Math.random() > 0.4;
+      ctx.fillStyle= lit ? 'rgba(255,240,160,0.55)' : 'rgba(20,30,60,0.8)';
       ctx.fillRect(wx, py+3, ww, whh);
-      ctx.strokeStyle='rgba(180,160,100,0.55)';
-      ctx.lineWidth=1;
-      ctx.strokeRect(wx, py+3, ww, whh);
-      ctx.fillStyle='rgba(255,255,255,0.18)';
+      // Glass reflection
+      ctx.fillStyle='rgba(255,255,255,0.22)';
       ctx.fillRect(wx+1, py+4, 2, 3);
+      // Window sill
+      ctx.fillStyle='rgba(180,150,80,0.4)';
+      ctx.fillRect(wx-1, py+3+whh, ww+2, 2);
     }
   }
 
@@ -682,6 +929,43 @@ window.royaleModule = (function () {
     }
   }
 
+  // ── Boulder rendering ─────────────────────────────────────
+  function drawBoulders() {
+    for (const bo of boulders) {
+      ctx.fillStyle='rgba(0,0,0,0.22)';
+      ctx.beginPath(); ctx.ellipse(bo.x+bo.r*0.3, bo.y+bo.r*0.25, bo.r*0.9, bo.r*0.4, 0, 0, Math.PI*2); ctx.fill();
+      const g = ctx.createRadialGradient(bo.x-bo.r*0.25, bo.y-bo.r*0.3, 0, bo.x, bo.y, bo.r);
+      g.addColorStop(0,'#9a9a9a'); g.addColorStop(0.5,'#6a6a6a'); g.addColorStop(1,'#3a3a3a');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.ellipse(bo.x, bo.y, bo.r, bo.r*0.8, -0.2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.ellipse(bo.x-bo.r*0.25, bo.y-bo.r*0.28, bo.r*0.35, bo.r*0.22, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(bo.x-bo.r*0.1, bo.y-bo.r*0.3); ctx.lineTo(bo.x+bo.r*0.2, bo.y+bo.r*0.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bo.x+bo.r*0.15, bo.y-bo.r*0.2); ctx.lineTo(bo.x-bo.r*0.1, bo.y+bo.r*0.2); ctx.stroke();
+    }
+  }
+
+  // ── Blood effects ─────────────────────────────────────────
+  function spawnBlood(x, y) {
+    const parts = [];
+    for (let i=0; i<12; i++) {
+      const a = Math.random()*Math.PI*2, d = 4+Math.random()*22;
+      parts.push({ ox:Math.cos(a)*d, oy:Math.sin(a)*d, r:2+Math.random()*4, alpha:0.7+Math.random()*0.3 });
+    }
+    bloodSplatters.push({ x, y, particles:parts, life:8, maxLife:8 });
+  }
+
+  function drawBloodSplatters() {
+    for (const s of bloodSplatters) {
+      const fade = s.life / s.maxLife;
+      for (const p of s.particles) {
+        ctx.fillStyle = `rgba(180,0,0,${p.alpha * fade * 0.85})`;
+        ctx.beginPath(); ctx.arc(s.x+p.ox, s.y+p.oy, p.r, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
   // ── Parachute render ─────────────────────────────────────
   function drawParachute() {
     if (paraLanded) return;
@@ -726,6 +1010,9 @@ window.royaleModule = (function () {
   // ── Player rendering ──────────────────────────────────────
   function drawPlayer() {
     const sc = STANCE_HEIGHT[stance];
+    const hd=HEADS.find(h=>h.id===playerSkin.head)||HEADS[0];
+    const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
+    const pd=PANTS.find(p=>p.id===playerSkin.pants)||PANTS[0];
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.scale(1, sc);
@@ -740,9 +1027,12 @@ window.royaleModule = (function () {
     ctx.beginPath(); ctx.ellipse(-7,2,3,5,0.3,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse( 7,2,3,5,-0.3,0,Math.PI*2); ctx.fill();
 
-    // Body (vest)
-    ctx.fillStyle='#3a3a5a';
+    // Body
+    ctx.fillStyle=bd.color;
     ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    // Pants
+    ctx.fillStyle=pd.color;
+    ctx.beginPath(); ctx.ellipse(0,8,6,5,0,0,Math.PI*2); ctx.fill();
     // Vest highlight
     ctx.fillStyle='rgba(255,255,255,0.07)';
     ctx.beginPath(); ctx.ellipse(-1,-1,4,6,0,0,Math.PI*2); ctx.fill();
@@ -750,17 +1040,41 @@ window.royaleModule = (function () {
     // Rifle barrel
     ctx.fillStyle='#222';
     ctx.fillRect(-1.5,-20,3,14);
-    // Rifle body
     ctx.fillRect(-2,-12,4,8);
 
     // Head
-    ctx.fillStyle='#c8a070';
+    ctx.fillStyle=hd.color;
     ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
-    // Helmet
-    ctx.fillStyle='#4a4a2a';
-    ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
-    // Helmet brim
-    ctx.fillRect(-7,-9,14,2);
+
+    if (hd.crown) {
+      ctx.fillStyle='#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(-4,-13); ctx.lineTo(-2,-17); ctx.lineTo(0,-14); ctx.lineTo(2,-17); ctx.lineTo(4,-13); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle='rgba(255,255,100,0.6)'; ctx.lineWidth=0.8; ctx.strokeRect(-4,-14,8,2);
+    } else if (hd.beak) {
+      ctx.fillStyle='#ff8c00';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#cc6000';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-8); ctx.closePath(); ctx.fill();
+    } else if (hd.mask) {
+      ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(-4,-12,8,7);
+      ctx.fillStyle='rgba(255,0,0,0.25)'; ctx.fillRect(-4,-12,8,2);
+    } else {
+      ctx.fillStyle='#4a4a2a';
+      ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
+      ctx.fillRect(-7,-9,14,2);
+    }
+
+    if (hd.eyes==='red') {
+      ctx.fillStyle='rgba(255,30,30,0.9)';
+      ctx.beginPath(); ctx.arc(-2,-9,1.2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.2,0,Math.PI*2); ctx.fill();
+    } else if (hd.eyes==='black') {
+      ctx.fillStyle='#080808';
+      ctx.beginPath(); ctx.arc(-2,-9,1.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.5,0,Math.PI*2); ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -793,15 +1107,15 @@ window.royaleModule = (function () {
   }
 
   function drawKillFeed() {
-    let ky=80;
+    let ky=canvasH-80; // game bottom-left = portrait top-left area (safe)
     for (const kf of killFeed) {
       const alpha=Math.min(1,kf.life);
       ctx.fillStyle=`rgba(0,0,0,${alpha*0.5})`;
-      ctx.fillRect(canvasW-210,ky-14,200,18);
+      ctx.fillRect(10,ky-14,200,18);
       ctx.fillStyle=`rgba(255,255,255,${alpha})`;
-      ctx.font='11px monospace'; ctx.textAlign='right';
-      ctx.fillText(kf.text, canvasW-10, ky);
-      ky+=22;
+      ctx.font='11px monospace'; ctx.textAlign='left';
+      ctx.fillText(kf.text, 14, ky);
+      ky-=22;
     }
     ctx.textAlign='left';
   }
@@ -818,8 +1132,14 @@ window.royaleModule = (function () {
     ctx.fillStyle=zone.shrinking?'rgba(0,100,255,0.7)':'rgba(0,180,80,0.5)';
     ctx.fillRect(bx,by,bw*pct,bh);
     ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,bh);
+    const aliveTotal = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length + 1;
     ctx.fillStyle='#fff'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
-    ctx.fillText(`${label}  ${secs}s  (P${zone.phase+1})`, canvasW/2, by+bh-3);
+    ctx.fillText(`${label}  ${secs}s`, canvasW/2, by+bh-3);
+    ctx.textAlign='left';
+    // Alive count badge (right of zone bar)
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx+bw+6, by-2, 52, bh+4);
+    ctx.fillStyle='#8fce50'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText(`👥 ${aliveTotal}`, bx+bw+32, by+bh-3);
     ctx.textAlign='left';
   }
 
@@ -860,25 +1180,26 @@ window.royaleModule = (function () {
       ctx.fillText(`ARMOR ${Math.ceil(player.armor)}`, ax+4, ay+9);
     }
 
-    // ── Stance indicator
+    // ── Stance + Hidden indicators (stacked, no overlap)
+    let badgeY = canvasH - 80;
     if (stance !== 'stand') {
       ctx.fillStyle = stance==='prone' ? 'rgba(200,100,0,0.65)' : 'rgba(0,100,200,0.55)';
-      ctx.fillRect(20, canvasH-80, 76, 18);
+      ctx.fillRect(20, badgeY, 76, 18);
       ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
-      ctx.fillText(stance.toUpperCase(), 28, canvasH-67);
+      ctx.fillText(stance.toUpperCase(), 28, badgeY+13);
+      badgeY -= 22;
     }
-
-    // ── Hidden indicator
     if (player.hidden) {
       ctx.fillStyle='rgba(0,160,0,0.55)';
-      ctx.fillRect(20,canvasH-76,76,18);
+      ctx.fillRect(20, badgeY, 76, 18);
       ctx.fillStyle='#fff'; ctx.font='bold 10px monospace';
-      ctx.fillText('HIDDEN',27,canvasH-63);
+      ctx.fillText('HIDDEN', 27, badgeY+13);
     }
 
-    // ── Minimap
+    // ── Minimap — positioned at game top-LEFT so it appears at portrait top-right,
+    // safely away from the FIRE/RELOAD buttons at portrait bottom-right
     if (!mmCanvas) buildMinimap();
-    const mx=canvasW-130, my=10, mw=120, mh=120;
+    const mx=10, my=10, mw=110, mh=110;
     ctx.globalAlpha=0.85;
     ctx.fillStyle='#000'; ctx.fillRect(mx,my,mw,mh);
     ctx.drawImage(mmCanvas,mx,my);
@@ -886,6 +1207,24 @@ window.royaleModule = (function () {
     // Player dot
     const pdx=mx+(player.x/(MAP_W*TILE))*mw;
     const pdy=my+(player.y/(MAP_H*TILE))*mh;
+    // Zone ring on minimap
+    const mmScale = mw / (MAP_W*TILE);
+    const zmx = mx + zone.cx*mmScale;
+    const zmy = my + zone.cy*mmScale;
+    const zmr = zone.r * mmScale;
+    ctx.strokeStyle='rgba(0,120,255,0.7)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(zmx,zmy,Math.max(zmr,1),0,Math.PI*2); ctx.stroke();
+
+    // Bot dots on minimap
+    for (const bt of bots) {
+      if (!bt.alive) continue;
+      ctx.fillStyle='#f55';
+      ctx.beginPath();
+      ctx.arc(mx+bt.x*mmScale, my+bt.y*mmScale, 2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Player dot
     ctx.fillStyle='#fff';
     ctx.beginPath(); ctx.arc(pdx,pdy,3,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.5)';
@@ -906,7 +1245,25 @@ window.royaleModule = (function () {
 
   // ── Render ────────────────────────────────────────────────
   function render() {
-    ctx.clearRect(0,0,canvasW,canvasH);
+    // Clear the physical screen (canvas.width × canvas.height = screen size)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Portrait: rotate canvas 90° CW so the game renders in landscape orientation.
+    // canvas.width < canvas.height means portrait phone.
+    // After this transform, all drawing uses canvasW × canvasH (landscape game dims).
+    const port = canvas.height > canvas.width;
+    if (port) {
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+    }
+
+    // Skin select screen — render locker UI then return
+    if (gamePhase === 'skinSelect') {
+      drawSkinMenu();
+      if (port) ctx.restore();
+      return;
+    }
 
     // Use spectate cam when dead
     const renderCam = (gamePhase==='dead' && spectateTarget)
@@ -933,12 +1290,21 @@ window.royaleModule = (function () {
     drawCrates();
     drawFires();
     drawTreeBases(wx1,wx2,wy1,wy2);
+    drawBoulders();
     drawBuildings(ty1, ty2);
     drawBots();
     drawThrowables();
 
     // Remote players
     for (const id in remotePlayers) drawRemotePlayer(remotePlayers[id]);
+
+    // Trail particles (drawn behind player)
+    for (const p of trailParticles) {
+      ctx.globalAlpha = Math.max(0, p.life/p.maxLife)*0.7;
+      ctx.fillStyle = p.col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(p.life/p.maxLife), 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
 
     // Local player — drawn before canopies so trees overlay it when hidden
     if (!player.hidden) drawPlayer();
@@ -953,6 +1319,7 @@ window.royaleModule = (function () {
 
     drawBullets();
     drawExplosions();
+    drawBloodSplatters();
     drawAirdrop();
     drawMuzzleFlash();
     drawDmgNumbers();
@@ -961,8 +1328,10 @@ window.royaleModule = (function () {
     if (gamePhase==='parachute') drawParachute();
 
     ctx.restore();
-    drawHUD();
-    drawCrosshair();
+    if (gamePhase !== 'dead' && gamePhase !== 'win') {
+      drawHUD();
+      drawCrosshair();
+    }
     drawSpectateTag();
     drawEndScreen();
 
@@ -973,6 +1342,9 @@ window.royaleModule = (function () {
       ctx.fillText('SPACE / tap right side to deploy chute', canvasW/2, canvasH/2+2);
       ctx.textAlign='left';
     }
+
+    // Close portrait rotation transform
+    if (port) ctx.restore();
   }
 
   // ── Weapon definitions ────────────────────────────────────
@@ -1003,9 +1375,11 @@ window.royaleModule = (function () {
   let inventory  = [];            // weapon keys player is holding (max 2)
   let activeSlot = 0;
   let ammoCache  = {};            // { weaponKey: count }
-  let lastFireT  = 0;
-  let reloading  = false;
-  let reloadEnd  = 0;
+  let lastFireT     = {}; // keyed by weaponKey so ROF doesn't bleed between weapons
+  let reloading     = false;
+  let reloadEnd     = 0;
+  let shootPressed  = false; // fire button held (auto weapons)
+  let shootJustDown = false; // fire button just tapped (semi-auto, cleared each frame)
 
   // ── Safe zone ─────────────────────────────────────────────
   const ZONE_PHASES = [
@@ -1063,12 +1437,19 @@ window.royaleModule = (function () {
   function spawnBots() {
     bots = [];
     const rng = seededRng(55);
-    const names = ['Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hawk'];
-    for (let i = 0; i < 8; i++) {
-      const tx = 20 + rng()*(MAP_W-40), ty = 20 + rng()*(MAP_H-40);
-      const key = LOOT_POOL[Math.floor(rng()*5)]; // bots get basic weapons
+    const names = [
+      'Alpha','Bravo','Charlie','Delta','Echo','Foxtrot','Ghost','Hawk',
+      'Indigo','Juliet','Kilo','Lima','Mike','Nova','Oscar','Phoenix',
+      'Quinn','Ranger','Sierra','Tango','Umbra','Victor','Whiskey','Xavier',
+      'Yankee','Zulu','Apex','Blade','Cipher','Dusk','Ember','Frost',
+      'Glitch','Hydra','Ivory','Jinx','Karma','Lynx',
+    ]; // 38 names → 38 bots + 1 player = 39 total (lobby of 40 fills with remotes)
+    const weaponKeys = ['pistol','smg','ar','shotgun','revolver'];
+    for (let i = 0; i < 39; i++) {
+      const tx = 10 + rng()*(MAP_W-20), ty = 10 + rng()*(MAP_H-20);
+      const key = weaponKeys[Math.floor(rng()*weaponKeys.length)];
       bots.push({
-        id:'bot_'+i, name:names[i],
+        id:'bot_'+i, name: names[i] || ('Bot'+(i+1)),
         x:tx*TILE, y:ty*TILE, angle:0,
         hp:100, maxHp:100,
         weapon:key, ammo: WEAPONS[key].ammo,
@@ -1095,10 +1476,10 @@ window.royaleModule = (function () {
     const now = performance.now();
     if (ownerId === localId) {
       if (reloading) return;
-      if (now - lastFireT < w.rof) return;
+      if (now - (lastFireT[weaponKey]||0) < w.rof) return;
       if (!ammoCache[weaponKey] || ammoCache[weaponKey] <= 0) { startReload(); return; }
       ammoCache[weaponKey]--;
-      lastFireT = now;
+      lastFireT[weaponKey] = now;
       muzzleFlash = 3;
       const shakeMap={pistol:3,revolver:7,smg:2,ar:4,battlerifle:6,shotgun:9,sniper:12,rpg:0};
       addShake(shakeMap[weaponKey]||3);
@@ -1169,16 +1550,19 @@ window.royaleModule = (function () {
     const len=Math.sqrt(dx*dx+dy*dy)||1, max=40;
     aimJoy.dx=dx/Math.max(len,max);
     aimJoy.dy=dy/Math.max(len,max);
-    if (len>8) player.angle=Math.atan2(dy,dx);
+    if (len>8) {
+      // Portrait: canvas rotated 90° CW → screen +Y = game +X, screen +X = game -Y
+      if (canvas.height > canvas.width) {
+        player.angle = Math.atan2(-dx, dy);
+      } else {
+        player.angle = Math.atan2(dy, dx);
+      }
+    }
     joyShow(aimJoy.sx,aimJoy.sy,
       aimJoy.sx+dx/Math.max(len/max,1),
       aimJoy.sy+dy/Math.max(len/max,1),
       'rl-aim-base','rl-aim-knob');
-    // fire when aim stick pushed beyond threshold
-    if (len>20) {
-      const key = inventory[activeSlot];
-      if (key && WEAPONS[key]) tryFire(player.x,player.y,player.angle,key,localId);
-    }
+    // Aim stick no longer auto-fires — use the FIRE button
   }
   function onAimTouchEnd(t) {
     if (!aimJoy.active||t.identifier!==aimJoy.id) return;
@@ -1214,7 +1598,9 @@ window.royaleModule = (function () {
           spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
           if (bt.hp <= 0) {
             bt.alive=false; player.kills++;
-            killFeed.push({text:`You killed ${bt.name}`,life:4});
+            spawnBlood(bt.x, bt.y);
+            coins+=15; saveCoins();
+            killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
           }
           bullets.splice(i,1); break;
         }
@@ -1229,8 +1615,8 @@ window.royaleModule = (function () {
       t.z = Math.max(0, t.z + t.vz*dt);
       t.vz -= 280*dt; // gravity
       t.timer += dt;
-      // Friction
-      t.vx *= 0.92; t.vy *= 0.92;
+      // Friction (not for RPG — it maintains constant velocity)
+      if (t.type !== 'rpg') { t.vx *= 0.92; t.vy *= 0.92; }
       if (t.type==='rpg') {
         // RPG keeps moving, explodes on hit or range
         const d2 = (t.x-player.x)**2+(t.y-player.y)**2;
@@ -1307,50 +1693,6 @@ window.royaleModule = (function () {
 
   function lerp(a,b,t) { return a+(b-a)*t; }
 
-  function updateBots(dt) {
-    const now = performance.now();
-    for (const bt of bots) {
-      if (!bt.alive) continue;
-      const dx=player.x-bt.x, dy=player.y-bt.y;
-      const distToPlayer=Math.sqrt(dx*dx+dy*dy);
-
-      // State machine
-      if (distToPlayer < 350) bt.state='chase';
-      else if (bt.state==='chase' && distToPlayer>500) bt.state='roam';
-
-      if (bt.state==='chase') {
-        bt.angle=Math.atan2(dy,dx);
-        bt.x += Math.cos(bt.angle)*120*dt;
-        bt.y += Math.sin(bt.angle)*120*dt;
-        // Shoot
-        if (distToPlayer<320 && now>bt.fireT) {
-          tryFire(bt.x,bt.y,bt.angle+( Math.random()-0.5)*0.15,bt.weapon,bt.id);
-          bt.fireT=now+WEAPONS[bt.weapon].rof*1.8;
-        }
-      } else {
-        // Roam to waypoint
-        const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
-        const wd=Math.sqrt(wx*wx+wy*wy);
-        if (wd<20) {
-          const rng=seededRng(now*0.001+bt.id.charCodeAt(4));
-          bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
-          bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
-        } else {
-          bt.angle=Math.atan2(wy,wx);
-          bt.x+=Math.cos(bt.angle)*80*dt;
-          bt.y+=Math.sin(bt.angle)*80*dt;
-        }
-      }
-      bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
-      bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
-
-      // Zone damage to bots
-      const d=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
-      if (d>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
-      if (bt.hp<=0) { bt.alive=false; killFeed.push({text:`${bt.name} eliminated`,life:4}); }
-    }
-  }
-
   function updateAirdrop(dt) {
     if (!airdrop) return;
     if (airdrop.phase==='fly') {
@@ -1360,9 +1702,9 @@ window.royaleModule = (function () {
     } else if (airdrop.phase==='fall') {
       airdrop.z = Math.max(0, airdrop.z - 80*dt);
       if (airdrop.z<=0) {
-        airdrop.phase='land';
         crates.push({x:airdrop.x,y:airdrop.y,open:false,lootLeft:5,airdrop:true});
         killFeed.push({text:'Airdrop landed!',life:5});
+        airdrop = null; // done — crate handles it from here
       }
     }
   }
@@ -1397,7 +1739,7 @@ window.royaleModule = (function () {
     if (reloading && performance.now() >= reloadEnd) {
       reloading=false;
       const key=inventory[activeSlot];
-      if (key) ammoCache[key]=(ammoCache[key]||0)+WEAPONS[key].ammo;
+      if (key) ammoCache[key]=Math.min((ammoCache[key]||0)+WEAPONS[key].ammo, WEAPONS[key].maxAmmo);
     }
   }
 
@@ -1478,19 +1820,19 @@ window.royaleModule = (function () {
   }
 
   function drawZone() {
-    // Blue danger zone overlay outside the safe circle
     ctx.save();
-    ctx.fillStyle='rgba(0,80,200,0.18)';
-    ctx.fillRect(-cam.x+canvasW/2-MAP_PX, -cam.y+canvasH/2-MAP_PX, MAP_PX*3, MAP_PX*3);
+    // Fill entire world with blue haze, then punch out the safe circle
+    ctx.fillStyle='rgba(0,80,200,0.20)';
+    ctx.fillRect(-MAP_PX, -MAP_PX, MAP_PX*3, MAP_PX*3);
     ctx.globalCompositeOperation='destination-out';
     ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.fill();
     ctx.restore();
     // Zone ring
-    ctx.strokeStyle='rgba(0,160,255,0.8)'; ctx.lineWidth=3;
+    ctx.strokeStyle='rgba(0,160,255,0.85)'; ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(zone.cx,zone.cy,zone.r,0,Math.PI*2); ctx.stroke();
-    // Next zone ring (dashed)
+    // Next zone ring (dashed yellow)
     if (zone.phase < ZONE_PHASES.length) {
-      ctx.strokeStyle='rgba(255,255,0,0.45)'; ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(255,255,0,0.50)'; ctx.lineWidth=1.5;
       ctx.setLineDash([12,8]);
       ctx.beginPath(); ctx.arc(zone.nextCx,zone.nextCy,zone.nextR,0,Math.PI*2); ctx.stroke();
       ctx.setLineDash([]);
@@ -1662,6 +2004,7 @@ window.royaleModule = (function () {
     if (player.health <= 0) {
       player.alive = false;
       gamePhase = 'dead';
+      spawnBlood(player.x, player.y);
       killFeed.push({text:'You were eliminated!', life:999});
     }
   }
@@ -1722,8 +2065,199 @@ window.royaleModule = (function () {
     const aliveCount = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length;
     if (aliveCount === 0 && player.alive) {
       gamePhase = 'win'; gameEndTimer = 0;
-      killFeed.push({text:'VICTORY ROYALE!', life:999});
+      coins += 100; saveCoins();
+      killFeed.push({text:'VICTORY ROYALE! (+100 💰)', life:999});
     }
+  }
+
+  // ── Skin locker ───────────────────────────────────────────
+  function drawSkinPreview(px, py, scale) {
+    const hd=HEADS.find(h=>h.id===playerSkin.head)||HEADS[0];
+    const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
+    const pd=PANTS.find(p=>p.id===playerSkin.pants)||PANTS[0];
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(scale, scale);
+    ctx.fillStyle=bd.color;
+    ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=pd.color;
+    ctx.beginPath(); ctx.ellipse(0,9,5.5,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=hd.color;
+    ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
+    if (hd.crown) {
+      ctx.fillStyle='#ffd700';
+      ctx.beginPath();
+      ctx.moveTo(-4,-13); ctx.lineTo(-2,-17); ctx.lineTo(0,-14); ctx.lineTo(2,-17); ctx.lineTo(4,-13); ctx.closePath();
+      ctx.fill();
+    } else if (hd.beak) {
+      ctx.fillStyle='#ff8c00';
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-5); ctx.closePath(); ctx.fill();
+    } else if (hd.mask) {
+      ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(-4,-12,8,6);
+    } else {
+      ctx.fillStyle='#4a4a2a';
+      ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
+      ctx.fillRect(-6,-9,12,2);
+    }
+    if (hd.eyes==='red') {
+      ctx.fillStyle='#ff2020';
+      ctx.beginPath(); ctx.arc(-2,-9,1.2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.2,0,Math.PI*2); ctx.fill();
+    } else if (hd.eyes==='black') {
+      ctx.fillStyle='#151515';
+      ctx.beginPath(); ctx.arc(-2,-9,1.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2,-9,1.5,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSkinMenu() {
+    const bg=ctx.createLinearGradient(0,0,0,canvasH);
+    bg.addColorStop(0,'#080f18'); bg.addColorStop(1,'#101e2a');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,canvasW,canvasH);
+
+    // Stars
+    const srng=seededRng(42);
+    ctx.globalAlpha=1;
+    for (let i=0;i<90;i++) {
+      const a=0.12+srng()*0.35, sz=0.8+srng()*1.6;
+      ctx.fillStyle=`rgba(255,255,255,${a})`;
+      ctx.fillRect(srng()*canvasW, srng()*canvasH, sz, sz);
+    }
+
+    // Title
+    ctx.shadowColor='rgba(255,215,0,0.55)'; ctx.shadowBlur=16;
+    ctx.fillStyle='#ffd700';
+    ctx.font=`bold 26px monospace`; ctx.textAlign='center';
+    ctx.fillText('⚔  BATTLE ROYALE  LOCKER', canvasW/2, 28);
+    ctx.shadowBlur=0;
+
+    // Coins badge (top-right)
+    const cbx=canvasW-158, cby=8, cbw=148, cbh=26;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(cbx,cby,cbw,cbh);
+    ctx.strokeStyle='rgba(255,215,0,0.45)'; ctx.lineWidth=1.5; ctx.strokeRect(cbx,cby,cbw,cbh);
+    ctx.fillStyle='#ffd700'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
+    ctx.fillText(`💰  ${coins} coins`, cbx+cbw/2, cby+18);
+
+    // Player preview badge
+    const pvX=cbx-52, pvY=cby+13;
+    ctx.fillStyle='rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.arc(pvX,pvY,22,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(255,215,0,0.4)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(pvX,pvY,22,0,Math.PI*2); ctx.stroke();
+    drawSkinPreview(pvX, pvY, 1.7);
+
+    // Tab bar
+    const tabs=['head','body','pants','trail'];
+    const tabLabels=['👤 HEAD','👕 BODY','👖 PANTS','✨ TRAIL'];
+    const tbY=44, tbH=30, tbW=(canvasW-40)/4;
+    skinTabRects=[];
+    for (let i=0;i<4;i++) {
+      const tx=20+i*tbW;
+      const active=skinMenuTab===tabs[i];
+      ctx.fillStyle=active?'rgba(255,215,0,0.22)':'rgba(255,255,255,0.05)';
+      ctx.fillRect(tx,tbY,tbW-5,tbH);
+      ctx.strokeStyle=active?'rgba(255,215,0,0.85)':'rgba(255,255,255,0.15)';
+      ctx.lineWidth=active?2:1; ctx.strokeRect(tx,tbY,tbW-5,tbH);
+      ctx.fillStyle=active?'#ffd700':'rgba(200,200,200,0.7)';
+      ctx.font=`bold 12px monospace`; ctx.textAlign='center';
+      ctx.fillText(tabLabels[i], tx+(tbW-5)/2, tbY+20);
+      skinTabRects.push({x:tx,y:tbY,w:tbW-5,h:tbH,tab:tabs[i]});
+    }
+
+    // Item grid
+    const items=skinMenuTab==='head'?HEADS:skinMenuTab==='body'?BODIES:skinMenuTab==='pants'?PANTS:TRAILS;
+    const cols=3, gx=20, gy=tbY+tbH+8;
+    const iw=Math.floor((canvasW-40)/cols);
+    const ih=Math.min(70, Math.floor((canvasH-gy-68)/Math.ceil(items.length/cols))-6);
+    skinItemRects=[];
+    for (let i=0;i<items.length;i++) {
+      const itm=items[i];
+      const col=i%cols, row=Math.floor(i/cols);
+      const ix=gx+col*iw, iy=gy+row*(ih+6);
+      const owned=(ownedSkins[skinMenuTab]||[]).includes(itm.id);
+      const selected=playerSkin[skinMenuTab]===itm.id;
+      const canAfford=coins>=itm.price;
+
+      ctx.fillStyle=selected?'rgba(255,215,0,0.17)':(owned?'rgba(80,200,80,0.08)':'rgba(0,0,0,0.42)');
+      ctx.fillRect(ix,iy,iw-6,ih);
+      ctx.strokeStyle=selected?'rgba(255,215,0,0.9)':(owned?'rgba(100,220,100,0.45)':'rgba(255,255,255,0.1)');
+      ctx.lineWidth=selected?2.5:1; ctx.strokeRect(ix,iy,iw-6,ih);
+
+      // Swatch
+      const sw=ih*0.44;
+      if (skinMenuTab==='trail') {
+        const ti={none:'—',fire:'🔥',sparkle:'✨',rainbow:'🌈'};
+        ctx.font=`${sw*0.85}px serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText(ti[itm.id]||'?', ix+8, iy+ih/2);
+        ctx.textBaseline='alphabetic';
+      } else {
+        ctx.fillStyle=itm.color||'#888';
+        ctx.beginPath(); ctx.arc(ix+8+sw/2, iy+ih/2, sw/2, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(ix+8+sw/2, iy+ih/2, sw/2, 0, Math.PI*2); ctx.stroke();
+      }
+
+      const tx2=ix+10+sw;
+      ctx.fillStyle='#fff'; ctx.font=`bold 12px monospace`; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+      ctx.fillText(itm.name, tx2, iy+ih*0.42);
+
+      if (selected) {
+        ctx.fillStyle='#ffd700'; ctx.font='10px monospace';
+        ctx.fillText('✓ EQUIPPED', tx2, iy+ih*0.75);
+      } else if (owned) {
+        ctx.fillStyle='#8fce50'; ctx.font='10px monospace';
+        ctx.fillText('OWNED', tx2, iy+ih*0.75);
+      } else {
+        ctx.fillStyle=canAfford?'#ffd700':'#777'; ctx.font='10px monospace';
+        ctx.fillText(`💰 ${itm.price}`, tx2, iy+ih*0.75);
+        if (!canAfford) {
+          ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(ix,iy,iw-6,ih);
+        }
+      }
+      skinItemRects.push({x:ix,y:iy,w:iw-6,h:ih,item:itm,owned,selected});
+    }
+
+    // PLAY button
+    const bw=200, bh=44, bx2=canvasW/2-bw/2, by2=canvasH-bh-12;
+    const playGrad=ctx.createLinearGradient(bx2,by2,bx2,by2+bh);
+    playGrad.addColorStop(0,'rgba(30,200,80,0.95)'); playGrad.addColorStop(1,'rgba(15,140,50,0.95)');
+    ctx.fillStyle=playGrad; ctx.fillRect(bx2,by2,bw,bh);
+    ctx.shadowColor='rgba(0,255,80,0.5)'; ctx.shadowBlur=14;
+    ctx.strokeStyle='rgba(80,255,130,0.9)'; ctx.lineWidth=2.5; ctx.strokeRect(bx2,by2,bw,bh);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#fff'; ctx.font='bold 17px monospace'; ctx.textAlign='center';
+    ctx.fillText('▶  BATTLE ROYALE', bx2+bw/2, by2+bh*0.65);
+    skinBtnPlay={x:bx2,y:by2,w:bw,h:bh};
+    ctx.textAlign='left';
+  }
+
+  function checkSkinMenuClick(gx, gy) {
+    if (gamePhase !== 'skinSelect') return false;
+    for (const tr of skinTabRects) {
+      if (gx>=tr.x&&gx<=tr.x+tr.w&&gy>=tr.y&&gy<=tr.y+tr.h) {
+        skinMenuTab=tr.tab; return true;
+      }
+    }
+    for (const ir of skinItemRects) {
+      if (gx>=ir.x&&gx<=ir.x+ir.w&&gy>=ir.y&&gy<=ir.y+ir.h) {
+        const cat=skinMenuTab;
+        if (ir.owned) {
+          playerSkin[cat]=ir.item.id; saveSkin();
+        } else if (coins>=ir.item.price) {
+          coins-=ir.item.price; saveCoins();
+          if (!ownedSkins[cat]) ownedSkins[cat]=[];
+          if (!ownedSkins[cat].includes(ir.item.id)) ownedSkins[cat].push(ir.item.id);
+          saveOwned();
+          playerSkin[cat]=ir.item.id; saveSkin();
+        }
+        return true;
+      }
+    }
+    if (skinBtnPlay && gx>=skinBtnPlay.x&&gx<=skinBtnPlay.x+skinBtnPlay.w&&gy>=skinBtnPlay.y&&gy<=skinBtnPlay.y+skinBtnPlay.h) {
+      gamePhase='parachute'; return true;
+    }
+    return false;
   }
 
   // ── End screen ────────────────────────────────────────────
@@ -1765,9 +2299,29 @@ window.royaleModule = (function () {
       ctx.fillText(`${(b.name||'Bot').padEnd(16)} ${hp}`, cx, row); row+=16;
     }
 
-    ctx.fillStyle=`rgba(255,255,255,${alpha*0.7})`;
-    ctx.font='13px monospace';
-    ctx.fillText('Tap / press any key to exit', cx, row+24);
+    if (gameEndTimer > 1) {
+      // Play Again button
+      const bw=160, bh=44, gap=16;
+      const playX = cx - bw - gap/2, quitX = cx + gap/2, btnY = canvasH - 80;
+      ctx.fillStyle=`rgba(20,160,60,${alpha*0.9})`;
+      ctx.fillRect(playX, btnY, bw, bh);
+      ctx.strokeStyle=`rgba(80,255,120,${alpha})`; ctx.lineWidth=2;
+      ctx.strokeRect(playX, btnY, bw, bh);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace'; ctx.textAlign='center';
+      ctx.fillText('▶ PLAY AGAIN', playX+bw/2, btnY+28);
+      endBtnPlay = {x:playX, y:btnY, w:bw, h:bh};
+
+      // Quit button
+      ctx.fillStyle=`rgba(180,30,30,${alpha*0.9})`;
+      ctx.fillRect(quitX, btnY, bw, bh);
+      ctx.strokeStyle=`rgba(255,80,80,${alpha})`; ctx.lineWidth=2;
+      ctx.strokeRect(quitX, btnY, bw, bh);
+      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace';
+      ctx.fillText('✕ QUIT', quitX+bw/2, btnY+28);
+      endBtnQuit = {x:quitX, y:btnY, w:bw, h:bh};
+    } else {
+      endBtnPlay = null; endBtnQuit = null;
+    }
     ctx.textAlign='left';
   }
 
@@ -1829,9 +2383,43 @@ window.royaleModule = (function () {
     player.angle=Math.atan2(my-canvasH/2, mx-canvasW/2);
   }
 
+  function checkEndBtnClick(gx, gy) {
+    if ((gamePhase==='dead'||gamePhase==='win') && gameEndTimer>1) {
+      if (endBtnPlay && gx>=endBtnPlay.x && gx<=endBtnPlay.x+endBtnPlay.w && gy>=endBtnPlay.y && gy<=endBtnPlay.y+endBtnPlay.h) {
+        restartGame(); return true;
+      }
+      if (endBtnQuit && gx>=endBtnQuit.x && gx<=endBtnQuit.x+endBtnQuit.w && gy>=endBtnQuit.y && gy<=endBtnQuit.y+endBtnQuit.h) {
+        goToPage('first'); return true;
+      }
+    }
+    return false;
+  }
+
+  function checkWeaponSlotClick(gx, gy) {
+    const slotW=110, slotH=44, gap=8, startX=canvasW/2-slotW-gap/2, y=canvasH-slotH-12;
+    for (let i=0; i<2; i++) {
+      const sx = startX + i*(slotW+gap);
+      if (gx>=sx && gx<=sx+slotW && gy>=y && gy<=y+slotH) {
+        activeSlot = i; return true;
+      }
+    }
+    return false;
+  }
+
   function onMouseDown(e) {
-    if (gamePhase !== 'playing') return;
     if (e.button!==0) return;
+    // Convert mouse coords to game coords (portrait rotation handled)
+    const rect=canvas.getBoundingClientRect();
+    const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    const port = canvas.height > canvas.width;
+    const gx = port ? sy : sx;
+    const gy = port ? (canvas.width - sx) : sy;
+
+    if (checkEndBtnClick(gx, gy)) return;
+    if (checkSkinMenuClick(gx, gy)) return;
+    if (gamePhase !== 'playing') return;
+    if (checkWeaponSlotClick(gx, gy)) return;
     const key=inventory[activeSlot];
     if (key) tryFire(player.x,player.y,player.angle,key,localId);
   }
@@ -1891,7 +2479,7 @@ window.royaleModule = (function () {
         const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
         const wd=Math.sqrt(wx*wx+wy*wy);
         if (wd<20) {
-          const rng=seededRng(now*0.001+bt.id.charCodeAt(4)||0);
+          const rng=seededRng(now*0.001+(bt.id.charCodeAt(4)||0));
           bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
           bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
         } else {
@@ -1902,13 +2490,43 @@ window.royaleModule = (function () {
       bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
       bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
 
+      for (const bo of boulders) {
+        const bdx=bt.x-bo.x, bdy=bt.y-bo.y;
+        const bd=Math.sqrt(bdx*bdx+bdy*bdy);
+        if (bd < PLAYER_R + bo.r) {
+          const push=(PLAYER_R+bo.r-bd)/bd||0;
+          bt.x+=bdx*push; bt.y+=bdy*push;
+        }
+      }
+
       const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (zd>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
       if (bt.hp<=0) {
         bt.alive=false; player.kills++;
-        killFeed.push({text:`You killed ${bt.name}`,life:4});
+        spawnBlood(bt.x, bt.y);
+        coins+=15; saveCoins();
+        killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
       }
     }
+  }
+
+  // ── Restart game (no re-adding event listeners) ───────────
+  function restartGame() {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
+    gamePhase='parachute'; gameEndTimer=0; totalKills=0;
+    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
+    stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
+    dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
+    cam.x=player.x; cam.y=player.y;
+    inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
+    bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
+    bloodSplatters=[]; trailParticles=[]; endBtnPlay=null; endBtnQuit=null;
+    airdrop=null; airdropTimer=0; broadcastThrottle=0;
+    spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();
+    running = true;
+    lastTime = performance.now();
+    animId = requestAnimationFrame(loop);
   }
 
   // ── Public API ────────────────────────────────────────────

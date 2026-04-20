@@ -213,6 +213,13 @@ drop policy if exists "shared ai insert" on public.shared_ai_outputs;
 create policy "shared ai insert" on public.shared_ai_outputs
 for insert with check (sharer = public.class_app_username());
 
+drop policy if exists "shared ai delete owner" on public.shared_ai_outputs;
+create policy "shared ai delete owner" on public.shared_ai_outputs
+for delete using (
+  sharer = public.class_app_username()
+  or public.class_app_is_admin()
+);
+
 drop policy if exists "shared announcements read" on public.shared_announcements;
 create policy "shared announcements read" on public.shared_announcements for select using (true);
 

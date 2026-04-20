@@ -3062,16 +3062,36 @@ function renderSharedAIOutputs() {
     feed.innerHTML = '<div class="board-empty">No shared AI output yet.</div>';
     return;
   }
-  feed.innerHTML = sharedAIOutputs.map((item) => `
+  feed.innerHTML = sharedAIOutputs.map((item) => {
+    const canDelete = currentUser && (item.sharer === currentUser.username || isAdmin);
+    return `
     <article class="board-card ai-output-card">
       <div class="board-card-meta">
         <span>${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
         <span>${escapeHTML(item.provider || 'AI')}</span>
+        ${canDelete ? `<button class="board-delete-btn" onclick="deleteSharedAIOutput('${escapeJS(item.id)}')">Delete</button>` : ''}
       </div>
       ${item.prompt ? `<div class="board-section"><h4>Prompt</h4><p>${aiFormat(item.prompt)}</p></div>` : ''}
       ${item.output ? `<div class="board-section"><h4>Output</h4><p>${aiFormat(item.output)}</p></div>` : ''}
-    </article>`).join('');
+    </article>`;
+  }).join('');
+}
+
+window.deleteSharedAIOutput = function(id) {
+  if (!currentUser) return customAlert('Please log in.');
+  const item = sharedAIOutputs.find((entry) => String(entry.id) === String(id));
+  if (!item) return customAlert('Shared output not found.');
+  if (item.sharer !== currentUser.username && !isAdmin) {
+    return customAlert('Only the sharer can delete this OUTPUT-AI post.');
+  }
+  customConfirm('Delete this shared OUTPUT-AI post for everyone?', async function() {
+    const { error } = await sb.from('shared_ai_outputs').delete().eq('id', id);
+    if (error) return customAlert(error.message);
+    sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
+    renderSharedAIOutputs();
+    showToast('Shared AI output deleted.', 'warning');
+  });
 }
 
 async function fetchSharedAnnouncements() {

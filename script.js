@@ -1843,7 +1843,7 @@ const pageConfig = {
   ai:       { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🤖 AI Assistants' },
 };
 
-let currentPage = 'first';
+let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 let calendarNotes = {};
 

@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=17">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -23,19 +23,19 @@
 
   <button id="install-btn" class="install-btn">Install App</button>
  
-  <div id="bg-mountain" class="scene-bg active"></div>
+  <div id="bg-mountain" class="scene-bg"></div>
   <div id="bg-ocean"    class="scene-bg"></div>
   <div id="bg-aerial"   class="scene-bg"></div>
-  <div id="bg-galaxy"   class="scene-bg"></div>
+  <div id="bg-galaxy"   class="scene-bg active"></div>
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
   <label for="custom-bg-upload" class="custom-bg-btn" style="position: absolute; top: 15px; right: 15px; z-index: 100; cursor: pointer; color: #00d4ff; font-weight: bold; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 8px; border: 1px solid #00d4ff;">Upload Custom BG</label>
  
-  <div class="aurora active" id="aurora"></div>
+  <div class="aurora" id="aurora"></div>
  
   <canvas id="starfield"></canvas>
  
-  <svg class="mountain-silhouette active" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <svg class="mountain-silhouette" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
     <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
   </svg>
@@ -65,7 +65,7 @@
   <div class="particles particle-mountain" id="particles-mountain"></div>
   <div class="particles particle-ocean"    id="particles-ocean"></div>
   <div class="particles particle-aerial"   id="particles-aerial"></div>
-  <div class="particles particle-galaxy"   id="particles-galaxy"></div>
+  <div class="particles particle-galaxy active"   id="particles-galaxy"></div>
  
   <button id="menu-toggle" aria-label="Toggle menu">
     <div class="bar"></div>
@@ -73,7 +73,7 @@
     <div class="bar"></div>
   </button>
  
-  <div id="page-indicator">⛰️ First Semester</div>
+  <div id="page-indicator">📢 ANNOUNCEMENT</div>
  
   <nav id="sidebar">
     <div class="sidebar-title">My Portfolio</div>
@@ -90,7 +90,7 @@
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
-    <div class="nav-item" data-page="announcement" onclick="goToPage('announcement')">
+    <div class="nav-item active" data-page="announcement" onclick="goToPage('announcement')">
       <span class="nav-icon">📢</span>
       <div class="nav-text"><span class="nav-label">ANNOUNCEMENT</span></div>
     </div>
@@ -119,7 +119,7 @@
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year1" class="nav-dropdown-content">
-        <div class="nav-item active" data-page="first" onclick="goToPage('first')">
+        <div class="nav-item" data-page="first" onclick="goToPage('first')">
           <span class="nav-icon">⛰️</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
@@ -247,7 +247,7 @@
     </div>
   </div>
  
-  <div class="page active" id="page-first">
+  <div class="page" id="page-first">
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-first"></div>
@@ -763,7 +763,7 @@
   </div>
 
   <!-- ── ANNOUNCEMENT ────────────────────────────────────── -->
-  <div class="page" id="page-announcement">
+  <div class="page active" id="page-announcement">
     <div class="shared-board announcement-board">
       <div class="shared-board-header">
         <div>
@@ -960,7 +960,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=20"></script>
+  <script src="script.js?v=21"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 

@@ -72,6 +72,7 @@ function loadData() {
       files: [],
       pushSubscriptions: {},
       sentPushMessageIds: [],
+      appOpenCount: 0,
     }, null, 2));
   }
   try {
@@ -80,6 +81,7 @@ function loadData() {
     if (!data.files) data.files = [];
     if (!data.pushSubscriptions) data.pushSubscriptions = {};
     if (!data.sentPushMessageIds) data.sentPushMessageIds = [];
+    if (typeof data.appOpenCount !== 'number') data.appOpenCount = 0;
     return data;
   } catch (error) {
     console.error('Error loading data.json:', error);
@@ -90,6 +92,7 @@ function loadData() {
       files: [],
       pushSubscriptions: {},
       sentPushMessageIds: [],
+      appOpenCount: 0,
     };
   }
 }
@@ -147,6 +150,17 @@ app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 
 /* ── Wake-up ping (keeps Render free tier warm) ─────────── */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
+app.get('/api/app-open-count', (req, res) => {
+  res.json({ count: state.appOpenCount || 0 });
+});
+
+app.post('/api/app-open-count', (req, res) => {
+  state.appOpenCount = (state.appOpenCount || 0) + 1;
+  saveData(state);
+  io.emit('appOpenCount', { count: state.appOpenCount });
+  res.json({ count: state.appOpenCount });
+});
 
 /* ── Search diagnostics — visit /api/search-test?q=test to debug ─────── */
 app.get('/api/search-test', (req, res) => {

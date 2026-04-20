@@ -1,12 +1,12 @@
-const CACHE_VERSION = 'v54';
+const CACHE_VERSION = 'v55';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  'index.html?v=54',
-  'style.css?v=17',
+  'index.html?v=55',
+  'style.css?v=18',
   'pokemon.css',
   'royale.css',
-  'script.js?v=21',
+  'script.js?v=22',
   'pokemon.js',
   'royale.js',
   'manifest.json',
@@ -54,7 +54,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('index.html?v=54'))
+        .catch(() => caches.match('/') || caches.match('index.html?v=55'))
     );
     return;
   }

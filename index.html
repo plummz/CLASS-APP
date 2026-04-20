@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -739,7 +739,10 @@
     <div class="lobby-wrapper">
       <div class="lobby-header">
         <h2 class="lobby-title">🏫 School Lobby</h2>
-        <span class="lobby-online" id="lobby-online-count">0 online</span>
+        <div class="lobby-count-stack">
+          <span class="lobby-online" id="lobby-online-count">0 online</span>
+          <button class="lobby-open-count-btn" id="app-open-count-btn" onclick="refreshAppOpenCount()">App opens: --</button>
+        </div>
       </div>
       <div class="lobby-canvas-area">
         <canvas id="lobby-canvas" width="800" height="500"></canvas>
@@ -960,7 +963,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=21"></script>
+  <script src="script.js?v=22"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 

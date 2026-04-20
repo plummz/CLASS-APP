@@ -2044,6 +2044,37 @@ window.openNotePrompt = function(dateKey, displayDate, existingNote) {
 function updateClock() { const now = new Date(); const el = document.getElementById('live-clock'); if(el) el.textContent = now.toLocaleTimeString(); }
 setInterval(updateClock, 1000);
 
+function renderAppOpenCount(count) {
+  const btn = document.getElementById('app-open-count-btn');
+  if (!btn) return;
+  const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+  btn.textContent = `App opens: ${safeCount.toLocaleString()}`;
+}
+
+window.refreshAppOpenCount = async function() {
+  const btn = document.getElementById('app-open-count-btn');
+  if (btn) btn.textContent = 'App opens: loading...';
+  try {
+    const res = await fetch('/api/app-open-count');
+    if (!res.ok) throw new Error('Count unavailable');
+    const data = await res.json();
+    renderAppOpenCount(data.count);
+  } catch (_) {
+    if (btn) btn.textContent = 'App opens: unavailable';
+  }
+};
+
+async function recordAppOpen() {
+  try {
+    const res = await fetch('/api/app-open-count', { method: 'POST' });
+    if (!res.ok) throw new Error('Count unavailable');
+    const data = await res.json();
+    renderAppOpenCount(data.count);
+  } catch (_) {
+    window.refreshAppOpenCount();
+  }
+}
+
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const btn = document.getElementById('install-btn'); if (btn) btn.style.display = 'block'; });
 
@@ -2053,6 +2084,7 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
+  recordAppOpen();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
@@ -2326,6 +2358,9 @@ function _ensureSocket() {
   _socket.on('connect', () => {
     if (currentUser) _socket.emit('identify', currentUser);
     lobbyModule.setupSocket(_socket);
+  });
+  _socket.on('appOpenCount', (payload) => {
+    renderAppOpenCount(payload?.count);
   });
   // If connected immediately (reconnect case), setup at once
   if (_socket.connected) {

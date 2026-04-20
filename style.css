@@ -1620,6 +1620,7 @@ body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
   align-items: center;
   justify-content: space-between;
   padding: 4px 2px;
+  gap: 14px;
 }
 .lobby-title {
   font-size: 1.45rem;
@@ -1637,6 +1638,30 @@ body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
+}
+.lobby-count-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.lobby-open-count-btn {
+  border: 1px solid rgba(0,212,255,0.38);
+  background: rgba(0,212,255,0.1);
+  color: #b8f3ff;
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+}
+.lobby-open-count-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0,212,255,0.72);
+  background: rgba(0,212,255,0.18);
+  color: #fff;
 }
 .lobby-canvas-area {
   display: flex;

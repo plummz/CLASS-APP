@@ -41,11 +41,19 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@class-app.local';
-const PUSH_READY = Boolean(webpush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+const VAPID_SUBJECT_RAW = process.env.VAPID_SUBJECT || 'mailto:admin@class-app.local';
+const VAPID_SUBJECT = /^https?:\/\//i.test(VAPID_SUBJECT_RAW) || /^mailto:/i.test(VAPID_SUBJECT_RAW)
+  ? VAPID_SUBJECT_RAW
+  : `mailto:${VAPID_SUBJECT_RAW}`;
+let PUSH_READY = Boolean(webpush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 
 if (PUSH_READY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  } catch (error) {
+    PUSH_READY = false;
+    console.warn('Push notifications disabled: invalid VAPID configuration:', error.message);
+  }
 }
 
 if (!fs.existsSync(UPLOAD_DIR)) {

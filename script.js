@@ -2054,7 +2054,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
 
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then((registration) => {
+        registration.update().catch(() => {});
+      });
+  }
 
   const attachmentInput = document.getElementById('attachment-input');
   if (attachmentInput) attachmentInput.addEventListener('change', () => { const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = attachmentInput.files[0]?.name || 'No file chosen'; });

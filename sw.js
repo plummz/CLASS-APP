@@ -1,11 +1,12 @@
-const CACHE_NAME = 'school-portfolio-v51';
+const CACHE_VERSION = 'v52';
+const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  'index.html',
-  'style.css',
+  'index.html?v=52',
+  'style.css?v=15',
   'pokemon.css',
   'royale.css',
-  'script.js',
+  'script.js?v=19',
   'pokemon.js',
   'royale.js',
   'manifest.json',
@@ -23,10 +24,14 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => caches.delete(key)))
+      Promise.all(keys.map((key) => key === CACHE_NAME ? null : caches.delete(key)))
     )
+    .then(() => self.clients.claim())
+    .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .then((clientsList) => clientsList.forEach((client) => {
+      client.postMessage({ type: 'APP_CACHE_UPDATED', version: CACHE_VERSION });
+    }))
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -37,6 +42,22 @@ self.addEventListener('fetch', (event) => {
   // Render's HTML cold-start page got cached (status 200, ok=true), then every
   // subsequent search hit that cached HTML instead of the real JSON endpoint.
   if (event.request.url.includes('/api/')) return;
+
+  const requestUrl = new URL(event.request.url);
+  if (event.request.mode === 'navigate' || requestUrl.pathname.endsWith('/index.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/') || caches.match('index.html?v=52'))
+    );
+    return;
+  }
 
   // Static assets only — network first, fall back to cache when offline
   event.respondWith(

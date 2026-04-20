@@ -8,7 +8,18 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Initialize Supabase Client
 const { createClient } = window.supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  global: {
+    fetch: (url, options = {}) => {
+      const headers = new Headers(options.headers || {});
+      try {
+        const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+        if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+      } catch (_) {}
+      return fetch(url, { ...options, headers });
+    },
+  },
+});
 
 // Kept purely so any old files you uploaded to Render can still open without breaking
 const SERVER_BASE = 'https://class-app-y67k.onrender.com';
@@ -56,6 +67,35 @@ window.customConfirm = function(text, callback) {
         };
     }
 };
+
+function escapeHTML(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function escapeJS(value) {
+  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `app-toast app-toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 220);
+  }, 3200);
+}
+
+function createInlineLoader(text = 'Loading...') {
+  return `<div class="inline-loader"><span></span>${escapeHTML(text)}</div>`;
+}
 
 /* ============================================================
    DATA — Subjects & Teachers
@@ -158,12 +198,77 @@ function buildFolderCards(gridId, count, prefix = "Folder") {
 let currentParentContext = null;
 let currentFolderContext = null;
 let folderStack = []; // navigation history for back button
+const PROFILE_FOLDER_PREFIX = 'profile:';
 
 // Music Player Global State
 let currentPlaylist = [];
 let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
+
+function normalizeFolderPermissions(folder) {
+    const raw = folder?.permissions;
+    if (!raw) return { viewers: [], editors: [] };
+    if (typeof raw === 'string') {
+        try {
+            const parsed = JSON.parse(raw);
+            return {
+                viewers: Array.isArray(parsed.viewers) ? parsed.viewers : [],
+                editors: Array.isArray(parsed.editors) ? parsed.editors : [],
+            };
+        } catch (_) {
+            return { viewers: [], editors: [] };
+        }
+    }
+    return {
+        viewers: Array.isArray(raw.viewers) ? raw.viewers : [],
+        editors: Array.isArray(raw.editors) ? raw.editors : [],
+    };
+}
+
+function isProfileFolder(folder) {
+    return folder?.folder_type === 'profile' || String(folder?.parent || '').startsWith(PROFILE_FOLDER_PREFIX);
+}
+
+function isFolderOwner(folder) {
+    return Boolean(currentUser && folder && (folder.owner === currentUser.username || isAdmin));
+}
+
+function canViewFolder(folder) {
+    if (!folder) return false;
+    if (!isProfileFolder(folder)) return true;
+    if (isFolderOwner(folder)) return true;
+    if (!currentUser) return false;
+    const perms = normalizeFolderPermissions(folder);
+    return perms.viewers.includes(currentUser.username) || perms.editors.includes(currentUser.username);
+}
+
+function canEditFolder(folder) {
+    if (!folder) return false;
+    if (!isProfileFolder(folder)) return Boolean(currentUser);
+    if (isFolderOwner(folder)) return true;
+    if (!currentUser) return false;
+    return normalizeFolderPermissions(folder).editors.includes(currentUser.username);
+}
+
+function canManageFolder(folder) {
+    return isFolderOwner(folder);
+}
+
+function folderAccessLabel(folder) {
+    if (isFolderOwner(folder)) return 'Owner';
+    if (!isProfileFolder(folder)) return currentUser ? 'Editor' : 'Viewer';
+    const perms = normalizeFolderPermissions(folder);
+    if (currentUser && perms.editors.includes(currentUser.username)) return 'Editor';
+    if (currentUser && perms.viewers.includes(currentUser.username)) return 'Viewer';
+    return 'No access';
+}
+
+async function fetchFolderById(id) {
+    const { data, error } = await sb.from('folders').select('*').eq('id', id).single();
+    if (error) throw error;
+    return data;
+}
 
 window.closeFolderModal = function(modalId) {
     const modal = document.getElementById(modalId);
@@ -192,24 +297,30 @@ function fetchAndRenderFolders() {
         const grid = document.getElementById('folder-grid-modal');
         if(!grid) return;
         grid.innerHTML = '';
-        if(folders.length === 0) {
-            grid.innerHTML = '<p style="color: gray; font-size: 14px;">No folders yet. Create one!</p>';
+        const visibleFolders = (folders || []).filter(canViewFolder);
+        if(visibleFolders.length === 0) {
+            grid.innerHTML = '<p class="empty-state-text">No folders available yet.</p>';
             return;
         }
 
-        folders.forEach(f => {
-            const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
+        visibleFolders.forEach(f => {
+            const canManage = canManageFolder(f);
+            const canEdit = canEditFolder(f);
+            const safeId = escapeJS(f.id);
+            const safeName = escapeJS(f.name);
             grid.innerHTML += `
-            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; display: flex; flex-direction: column;">
-                <div onclick="window.openFileExplorer('${f.id}', '${f.name}')" style="cursor:pointer; flex: 1; text-align: center;">
-                    <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
-                    <div style="color: white; font-weight: bold; font-family: 'Exo 2'; font-size: 16px; word-wrap: break-word;">${f.name}</div>
-                    <div style="color: gray; font-size: 10px; margin-top: 5px;">By: ${f.owner}</div>
+            <div class="folder-card-modern">
+                <div onclick="window.openFileExplorer('${safeId}', '${safeName}')" class="folder-card-main">
+                    <div class="folder-card-icon">📁</div>
+                    <div class="folder-card-title">${escapeHTML(f.name)}</div>
+                    <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
+                    <div class="folder-access-pill ${canEdit ? 'editor' : 'viewer'}">${folderAccessLabel(f)}</div>
                 </div>
-                ${isOwner ? `
-                <div style="display: flex; gap: 5px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <button onclick="window.renameFolderAPI('${f.id}', '${f.name}')" style="flex:1; background: transparent; color: #00d4ff; border: 1px solid #00d4ff; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Rename</button>
-                    <button onclick="window.deleteFolderAPI('${f.id}')" style="flex:1; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 5px; cursor: pointer; padding: 5px; font-size: 12px;">Delete</button>
+                ${canManage ? `
+                <div class="folder-card-actions">
+                    <button onclick="window.renameFolderAPI('${safeId}', '${safeName}')" class="mini-action-btn">Rename</button>
+                    <button onclick="window.openFolderPermissions('${safeId}')" class="mini-action-btn">Permissions</button>
+                    <button onclick="window.deleteFolderAPI('${safeId}')" class="mini-action-btn danger">Delete</button>
                 </div>
                 ` : ''}
             </div>
@@ -222,43 +333,73 @@ window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
     customPrompt("Enter new folder name:", function(name) {
         if(!name) return;
-        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username }])
-        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username, permissions: { viewers: [], editors: [] } }])
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderFolders();
+            showToast('Folder created.');
+        });
     });
 };
 
-window.renameFolderAPI = function(id, oldName, isSub) {
+window.renameFolderAPI = async function(id, oldName, isSub) {
+    let folder;
+    try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
+    if (!canManageFolder(folder)) return customAlert('Only the folder owner can rename this folder.');
     customPrompt("Enter new name for folder:", function(newName) {
         if(!newName || newName === oldName) return;
         sb.from('folders').update({ name: newName }).eq('id', id)
-        .then(() => isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders())
-        .catch(err => customAlert(err.message));
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders();
+            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+            }
+            showToast('Folder renamed.');
+        });
     }, oldName);
 };
 
-window.deleteFolderAPI = function(id) {
+window.deleteFolderAPI = async function(id) {
+    let folder;
+    try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
+    if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this folder.');
     customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", function() {
         sb.from('folders').delete().eq('id', id)
-        .then(() => fetchAndRenderFolders()).catch(err => customAlert(err.message));
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderFolders();
+            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+            }
+            showToast('Folder deleted.', 'warning');
+        });
     });
 };
 
-window.openFileExplorer = function(folderId, folderName, parentId) {
+window.openFileExplorer = async function(folderId, folderName, parentId) {
+    let folder;
+    try {
+        folder = await fetchFolderById(folderId);
+    } catch (error) {
+        return customAlert(error.message);
+    }
+    if (!canViewFolder(folder)) return customAlert('You do not have permission to view this folder.');
     // Push current context onto stack for back navigation
     if (currentFolderContext) {
         folderStack.push({ ...currentFolderContext });
     } else {
         folderStack.push({ id: null, name: currentParentContext }); // root level marker
     }
-    currentFolderContext = { id: folderId, name: folderName };
+    currentFolderContext = { ...folder, id: folderId, name: folder.name || folderName };
     // Build breadcrumb title
     const crumbs = folderStack
         .filter(f => f.id !== null)
         .map(f => f.name)
-        .concat(folderName)
+        .concat(currentFolderContext.name)
         .join(' / ');
     const title = document.getElementById('file-explorer-title');
-    if (title) title.innerText = crumbs || folderName;
+    if (title) title.innerText = crumbs || currentFolderContext.name;
     closeFolderModal('folder-explorer-modal');
     fetchAndRenderSubFolders();
     fetchAndRenderFiles();
@@ -293,31 +434,42 @@ function formatFileSize(bytes) {
 }
 
 function fetchAndRenderFiles() {
+    if (!currentFolderContext || !canViewFolder(currentFolderContext)) {
+        const list = document.getElementById('file-list-container');
+        if (list) list.innerHTML = '<p class="empty-state-text">You do not have permission to view files here.</p>';
+        return;
+    }
+    const allowEdit = canEditFolder(currentFolderContext);
+    const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
+    if (uploadArea) uploadArea.style.display = allowEdit ? '' : 'none';
     sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
     .then(({ data: files, error }) => {
         if (error) return console.error(error);
         
-        currentPlaylist = files.filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
+        currentPlaylist = (files || []).filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
         
         const list = document.getElementById('file-list-container');
         if(!list) return;
         list.innerHTML = '';
-        if(files.length === 0) {
-            list.innerHTML = '<p style="color: gray; text-align: center;">Folder is empty.</p>';
+        if(!files || files.length === 0) {
+            list.innerHTML = '<p class="empty-state-text">Folder is empty.</p>';
             return;
         }
         files.forEach(f => {
-            const isOwner = currentUser && (f.uploader === currentUser.username || isAdmin);
-            const safeName = f.name.replace(/'/g, "\\'");
+            const canModifyFile = allowEdit || (currentUser && (f.uploader === currentUser.username || isAdmin));
+            const safeName = escapeJS(f.name);
+            const safeId = escapeJS(f.id);
+            const safeUrl = escapeJS(f.url);
             list.innerHTML += `
-            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                <div style="flex: 1; overflow: hidden;">
-                    <div style="color: white; font-weight: bold; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${f.name}</div>
-                    <div style="color: gray; font-size: 11px;">${f.size ? `<span style="color:#00ff88;font-weight:bold;">${formatFileSize(f.size)}</span> · ` : ''}Uploaded by: ${f.uploader}</div>
+            <div class="file-row-modern">
+                <div class="file-row-meta">
+                    <div class="file-row-name">📄 ${escapeHTML(f.name)}</div>
+                    <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}Uploaded by ${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="window.playOrOpenFileAPI('${f.url}', '${safeName}')" style="background:#00ff88; color:black; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">Open</button>
-                    ${isOwner ? `<button onclick="window.deleteFileAPI('${f.id}')" style="background: #ff6b6b; color: black; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px;">Delete</button>` : ''}
+                <div class="file-row-actions">
+                    <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}')" class="file-action primary">Open</button>
+                    ${canModifyFile ? `<button onclick="window.openMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action">Move</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger">Delete</button>` : ''}
                 </div>
             </div>
             `;
@@ -329,29 +481,36 @@ function fetchAndRenderFiles() {
 function fetchAndRenderSubFolders() {
     if (!currentFolderContext || !currentFolderContext.id) return;
     const parentId = String(currentFolderContext.id);
+    const subfolderSection = document.getElementById('subfolder-section');
+    if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
     sb.from('folders').select('*').eq('parent', parentId)
     .then(({ data: subs, error }) => {
         if (error) return console.error('Subfolder fetch error:', error);
         const grid = document.getElementById('subfolder-grid-modal');
         if (!grid) return;
         grid.innerHTML = '';
-        if (subs.length === 0) {
-            grid.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:12px;">No sub-folders yet.</p>';
+        const visibleSubs = (subs || []).filter(canViewFolder);
+        if (visibleSubs.length === 0) {
+            grid.innerHTML = '<p class="empty-state-text small">No sub-folders yet.</p>';
             return;
         }
-        subs.forEach(f => {
-            const isOwner = currentUser && (f.owner === currentUser.username || isAdmin);
+        visibleSubs.forEach(f => {
+            const canManage = canManageFolder(f);
+            const safeId = escapeJS(f.id);
+            const safeName = escapeJS(f.name);
             grid.innerHTML += `
-            <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;display:flex;flex-direction:column;">
-                <div onclick="window.openFileExplorer('${f.id}','${f.name.replace(/'/g,"\\'")}','${parentId}')" style="cursor:pointer;flex:1;text-align:center;">
-                    <div style="font-size:36px;margin-bottom:8px;">📂</div>
-                    <div style="color:white;font-weight:bold;font-family:'Exo 2';font-size:14px;word-wrap:break-word;">${f.name}</div>
-                    <div style="color:gray;font-size:10px;margin-top:4px;">By: ${f.owner}</div>
+            <div class="folder-card-modern compact">
+                <div onclick="window.openFileExplorer('${safeId}','${safeName}','${escapeJS(parentId)}')" class="folder-card-main">
+                    <div class="folder-card-icon">📂</div>
+                    <div class="folder-card-title">${escapeHTML(f.name)}</div>
+                    <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
+                    <div class="folder-access-pill ${canEditFolder(f) ? 'editor' : 'viewer'}">${folderAccessLabel(f)}</div>
                 </div>
-                ${isOwner ? `
-                <div style="display:flex;gap:5px;margin-top:10px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
-                    <button onclick="window.renameFolderAPI('${f.id}','${f.name.replace(/'/g,"\\'")}',true)" style="flex:1;background:transparent;color:#00d4ff;border:1px solid #00d4ff;border-radius:5px;cursor:pointer;padding:4px;font-size:11px;">Rename</button>
-                    <button onclick="window.deleteSubFolderAPI('${f.id}')" style="flex:1;background:transparent;color:#ff6b6b;border:1px solid #ff6b6b;border-radius:5px;cursor:pointer;padding:4px;font-size:11px;">Delete</button>
+                ${canManage ? `
+                <div class="folder-card-actions">
+                    <button onclick="window.renameFolderAPI('${safeId}','${safeName}',true)" class="mini-action-btn">Rename</button>
+                    <button onclick="window.openFolderPermissions('${safeId}')" class="mini-action-btn">Permissions</button>
+                    <button onclick="window.deleteSubFolderAPI('${safeId}')" class="mini-action-btn danger">Delete</button>
                 </div>` : ''}
             </div>`;
         });
@@ -361,25 +520,41 @@ function fetchAndRenderSubFolders() {
 window.createSubFolderAPI = function() {
     if (!currentUser) return customAlert("Please log in to create a sub-folder.");
     if (!currentFolderContext || !currentFolderContext.id) return customAlert("No folder selected.");
+    if (!canEditFolder(currentFolderContext)) return customAlert('You do not have permission to add sub-folders here.');
     customPrompt("Enter sub-folder name:", function(name) {
         if (!name) return;
-        sb.from('folders').insert([{ parent: String(currentFolderContext.id), name, owner: currentUser.username }])
+        sb.from('folders').insert([{
+            parent: String(currentFolderContext.id),
+            name,
+            owner: currentUser.username,
+            permissions: { viewers: [], editors: [] },
+            folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null,
+        }])
         .then(({ error }) => {
             if (error) return customAlert(error.message);
             fetchAndRenderSubFolders();
+            showToast('Sub-folder created.');
         });
     });
 };
 
-window.deleteSubFolderAPI = function(id) {
+window.deleteSubFolderAPI = async function(id) {
+    let folder;
+    try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
+    if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this sub-folder.');
     customConfirm("Delete this sub-folder and all files inside it?", function() {
         sb.from('folders').delete().eq('id', id)
-        .then(() => fetchAndRenderSubFolders()).catch(err => customAlert(err.message));
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderSubFolders();
+            showToast('Sub-folder deleted.', 'warning');
+        });
     });
 };
 
 window.uploadFileToFolderAPI = async function() {
     if(!currentUser) return customAlert("Log in to upload files.");
+    if (!currentFolderContext || !canEditFolder(currentFolderContext)) return customAlert('You do not have permission to upload files here.');
     const input  = document.getElementById('file-upload-input');
     const status = document.getElementById('file-upload-status');
     const files  = Array.from(input.files);
@@ -452,11 +627,196 @@ window.uploadFileToFolderAPI = async function() {
 };
 
 window.deleteFileAPI = function(fileId) {
+    if (!currentFolderContext || !canEditFolder(currentFolderContext)) return customAlert('You do not have permission to delete files here.');
     customConfirm("Delete this file?", function() {
         sb.from('files').delete().eq('id', fileId)
-        .then(() => fetchAndRenderFiles())
-        .catch(err => customAlert(err.message));
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderFiles();
+            showToast('File deleted.', 'warning');
+        });
     });
+};
+
+async function getAllFolders() {
+    const { data, error } = await sb.from('folders').select('*').order('name', { ascending: true });
+    if (error) throw error;
+    return data || [];
+}
+
+function removeDynamicModal(id) {
+    const existing = document.getElementById(id);
+    if (existing) existing.remove();
+}
+
+window.openFolderPermissions = async function(folderId) {
+    if (!currentUser) return customAlert('Please log in.');
+    let folder;
+    try { folder = await fetchFolderById(folderId); } catch (error) { return customAlert(error.message); }
+    if (!canManageFolder(folder)) return customAlert('Only the folder owner can manage permissions.');
+
+    const perms = normalizeFolderPermissions(folder);
+    removeDynamicModal('folder-permission-modal');
+    const people = users.filter((user) => user.username !== folder.owner);
+    const rows = people.map((user) => {
+        const role = perms.editors.includes(user.username) ? 'edit' : perms.viewers.includes(user.username) ? 'view' : 'none';
+        return `
+          <label class="permission-user-row">
+            <span>
+              <strong>${escapeHTML(user.display_name || user.username)}</strong>
+              <small>@${escapeHTML(user.username)}</small>
+            </span>
+            <select data-permission-user="${escapeHTML(user.username)}">
+              <option value="none"${role === 'none' ? ' selected' : ''}>No access</option>
+              <option value="view"${role === 'view' ? ' selected' : ''}>Can view</option>
+              <option value="edit"${role === 'edit' ? ' selected' : ''}>Can edit</option>
+            </select>
+          </label>`;
+    }).join('') || '<p class="empty-state-text small">No other users found.</p>';
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="folder-permission-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal-box permission-modal-box">
+          <button class="modal-close-btn" onclick="removeDynamicModal('folder-permission-modal')">&times;</button>
+          <h3 class="modal-title text-blue">Folder Permissions</h3>
+          <p class="modal-text align-left">Owner: ${escapeHTML(folder.owner)} · Folder: ${escapeHTML(folder.name)}</p>
+          <div class="permission-list">${rows}</div>
+          <div class="modal-btn-group">
+            <button class="btn-primary flex-1" onclick="saveFolderPermissions('${escapeJS(folder.id)}')">Save Permissions</button>
+            <button class="btn-outline-red flex-1" onclick="removeDynamicModal('folder-permission-modal')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `);
+};
+
+window.saveFolderPermissions = async function(folderId) {
+    let folder;
+    try { folder = await fetchFolderById(folderId); } catch (error) { return customAlert(error.message); }
+    if (!canManageFolder(folder)) return customAlert('Only the folder owner can manage permissions.');
+    const viewers = [];
+    const editors = [];
+    document.querySelectorAll('#folder-permission-modal [data-permission-user]').forEach((select) => {
+        const username = select.dataset.permissionUser;
+        if (select.value === 'view') viewers.push(username);
+        if (select.value === 'edit') editors.push(username);
+    });
+    const { error } = await sb.from('folders').update({ permissions: { viewers, editors } }).eq('id', folderId);
+    if (error) return customAlert(error.message);
+    removeDynamicModal('folder-permission-modal');
+    showToast('Permissions updated.');
+    if (currentFolderContext?.id === folderId) currentFolderContext = { ...currentFolderContext, permissions: { viewers, editors } };
+    fetchAndRenderFolders();
+    fetchAndRenderSubFolders();
+    if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+        renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+    }
+};
+
+async function renderProfileFolders(username) {
+    const container = document.getElementById('profile-folders-container');
+    if (!container) return;
+    container.innerHTML = createInlineLoader('Loading profile folders...');
+    const parent = `${PROFILE_FOLDER_PREFIX}${username}`;
+    const { data, error } = await sb.from('folders').select('*').eq('parent', parent).order('name', { ascending: true });
+    if (error) {
+        container.innerHTML = `<p class="empty-state-text small">${escapeHTML(error.message)}</p>`;
+        return;
+    }
+    const visible = (data || []).filter(canViewFolder);
+    const canCreate = currentUser && currentUser.username === username;
+    container.innerHTML = `
+      <div class="profile-folder-head">
+        <h3>Profile Folders</h3>
+        ${canCreate ? `<button class="btn-primary compact-btn" onclick="createProfileFolder('${escapeJS(username)}')">New Folder</button>` : ''}
+      </div>
+      <div class="profile-folder-grid">
+        ${visible.map((folder) => {
+            const safeId = escapeJS(folder.id);
+            const safeName = escapeJS(folder.name);
+            return `
+              <div class="profile-folder-card">
+                <button class="profile-folder-open" onclick="openFileExplorer('${safeId}','${safeName}')">
+                  <span class="profile-folder-icon">📁</span>
+                  <span class="profile-folder-name">${escapeHTML(folder.name)}</span>
+                  <span class="profile-folder-owner">Owner: ${escapeHTML(folder.owner)}</span>
+                  <span class="folder-access-pill ${canEditFolder(folder) ? 'editor' : 'viewer'}">${folderAccessLabel(folder)}</span>
+                </button>
+                ${canManageFolder(folder) ? `<div class="folder-card-actions">
+                  <button class="mini-action-btn" onclick="renameFolderAPI('${safeId}','${safeName}')">Rename</button>
+                  <button class="mini-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
+                  <button class="mini-action-btn danger" onclick="deleteFolderAPI('${safeId}')">Delete</button>
+                </div>` : ''}
+              </div>`;
+        }).join('')}
+        ${visible.length === 0 ? `<p class="empty-state-text small">${canCreate ? 'Create your first profile folder.' : 'No folders shared with you yet.'}</p>` : ''}
+      </div>`;
+}
+
+window.createProfileFolder = function(username) {
+    if (!currentUser || currentUser.username !== username) return customAlert('You can only create folders under your own profile.');
+    customPrompt('Profile folder name:', async function(name) {
+        if (!name) return;
+        const { error } = await sb.from('folders').insert([{
+            parent: `${PROFILE_FOLDER_PREFIX}${username}`,
+            name,
+            owner: username,
+            permissions: { viewers: [], editors: [] },
+            folder_type: 'profile',
+        }]);
+        if (error) return customAlert(error.message);
+        showToast('Profile folder created.');
+        renderProfileFolders(username);
+    });
+};
+
+function buildFolderPath(folder, folderMap) {
+    if (!folder) return 'Unknown folder';
+    if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+        return `${folder.parent.replace(PROFILE_FOLDER_PREFIX, 'Profile: ')} / ${folder.name}`;
+    }
+    const parentFolder = folderMap.get(String(folder.parent));
+    if (parentFolder) return `${buildFolderPath(parentFolder, folderMap)} / ${folder.name}`;
+    return `${folder.parent || 'General'} / ${folder.name}`;
+}
+
+window.openMoveFileModal = async function(fileId, currentFolderId, refreshMode = 'folder') {
+    if (!currentUser) return customAlert('Please log in.');
+    let folders;
+    try { folders = await getAllFolders(); } catch (error) { return customAlert(error.message); }
+    const folderMap = new Map(folders.map((folder) => [String(folder.id), folder]));
+    const source = folderMap.get(String(currentFolderId));
+    if (!canEditFolder(source)) return customAlert('You do not have permission to move files from this folder.');
+    const targets = folders.filter((folder) => String(folder.id) !== String(currentFolderId) && canEditFolder(folder));
+    removeDynamicModal('move-file-modal');
+    const cards = targets.map((folder) => `
+      <button class="move-target-card" onclick="moveFileToFolder('${escapeJS(fileId)}','${escapeJS(folder.id)}','${escapeJS(refreshMode)}')">
+        <span class="move-target-icon">📁</span>
+        <span class="move-target-title">${escapeHTML(folder.name)}</span>
+        <span class="move-target-path">${escapeHTML(buildFolderPath(folder, folderMap))}</span>
+      </button>`).join('') || '<p class="empty-state-text small">No editable destination folders found.</p>';
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="move-file-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal-box move-modal-box">
+          <button class="modal-close-btn" onclick="removeDynamicModal('move-file-modal')">&times;</button>
+          <h3 class="modal-title text-green">Move File</h3>
+          <p class="modal-text align-left">Choose a destination folder where you have editor access.</p>
+          <div class="move-target-grid">${cards}</div>
+        </div>
+      </div>`);
+};
+
+window.moveFileToFolder = async function(fileId, targetFolderId, refreshMode = 'folder') {
+    let target;
+    try { target = await fetchFolderById(targetFolderId); } catch (error) { return customAlert(error.message); }
+    if (!canEditFolder(target)) return customAlert('You do not have permission to move files to that folder.');
+    const { error } = await sb.from('files').update({ folder_id: targetFolderId, moved_at: new Date().toISOString() }).eq('id', fileId);
+    if (error) return customAlert(error.message);
+    removeDynamicModal('move-file-modal');
+    showToast('File moved.');
+    if (refreshMode === 'gallery-ep') renderGallery('ep');
+    else if (refreshMode === 'gallery-rp') renderGallery('rp');
+    else fetchAndRenderFiles();
 };
 
 /* ============================================================
@@ -1026,6 +1386,8 @@ window.login = async function() {
 window.register = async function() {
   const username = document.getElementById('username').value.trim();
   if (!username) return customAlert('Enter username');
+  const formatError = validateUsernameFormat(username);
+  if (formatError) return customAlert(formatError);
   
   const errBox = document.getElementById('errorMessage');
   if (errBox) errBox.style.display = 'none';
@@ -1059,7 +1421,12 @@ function establishSession() {
   fetchUsers();
   updateChatHeader();
   initSupabaseRealtimeChat();
+  initSharedRealtime();
+  ensureAdminUpdateControl();
+  fetchAppUpdates();
+  registerPushSubscription(false);
   fetchMessages(currentChat.type, currentChat.target);
+  handleNotificationDeepLink();
 }
 
 function fetchUsers() {
@@ -1078,17 +1445,18 @@ function renderUserDirectory() {
   users.forEach((user) => {
     const card = document.createElement('div');
     card.className = 'user-card';
+    const safeUsername = escapeJS(user.username);
     card.innerHTML = `
       <div class="user-card-top">
         <div>
-          <div class="user-name">${user.display_name || user.username}</div>
+          <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="user-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
-        <button class="user-view-btn" onclick="openUserProfile('${user.username}')">Profile</button>
+        <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
       </div>
-      <div class="user-meta">GitHub: ${user.github || '—'}</div>
-      <div class="user-meta">Email: ${user.email || '—'}</div>
-      <div class="user-note">${user.note || ''}</div>
+      <div class="user-meta">GitHub: ${escapeHTML(user.github || '—')}</div>
+      <div class="user-meta">Email: ${escapeHTML(user.email || '—')}</div>
+      <div class="user-note">${escapeHTML(user.note || '')}</div>
     `;
     grid.appendChild(card);
   });
@@ -1103,12 +1471,13 @@ function renderChatUsersList() {
     .forEach((user) => {
       const item = document.createElement('div');
       item.className = 'chat-user-item';
+      const safeUsername = escapeJS(user.username);
       item.innerHTML = `
         <div>
-          <div class="chat-user-name">${user.display_name || user.username}</div>
+          <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
         </div>
-        <button onclick="openChat('private', '${user.username}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
+        <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
       list.appendChild(item);
     });
@@ -1122,23 +1491,25 @@ window.openUserProfile = function(username) {
   if (!profilePanel || !details) return;
   
   const isMine = currentUser?.username === profile.username;
+  const safeUsername = escapeJS(profile.username);
   let html = `
-    <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${profile.display_name || profile.username}</h2>
-    <div class="profile-row"><strong>Username:</strong> ${profile.username}</div>
-    <div class="profile-row"><strong>Birthday:</strong> ${profile.birthday || 'Unknown'}</div>
-    <div class="profile-row"><strong>Address:</strong> ${profile.address || 'Unknown'}</div>
-    <div class="profile-row"><strong>GitHub:</strong> ${profile.github || '—'}</div>
-    <div class="profile-row"><strong>Email:</strong> ${profile.email || '—'}</div>
-    <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${profile.note || 'No additional note.'}</div>
+    <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${escapeHTML(profile.display_name || profile.username)}</h2>
+    <div class="profile-row"><strong>Username:</strong> ${escapeHTML(profile.username)}</div>
+    <div class="profile-row"><strong>Birthday:</strong> ${escapeHTML(profile.birthday || 'Unknown')}</div>
+    <div class="profile-row"><strong>Address:</strong> ${escapeHTML(profile.address || 'Unknown')}</div>
+    <div class="profile-row"><strong>GitHub:</strong> ${escapeHTML(profile.github || '—')}</div>
+    <div class="profile-row"><strong>Email:</strong> ${escapeHTML(profile.email || '—')}</div>
+    <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${escapeHTML(profile.note || 'No additional note.')}</div>
     <div class="profile-actions modal-btn-group" style="flex-wrap: wrap;">
-      <button class="btn-primary flex-1" onclick="openChat('private', '${profile.username}')">Message</button>
+      <button class="btn-primary flex-1" onclick="openChat('private', '${safeUsername}')">Message</button>
   `;
 
-  if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${profile.username}')">Edit Profile</button>`;
-  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${profile.username}')">Delete User</button>`;
-  html += `</div>`; 
+  if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${safeUsername}')">Edit Profile</button>`;
+  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${safeUsername}')">Delete User</button>`;
+  html += `</div><div id="profile-folders-container" class="profile-folders-container"></div>`;
   details.innerHTML = html;
   profilePanel.classList.add('active');
+  renderProfileFolders(profile.username);
 };
 
 window.closeProfile = function() {
@@ -1151,30 +1522,94 @@ window.editUserProfile = function(username) {
   if (!profile) return;
   const details = document.getElementById('profile-details');
   if (!details) return;
+  const lastChange = profile.username_last_changed_at ? new Date(profile.username_last_changed_at) : null;
+  const nextChange = lastChange ? new Date(lastChange.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
+  const canChangeUsername = !nextChange || Date.now() >= nextChange.getTime();
+  const usernameHelp = canChangeUsername
+    ? 'Username can be changed now. After saving a new username, it locks for 3 days.'
+    : `Username locked for ${formatRemainingTime(nextChange.getTime() - Date.now())}.`;
+  const safeUsername = escapeJS(profile.username);
   
   details.innerHTML = `
     <h2 class="modal-title text-blue" style="margin-bottom: 15px;">Edit Profile</h2>
+    <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Username</label>
+        <input type="text" id="profile-username" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.username || '')}" ${canChangeUsername ? '' : 'disabled'}>
+        <p class="profile-field-hint">${escapeHTML(usernameHelp)}</p></div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Display Name</label>
-        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.display_name || profile.username || ''}"></div>
+        <input type="text" id="profile-displayName" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.display_name || profile.username || '')}"></div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Birthday</label>
-        <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.birthday || ''}"></div>
+        <input type="text" id="profile-birthday" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.birthday || '')}"></div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Address</label>
-        <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.address || ''}"></div>
+        <input type="text" id="profile-address" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.address || '')}"></div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">GitHub URL</label>
-        <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.github || ''}"></div>
+        <input type="text" id="profile-github" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.github || '')}"></div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Email</label>
-        <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${profile.email || ''}"></div>
+        <input type="email" id="profile-email" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.email || '')}"></div>
     <div style="margin-bottom: 15px;"><label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
-        <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${profile.note || ''}</textarea></div>
+        <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${escapeHTML(profile.note || '')}</textarea></div>
     <div class="profile-actions modal-btn-group">
-      <button class="btn-primary flex-1" onclick="saveProfileEdits('${profile.username}')">Save</button>
-      <button class="btn-outline-red flex-1" onclick="openUserProfile('${profile.username}')">Cancel</button>
+      <button class="btn-primary flex-1" onclick="saveProfileEdits('${safeUsername}')">Save</button>
+      <button class="btn-outline-red flex-1" onclick="openUserProfile('${safeUsername}')">Cancel</button>
     </div>
   `;
 };
 
-window.saveProfileEdits = function(username) {
+function formatRemainingTime(ms) {
+  const totalMinutes = Math.max(1, Math.ceil(ms / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (days) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+  if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  if (!days && minutes) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  return parts.join(', ') || 'a few minutes';
+}
+
+function validateUsernameFormat(username) {
+  if (username.length < 3 || username.length > 24) return 'Username must be 3 to 24 characters long.';
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only use letters, numbers, and underscores.';
+  return '';
+}
+
+async function replaceUsernameReferences(oldUsername, newUsername) {
+  await sb.from('folders').update({ owner: newUsername }).eq('owner', oldUsername);
+  await sb.from('files').update({ uploader: newUsername }).eq('uploader', oldUsername);
+  await sb.from('messages').update({ sender: newUsername }).eq('sender', oldUsername);
+  await sb.from('messages').update({ target: newUsername }).eq('target', oldUsername);
+  await sb.from('calendar_notes').update({ updated_by: newUsername }).eq('updated_by', oldUsername);
+  await sb.from('shared_ai_outputs').update({ sharer: newUsername }).eq('sharer', oldUsername);
+  await sb.from('shared_announcements').update({ sharer: newUsername }).eq('sharer', oldUsername);
+
+  const { data: permissionFolders } = await sb.from('folders').select('id,permissions');
+  for (const folder of permissionFolders || []) {
+    const permissions = normalizeFolderPermissions(folder);
+    const viewers = permissions.viewers.map((name) => name === oldUsername ? newUsername : name);
+    const editors = permissions.editors.map((name) => name === oldUsername ? newUsername : name);
+    if (JSON.stringify(viewers) !== JSON.stringify(permissions.viewers) || JSON.stringify(editors) !== JSON.stringify(permissions.editors)) {
+      await sb.from('folders').update({ permissions: { viewers, editors } }).eq('id', folder.id);
+    }
+  }
+}
+
+window.saveProfileEdits = async function(username) {
+  const newUsername = document.getElementById('profile-username')?.value.trim() || username;
+  const profile = users.find((user) => user.username === username) || currentUser;
+  const usernameChanged = newUsername.toLowerCase() !== username.toLowerCase();
+  if (usernameChanged) {
+    const formatError = validateUsernameFormat(newUsername);
+    if (formatError) return customAlert(formatError);
+    const lastChange = profile?.username_last_changed_at ? new Date(profile.username_last_changed_at) : null;
+    const nextChange = lastChange ? new Date(lastChange.getTime() + 3 * 24 * 60 * 60 * 1000) : null;
+    if (nextChange && Date.now() < nextChange.getTime()) {
+      return customAlert(`You can change your username again in ${formatRemainingTime(nextChange.getTime() - Date.now())}.`);
+    }
+    const { data: existing } = await sb.from('profiles').select('username').ilike('username', newUsername).limit(1);
+    if (existing && existing.length) return customAlert('That username is already taken.');
+  }
+
   const payload = {
+    username: newUsername,
     display_name: document.getElementById('profile-displayName').value.trim(),
     birthday: document.getElementById('profile-birthday').value.trim(),
     address: document.getElementById('profile-address').value.trim(),
@@ -1182,10 +1617,18 @@ window.saveProfileEdits = function(username) {
     email: document.getElementById('profile-email').value.trim(),
     note: document.getElementById('profile-note').value.trim(),
   };
+  if (usernameChanged) payload.username_last_changed_at = new Date().toISOString();
   
-  sb.from('profiles').update(payload).eq('username', username)
-    .then(() => { fetchUsers(); customAlert("Profile updated successfully!"); openUserProfile(username); })
-    .catch((err) => customAlert(err.message));
+  const { data, error } = await sb.from('profiles').update(payload).eq('username', username).select('*').single();
+  if (error) return customAlert(error.message);
+  if (usernameChanged) await replaceUsernameReferences(username, newUsername);
+  currentUser = data;
+  isAdmin = (currentUser.username === 'Marquillero');
+  saveSession();
+  users = users.map((user) => user.username === username ? data : user);
+  fetchUsers();
+  showToast('Profile updated.');
+  openUserProfile(currentUser.username);
 };
 
 /* ============================================================
@@ -1200,10 +1643,16 @@ function getPrivateKey(userA, userB) { return [userA, userB].sort().join('||'); 
 function updateChatHeader() {
   const header = document.getElementById('chat-header');
   if (!header) return;
-  if (currentChat.type === 'group') header.textContent = 'Group Chat';
-  else if (currentChat.type === 'todo') header.textContent = 'To-Do Group';
-  else if (currentChat.type === 'private' && currentChat.target) header.textContent = `Private Chat: ${currentChat.target}`;
-  else header.textContent = 'Select a chat';
+  let title = 'Select a chat';
+  if (currentChat.type === 'group') title = 'Group Chat';
+  else if (currentChat.type === 'todo') title = 'To-Do Group';
+  else if (currentChat.type === 'private' && currentChat.target) title = `Private Chat: ${currentChat.target}`;
+  const permission = 'Notification' in window ? Notification.permission : 'unsupported';
+  const notifLabel = permission === 'granted' ? 'Notifications On' : 'Enable Notifications';
+  header.innerHTML = `
+    <span>${escapeHTML(title)}</span>
+    <button class="chat-notification-btn" onclick="registerPushSubscription(true)" ${permission === 'unsupported' ? 'disabled' : ''}>${notifLabel}</button>
+  `;
 }
 
 window.openChat = function(type, target = null) {
@@ -1337,7 +1786,14 @@ window.sendMessage = async function() {
       const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
       if (!error) { const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath); attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl }; }
   }
-  await sb.from('messages').insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }]);
+  const { data: savedMessage, error: sendError } = await sb.from('messages')
+    .insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }])
+    .select('*')
+    .single();
+  if (sendError) return customAlert(sendError.message);
+  if (currentChat.type === 'private' && currentChat.target && savedMessage?.id) {
+    notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
+  }
   input.value = ''; attachmentInput.value = '';
   const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = 'No file chosen';
 };
@@ -1378,10 +1834,12 @@ const pageConfig = {
   calendar: { bg: 'bg-aerial',   particles: 'particles-aerial',   wave: false, mountain: false, aurora: false, label: '📅 Calendar' },
   music:    { bg: 'bg-ocean',    particles: 'particles-ocean',    wave: true,  mountain: false, aurora: false, label: '🎵 Music' },
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
+  announcement:{ bg: 'bg-galaxy', particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📢 ANNOUNCEMENT' },
   games:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎮 Arcade' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
   royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
-  witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 WIT FB Page' },
+  witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 Social Media Pages' },
+  outputai: { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🧾 OUTPUT-AI' },
   ai:       { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🤖 AI Assistants' },
 };
 
@@ -1410,20 +1868,13 @@ window.goToPage = function(pageName) {
   // Ping server when music page opens so Render wakes up before the user searches
   if (pageName === 'music') fetch('/api/ping').catch(() => {});
 
-  // Lazy-load Facebook SDK the first time WIT FB Page is visited
-  if (pageName === 'witfb' && typeof loadFBSDK === 'function') {
-    loadFBSDK();
-    // Re-parse after the page is painted so the embed measures full container width
-    setTimeout(() => { if (window.FB && window.FB.XFBML) window.FB.XFBML.parse(); }, 400);
-  }
-
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'lobby' || pageName === 'ai') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
-  if (liveClock) liveClock.style.display = (pageName === 'ai') ? 'none' : '';
+  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -1469,6 +1920,8 @@ window.goToPage = function(pageName) {
   // Event Pictures & Random Pictures: reset and render year cards
   if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
   if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
+  if (pageName === 'announcement') fetchSharedAnnouncements();
+  if (pageName === 'outputai') fetchSharedAIOutputs();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
 };
@@ -1568,14 +2021,15 @@ window.addNote = function(day) {
 
 window.showNoteView = function(dateKey, displayDate, text) {
     let existingModal = document.getElementById('view-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${displayDate}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${text}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="edit-note-btn">Edit Note</button></div></div></div>`;
+    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${escapeHTML(displayDate)}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHTML(text)}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="share-note-btn">Share to Everyone</button><button class="btn-blue flex-1" id="edit-note-btn">Edit Note</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     document.getElementById('edit-note-btn').onclick = function() { document.getElementById('view-note-modal').remove(); openNotePrompt(dateKey, displayDate, text); };
+    document.getElementById('share-note-btn').onclick = function() { shareCalendarNote(dateKey, displayDate, text); };
 };
 
 window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     let existingModal = document.getElementById('edit-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${existingNote}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn">Save</button><button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button></div></div></div>`;
+    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${escapeHTML(existingNote)}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn">Save</button><button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const textEl = document.getElementById('note-textarea'); if (textEl) textEl.focus();
     document.getElementById('save-note-btn').onclick = async function() {
@@ -1659,12 +2113,174 @@ document.getElementById('custom-bg-upload').addEventListener('change', function(
     reader.readAsDataURL(file);
 });
 
-window.saveAnnouncement = function() { const noteContent = document.getElementById('announcement-note').value; localStorage.setItem('savedWeeklyAnnouncement', noteContent); customAlert("Saved!"); };
+window.saveAnnouncement = function() { const noteContent = document.getElementById('announcement-note').value; localStorage.setItem('savedWeeklyAnnouncement', noteContent); showToast("Weekly announcement saved."); };
 
 window.addEventListener('DOMContentLoaded', () => {
     const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
     if (savedNote) { const noteBox = document.getElementById('announcement-note'); if(noteBox) noteBox.value = savedNote; }
 });
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+
+async function registerPushSubscription(interactive = false) {
+  if (!currentUser || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+  try {
+    const keyRes = await fetch('/api/push/public-key');
+    const keyData = await keyRes.json();
+    if (!keyData.enabled || !keyData.publicKey) {
+      if (interactive) customAlert('Push notifications need VAPID keys configured on the server.');
+      return;
+    }
+    let permission = Notification.permission;
+    if (permission === 'default' && interactive) permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      updateChatHeader();
+      if (interactive) customAlert('Notification permission was not granted.');
+      return;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+      });
+    }
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser.username, subscription }),
+    });
+    if (interactive) showToast('Background message notifications enabled.');
+    updateChatHeader();
+  } catch (error) {
+    console.warn('Push registration failed:', error);
+    if (interactive) customAlert(error.message);
+  }
+}
+
+async function notifyPrivateMessagePush(message) {
+  if (!currentUser || currentChat.type !== 'private' || !currentChat.target) return;
+  await fetch('/api/push/private-message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sender: currentUser.username,
+      target: currentChat.target,
+      text: message.text || '',
+      messageId: message.id,
+    }),
+  });
+}
+
+function handleNotificationDeepLink() {
+  if (!currentUser) return;
+  const params = new URLSearchParams(window.location.search);
+  const chatTarget = params.get('chat');
+  if (!chatTarget || chatTarget === currentUser.username) return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+  setTimeout(() => openChat('private', chatTarget), 250);
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'OPEN_PRIVATE_CHAT' && event.data.sender) {
+      openChat('private', event.data.sender);
+    }
+  });
+}
+
+async function fetchAppUpdates() {
+  const { data, error } = await sb.from('app_updates')
+    .select('*')
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error || !data || !data.length) return;
+  const update = data[0];
+  const expiresAt = update.expires_at ? new Date(update.expires_at).getTime() : null;
+  if (expiresAt && Date.now() > expiresAt) return;
+  const seenKey = `seenAppUpdate:${update.id}`;
+  if (localStorage.getItem(seenKey)) return;
+  showFloatingUpdate(update, seenKey);
+}
+
+function showFloatingUpdate(update, seenKey) {
+  removeDynamicModal('floating-update-note');
+  const note = document.createElement('div');
+  note.id = 'floating-update-note';
+  note.className = 'floating-update-note';
+  note.innerHTML = `
+    <button class="floating-update-close" aria-label="Close update">&times;</button>
+    <div class="floating-update-kicker">App Update</div>
+    <strong>${escapeHTML(update.title || 'New update')}</strong>
+    <p>${escapeHTML(update.message || update.body || '')}</p>
+  `;
+  document.body.appendChild(note);
+  note.querySelector('button').onclick = () => {
+    localStorage.setItem(seenKey, '1');
+    note.classList.remove('show');
+    setTimeout(() => note.remove(), 220);
+  };
+  requestAnimationFrame(() => note.classList.add('show'));
+  setTimeout(() => {
+    if (!document.body.contains(note)) return;
+    localStorage.setItem(seenKey, '1');
+    note.classList.remove('show');
+    setTimeout(() => note.remove(), 220);
+  }, 6500);
+}
+
+function ensureAdminUpdateControl() {
+  if (!isAdmin || document.getElementById('admin-update-btn')) return;
+  const controls = document.querySelector('.sidebar-controls');
+  if (!controls) return;
+  const btn = document.createElement('button');
+  btn.id = 'admin-update-btn';
+  btn.className = 'theme-toggle-btn admin-update-btn';
+  btn.title = 'Post app update';
+  btn.textContent = '!';
+  btn.onclick = openAdminUpdateComposer;
+  controls.appendChild(btn);
+}
+
+function openAdminUpdateComposer() {
+  if (!isAdmin) return customAlert('Admin only.');
+  removeDynamicModal('admin-update-modal');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="admin-update-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+      <div class="custom-modal-box small-box border-blue">
+        <button class="modal-close-btn" onclick="removeDynamicModal('admin-update-modal')">&times;</button>
+        <h3 class="modal-title text-blue">Post App Update</h3>
+        <input id="admin-update-title" class="modal-input" placeholder="Title" maxlength="80">
+        <textarea id="admin-update-message" class="modal-input" placeholder="Message" style="height:100px;resize:none;margin-top:10px;"></textarea>
+        <button class="btn-primary full-width mt-10" onclick="postAdminUpdate()">Post Update</button>
+      </div>
+    </div>
+  `);
+}
+
+window.postAdminUpdate = async function() {
+  if (!isAdmin) return customAlert('Admin only.');
+  const title = document.getElementById('admin-update-title')?.value.trim();
+  const message = document.getElementById('admin-update-message')?.value.trim();
+  if (!title || !message) return customAlert('Title and message are required.');
+  const { error } = await sb.from('app_updates').insert([{
+    title,
+    message,
+    active: true,
+    created_by: currentUser.username,
+  }]);
+  if (error) return customAlert(error.message);
+  removeDynamicModal('admin-update-modal');
+  showToast('App update posted.');
+  fetchAppUpdates();
+};
 
 /* ============================================================
    THEME TOGGLE (Dark / Light Mode) + ACCENT COLOR
@@ -2233,18 +2849,20 @@ function renderGFolders(pfx, view) {
   const parentKey = `${pfx}_${st.year.key}_${st.sem.key}`;
   sb.from('folders').select('*').eq('parent', parentKey).then(({ data:folders, error }) => {
     if (error) return;
-    const cards = (folders || []).map(f => {
-      const sn = f.name.replace(/'/g, "\\'");
-      const actions = currentUser && (f.owner === currentUser.username || isAdmin)
+    const cards = (folders || []).filter(canViewFolder).map(f => {
+      const safeId = escapeJS(f.id);
+      const safeName = escapeJS(f.name);
+      const actions = canManageFolder(f)
         ? `<div class="ep-card-actions" onclick="event.stopPropagation()">
-             <button class="ep-action-btn" onclick="${pfx}RenameFolder('${f.id}','${sn}')">Rename</button>
-             <button class="ep-action-btn ep-btn-del" onclick="${pfx}DeleteFolder('${f.id}')">Delete</button>
+             <button class="ep-action-btn" onclick="${pfx}RenameFolder('${safeId}','${safeName}')">Rename</button>
+             <button class="ep-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
+             <button class="ep-action-btn ep-btn-del" onclick="${pfx}DeleteFolder('${safeId}')">Delete</button>
            </div>` : '';
       return `
-        <div class="ep-card ep-card-folder" style="--ep-accent:#00d4ff" onclick="${pfx}SelectFolder('${f.id}','${sn}')">
+        <div class="ep-card ep-card-folder" style="--ep-accent:#00d4ff" onclick="${pfx}SelectFolder('${safeId}','${safeName}')">
           <div class="ep-card-emoji">📁</div>
-          <div class="ep-card-label">${f.name}</div>
-          <div class="ep-card-sub">By ${f.owner}</div>
+          <div class="ep-card-label">${escapeHTML(f.name)}</div>
+          <div class="ep-card-sub">By ${escapeHTML(f.owner || 'Unknown')} · ${folderAccessLabel(f)}</div>
           ${actions}
           <div class="ep-card-glow"></div>
         </div>`;
@@ -2267,10 +2885,16 @@ function renderGFolders(pfx, view) {
 function renderGFiles(pfx, view) {
   const st = galleryStates[pfx];
   const folderId = st.folder.id;
+  fetchFolderById(folderId).then((folder) => {
+  if (!canViewFolder(folder)) {
+    view.innerHTML = `${gBackBtn(pfx, 'folders', st.sem ? st.sem.label : 'Back')}<div class="ep-empty">You do not have permission to view this folder.</div>`;
+    return;
+  }
+  const allowEdit = canEditFolder(folder);
   sb.from('files').select('*').eq('folder_id', folderId).then(({ data:files, error }) => {
     if (error) return;
 
-    const uploadBar = currentUser ? `
+    const uploadBar = allowEdit ? `
       <label class="ep-upload-btn">
         <input type="file" multiple accept="image/*,video/*" style="display:none" onchange="${pfx}UploadFiles(this.files,'${folderId}',this)">
         📸 Upload Photos / Videos
@@ -2281,27 +2905,36 @@ function renderGFiles(pfx, view) {
       : `<div class="ep-photo-grid">${files.map(f => {
           const isImg = f.type && f.type.startsWith('image/');
           const isVid = f.type && f.type.startsWith('video/');
-          const sn = f.name.replace(/'/g, "\\'");
-          const delBtn = currentUser && (f.uploader === currentUser.username || isAdmin)
-            ? `<button class="ep-photo-delete" onclick="${pfx}DeleteFile('${f.id}')">✕</button>` : '';
+          const safeId = escapeJS(f.id);
+          const safeName = escapeJS(f.name);
+          const safeUrl = escapeJS(f.url);
+          const safeFolderId = escapeJS(folderId);
+          const actionBtns = allowEdit
+            ? `<div class="ep-photo-actions">
+                 <button onclick="openMoveFileModal('${safeId}','${safeFolderId}','gallery-${pfx}')">Move</button>
+                 <button class="danger" onclick="${pfx}DeleteFile('${safeId}')">Delete</button>
+               </div>` : '';
           return `
             <div class="ep-photo-card">
-              ${isImg ? `<img src="${f.url}" class="ep-photo-thumb" loading="lazy" onclick="epOpenPhoto('${f.url}','${sn}')">` :
-                isVid ? `<video src="${f.url}" class="ep-photo-thumb" controls playsinline></video>` :
+              ${isImg ? `<img src="${escapeHTML(f.url)}" class="ep-photo-thumb" loading="lazy" onclick="epOpenPhoto('${safeUrl}','${safeName}')">` :
+                isVid ? `<video src="${escapeHTML(f.url)}" class="ep-photo-thumb" controls playsinline></video>` :
                 `<div class="ep-photo-placeholder">📄</div>`}
               <div class="ep-photo-info">
-                <div class="ep-photo-name">${f.name}</div>
+                <div class="ep-photo-name">${escapeHTML(f.name)}</div>
                 ${f.size ? `<div class="ep-photo-size">${formatFileSize(f.size)}</div>` : ''}
               </div>
-              ${delBtn}
+              ${actionBtns}
             </div>`;
         }).join('')}</div>`;
 
     view.innerHTML = `
       ${gBackBtn(pfx, 'folders', st.sem ? st.sem.label : 'Back')}
-      <div class="ep-section-title">${st.folder.name}</div>
+      <div class="ep-section-title">${escapeHTML(st.folder.name)}</div>
       <div class="ep-upload-bar">${uploadBar}</div>
       ${photoGrid}`;
+  });
+  }).catch((error) => {
+    view.innerHTML = `<div class="ep-empty">${escapeHTML(error.message)}</div>`;
   });
 }
 
@@ -2310,26 +2943,39 @@ function gCreateFolder(pfx, parentKey) {
   if (!currentUser) return customAlert('Please log in.');
   customPrompt('Album name:', function(name) {
     if (!name) return;
-    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username }])
-      .then(({ error }) => { if (error) return customAlert(error.message); renderGallery(pfx); });
+    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [] } }])
+      .then(({ error }) => {
+        if (error) return customAlert(error.message);
+        showToast('Album created.');
+        renderGallery(pfx);
+      });
   });
 }
 function gRenameFolder(pfx, id, currentName) {
+  fetchFolderById(id).then((folder) => {
+  if (!canManageFolder(folder)) return customAlert('Only the album owner can rename this album.');
   customPrompt('New album name:', function(name) {
     if (!name || name === currentName) return;
     sb.from('folders').update({ name }).eq('id', id)
-      .then(({ error }) => { if (error) return customAlert(error.message); renderGallery(pfx); });
+      .then(({ error }) => { if (error) return customAlert(error.message); showToast('Album renamed.'); renderGallery(pfx); });
   }, currentName);
+  }).catch((error) => customAlert(error.message));
 }
 function gDeleteFolder(pfx, id) {
+  fetchFolderById(id).then((folder) => {
+  if (!canManageFolder(folder)) return customAlert('Only the album owner can delete this album.');
   customConfirm('Delete this album and all its photos?', function() {
     sb.from('files').delete().eq('folder_id', id)
       .then(() => sb.from('folders').delete().eq('id', id))
-      .then(() => renderGallery(pfx));
+      .then(() => { showToast('Album deleted.', 'warning'); renderGallery(pfx); });
   });
+  }).catch((error) => customAlert(error.message));
 }
 async function gUploadFiles(pfx, fileList, folderId, inputEl) {
   if (!currentUser) return customAlert('Please log in.');
+  let folder;
+  try { folder = await fetchFolderById(folderId); } catch (error) { return customAlert(error.message); }
+  if (!canEditFolder(folder)) return customAlert('You do not have permission to upload here.');
   const files = Array.from(fileList);
   if (files.length === 0) return;
 
@@ -2359,9 +3005,14 @@ async function gUploadFiles(pfx, fileList, folderId, inputEl) {
   renderGallery(pfx);
 }
 function gDeleteFile(pfx, id) {
+  const folderId = galleryStates[pfx]?.folder?.id;
+  if (!folderId) return;
+  fetchFolderById(folderId).then((folder) => {
+  if (!canEditFolder(folder)) return customAlert('You do not have permission to delete files here.');
   customConfirm('Delete this photo?', function() {
-    sb.from('files').delete().eq('id', id).then(() => renderGallery(pfx));
+    sb.from('files').delete().eq('id', id).then(() => { showToast('File deleted.', 'warning'); renderGallery(pfx); });
   });
+  }).catch((error) => customAlert(error.message));
 }
 
 function epOpenPhoto(url, name) {
@@ -2376,6 +3027,124 @@ function epOpenPhoto(url, name) {
     </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('ep-lightbox-in'));
+}
+
+// Shared public boards: OUTPUT-AI and ANNOUNCEMENT
+let sharedAIOutputs = [];
+let sharedAnnouncements = [];
+let sharedRealtimeReady = false;
+
+window.openSocialPage = function(url) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+async function fetchSharedAIOutputs() {
+  const feed = document.getElementById('output-ai-feed');
+  if (feed) feed.innerHTML = createInlineLoader('Loading shared AI output...');
+  const { data, error } = await sb.from('shared_ai_outputs').select('*').order('created_at', { ascending: false }).limit(80);
+  if (error) {
+    if (feed) feed.innerHTML = `<p class="empty-state-text">${escapeHTML(error.message)}</p>`;
+    return;
+  }
+  sharedAIOutputs = data || [];
+  renderSharedAIOutputs();
+}
+
+function renderSharedAIOutputs() {
+  const feed = document.getElementById('output-ai-feed');
+  if (!feed) return;
+  if (!sharedAIOutputs.length) {
+    feed.innerHTML = '<div class="board-empty">No shared AI output yet.</div>';
+    return;
+  }
+  feed.innerHTML = sharedAIOutputs.map((item) => `
+    <article class="board-card ai-output-card">
+      <div class="board-card-meta">
+        <span>${escapeHTML(item.sharer || 'Unknown')}</span>
+        <span>${new Date(item.created_at).toLocaleString()}</span>
+        <span>${escapeHTML(item.provider || 'AI')}</span>
+      </div>
+      ${item.prompt ? `<div class="board-section"><h4>Prompt</h4><p>${aiFormat(item.prompt)}</p></div>` : ''}
+      ${item.output ? `<div class="board-section"><h4>Output</h4><p>${aiFormat(item.output)}</p></div>` : ''}
+    </article>`).join('');
+}
+
+async function fetchSharedAnnouncements() {
+  const feed = document.getElementById('announcement-feed');
+  if (feed) feed.innerHTML = createInlineLoader('Loading announcements...');
+  const { data, error } = await sb.from('shared_announcements').select('*').order('created_at', { ascending: false }).limit(80);
+  if (error) {
+    if (feed) feed.innerHTML = `<p class="empty-state-text">${escapeHTML(error.message)}</p>`;
+    return;
+  }
+  sharedAnnouncements = data || [];
+  renderSharedAnnouncements();
+}
+
+function renderSharedAnnouncements() {
+  const feed = document.getElementById('announcement-feed');
+  if (!feed) return;
+  if (!sharedAnnouncements.length) {
+    feed.innerHTML = '<div class="board-empty">No shared announcements yet.</div>';
+    return;
+  }
+  feed.innerHTML = sharedAnnouncements.map((item) => `
+    <article class="board-card announcement-card">
+      <div class="announcement-date-chip">${escapeHTML(item.schedule || item.date_label || 'Announcement')}</div>
+      <h2>${escapeHTML(item.title || 'Announcement')}</h2>
+      <p>${escapeHTML(item.body || item.text || '').replace(/\n/g, '<br>')}</p>
+      <div class="board-card-meta">
+        <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
+        <span>${new Date(item.created_at).toLocaleString()}</span>
+      </div>
+    </article>`).join('');
+}
+
+async function shareAnnouncementPayload(payload) {
+  if (!currentUser) return customAlert('Please log in to share announcements.');
+  const { error } = await sb.from('shared_announcements').insert([{
+    ...payload,
+    sharer: currentUser.username,
+  }]);
+  if (error) return customAlert(error.message);
+  showToast('Shared to ANNOUNCEMENT.');
+  fetchSharedAnnouncements();
+}
+
+window.shareCalendarNote = function(dateKey, displayDate, text) {
+  shareAnnouncementPayload({
+    title: `Calendar: ${displayDate}`,
+    body: text,
+    date_key: dateKey,
+    date_label: displayDate,
+    schedule: displayDate,
+    source_type: 'calendar_date',
+  });
+};
+
+window.shareWeeklyAnnouncement = function() {
+  const text = document.getElementById('announcement-note')?.value.trim();
+  if (!text) return customAlert('Write a weekly reminder first.');
+  shareAnnouncementPayload({
+    title: 'Weekly Reminder',
+    body: text,
+    schedule: 'Weekly',
+    source_type: 'weekly_reminder',
+  });
+};
+
+function initSharedRealtime() {
+  if (sharedRealtimeReady) return;
+  sharedRealtimeReady = true;
+  sb.channel('public:shared_boards')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_ai_outputs' }, () => {
+      if (currentPage === 'outputai') fetchSharedAIOutputs();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_announcements' }, () => {
+      if (currentPage === 'announcement') fetchSharedAnnouncements();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_updates' }, () => fetchAppUpdates())
+    .subscribe();
 }
 
 
@@ -2458,10 +3227,13 @@ function renderAIChat(view, provider) {
   const p    = AI_PROVIDERS[provider];
   const msgs = aiChats[provider];
 
-  const bubbles = msgs.map(m => `
+  const bubbles = msgs.map((m, index) => `
     <div class="ai-msg ${m.role === 'user' ? 'ai-msg-user' : 'ai-msg-ai'}">
       ${m.role !== 'user' ? `<div class="ai-msg-av">${p.icon}</div>` : ''}
-      <div class="ai-bubble">${aiFormat(m.content)}</div>
+      <div class="ai-bubble-wrap">
+        <div class="ai-bubble">${aiFormat(m.content)}</div>
+        <button class="share-everyone-btn" onclick="shareAIMessage('${provider}', ${index})">Share to Everyone</button>
+      </div>
       ${m.role === 'user' ? `<div class="ai-msg-av">👤</div>` : ''}
     </div>`).join('');
 
@@ -2511,7 +3283,7 @@ function renderAIChat(view, provider) {
 }
 
 function aiFormat(text) {
-  return text
+  return String(text ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
@@ -2545,3 +3317,21 @@ async function aiSend(provider) {
   aiTyping = false;
   renderAIChat(document.getElementById('ai-view'), provider);
 }
+
+window.shareAIMessage = async function(provider, index) {
+  if (!currentUser) return customAlert('Please log in to share AI output.');
+  const message = aiChats[provider]?.[index];
+  if (!message) return;
+  const previousPrompt = [...aiChats[provider].slice(0, index)].reverse().find((item) => item.role === 'user')?.content || '';
+  const prompt = message.role === 'user' ? message.content : previousPrompt;
+  const output = message.role === 'assistant' ? message.content : '';
+  const { error } = await sb.from('shared_ai_outputs').insert([{
+    sharer: currentUser.username,
+    provider: AI_PROVIDERS[provider]?.name || provider,
+    prompt,
+    output,
+  }]);
+  if (error) return customAlert(error.message);
+  showToast('Shared to OUTPUT-AI.');
+  fetchSharedAIOutputs();
+};

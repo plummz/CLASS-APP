@@ -14,6 +14,13 @@ const ffmpegPath = require('ffmpeg-static');
 const { Server } = require('socket.io');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 
+let webpush = null;
+try {
+  webpush = require('web-push');
+} catch (_) {
+  webpush = null;
+}
+
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 // ── Cloudflare R2 client ──────────────────────────────────
@@ -32,6 +39,14 @@ const ADMIN_PASSWORD = '120524';
 const DATA_PATH = path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@class-app.local';
+const PUSH_READY = Boolean(webpush && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+
+if (PUSH_READY) {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -42,16 +57,32 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {
-    fs.writeFileSync(DATA_PATH, JSON.stringify({ users: [], chatHistory: { group: [], todo: [], private: {} }, folders: [], files: [] }, null, 2));
+    fs.writeFileSync(DATA_PATH, JSON.stringify({
+      users: [],
+      chatHistory: { group: [], todo: [], private: {} },
+      folders: [],
+      files: [],
+      pushSubscriptions: {},
+      sentPushMessageIds: [],
+    }, null, 2));
   }
   try {
     const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
     if (!data.folders) data.folders = [];
     if (!data.files) data.files = [];
+    if (!data.pushSubscriptions) data.pushSubscriptions = {};
+    if (!data.sentPushMessageIds) data.sentPushMessageIds = [];
     return data;
   } catch (error) {
     console.error('Error loading data.json:', error);
-    return { users: [], chatHistory: { group: [], todo: [], private: {} }, folders: [], files: [] };
+    return {
+      users: [],
+      chatHistory: { group: [], todo: [], private: {} },
+      folders: [],
+      files: [],
+      pushSubscriptions: {},
+      sentPushMessageIds: [],
+    };
   }
 }
 
@@ -463,6 +494,95 @@ function emitMessage(chat, target, message) {
   io.to(chat).emit('message', payload);
 }
 
+function pruneSentPushIds() {
+  if (state.sentPushMessageIds.length > 500) {
+    state.sentPushMessageIds = state.sentPushMessageIds.slice(-250);
+  }
+}
+
+async function sendPrivatePushNotification({ sender, target, text, messageId }) {
+  if (!PUSH_READY || !sender || !target || !messageId) return { sent: 0, skipped: true };
+  if (state.sentPushMessageIds.includes(messageId)) return { sent: 0, duplicate: true };
+
+  const subscriptions = state.pushSubscriptions[target] || [];
+  if (!subscriptions.length) {
+    state.sentPushMessageIds.push(messageId);
+    pruneSentPushIds();
+    saveData(state);
+    return { sent: 0 };
+  }
+
+  const conversationKey = getPrivateKey(sender, target);
+  const payload = JSON.stringify({
+    title: `New message from ${sender}`,
+    body: text ? String(text).slice(0, 140) : 'Sent an attachment',
+    url: `/?chat=${encodeURIComponent(sender)}`,
+    sender,
+    target,
+    messageId,
+    conversationKey,
+    tag: `private-${conversationKey}`,
+  });
+
+  let sent = 0;
+  const keep = [];
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(sub, payload);
+      keep.push(sub);
+      sent++;
+    } catch (error) {
+      if (![404, 410].includes(error.statusCode)) keep.push(sub);
+      console.warn('Push send failed:', error.statusCode || error.message);
+    }
+  }
+
+  state.pushSubscriptions[target] = keep;
+  state.sentPushMessageIds.push(messageId);
+  pruneSentPushIds();
+  saveData(state);
+  return { sent };
+}
+
+app.get('/api/push/public-key', (req, res) => {
+  res.json({ enabled: PUSH_READY, publicKey: VAPID_PUBLIC_KEY });
+});
+
+app.post('/api/push/subscribe', (req, res) => {
+  const { username, subscription } = req.body || {};
+  if (!username || !subscription || !subscription.endpoint) {
+    return res.status(400).json({ error: 'username and subscription are required' });
+  }
+  state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
+  const existing = state.pushSubscriptions[username].find((sub) => sub.endpoint === subscription.endpoint);
+  if (!existing) state.pushSubscriptions[username].push(subscription);
+  saveData(state);
+  res.json({ success: true, enabled: PUSH_READY });
+});
+
+app.post('/api/push/unsubscribe', (req, res) => {
+  const { username, endpoint } = req.body || {};
+  if (!username || !endpoint) return res.status(400).json({ error: 'username and endpoint are required' });
+  state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((sub) => sub.endpoint !== endpoint);
+  saveData(state);
+  res.json({ success: true });
+});
+
+app.post('/api/push/private-message', async (req, res) => {
+  const { sender, target, text, messageId } = req.body || {};
+  if (!sender || !target || !messageId) {
+    return res.status(400).json({ error: 'sender, target, and messageId are required' });
+  }
+  if (sender === target) return res.status(400).json({ error: 'Cannot notify self' });
+  try {
+    const result = await sendPrivatePushNotification({ sender, target, text, messageId });
+    res.json({ success: true, ...result, enabled: PUSH_READY });
+  } catch (error) {
+    console.error('Push notification error:', error);
+    res.status(500).json({ error: 'Push notification failed' });
+  }
+});
+
 // --- FOLDERS & FILES API ---
 app.get('/api/folders', (req, res) => {
   const parent = req.query.parent;
@@ -605,6 +725,9 @@ app.post('/api/messages', (req, res) => {
     state.chatHistory.private[key].push(message);
     saveData(state);
     emitMessage(chat, { userA, userB }, message);
+    const recipient = sender === userA ? userB : userA;
+    sendPrivatePushNotification({ sender, target: recipient, text: message.text, messageId: message.id })
+      .catch((error) => console.warn('Private push failed:', error.message));
     return res.json(message);
   }
   state.chatHistory[chat] = state.chatHistory[chat] || [];
@@ -800,6 +923,9 @@ io.on('connection', (socket) => {
       state.chatHistory.private[key].push(message);
       saveData(state);
       io.to(key).emit('message', { chat, target: { userA, userB }, message });
+      const recipient = sender === userA ? userB : userA;
+      sendPrivatePushNotification({ sender, target: recipient, text: message.text, messageId: message.id })
+        .catch((error) => console.warn('Private push failed:', error.message));
       return;
     }
     state.chatHistory[chat] = state.chatHistory[chat] || [];

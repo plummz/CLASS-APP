@@ -1,4 +1,4 @@
-const CACHE_NAME = 'school-portfolio-v50';
+const CACHE_NAME = 'school-portfolio-v51';
 const ASSETS = [
   '/',
   'index.html',
@@ -50,4 +50,48 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(event.request))
   );
+});
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_) {
+    data = { title: 'New message', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'New message';
+  const options = {
+    body: data.body || 'Open CLASS APP to view it.',
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    tag: data.tag || data.messageId || 'class-app-message',
+    renotify: false,
+    data: {
+      url: data.url || '/',
+      sender: data.sender || '',
+      messageId: data.messageId || '',
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  const sender = event.notification.data?.sender || '';
+
+  event.waitUntil((async () => {
+    const clientsList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientsList) {
+      if ('focus' in client) {
+        await client.focus();
+        if ('navigate' in client) await client.navigate(targetUrl);
+        if (sender) client.postMessage({ type: 'OPEN_PRIVATE_CHAT', sender });
+        return;
+      }
+    }
+    await clients.openWindow(targetUrl);
+  })());
 });

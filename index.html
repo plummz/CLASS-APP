@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -90,10 +90,20 @@
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
-    <!-- WIT FB Page — below Lobby -->
+    <div class="nav-item" data-page="announcement" onclick="goToPage('announcement')">
+      <span class="nav-icon">📢</span>
+      <div class="nav-text"><span class="nav-label">ANNOUNCEMENT</span></div>
+    </div>
+
+    <!-- Social Media Pages — below Lobby -->
     <div class="nav-item" data-page="witfb" onclick="goToPage('witfb')">
       <span class="nav-icon">📘</span>
-      <div class="nav-text"><span class="nav-label">WIT FB Page</span></div>
+      <div class="nav-text"><span class="nav-label">Social Media Pages</span></div>
+    </div>
+
+    <div class="nav-item" data-page="outputai" onclick="goToPage('outputai')">
+      <span class="nav-icon">🧾</span>
+      <div class="nav-text"><span class="nav-label">OUTPUT-AI</span></div>
     </div>
 
     <!-- AI Assistants -->
@@ -308,6 +318,7 @@
       <h3 style="color: #00ff88; margin-bottom: 10px;">Weekly Announcements</h3>
       <textarea id="announcement-note" placeholder="Type your weekly notes here..." style="width: 100%; height: 80px; background: rgba(0,0,0,0.3); color: white; border: 1px solid #00d4ff; border-radius: 8px; padding: 10px; resize: none;"></textarea>
       <button class="btn-primary" style="margin-top: 10px; width: 100%;" onclick="saveAnnouncement()">Save Announcement</button>
+      <button class="btn-blue" style="margin-top: 10px; width: 100%;" onclick="shareWeeklyAnnouncement()">Share to Everyone</button>
     </div>
   </div>
   
@@ -751,36 +762,71 @@
     </div>
   </div>
 
+  <!-- ── ANNOUNCEMENT ────────────────────────────────────── -->
+  <div class="page" id="page-announcement">
+    <div class="shared-board announcement-board">
+      <div class="shared-board-header">
+        <div>
+          <div class="shared-board-kicker">Public Board</div>
+          <h1 class="shared-board-title">ANNOUNCEMENT</h1>
+        </div>
+        <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+      </div>
+      <div class="shared-board-feed" id="announcement-feed"></div>
+    </div>
+  </div>
+
+  <!-- ── OUTPUT-AI ────────────────────────────────────── -->
+  <div class="page" id="page-outputai">
+    <div class="shared-board output-ai-board">
+      <div class="shared-board-header">
+        <div>
+          <div class="shared-board-kicker">Shared AI Whiteboard</div>
+          <h1 class="shared-board-title">OUTPUT-AI</h1>
+        </div>
+        <button class="board-refresh-btn" onclick="fetchSharedAIOutputs()">Refresh</button>
+      </div>
+      <div class="shared-board-feed" id="output-ai-feed"></div>
+    </div>
+  </div>
+
   <!-- ── AI ASSISTANTS ────────────────────────────────────── -->
   <div class="page" id="page-ai">
     <div class="ai-breadcrumb" id="ai-breadcrumb"></div>
     <div class="ai-view" id="ai-view"></div>
   </div>
 
-  <!-- ── WIT FB PAGE ──────────────────────────────────────── -->
+  <!-- ── SOCIAL MEDIA PAGES ───────────────────────────────── -->
   <div class="page" id="page-witfb">
-    <div class="witfb-wrapper">
-      <div class="witfb-header">
-        <span class="witfb-icon">📘</span>
+    <div class="social-pages-wrap">
+      <div class="shared-board-header social-pages-header">
         <div>
-          <h2 class="witfb-title">WIT Facebook Page</h2>
-          <p class="witfb-sub">Latest posts from the official WIT Facebook page</p>
+          <div class="shared-board-kicker">Official Channels</div>
+          <h1 class="shared-board-title">Social Media Pages</h1>
+          <p class="social-pages-sub">Open official WIT and department pages in one tap.</p>
         </div>
       </div>
-      <div class="witfb-embed-wrap">
-        <div id="fb-root"></div>
-        <div class="fb-page"
-          data-href="https://www.facebook.com/WesternInstituteOfTechnology.iloilo"
-          data-tabs="timeline"
-          data-height="700"
-          data-small-header="false"
-          data-adapt-container-width="true"
-          data-hide-cover="false"
-          data-show-facepile="true">
-          <blockquote cite="https://www.facebook.com/WesternInstituteOfTechnology.iloilo" class="fb-xfbml-parse-ignore">
-            <a href="https://www.facebook.com/WesternInstituteOfTechnology.iloilo">WIT Facebook Page</a>
-          </blockquote>
-        </div>
+      <div class="social-card-grid">
+        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/WesternInstituteOfTechnology.iloilo')">
+          <span class="social-card-icon">f</span>
+          <span class="social-card-title">WIT FB PAGE</span>
+          <span class="social-card-desc">Western Institute of Technology official Facebook page</span>
+        </button>
+        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/wititdepartment')">
+          <span class="social-card-icon">IT</span>
+          <span class="social-card-title">WIT-IT page</span>
+          <span class="social-card-desc">Information Technology department updates</span>
+        </button>
+        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/bsitpsitswit')">
+          <span class="social-card-icon">PS</span>
+          <span class="social-card-title">WIT-PSITS page</span>
+          <span class="social-card-desc">BSIT PSITS organization announcements</span>
+        </button>
+        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/profile.php?id=61553662959404')">
+          <span class="social-card-icon">RT</span>
+          <span class="social-card-title">RAISA TREÑAS page</span>
+          <span class="social-card-desc">Public page and community updates</span>
+        </button>
       </div>
     </div>
   </div>
@@ -914,7 +960,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=16"></script>
+  <script src="script.js?v=18"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 
@@ -928,20 +974,5 @@
     </div>
   </div>
 
-  <!-- Facebook SDK (loaded only when WIT FB Page is visited) -->
-  <script>
-    window._fbSDKLoaded = false;
-    function loadFBSDK() {
-      if (window._fbSDKLoaded) return;
-      window._fbSDKLoaded = true;
-      (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v19.0";
-        fjs.parentNode.insertBefore(js, fjs);
-      }(document, 'script', 'facebook-jssdk'));
-    }
-  </script>
 </body>
 </html>

@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.2',
+    date: '2026-04-21',
+    title: 'Code Lab Java and Game Fixes',
+    summary: 'Java snippets now auto-wrap for execution, server headless warnings are hidden, Pokemon starter cards show real sprites, and games have return buttons back to the arcade.',
+    changes: [
+      'Added backend Java auto-wrapping for simple statements, methods, and partial classes without changing editor text.',
+      'Cleaned Java output by hiding normal JAVA_TOOL_OPTIONS headless warnings and returning clearer compile/runtime messages.',
+      'Handled Swing source as compile-only in headless mode with a clear success message.',
+      'Fixed Pokemon starter selection cards to render real Pokemon images with fallbacks.',
+      'Added return controls from Pokemon and Battle Royale back to the Games page.',
+    ],
+  },
   {
     version: '1.2.1',
     date: '2026-04-21',

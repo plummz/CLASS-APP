@@ -932,6 +932,133 @@ const JAVA_BLOCKLIST = [
 ];
 let javaToolchainCache = null;
 
+function hasJavaMain(source) {
+  return /public\s+static\s+void\s+main\s*\(\s*String\s*(?:\[\]\s*\w+|\w+\s*\[\])\s*\)/.test(source);
+}
+
+function hasJavaClass(source) {
+  return /\b(?:public\s+)?class\s+\w+\b/.test(source);
+}
+
+function firstJavaClassName(source) {
+  const match = source.match(/\b(?:public\s+)?class\s+([A-Za-z_]\w*)\b/);
+  return match ? match[1] : null;
+}
+
+function hasRunnableMethod(source) {
+  return /\b(?:public|private|protected)?\s*(?:static\s+)?void\s+run\s*\(\s*\)/.test(source);
+}
+
+function looksLikeMemberSource(source) {
+  return /\b(?:public|private|protected)?\s*(?:static\s+)?(?:void|int|double|float|boolean|char|byte|short|long|String|[A-Z]\w*)\s+\w+\s*\([^;{}]*\)\s*\{/.test(source);
+}
+
+function usesSwing(source) {
+  return /javax\.swing|java\.awt|JFrame|JPanel|JButton|JLabel|JTextField|setVisible\s*\(\s*true\s*\)/.test(source);
+}
+
+function cleanJavaOutput(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .filter((line) => !/^Picked up JAVA_TOOL_OPTIONS:/i.test(line.trim()))
+    .join('\n')
+    .trim();
+}
+
+function cleanJavaError(value, processed) {
+  const raw = cleanJavaOutput(value);
+  if (/Main method not found/i.test(raw)) {
+    return {
+      message: processed.autoWrapped
+        ? 'Your code was wrapped for execution, but Java still could not find a runnable entry point. Add a run() method to your class or write executable statements.'
+        : 'Your program needs public static void main(String[] args).',
+      raw,
+    };
+  }
+  return { message: raw || 'Java execution failed.', raw };
+}
+
+function processJavaSource(code) {
+  const original = String(code || '').slice(0, 20000).trim();
+  if (!original) {
+    return {
+      source: '',
+      autoWrapped: false,
+      wrapperType: 'empty',
+      swing: false,
+    };
+  }
+  const imports = [];
+  const bodyLines = [];
+  for (const line of original.split(/\r?\n/)) {
+    if (/^\s*import\s+/.test(line)) imports.push(line);
+    else bodyLines.push(line);
+  }
+  const body = bodyLines.join('\n').trim();
+  const importBlock = imports.join('\n');
+  const swing = usesSwing(original);
+  const validMain = hasJavaMain(original);
+
+  if (validMain) {
+    if (!hasJavaClass(body)) {
+      return {
+        source: `${importBlock ? `${importBlock}\n\n` : ''}public class Main {\n${body}\n}`,
+        autoWrapped: true,
+        wrapperType: 'main-method',
+        swing,
+      };
+    }
+    const className = firstJavaClassName(body);
+    if (className && className !== 'Main') {
+      const classSource = body.replace(/\bpublic\s+class\s+([A-Za-z_]\w*)\b/, 'class $1');
+      return {
+        source: `${importBlock ? `${importBlock}\n\n` : ''}${classSource}\n\npublic class Main {\n  public static void main(String[] args) {\n    ${className}.main(args);\n  }\n}`,
+        autoWrapped: true,
+        wrapperType: 'main-delegator',
+        swing,
+      };
+    }
+    return {
+      source: original,
+      autoWrapped: false,
+      wrapperType: 'existing-main',
+      swing,
+    };
+  }
+
+  if (!hasJavaClass(body)) {
+    const isMemberSource = looksLikeMemberSource(body);
+    const memberRunner = hasRunnableMethod(body)
+      ? '    Main app = new Main();\n    app.run();'
+      : '    System.out.println("Compiled successfully. Add a run() method to execute class behavior.");';
+    const source = isMemberSource
+      ? `${importBlock ? `${importBlock}\n\n` : ''}public class Main {\n${body}\n\n  public static void main(String[] args) {\n${memberRunner}\n  }\n}`
+      : `${importBlock ? `${importBlock}\n\n` : ''}public class Main {\n  public static void main(String[] args) {\n${body.split(/\r?\n/).map((line) => `    ${line}`).join('\n')}\n  }\n}`;
+    return {
+      source,
+      autoWrapped: true,
+      wrapperType: isMemberSource ? 'members' : 'statements',
+      swing,
+    };
+  }
+
+  const originalClassName = firstJavaClassName(body);
+  const runnerClassName = originalClassName === 'Main' ? 'UserProgram' : originalClassName;
+  let classSource = body.replace(/\bpublic\s+class\s+([A-Za-z_]\w*)\b/, 'class $1');
+  if (originalClassName === 'Main') {
+    classSource = classSource.replace(/\bclass\s+Main\b/, 'class UserProgram');
+  }
+  const runner = hasRunnableMethod(body) && runnerClassName
+    ? `    new ${runnerClassName}().run();`
+    : `    System.out.println("Compiled successfully. Add a run() method to ${runnerClassName || 'your class'} to execute class behavior.");`;
+  return {
+    source: `${importBlock ? `${importBlock}\n\n` : ''}${classSource}\n\npublic class Main {\n  public static void main(String[] args) {\n${runner}\n  }\n}`,
+    autoWrapped: true,
+    wrapperType: 'class-runner',
+    swing,
+  };
+}
+
 function runCommand(command, args, options = {}) {
   return new Promise((resolve) => {
     const timeoutMs = Number(options.timeoutMs || JAVA_RUN_TIMEOUT_MS);
@@ -1012,30 +1139,33 @@ async function runJavaSource(code) {
       diagnostics: toolchain.diagnostics,
     };
   }
-  const source = String(code || '').slice(0, 20000);
-  if (!/public\s+class\s+Main\b/.test(source)) {
-    return { ok: false, error: 'Java source must contain public class Main.' };
+  const processed = processJavaSource(code);
+  if (!processed.source.trim()) {
+    return { ok: false, error: 'Enter Java code before running.' };
   }
-  if (JAVA_BLOCKLIST.some((pattern) => pattern.test(source))) {
+  if (JAVA_BLOCKLIST.some((pattern) => pattern.test(processed.source))) {
     return { ok: false, error: 'This Java practice sandbox blocks file, process, reflection, network, and exit APIs.' };
   }
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'class-app-code-lab-'));
   const file = path.join(dir, 'Main.java');
   try {
-    fs.writeFileSync(file, source);
+    fs.writeFileSync(file, processed.source);
     const compile = await runCommand(JAVAC_BIN, ['-J-Xmx160m', 'Main.java'], {
       cwd: dir,
       timeoutMs: JAVA_COMPILE_TIMEOUT_MS,
       phase: 'compiling Java',
     });
     if (compile.code !== 0) {
-      return { ok: false, error: compile.stderr || compile.stdout || 'Compile failed.' };
+      const compileError = cleanJavaError(compile.stderr || compile.stdout || 'Compile failed.', processed);
+      return { ok: false, status: 'Execution failed', error: compileError.message, raw: compileError.raw, autoWrapped: processed.autoWrapped };
     }
-    const isSwingSource = /javax\.swing|JFrame|JPanel|JButton|JLabel|JTextField/.test(source);
-    if (isSwingSource) {
+    if (processed.swing) {
       return {
         ok: true,
-        output: 'Compile successful. Swing GUI source was validated in headless practice mode; desktop windows are not rendered inside the browser.',
+        status: 'Compiled successfully',
+        output: `${processed.autoWrapped ? 'Auto-wrapped for execution.\n' : ''}GUI windows cannot be displayed in this environment (headless mode), but your code compiled successfully.`,
+        autoWrapped: processed.autoWrapped,
+        wrapperType: processed.wrapperType,
       };
     }
     const run = await runCommand(JAVA_BIN, ['-Xmx160m', '-Djava.awt.headless=true', '-cp', dir, 'Main'], {
@@ -1044,10 +1174,19 @@ async function runJavaSource(code) {
       timeoutMs: JAVA_RUN_TIMEOUT_MS,
       phase: 'running Java',
     });
+    const stdout = cleanJavaOutput(run.stdout);
+    const stderr = cleanJavaOutput(run.stderr);
     if (run.code !== 0) {
-      return { ok: false, error: run.stderr || run.stdout || 'Runtime error.' };
+      const runtimeError = cleanJavaError(stderr || stdout || 'Runtime error.', processed);
+      return { ok: false, status: 'Execution failed', error: runtimeError.message, raw: runtimeError.raw, autoWrapped: processed.autoWrapped };
     }
-    return { ok: true, output: run.stdout || 'Program completed without console output.' };
+    return {
+      ok: true,
+      status: 'Compiled successfully',
+      output: `${processed.autoWrapped ? 'Auto-wrapped for execution.\n' : ''}${stdout || 'Program completed without console output.'}`,
+      autoWrapped: processed.autoWrapped,
+      wrapperType: processed.wrapperType,
+    };
   } finally {
     fs.rm(dir, { recursive: true, force: true }, () => {});
   }

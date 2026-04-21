@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'v64';
+const CACHE_VERSION = 'v65';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=64',
+  '/index.html?v=65',
   '/style.css?v=25',
   '/assets/css/codelab.css?v=4',
   '/features/ai/ai.css?v=1',
@@ -17,9 +17,9 @@ const ASSETS = [
   '/features/updates/updates.css?v=1',
   '/features/folders/folders.css?v=1',
   '/features/gallery/gallery.css?v=1',
-  '/features/pokemon/pokemon.css?v=2',
-  '/features/royale/royale.css?v=2',
-  '/script.js?v=30',
+  '/features/pokemon/pokemon.css?v=3',
+  '/features/royale/royale.css?v=3',
+  '/script.js?v=31',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -33,8 +33,8 @@ const ASSETS = [
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
   '/assets/js/codelab.js?v=4',
-  '/features/pokemon/pokemon.js?v=2',
-  '/features/royale/royale.js?v=2',
+  '/features/pokemon/pokemon.js?v=3',
+  '/features/royale/royale.js?v=3',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',
@@ -82,7 +82,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html?v=64'))
+        .catch(() => caches.match('/') || caches.match('/index.html?v=65'))
     );
     return;
   }

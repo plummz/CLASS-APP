@@ -176,6 +176,14 @@ const pokemonModule = (() => {
   };
   const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
   function spriteUrl(speciesId, back=false){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `${SPRITE_BASE}${back?'/back/':'/'}`+id+'.png' : ''; }
+  function officialSpriteUrl(speciesId){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `${SPRITE_BASE}/other/official-artwork/${id}.png` : spriteUrl(speciesId); }
+  function spriteFallbackUrl(speciesId){ const id=SP[speciesId]&&SP[speciesId].dexId; return id ? `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/${id}.png` : ''; }
+  function pokemonSpriteImg(speciesId, className='', official=false){
+    const sp=SP[speciesId]||{};
+    const primary=official?officialSpriteUrl(speciesId):spriteUrl(speciesId);
+    const fallback=spriteFallbackUrl(speciesId);
+    return `<img class="${className}" src="${primary}" alt="${sp.name||speciesId}" loading="lazy" onerror="this.onerror=null;${fallback?`this.src='${fallback}'`:`this.style.display='none'`};">`;
+  }
 
   /* ── MOVE DATA ── */
   const MV = {
@@ -2506,7 +2514,7 @@ const pokemonModule = (() => {
     if(!modal||!grid)return; grid.innerHTML='';
     Object.entries(SP).filter(([,s])=>s.starter).forEach(([id,s])=>{
       const c=document.createElement('div'); c.className='pk-starter-card';
-      c.innerHTML=`<span class="pk-starter-emoji">${s.emoji}</span><div class="pk-starter-name">${s.name}</div><div class="pk-starter-type">${s.types.join(' / ')}</div>`;
+      c.innerHTML=`<div class="pk-starter-art">${pokemonSpriteImg(id,'pk-starter-img',true)}</div><div class="pk-starter-name">${s.name}</div><div class="pk-starter-type">${s.types.join(' / ')}</div>`;
       c.onclick=()=>{ team=[mkMon(id,5)]; loadZone('starterTown'); const _sp=MAPS_DATA.starterTown.spawns.default; player={x:_sp.x*TSIZE,y:_sp.y*TSIZE,dir:'down',moving:false,frame:0}; modal.classList.add('hidden'); saveGame(); };
       grid.appendChild(c);
     });

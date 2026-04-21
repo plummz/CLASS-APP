@@ -507,7 +507,7 @@
     codeLabConsoleLines = [];
     if (codeLabEnvironment === 'java' || codeLabLanguage === 'java') {
       setCodeLabView('console');
-      codeLabSetConsole('Compiling Java...');
+      codeLabSetConsole('Running Java...');
       try {
         const res = await fetch('/api/code-lab/run-java', {
           method: 'POST',
@@ -515,7 +515,8 @@
           body: JSON.stringify({ code: codeLabFiles.java || '' }),
         });
         const data = await res.json();
-        codeLabSetConsole(data.output || data.error || 'No output.', data.ok ? 'success' : 'error');
+        const prefix = data.status ? `${data.status}\n` : '';
+        codeLabSetConsole(`${prefix}${data.output || data.error || 'No output.'}`, data.ok ? 'success' : 'error');
       } catch (error) {
         codeLabSetConsole(error.message, 'error');
       }

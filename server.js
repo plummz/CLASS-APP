@@ -108,9 +108,29 @@ function saveData(data) {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+const STATIC_CACHE_OPTIONS = {
+  maxAge: '1y',
+  immutable: true,
+};
+const STATIC_ASSET_CHECKS = [
+  'style.css',
+  'script.js',
+  'assets/css/codelab.css',
+  'assets/js/codelab.js',
+  'assets/images/code-web-card.svg',
+  'assets/images/code-java-card.svg',
+  'features/ai/ai.css',
+  'features/ai/ai.js',
+  'features/updates/updates.css',
+  'features/pokemon/pokemon.css',
+  'features/royale/royale.css',
+];
 
 app.use(cors());
 app.use(express.json());
+app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_OPTIONS));
+app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
+app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
 app.use(express.static(path.join(__dirname)));
 // Serve uploads — local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
@@ -143,6 +163,21 @@ app.get('/uploads/*', async (req, res) => {
 app.use('/api', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
+});
+
+app.get('/api/static-check', (req, res) => {
+  const files = STATIC_ASSET_CHECKS.map((file) => {
+    const absolutePath = path.join(__dirname, file);
+    return {
+      file,
+      exists: fs.existsSync(absolutePath),
+    };
+  });
+  res.json({
+    ok: files.every((file) => file.exists),
+    root: path.basename(__dirname),
+    files,
+  });
 });
 
 // Redirect old PWA installs that used /CLASS-APP/ as start_url.

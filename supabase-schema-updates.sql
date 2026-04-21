@@ -30,8 +30,15 @@ alter table public.profiles
   add column if not exists username_last_changed_at timestamptz;
 
 alter table public.folders
-  add column if not exists permissions jsonb not null default '{"viewers":[],"editors":[]}'::jsonb,
+  add column if not exists permissions jsonb not null default '{"viewers":[],"editors":[],"everyone":"edit"}'::jsonb,
   add column if not exists folder_type text;
+
+alter table public.folders
+  alter column permissions set default '{"viewers":[],"editors":[],"everyone":"edit"}'::jsonb;
+
+update public.folders
+set permissions = coalesce(permissions, '{}'::jsonb) || '{"everyone":"edit"}'::jsonb
+where not coalesce(permissions, '{}'::jsonb) ? 'everyone';
 
 alter table public.files
   add column if not exists moved_at timestamptz;
@@ -79,6 +86,7 @@ as $$
     )
     or folder_row.owner = public.class_app_username()
     or public.class_app_is_admin()
+    or coalesce(folder_row.permissions->>'everyone', 'edit') in ('view', 'edit')
     or coalesce(folder_row.permissions->'viewers', '[]'::jsonb) ? public.class_app_username()
     or coalesce(folder_row.permissions->'editors', '[]'::jsonb) ? public.class_app_username();
 $$;
@@ -98,6 +106,7 @@ as $$
       )
       and public.class_app_username() is not null
     )
+    or coalesce(folder_row.permissions->>'everyone', 'edit') = 'edit'
     or coalesce(folder_row.permissions->'editors', '[]'::jsonb) ? public.class_app_username();
 $$;
 

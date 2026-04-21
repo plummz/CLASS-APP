@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -801,36 +801,81 @@
 
   <!-- ── SOCIAL MEDIA PAGES ───────────────────────────────── -->
   <div class="page" id="page-witfb">
-    <div class="social-pages-wrap">
-      <div class="shared-board-header social-pages-header">
-        <div>
-          <div class="shared-board-kicker">Official Channels</div>
-          <h1 class="shared-board-title">Social Media Pages</h1>
-          <p class="social-pages-sub">Open official WIT and department pages in one tap.</p>
+    <div class="social-pages-wrap" id="social-home-view">
+      <div class="games-hub social-games-hub">
+        <div class="games-hub-header">
+          <div class="games-hub-title-row">
+            <span class="games-hub-icon-large">📘</span>
+            <h1 class="games-hub-title">SOCIAL MEDIA</h1>
+          </div>
+          <p class="games-hub-sub">Official WIT channels inside the app</p>
+        </div>
+        <div class="games-grid">
+          <div class="game-card social-game-card" onclick="openSocialPage('WIT FB PAGE','https://www.facebook.com/WesternInstituteOfTechnology.iloilo')">
+          <div class="game-thumb social-thumb wit-thumb">
+            <div class="social-thumb-mark">f</div>
+            <div class="game-thumb-badge">OFFICIAL</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">WIT</span></div>
+            <h3 class="game-name">WIT FB PAGE</h3>
+            <p class="game-desc">Western Institute of Technology official Facebook page.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('WIT-IT page','https://www.facebook.com/wititdepartment')">
+          <div class="game-thumb social-thumb it-thumb">
+            <div class="social-thumb-mark">IT</div>
+            <div class="game-thumb-badge">DEPT</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">IT</span></div>
+            <h3 class="game-name">WIT-IT page</h3>
+            <p class="game-desc">Information Technology department updates and posts.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('WIT-PSITS page','https://www.facebook.com/bsitpsitswit')">
+          <div class="game-thumb social-thumb psits-thumb">
+            <div class="social-thumb-mark">PS</div>
+            <div class="game-thumb-badge">ORG</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PSITS</span></div>
+            <h3 class="game-name">WIT-PSITS page</h3>
+            <p class="game-desc">BSIT PSITS organization announcements and activities.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('RAISA TRE&Ntilde;AS page','https://www.facebook.com/profile.php?id=61553662959404')">
+          <div class="game-thumb social-thumb raisa-thumb">
+            <div class="social-thumb-mark">RT</div>
+            <div class="game-thumb-badge">PUBLIC</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PUBLIC</span></div>
+            <h3 class="game-name">RAISA TRE&Ntilde;AS page</h3>
+            <p class="game-desc">Public page and community updates.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
         </div>
       </div>
-      <div class="social-card-grid">
-        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/WesternInstituteOfTechnology.iloilo')">
-          <span class="social-card-icon">f</span>
-          <span class="social-card-title">WIT FB PAGE</span>
-          <span class="social-card-desc">Western Institute of Technology official Facebook page</span>
-        </button>
-        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/wititdepartment')">
-          <span class="social-card-icon">IT</span>
-          <span class="social-card-title">WIT-IT page</span>
-          <span class="social-card-desc">Information Technology department updates</span>
-        </button>
-        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/bsitpsitswit')">
-          <span class="social-card-icon">PS</span>
-          <span class="social-card-title">WIT-PSITS page</span>
-          <span class="social-card-desc">BSIT PSITS organization announcements</span>
-        </button>
-        <button class="social-card" onclick="openSocialPage('https://www.facebook.com/profile.php?id=61553662959404')">
-          <span class="social-card-icon">RT</span>
-          <span class="social-card-title">RAISA TREÑAS page</span>
-          <span class="social-card-desc">Public page and community updates</span>
-        </button>
+    </div>
+    </div>
+
+    <div class="social-embed-wrap hidden" id="social-embed-view">
+      <div class="social-embed-toolbar">
+        <button class="social-back-btn" type="button" onclick="closeSocialPage()">&larr; Back</button>
+        <div>
+          <div class="shared-board-kicker">Embedded Page</div>
+          <h2 id="social-embed-title">Social Media Pages</h2>
+        </div>
       </div>
+      <iframe id="social-embed-frame" class="social-embed-frame" title="Embedded social media page" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; clipboard-write; web-share"></iframe>
     </div>
   </div>
 
@@ -963,7 +1008,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=22"></script>
+  <script src="script.js?v=23"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 

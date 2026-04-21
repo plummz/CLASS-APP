@@ -208,21 +208,24 @@ let isRepeat = false;
 
 function normalizeFolderPermissions(folder) {
     const raw = folder?.permissions;
-    if (!raw) return { viewers: [], editors: [] };
+    const normalizeMode = (mode) => ['edit', 'view', 'restricted'].includes(mode) ? mode : 'edit';
+    if (!raw) return { viewers: [], editors: [], everyone: 'edit' };
     if (typeof raw === 'string') {
         try {
             const parsed = JSON.parse(raw);
             return {
                 viewers: Array.isArray(parsed.viewers) ? parsed.viewers : [],
                 editors: Array.isArray(parsed.editors) ? parsed.editors : [],
+                everyone: normalizeMode(parsed.everyone),
             };
         } catch (_) {
-            return { viewers: [], editors: [] };
+            return { viewers: [], editors: [], everyone: 'edit' };
         }
     }
     return {
         viewers: Array.isArray(raw.viewers) ? raw.viewers : [],
         editors: Array.isArray(raw.editors) ? raw.editors : [],
+        everyone: normalizeMode(raw.everyone),
     };
 }
 
@@ -240,7 +243,7 @@ function canViewFolder(folder) {
     if (isFolderOwner(folder)) return true;
     if (!currentUser) return false;
     const perms = normalizeFolderPermissions(folder);
-    return perms.viewers.includes(currentUser.username) || perms.editors.includes(currentUser.username);
+    return perms.everyone === 'edit' || perms.everyone === 'view' || perms.viewers.includes(currentUser.username) || perms.editors.includes(currentUser.username);
 }
 
 function canEditFolder(folder) {
@@ -248,7 +251,8 @@ function canEditFolder(folder) {
     if (!isProfileFolder(folder)) return Boolean(currentUser);
     if (isFolderOwner(folder)) return true;
     if (!currentUser) return false;
-    return normalizeFolderPermissions(folder).editors.includes(currentUser.username);
+    const perms = normalizeFolderPermissions(folder);
+    return perms.everyone === 'edit' || perms.editors.includes(currentUser.username);
 }
 
 function canManageFolder(folder) {
@@ -259,6 +263,8 @@ function folderAccessLabel(folder) {
     if (isFolderOwner(folder)) return 'Owner';
     if (!isProfileFolder(folder)) return currentUser ? 'Editor' : 'Viewer';
     const perms = normalizeFolderPermissions(folder);
+    if (perms.everyone === 'edit') return 'Editor';
+    if (perms.everyone === 'view') return 'Viewer';
     if (currentUser && perms.editors.includes(currentUser.username)) return 'Editor';
     if (currentUser && perms.viewers.includes(currentUser.username)) return 'Viewer';
     return 'No access';
@@ -333,7 +339,7 @@ window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
     customPrompt("Enter new folder name:", function(name) {
         if(!name) return;
-        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username, permissions: { viewers: [], editors: [] } }])
+        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
         .then(({ error }) => {
             if (error) return customAlert(error.message);
             fetchAndRenderFolders();
@@ -527,7 +533,7 @@ window.createSubFolderAPI = function() {
             parent: String(currentFolderContext.id),
             name,
             owner: currentUser.username,
-            permissions: { viewers: [], editors: [] },
+            permissions: { viewers: [], editors: [], everyone: 'edit' },
             folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null,
         }])
         .then(({ error }) => {
@@ -657,22 +663,10 @@ window.openFolderPermissions = async function(folderId) {
 
     const perms = normalizeFolderPermissions(folder);
     removeDynamicModal('folder-permission-modal');
-    const people = users.filter((user) => user.username !== folder.owner);
-    const rows = people.map((user) => {
-        const role = perms.editors.includes(user.username) ? 'edit' : perms.viewers.includes(user.username) ? 'view' : 'none';
-        return `
-          <label class="permission-user-row">
-            <span>
-              <strong>${escapeHTML(user.display_name || user.username)}</strong>
-              <small>@${escapeHTML(user.username)}</small>
-            </span>
-            <select data-permission-user="${escapeHTML(user.username)}">
-              <option value="none"${role === 'none' ? ' selected' : ''}>No access</option>
-              <option value="view"${role === 'view' ? ' selected' : ''}>Can view</option>
-              <option value="edit"${role === 'edit' ? ' selected' : ''}>Can edit</option>
-            </select>
-          </label>`;
-    }).join('') || '<p class="empty-state-text small">No other users found.</p>';
+    const isOpen = perms.everyone === 'edit';
+    const statusText = isOpen
+        ? 'Everyone can view, upload, move, edit, and manage files in this folder.'
+        : 'Only the folder owner can view or edit this folder.';
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="folder-permission-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
@@ -680,32 +674,40 @@ window.openFolderPermissions = async function(folderId) {
           <button class="modal-close-btn" onclick="removeDynamicModal('folder-permission-modal')">&times;</button>
           <h3 class="modal-title text-blue">Folder Permissions</h3>
           <p class="modal-text align-left">Owner: ${escapeHTML(folder.owner)} · Folder: ${escapeHTML(folder.name)}</p>
-          <div class="permission-list">${rows}</div>
+          <div class="permission-state-card ${isOpen ? 'open' : 'restricted'}">
+            <span class="permission-state-kicker">Current Access</span>
+            <strong>${isOpen ? 'Edit Access Allowed' : 'Restricted Access'}</strong>
+            <p>${statusText}</p>
+          </div>
+          <div class="permission-quick-actions">
+            <button class="permission-quick-btn danger" onclick="setFolderAccessMode('${escapeJS(folder.id)}','restricted')">
+              <span>Restrict All Access</span>
+              <small>Owner only</small>
+            </button>
+            <button class="permission-quick-btn success" onclick="setFolderAccessMode('${escapeJS(folder.id)}','edit')">
+              <span>Allow Everyone Access</span>
+              <small>Instant edit access</small>
+            </button>
+          </div>
           <div class="modal-btn-group">
-            <button class="btn-primary flex-1" onclick="saveFolderPermissions('${escapeJS(folder.id)}')">Save Permissions</button>
-            <button class="btn-outline-red flex-1" onclick="removeDynamicModal('folder-permission-modal')">Cancel</button>
+            <button class="btn-outline-red flex-1" onclick="removeDynamicModal('folder-permission-modal')">Close</button>
           </div>
         </div>
       </div>
     `);
 };
 
-window.saveFolderPermissions = async function(folderId) {
+window.setFolderAccessMode = async function(folderId, mode) {
     let folder;
     try { folder = await fetchFolderById(folderId); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can manage permissions.');
-    const viewers = [];
-    const editors = [];
-    document.querySelectorAll('#folder-permission-modal [data-permission-user]').forEach((select) => {
-        const username = select.dataset.permissionUser;
-        if (select.value === 'view') viewers.push(username);
-        if (select.value === 'edit') editors.push(username);
-    });
-    const { error } = await sb.from('folders').update({ permissions: { viewers, editors } }).eq('id', folderId);
+    const nextMode = mode === 'restricted' ? 'restricted' : 'edit';
+    const permissions = { viewers: [], editors: [], everyone: nextMode };
+    const { error } = await sb.from('folders').update({ permissions }).eq('id', folderId);
     if (error) return customAlert(error.message);
     removeDynamicModal('folder-permission-modal');
-    showToast('Permissions updated.');
-    if (currentFolderContext?.id === folderId) currentFolderContext = { ...currentFolderContext, permissions: { viewers, editors } };
+    showToast(nextMode === 'edit' ? 'Everyone now has edit access.' : 'Folder restricted to the owner.');
+    if (currentFolderContext?.id === folderId) currentFolderContext = { ...currentFolderContext, permissions };
     fetchAndRenderFolders();
     fetchAndRenderSubFolders();
     if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
@@ -761,7 +763,7 @@ window.createProfileFolder = function(username) {
             parent: `${PROFILE_FOLDER_PREFIX}${username}`,
             name,
             owner: username,
-            permissions: { viewers: [], editors: [] },
+            permissions: { viewers: [], editors: [], everyone: 'edit' },
             folder_type: 'profile',
         }]);
         if (error) return customAlert(error.message);
@@ -1587,7 +1589,7 @@ async function replaceUsernameReferences(oldUsername, newUsername) {
     const viewers = permissions.viewers.map((name) => name === oldUsername ? newUsername : name);
     const editors = permissions.editors.map((name) => name === oldUsername ? newUsername : name);
     if (JSON.stringify(viewers) !== JSON.stringify(permissions.viewers) || JSON.stringify(editors) !== JSON.stringify(permissions.editors)) {
-      await sb.from('folders').update({ permissions: { viewers, editors } }).eq('id', folder.id);
+      await sb.from('folders').update({ permissions: { viewers, editors, everyone: permissions.everyone } }).eq('id', folder.id);
     }
   }
 }
@@ -1816,6 +1818,10 @@ window.toggleYear = function(yearId) {
     const wasOpen = group.classList.contains('open');
     document.querySelectorAll('.nav-dropdown-group').forEach(g => g.classList.remove('open'));
     if (!wasOpen) group.classList.add('open');
+    group.classList.remove('nav-pulse');
+    void group.offsetWidth;
+    group.classList.add('nav-pulse');
+    window.setTimeout(() => group.classList.remove('nav-pulse'), 320);
 };
 
 const pageConfig = {
@@ -1921,6 +1927,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
   if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
   if (pageName === 'announcement') fetchSharedAnnouncements();
+  if (pageName === 'witfb') closeSocialPage();
   if (pageName === 'outputai') fetchSharedAIOutputs();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
@@ -2098,6 +2105,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
+
+  document.querySelectorAll('.nav-item, .nav-dropdown-header').forEach((navControl) => {
+    navControl.addEventListener('click', (event) => {
+      const rect = navControl.getBoundingClientRect();
+      navControl.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
+      navControl.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
+      navControl.classList.remove('nav-click-flash');
+      void navControl.offsetWidth;
+      navControl.classList.add('nav-click-flash');
+      window.setTimeout(() => navControl.classList.remove('nav-click-flash'), 420);
+    });
+  });
 
   if (currentUser) establishSession();
   else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
@@ -2983,7 +3002,7 @@ function gCreateFolder(pfx, parentKey) {
   if (!currentUser) return customAlert('Please log in.');
   customPrompt('Album name:', function(name) {
     if (!name) return;
-    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [] } }])
+    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
       .then(({ error }) => {
         if (error) return customAlert(error.message);
         showToast('Album created.');
@@ -3074,8 +3093,37 @@ let sharedAIOutputs = [];
 let sharedAnnouncements = [];
 let sharedRealtimeReady = false;
 
-window.openSocialPage = function(url) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+function buildFacebookEmbedUrl(url) {
+  const encoded = encodeURIComponent(url);
+  return `https://www.facebook.com/plugins/page.php?href=${encoded}&tabs=timeline&width=500&height=720&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`;
+}
+
+window.openSocialPage = function(title, url) {
+  const pageUrl = url || title;
+  const pageTitle = url ? title : 'Social Media Page';
+  const home = document.getElementById('social-home-view');
+  const embed = document.getElementById('social-embed-view');
+  const frame = document.getElementById('social-embed-frame');
+  const titleEl = document.getElementById('social-embed-title');
+  if (!home || !embed || !frame) return;
+  if (titleEl) {
+    const decoder = document.createElement('textarea');
+    decoder.innerHTML = pageTitle;
+    titleEl.textContent = decoder.value;
+  }
+  frame.src = buildFacebookEmbedUrl(pageUrl);
+  home.classList.add('hidden');
+  embed.classList.remove('hidden');
+  embed.scrollIntoView({ block: 'start', behavior: 'smooth' });
+};
+
+window.closeSocialPage = function() {
+  const home = document.getElementById('social-home-view');
+  const embed = document.getElementById('social-embed-view');
+  const frame = document.getElementById('social-embed-frame');
+  if (frame) frame.src = 'about:blank';
+  if (embed) embed.classList.add('hidden');
+  if (home) home.classList.remove('hidden');
 };
 
 async function fetchSharedAIOutputs() {

@@ -3,7 +3,7 @@
 // Routes only call tryWithFallback() — they never touch model IDs or API URLs.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { AI_REGISTRY } = require('./ai-config');
+const { AI_REGISTRY } = require('./features/ai/ai-config');
 
 // ── Per-provider call functions ───────────────────────────────────────────────
 

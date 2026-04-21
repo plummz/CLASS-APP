@@ -1,20 +1,42 @@
-const CACHE_VERSION = 'v61';
+const CACHE_VERSION = 'v62';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  'index.html?v=61',
-  'style.css?v=24',
-  'assets/css/codelab.css?v=1',
+  'index.html?v=62',
+  'style.css?v=25',
+  'assets/css/codelab.css?v=2',
   'features/ai/ai.css?v=1',
   'features/academics/academics.css?v=1',
-  'pokemon.css',
-  'royale.css',
-  'script.js?v=28',
+  'features/lobby/lobby.css?v=1',
+  'features/chat/chat.css?v=1',
+  'features/calendar/calendar.css?v=1',
+  'features/music/music.css?v=1',
+  'features/social/social.css?v=1',
+  'features/users/users.css?v=1',
+  'features/games/games.css?v=1',
+  'features/updates/updates.css?v=1',
+  'features/folders/folders.css?v=1',
+  'features/gallery/gallery.css?v=1',
+  'features/pokemon/pokemon.css?v=2',
+  'features/royale/royale.css?v=2',
+  'script.js?v=29',
   'features/ai/ai.js?v=1',
   'features/academics/academics.js?v=1',
-  'assets/js/codelab.js?v=1',
-  'pokemon.js',
-  'royale.js',
+  'features/lobby/lobby.js?v=1',
+  'features/chat/chat.js?v=1',
+  'features/calendar/calendar.js?v=1',
+  'features/music/music.js?v=1',
+  'features/social/social.js?v=1',
+  'features/users/users.js?v=1',
+  'features/games/games.js?v=1',
+  'features/updates/updates.js?v=1',
+  'features/folders/folders.js?v=1',
+  'features/gallery/gallery.js?v=1',
+  'assets/js/codelab.js?v=2',
+  'features/pokemon/pokemon.js?v=2',
+  'features/royale/royale.js?v=2',
+  'assets/images/code-web-card.svg',
+  'assets/images/code-java-card.svg',
   'manifest.json',
   'icons/icon-192.png',
   'icons/icon-512.png'
@@ -60,7 +82,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('index.html?v=61'))
+        .catch(() => caches.match('/') || caches.match('index.html?v=62'))
     );
     return;
   }

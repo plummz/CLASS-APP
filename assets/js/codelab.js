@@ -90,6 +90,7 @@
   let codeLabEditor = null;
   let codeLabInitialized = false;
   let codeLabRealtimeReady = false;
+  let javaStatusChecked = false;
   let codeLabFiles = { ...CODE_LAB_PRACTICE_STARTER };
   let codeLabPracticeFiles = readStoredJson('codeLabPracticeFiles', { ...CODE_LAB_PRACTICE_STARTER });
   let codeLabAssets = readStoredJson('codeLabAssets', []);
@@ -279,6 +280,33 @@
     codeLabEditor.onDidChangeModelContent(() => saveActiveCodeLabFile());
   }
 
+  async function requestLandscapeLock() {
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (_) {}
+    try {
+      if (screen.orientation?.lock) await screen.orientation.lock('landscape');
+    } catch (_) {}
+  }
+
+  async function checkJavaStatus(force = false) {
+    if (javaStatusChecked && !force) return;
+    javaStatusChecked = true;
+    try {
+      const res = await fetch('/api/code-lab/java-status');
+      const data = await res.json();
+      if (data.available) {
+        codeLabSetConsole(`Java ready: ${data.javacVersion || 'javac'} / ${data.javaVersion || 'java'}`, 'success');
+      } else {
+        codeLabSetConsole(data.message || 'Java toolchain is not available in this deployment.', 'error');
+      }
+    } catch (error) {
+      codeLabSetConsole(error.message, 'error');
+    }
+  }
+
   function updateEnvironmentUi() {
     const shell = document.getElementById('code-lab-shell');
     const envLabel = document.getElementById('code-lab-env-label');
@@ -386,6 +414,7 @@
     saveActiveCodeLabFile();
     codeLabEnvironment = env === 'java' ? 'java' : 'web';
     codeLabLanguage = codeLabEnvironment === 'java' ? 'java' : 'html';
+    requestLandscapeLock();
     document.getElementById('code-lab-shell')?.classList.remove('is-portrait');
     document.getElementById('code-lab-shell')?.classList.add('is-landscape');
     updateEnvironmentUi();
@@ -396,12 +425,17 @@
       setCodeLabLanguage(codeLabLanguage, false);
     }
     codeLabSetConsole(`${codeLabEnvironment === 'java' ? 'Java Swing' : 'Web'} workspace ready.`);
+    if (codeLabEnvironment === 'java') checkJavaStatus(true);
   };
 
   window.returnCodeLabHome = function () {
     saveActiveCodeLabFile();
     document.getElementById('code-lab-shell')?.classList.add('is-portrait');
     document.getElementById('code-lab-shell')?.classList.remove('is-landscape');
+    try {
+      if (screen.orientation?.unlock) screen.orientation.unlock();
+      if (document.fullscreenElement) document.exitFullscreen();
+    } catch (_) {}
   };
 
   window.switchCodeLabMode = function (mode) {
@@ -551,6 +585,16 @@
     });
   };
 
+  window.clearCodeLabWorkspace = function () {
+    codeLabFiles[codeLabLanguage] = '';
+    setCodeLabEditorValue('', codeLabLanguage);
+    if (codeLabMode === 'practice') {
+      codeLabPracticeFiles = { ...codeLabFiles };
+      localStorage.setItem('codeLabPracticeFiles', JSON.stringify(codeLabPracticeFiles));
+    }
+    codeLabSetConsole(`${codeLabLanguage.toUpperCase()} workspace cleared.`);
+  };
+
   window.uploadCodeLabAssets = async function (event) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -610,6 +654,7 @@
       button.addEventListener('click', () => window.setCodeLabLanguage(button.dataset.lang));
     });
     document.getElementById('code-lab-return-btn')?.addEventListener('click', window.returnCodeLabHome);
+    document.getElementById('code-lab-clear-btn')?.addEventListener('click', window.clearCodeLabWorkspace);
     document.getElementById('code-lab-run-btn')?.addEventListener('click', window.runCodeLab);
     document.getElementById('code-lab-submit-btn')?.addEventListener('click', window.submitCodeLabChallenge);
     document.getElementById('code-lab-reset-btn')?.addEventListener('click', window.resetCodeLabWorkspace);

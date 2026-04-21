@@ -7,12 +7,22 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=24">
-  <link rel="stylesheet" href="assets/css/codelab.css?v=1">
+  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="assets/css/codelab.css?v=2">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
   <link rel="stylesheet" href="features/academics/academics.css?v=1">
-  <link rel="stylesheet" href="pokemon.css?v=1">
-  <link rel="stylesheet" href="royale.css?v=1">
+  <link rel="stylesheet" href="features/lobby/lobby.css?v=1">
+  <link rel="stylesheet" href="features/chat/chat.css?v=1">
+  <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
+  <link rel="stylesheet" href="features/music/music.css?v=1">
+  <link rel="stylesheet" href="features/social/social.css?v=1">
+  <link rel="stylesheet" href="features/users/users.css?v=1">
+  <link rel="stylesheet" href="features/games/games.css?v=1">
+  <link rel="stylesheet" href="features/updates/updates.css?v=1">
+  <link rel="stylesheet" href="features/folders/folders.css?v=1">
+  <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
+  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=2">
+  <link rel="stylesheet" href="features/royale/royale.css?v=2">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -848,6 +858,9 @@
             <h2 id="code-lab-workspace-title">Workspace</h2>
           </div>
         </div>
+        <div class="code-lab-rotate-overlay" id="code-lab-rotate-overlay">
+          Rotate your phone or tablet for the cleanest coding workspace. If rotation is locked, this layout stays usable in portrait.
+        </div>
 
         <div class="code-lab-tabs">
           <button class="code-lab-tab active" id="code-lab-tab-daily" type="button" data-code-lab-mode="daily">Daily Debug Challenge</button>
@@ -891,7 +904,8 @@
                 <button class="code-lab-file-tab" data-lang="javascript" type="button">JavaScript</button>
                 <button class="code-lab-file-tab" data-lang="java" type="button">Java</button>
               </div>
-              <div class="code-lab-run-actions">
+          <div class="code-lab-run-actions">
+                <button class="code-lab-btn ghost" id="code-lab-clear-btn" type="button">Clear</button>
                 <button class="code-lab-btn ghost" id="code-lab-run-btn" type="button">Run</button>
                 <button class="code-lab-btn" id="code-lab-submit-btn" type="button">Submit Daily</button>
               </div>
@@ -1126,12 +1140,22 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=28"></script>
+  <script src="script.js?v=29"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
-  <script src="assets/js/codelab.js?v=1" defer></script>
-  <script src="pokemon.js?v=1"></script>
-  <script src="royale.js?v=1"></script>
+  <script src="features/lobby/lobby.js?v=1" defer></script>
+  <script src="features/chat/chat.js?v=1" defer></script>
+  <script src="features/calendar/calendar.js?v=1" defer></script>
+  <script src="features/music/music.js?v=1" defer></script>
+  <script src="features/social/social.js?v=1" defer></script>
+  <script src="features/users/users.js?v=1" defer></script>
+  <script src="features/games/games.js?v=1" defer></script>
+  <script src="features/updates/updates.js?v=1" defer></script>
+  <script src="features/folders/folders.js?v=1" defer></script>
+  <script src="features/gallery/gallery.js?v=1" defer></script>
+  <script src="assets/js/codelab.js?v=2" defer></script>
+  <script src="features/pokemon/pokemon.js?v=2"></script>
+  <script src="features/royale/royale.js?v=2"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

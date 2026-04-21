@@ -130,15 +130,17 @@
   position: absolute;
   inset: 0;
   background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.05), rgba(2, 6, 23, 0.82)),
     radial-gradient(circle at 20% 18%, rgba(34, 211, 238, 0.25), transparent 34%),
-    linear-gradient(145deg, rgba(14, 165, 233, 0.14), rgba(15, 23, 42, 0.2));
+    url("../images/code-web-card.svg") center / cover no-repeat;
   opacity: 0.9;
 }
 
 .code-lab-env-card.java-env::before {
   background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.05), rgba(2, 6, 23, 0.84)),
     radial-gradient(circle at 75% 16%, rgba(248, 113, 113, 0.24), transparent 34%),
-    linear-gradient(145deg, rgba(248, 113, 113, 0.12), rgba(15, 23, 42, 0.2));
+    url("../images/code-java-card.svg") center / cover no-repeat;
 }
 
 .code-lab-env-card > * {
@@ -189,6 +191,17 @@
   gap: 14px;
   align-items: center;
   margin-bottom: 14px;
+}
+
+.code-lab-rotate-overlay {
+  display: none;
+  margin: 12px 0;
+  border: 1px solid rgba(255, 215, 0, 0.24);
+  background: rgba(255, 215, 0, 0.08);
+  color: #fef9c3;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
 }
 
 .code-lab-landscape-top h2 {
@@ -319,6 +332,14 @@
   gap: 16px;
 }
 
+.code-lab-shell.is-landscape {
+  width: min(1800px, calc(100% - 18px));
+}
+
+.code-lab-shell.is-landscape .code-lab-workspace {
+  min-height: min(72vh, 820px);
+}
+
 .code-lab-editor-panel,
 .code-lab-output-panel {
   border-radius: 18px;
@@ -420,6 +441,16 @@
 
   .code-lab-output-panel {
     grid-template-rows: auto 280px auto 180px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+  .code-lab-shell.is-landscape .code-lab-rotate-overlay {
+    display: block;
+  }
+
+  .code-lab-shell.is-landscape .code-lab-workspace {
+    grid-template-columns: 1fr;
   }
 }
 

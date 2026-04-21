@@ -893,6 +893,7 @@ const JAVA_BLOCKLIST = [
   /ClassLoader/i,
   /reflect/i,
 ];
+let javaToolchainCache = null;
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve) => {
@@ -924,7 +925,42 @@ function runCommand(command, args, options = {}) {
   });
 }
 
+function firstLine(value) {
+  return String(value || '').split(/\r?\n/).find(Boolean) || '';
+}
+
+async function checkJavaToolchain(force = false) {
+  if (javaToolchainCache && !force) return javaToolchainCache;
+  const javac = await runCommand(JAVAC_BIN, ['-version'], {});
+  const java = await runCommand(JAVA_BIN, ['-version'], {});
+  const available = javac.code === 0 && java.code === 0;
+  javaToolchainCache = {
+    available,
+    javacBin: JAVAC_BIN,
+    javaBin: JAVA_BIN,
+    javacVersion: firstLine(javac.stderr || javac.stdout),
+    javaVersion: firstLine(java.stderr || java.stdout),
+    message: available
+      ? 'Java toolchain is available.'
+      : 'Java toolchain is unavailable. Deploy with the included Dockerfile, which installs OpenJDK 17, or configure JAVAC_BIN/JAVA_BIN to valid binaries.',
+    diagnostics: {
+      javac: javac.stderr || javac.stdout,
+      java: java.stderr || java.stdout,
+    },
+  };
+  return javaToolchainCache;
+}
+
 async function runJavaSource(code) {
+  const toolchain = await checkJavaToolchain();
+  if (!toolchain.available) {
+    return {
+      ok: false,
+      error: toolchain.message,
+      code: 'java_unavailable',
+      diagnostics: toolchain.diagnostics,
+    };
+  }
   const source = String(code || '').slice(0, 20000);
   if (!/public\s+class\s+Main\b/.test(source)) {
     return { ok: false, error: 'Java source must contain public class Main.' };
@@ -939,6 +975,13 @@ async function runJavaSource(code) {
     const compile = await runCommand(JAVAC_BIN, ['Main.java'], { cwd: dir });
     if (compile.code !== 0) {
       return { ok: false, error: compile.stderr || compile.stdout || 'Compile failed.' };
+    }
+    const isSwingSource = /javax\.swing|JFrame|JPanel|JButton|JLabel|JTextField/.test(source);
+    if (isSwingSource) {
+      return {
+        ok: true,
+        output: 'Compile successful. Swing GUI source was validated in headless practice mode; desktop windows are not rendered inside the browser.',
+      };
     }
     const run = await runCommand(JAVA_BIN, ['-Djava.awt.headless=true', '-cp', dir, 'Main'], { cwd: dir, env: { ...process.env, JAVA_TOOL_OPTIONS: '-Djava.awt.headless=true' } });
     if (run.code !== 0) {
@@ -955,6 +998,14 @@ app.post('/api/code-lab/run-java', async (req, res) => {
     res.json(await runJavaSource(req.body?.code || ''));
   } catch (error) {
     res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.get('/api/code-lab/java-status', async (req, res) => {
+  try {
+    res.json(await checkJavaToolchain(true));
+  } catch (error) {
+    res.status(500).json({ available: false, message: error.message });
   }
 });
 

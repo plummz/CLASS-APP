@@ -224,11 +224,27 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: '2026-04-21',
+    title: 'Code Lab Java and Structure Fixes',
+    summary: 'Java execution now has a real OpenJDK Docker runtime path, CODE LAB cards use real visuals, the workspace pushes landscape mode, and update visibility is more reliable.',
+    changes: [
+      'Added Docker/OpenJDK configuration so CODE LAB Java can compile and run with javac/java on Render when deployed as Docker.',
+      'Added a Java toolchain status probe and clean unavailable message instead of raw spawn javac ENOENT.',
+      'Improved CODE LAB landscape workspace behavior and added a clear workspace button.',
+      'Added real background graphics for HTML/CSS/JavaScript and Java cards.',
+      'Moved Pokemon and Battle Royale assets into feature folders and added feature directories for major app areas.',
+      'Improved the ! update indicator with latest/current version state and seen tracking.',
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-04-21',
+    title: 'Playback and Update Visibility',
+    summary: 'Music queue playback, loop behavior, footer year, update banner, and lobby presence improvements.',
     changes: [
       'Fixed Music folder playback so songs continue through the queue.',
       'Updated Loop All so it restarts the queue only after the last track.',
@@ -240,6 +256,8 @@ const APP_CHANGELOG = [
   {
     version: '1.0.9',
     date: '2026-04-21',
+    title: 'Copy Move and Activity',
+    summary: 'Copy & Move To, folder filtering, app open tally, and announcement auto-load.',
     changes: [
       'Added Copy & Move To with source-aware folder filtering.',
       'Added shared app-open tally in the lobby.',
@@ -249,6 +267,8 @@ const APP_CHANGELOG = [
   {
     version: '1.0.8',
     date: '2026-04-21',
+    title: 'Social Pages and Permissions',
+    summary: 'Social Media Pages cards, embedded social view, and folder permission quick controls.',
     changes: [
       'Matched Social Media cards to the Games page design.',
       'Added in-app embedded social media view.',
@@ -2550,11 +2570,8 @@ if ('serviceWorker' in navigator) {
 }
 
 async function fetchAppUpdates() {
-  const seenVersion = localStorage.getItem('seenSoftwareVersion');
-  if (seenVersion !== APP_VERSION) {
-    showSoftwareUpdateBanner();
-    return;
-  }
+  refreshUpdateIndicator();
+  if (localStorage.getItem('seenSoftwareVersion') !== APP_VERSION) showSoftwareUpdateBanner();
   const { data, error } = await sb.from('app_updates')
     .select('*')
     .eq('active', true)
@@ -2567,15 +2584,18 @@ async function fetchAppUpdates() {
   const seenKey = `seenAppUpdate:${update.id}`;
   if (localStorage.getItem(seenKey)) return;
   showFloatingUpdate(update, seenKey);
+  refreshUpdateIndicator();
 }
 
 function showSoftwareUpdateBanner() {
   const seenVersion = localStorage.getItem('seenSoftwareVersion');
   if (seenVersion === APP_VERSION) return;
+  const latest = getLatestLocalUpdate();
   showFloatingUpdate({
     id: `version-${APP_VERSION}`,
     title: `New Update Applied – Version ${APP_VERSION}`,
-    message: 'Tap the ! button or View Updates in the lobby to see the latest changes.',
+    version: APP_VERSION,
+    message: latest.summary || 'Tap the ! button or View Updates in the lobby to see the latest changes.',
   }, 'seenSoftwareVersion');
 }
 
@@ -2592,21 +2612,38 @@ function showFloatingUpdate(update, seenKey) {
   `;
   document.body.appendChild(note);
   note.querySelector('button').onclick = () => {
-    localStorage.setItem(seenKey, seenKey === 'seenSoftwareVersion' ? APP_VERSION : '1');
     note.classList.remove('show');
     setTimeout(() => note.remove(), 220);
   };
   note.onclick = (event) => {
     if (event.target.closest('button')) return;
+    if (seenKey && seenKey !== 'seenSoftwareVersion') localStorage.setItem(seenKey, '1');
     openChangelogModal();
   };
   requestAnimationFrame(() => note.classList.add('show'));
   setTimeout(() => {
     if (!document.body.contains(note)) return;
-    localStorage.setItem(seenKey, seenKey === 'seenSoftwareVersion' ? APP_VERSION : '1');
     note.classList.remove('show');
     setTimeout(() => note.remove(), 220);
   }, 6500);
+}
+
+function getLatestLocalUpdate() {
+  return APP_CHANGELOG[0] || { version: APP_VERSION, date: '', title: 'Software Update', summary: '', changes: [] };
+}
+
+function hasUnseenUpdate() {
+  return localStorage.getItem('seenSoftwareVersion') !== APP_VERSION;
+}
+
+function refreshUpdateIndicator() {
+  const btn = document.getElementById('admin-update-btn');
+  if (!btn) return;
+  const latest = getLatestLocalUpdate();
+  const unseen = hasUnseenUpdate();
+  btn.classList.toggle('has-update', unseen);
+  btn.title = unseen ? `New update available: Version ${latest.version}` : `Software updates - Version ${APP_VERSION}`;
+  btn.setAttribute('aria-label', btn.title);
 }
 
 function ensureAdminUpdateControl() {
@@ -2620,13 +2657,18 @@ function ensureAdminUpdateControl() {
   btn.textContent = '!';
   btn.onclick = openChangelogModal;
   controls.appendChild(btn);
+  refreshUpdateIndicator();
 }
 
 window.openChangelogModal = function() {
   removeDynamicModal('changelog-modal');
+  localStorage.setItem('seenSoftwareVersion', APP_VERSION);
+  refreshUpdateIndicator();
+  const latest = getLatestLocalUpdate();
   const entries = APP_CHANGELOG.map((entry) => `
     <div class="changelog-entry">
       <div class="changelog-version">Version ${escapeHTML(entry.version)} <span>${escapeHTML(entry.date)}</span></div>
+      <p class="modal-text align-left"><strong>${escapeHTML(entry.title || 'Update')}</strong> - ${escapeHTML(entry.summary || '')}</p>
       <ul>${entry.changes.map((change) => `<li>${escapeHTML(change)}</li>`).join('')}</ul>
     </div>
   `).join('');
@@ -2635,7 +2677,15 @@ window.openChangelogModal = function() {
       <div class="custom-modal-box changelog-modal-box border-blue">
         <button class="modal-close-btn" onclick="removeDynamicModal('changelog-modal')">&times;</button>
         <h3 class="modal-title text-blue">Software Updates</h3>
-        <p class="modal-text align-left">Current Version: ${escapeHTML(APP_VERSION)}</p>
+        <div class="update-version-grid">
+          <div class="update-version-card"><span>Current App Version</span><strong>${escapeHTML(APP_VERSION)}</strong></div>
+          <div class="update-version-card"><span>Latest Update Version</span><strong>${escapeHTML(latest.version)}</strong></div>
+        </div>
+        <div class="update-summary-box">
+          <strong>${escapeHTML(latest.title || 'Latest update')}</strong><br>
+          ${escapeHTML(latest.summary || '')}<br>
+          <small>Released: ${escapeHTML(latest.date || 'Unknown')}</small>
+        </div>
         <div class="changelog-list">${entries}</div>
         ${isAdmin ? `<button class="btn-primary full-width mt-10" onclick="removeDynamicModal('changelog-modal'); openAdminUpdateComposer();">Post Admin Update</button>` : ''}
       </div>

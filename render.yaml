@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: class-app
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/ping
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JAVAC_BIN
+        value: javac
+      - key: JAVA_BIN
+        value: java
+      - key: CODE_LAB_JAVA_TIMEOUT_MS
+        value: "5000"

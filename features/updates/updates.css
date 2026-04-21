@@ -1,0 +1,58 @@
+.admin-update-btn.has-update {
+  color: #08111f !important;
+  background: linear-gradient(135deg, #ffd700, #67e8f9) !important;
+  border-color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.5), 0 0 34px rgba(103, 232, 249, 0.26) !important;
+  animation: updatePulse 1.8s ease-in-out infinite;
+}
+
+.update-version-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.update-version-card {
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.045);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.update-version-card span {
+  display: block;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.update-version-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.update-summary-box {
+  margin: 10px 0 14px;
+  border: 1px solid rgba(0,212,255,0.18);
+  background: rgba(0,212,255,0.06);
+  border-radius: 14px;
+  padding: 12px;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.5;
+}
+
+@keyframes updatePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@media (max-width: 560px) {
+  .update-version-grid {
+    grid-template-columns: 1fr;
+  }
+}

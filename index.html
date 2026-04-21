@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -104,6 +104,11 @@
     <div class="nav-item" data-page="outputai" onclick="goToPage('outputai')">
       <span class="nav-icon">🧾</span>
       <div class="nav-text"><span class="nav-label">OUTPUT-AI</span></div>
+    </div>
+
+    <div class="nav-item" data-page="codelab" onclick="goToPage('codelab')">
+      <span class="nav-icon">⌨️</span>
+      <div class="nav-text"><span class="nav-label">CODE LAB</span></div>
     </div>
 
     <!-- AI Assistants -->
@@ -741,16 +746,10 @@
         <h2 class="lobby-title">🏫 School Lobby</h2>
         <div class="lobby-count-stack">
           <span class="lobby-online" id="lobby-online-count">0 online</span>
-          <button class="lobby-open-count-btn" id="app-open-count-btn" onclick="refreshAppOpenCount()">App opens: --</button>
-        </div>
-      </div>
-      <div class="lobby-open-board">
-        <div class="lobby-open-board-head">
-          <span>App Open Tally</span>
-          <button type="button" onclick="refreshAppOpenCount()">Refresh</button>
-        </div>
-        <div class="lobby-open-list" id="app-open-user-list">
-          <p class="lobby-open-empty">Loading activity...</p>
+          <div class="lobby-mini-actions">
+            <button class="lobby-open-count-btn" id="app-open-count-btn" onclick="openAppOpenTallyModal()">App Opens</button>
+            <button class="lobby-open-count-btn" id="contribution-tally-btn" onclick="openContributionTallyModal()">Contributions</button>
+          </div>
         </div>
       </div>
       <div class="lobby-presence-board">
@@ -760,15 +759,6 @@
         </div>
         <div class="lobby-presence-list" id="lobby-presence-list">
           <p class="lobby-open-empty">Open the lobby to see active users.</p>
-        </div>
-      </div>
-      <div class="lobby-contribution-board">
-        <div class="lobby-open-board-head">
-          <span>Contribution Tally</span>
-          <button type="button" onclick="openContributionTallyModal()">Update</button>
-        </div>
-        <div class="lobby-contribution-preview" id="lobby-contribution-preview">
-          <p class="lobby-open-empty">Loading upload contributions...</p>
         </div>
       </div>
       <div class="lobby-canvas-area">
@@ -817,6 +807,81 @@
         <button class="board-refresh-btn" onclick="fetchSharedAIOutputs()">Refresh</button>
       </div>
       <div class="shared-board-feed" id="output-ai-feed"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-codelab">
+    <div class="code-lab-shell">
+      <div class="code-lab-header">
+        <div>
+          <div class="code-lab-kicker">Sandboxed Practice</div>
+          <h1 class="code-lab-title">CODE LAB</h1>
+          <p class="code-lab-sub">Daily debug points and free coding practice stay isolated inside this page.</p>
+        </div>
+        <div class="code-lab-header-actions">
+          <button class="code-lab-btn ghost" onclick="openCodeLabLeaderboard()">Leaderboard</button>
+          <button class="code-lab-btn" onclick="resetCodeLabWorkspace()">Reset Workspace</button>
+        </div>
+      </div>
+
+      <div class="code-lab-tabs">
+        <button class="code-lab-tab active" id="code-lab-tab-daily" onclick="switchCodeLabMode('daily')">Daily Debug Challenge</button>
+        <button class="code-lab-tab" id="code-lab-tab-practice" onclick="switchCodeLabMode('practice')">Free Practice Workspace</button>
+      </div>
+
+      <div class="code-lab-status-grid">
+        <div class="code-lab-card challenge-card">
+          <div class="code-lab-card-top">
+            <span id="code-lab-challenge-type">Loading</span>
+            <strong id="code-lab-challenge-points">+1 point</strong>
+          </div>
+          <h2 id="code-lab-challenge-title">Daily challenge loading...</h2>
+          <p id="code-lab-challenge-desc">Preparing today's debugging task.</p>
+          <div class="code-lab-badges">
+            <span id="code-lab-challenge-date">Today</span>
+            <span id="code-lab-solved-badge">Not solved yet</span>
+            <span id="code-lab-streak-badge">Streak: 0</span>
+          </div>
+        </div>
+        <div class="code-lab-card asset-card">
+          <div class="code-lab-card-top">
+            <span>Practice Assets</span>
+            <label class="code-lab-upload-btn">
+              Upload
+              <input type="file" id="code-lab-asset-input" accept="image/*,video/*" multiple onchange="uploadCodeLabAssets(event)">
+            </label>
+          </div>
+          <div class="code-lab-assets" id="code-lab-assets">
+            <p>No practice assets uploaded yet.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-lab-workspace">
+        <div class="code-lab-editor-panel">
+          <div class="code-lab-toolbar">
+            <div class="code-lab-file-tabs">
+              <button class="code-lab-file-tab active" data-lang="html" onclick="setCodeLabLanguage('html')">HTML</button>
+              <button class="code-lab-file-tab" data-lang="css" onclick="setCodeLabLanguage('css')">CSS</button>
+              <button class="code-lab-file-tab" data-lang="javascript" onclick="setCodeLabLanguage('javascript')">JavaScript</button>
+              <button class="code-lab-file-tab" data-lang="java" onclick="setCodeLabLanguage('java')">Java</button>
+            </div>
+            <div class="code-lab-run-actions">
+              <button class="code-lab-btn ghost" onclick="runCodeLab()">Run</button>
+              <button class="code-lab-btn" id="code-lab-submit-btn" onclick="submitCodeLabChallenge()">Submit Daily</button>
+            </div>
+          </div>
+          <div id="code-lab-editor" class="code-lab-editor"></div>
+          <textarea id="code-lab-editor-fallback" class="code-lab-editor-fallback" spellcheck="false"></textarea>
+        </div>
+
+        <div class="code-lab-output-panel">
+          <div class="code-lab-panel-title">Preview</div>
+          <iframe id="code-lab-preview" class="code-lab-preview" title="Code Lab sandbox preview" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+          <div class="code-lab-panel-title">Console</div>
+          <pre id="code-lab-console" class="code-lab-console">Ready.</pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1035,7 +1100,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=26"></script>
+  <script src="script.js?v=27"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 

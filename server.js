@@ -6,6 +6,7 @@ const https    = require('https');
 const path     = require('path');
 const fs       = require('fs');
 const os       = require('os');
+const { spawn } = require('child_process');
 const cors     = require('cors');
 const multer   = require('multer');
 const sharp    = require('sharp');
@@ -845,6 +846,161 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   } finally {
     if (tmpIn  && fs.existsSync(tmpIn))  fs.unlinkSync(tmpIn);
     if (tmpOut && fs.existsSync(tmpOut)) fs.unlinkSync(tmpOut);
+  }
+});
+
+function safePracticeUser(value) {
+  return String(value || 'guest').trim().replace(/[^a-z0-9_-]/gi, '_').slice(0, 40) || 'guest';
+}
+
+app.post('/api/code-lab/assets', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'File required' });
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const allowed = IMAGE_EXTS.has(ext) || VIDEO_EXTS.has(ext);
+  if (!allowed) return res.status(400).json({ error: 'Only image and video practice assets are allowed' });
+  const username = safePracticeUser(req.body?.username);
+  const key = `practice-assets/${username}/asset-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  try {
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+    }));
+    res.json({
+      name: req.file.originalname,
+      type: req.file.mimetype,
+      size: req.file.size,
+      url: `/uploads/${key}`,
+    });
+  } catch (error) {
+    console.error('Code Lab asset upload failed:', error);
+    res.status(500).json({ error: 'Practice asset upload failed' });
+  }
+});
+
+const JAVA_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_TIMEOUT_MS || 5000);
+const JAVAC_BIN = process.env.JAVAC_BIN || 'javac';
+const JAVA_BIN = process.env.JAVA_BIN || 'java';
+const JAVA_BLOCKLIST = [
+  /Runtime\.getRuntime/i,
+  /ProcessBuilder/i,
+  /System\.exit/i,
+  /java\.io\.File/i,
+  /Files\./i,
+  /Socket/i,
+  /URLClassLoader/i,
+  /ClassLoader/i,
+  /reflect/i,
+];
+
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { ...options, windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        child.kill('SIGKILL');
+        resolve({ code: 124, stdout, stderr: `${stderr}\nTimed out after ${JAVA_TIMEOUT_MS}ms`.trim() });
+      }
+    }, JAVA_TIMEOUT_MS);
+    child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code: 127, stdout, stderr: error.message });
+    });
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr });
+    });
+  });
+}
+
+async function runJavaSource(code) {
+  const source = String(code || '').slice(0, 20000);
+  if (!/public\s+class\s+Main\b/.test(source)) {
+    return { ok: false, error: 'Java source must contain public class Main.' };
+  }
+  if (JAVA_BLOCKLIST.some((pattern) => pattern.test(source))) {
+    return { ok: false, error: 'This Java practice sandbox blocks file, process, reflection, network, and exit APIs.' };
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'class-app-code-lab-'));
+  const file = path.join(dir, 'Main.java');
+  try {
+    fs.writeFileSync(file, source);
+    const compile = await runCommand(JAVAC_BIN, ['Main.java'], { cwd: dir });
+    if (compile.code !== 0) {
+      return { ok: false, error: compile.stderr || compile.stdout || 'Compile failed.' };
+    }
+    const run = await runCommand(JAVA_BIN, ['-Djava.awt.headless=true', '-cp', dir, 'Main'], { cwd: dir, env: { ...process.env, JAVA_TOOL_OPTIONS: '-Djava.awt.headless=true' } });
+    if (run.code !== 0) {
+      return { ok: false, error: run.stderr || run.stdout || 'Runtime error.' };
+    }
+    return { ok: true, output: run.stdout || 'Program completed without console output.' };
+  } finally {
+    fs.rm(dir, { recursive: true, force: true }, () => {});
+  }
+}
+
+app.post('/api/code-lab/run-java', async (req, res) => {
+  try {
+    res.json(await runJavaSource(req.body?.code || ''));
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+function validateDailyChallenge(challengeId, files = {}) {
+  const html = String(files.html || '');
+  const css = String(files.css || '');
+  const js = String(files.javascript || '');
+  const java = String(files.java || '');
+  if (challengeId === 'html-missing-image-alt') {
+    const ok = /<h1[^>]*>Debug Lab<\/h1>/i.test(html) && /<img[^>]+>/i.test(html) && /<button[^>]*>Toggle<\/button>/i.test(html);
+    return ok ? null : 'Fix the h1 closing tag, complete the img tag, and keep the Toggle button valid.';
+  }
+  if (challengeId === 'js-total-loop') {
+    const ok = /i\s*=\s*0/.test(js) && /i\s*<\s*prices\.length/.test(js) && /Total:\s*['"]?\s*\+?\s*total/.test(js);
+    return ok ? null : 'The loop should start at 0, stay below prices.length, and print Total: 15.';
+  }
+  if (challengeId === 'css-center-button') {
+    const ok = /display\s*:\s*flex/i.test(css) && /align-items\s*:\s*center/i.test(css) && /border-radius\s*:\s*(?!none\b)[^;]+/i.test(css);
+    return ok ? null : 'Use display:flex, align-items:center, and a real border-radius value.';
+  }
+  if (challengeId === 'java-hello-total') {
+    return /public\s+static\s+void\s+main\s*\(\s*String\[\]\s+args\s*\)/.test(java) && /int\s+sum\s*=\s*4\s*\+\s*6\s*;/.test(java) && /System\.out\.println\s*\(\s*"Sum:\s*"\s*\+\s*sum\s*\)/.test(java)
+      ? null
+      : 'Fix main(String[] args), end the sum line with a semicolon, and print sum.';
+  }
+  if (challengeId === 'swing-button-label') {
+    return /import\s+javax\.swing\.JButton\s*;/.test(java) && /new\s+JButton\s*\(/.test(java) && /Swing source compiles/.test(java)
+      ? null
+      : 'Fix the JButton import/class name and keep the Swing compile message.';
+  }
+  return 'Unknown daily challenge.';
+}
+
+app.post('/api/code-lab/validate', async (req, res) => {
+  try {
+    const challengeId = String(req.body?.challengeId || '');
+    const files = req.body?.files || {};
+    const message = validateDailyChallenge(challengeId, files);
+    if (message) return res.json({ ok: false, error: message });
+    if (challengeId.startsWith('java-') || challengeId.startsWith('swing-')) {
+      const javaResult = await runJavaSource(files.java || '');
+      if (!javaResult.ok) return res.json({ ok: false, error: javaResult.error });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
   }
 });
 

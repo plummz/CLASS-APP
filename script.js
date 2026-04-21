@@ -653,14 +653,16 @@ window.uploadFileToFolderAPI = async function() {
           fileSize = file.size;
         }
 
-        const { error: dbErr } = await sb.from('files').insert([{
+        const { error: dbErr } = await insertFileRecord({
             folder_id: folderId,
             name: file.name,
             url: fileUrl,
             type: file.type,
             uploader: currentUser.username,
-            size: fileSize
-        }]);
+            size: fileSize,
+            is_original_upload: true,
+            source_file_id: null,
+        });
         // Supabase v2 returns {data, error} — it does NOT throw on failure
         if(dbErr) throw new Error(`Database: ${dbErr.message}`);
 
@@ -699,6 +701,16 @@ async function getAllFolders() {
     const { data, error } = await sb.from('folders').select('*').order('name', { ascending: true });
     if (error) throw error;
     return data || [];
+}
+
+async function insertFileRecord(row) {
+    const { error } = await sb.from('files').insert([row]);
+    if (!error) return { error: null };
+    if (/is_original_upload|source_file_id/i.test(error.message || '')) {
+        const { is_original_upload, source_file_id, ...legacyRow } = row;
+        return sb.from('files').insert([legacyRow]);
+    }
+    return { error };
 }
 
 function removeDynamicModal(id) {
@@ -905,14 +917,16 @@ window.copyFileToFolder = async function(fileId, targetFolderId, refreshMode = '
         return customAlert(error.message);
     }
     if (!canEditFolder(target)) return customAlert('You do not have permission to copy files to that folder.');
-    const { error } = await sb.from('files').insert([{
+    const { error } = await insertFileRecord({
         folder_id: targetFolderId,
         name: sourceFile.name,
         url: sourceFile.url,
         type: sourceFile.type,
         uploader: currentUser?.username || sourceFile.uploader,
         size: sourceFile.size || null,
-    }]);
+        is_original_upload: false,
+        source_file_id: String(sourceFile.source_file_id || sourceFile.id || ''),
+    });
     if (error) return customAlert(error.message);
     removeDynamicModal('move-file-modal');
     showToast('File copied to destination.');
@@ -2218,6 +2232,95 @@ function renderAppOpenStats(data = {}) {
   renderAppOpenUsers(data.users || []);
 }
 
+async function fetchContributionTally() {
+  const { data, error } = await sb.rpc('class_app_contribution_tally');
+  if (!error && Array.isArray(data)) {
+    return data.map((row) => ({
+      username: row.username || row.uploader || 'Unknown',
+      total: Number(row.total || row.count || 0),
+    }));
+  }
+
+  let fallback = await sb.from('files').select('uploader,is_original_upload');
+  if (fallback.error && /is_original_upload/i.test(fallback.error.message || '')) {
+    fallback = await sb.from('files').select('uploader');
+  }
+  if (fallback.error) throw fallback.error;
+  const totals = new Map();
+  (fallback.data || [])
+    .filter((file) => file.is_original_upload !== false)
+    .forEach((file) => {
+      const username = file.uploader || 'Unknown';
+      totals.set(username, (totals.get(username) || 0) + 1);
+    });
+  return [...totals.entries()].map(([username, total]) => ({ username, total }));
+}
+
+function contributionRankIcon(index) {
+  return index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+}
+
+function renderContributionPreview(rows = []) {
+  const preview = document.getElementById('lobby-contribution-preview');
+  if (!preview) return;
+  if (!rows.length) {
+    preview.innerHTML = '<p class="lobby-open-empty">No original uploads recorded yet.</p>';
+    return;
+  }
+  preview.innerHTML = rows.slice(0, 3).map((row, index) => `
+    <div class="contribution-mini-row">
+      <span>${contributionRankIcon(index)}</span>
+      <strong>${escapeHTML(row.username)}</strong>
+      <em>${Number(row.total || 0).toLocaleString()}</em>
+    </div>
+  `).join('');
+}
+
+function renderContributionBoard(rows = []) {
+  const board = document.getElementById('contribution-board-list');
+  if (!board) return;
+  if (!rows.length) {
+    board.innerHTML = '<p class="lobby-open-empty">No original uploads recorded yet.</p>';
+    return;
+  }
+  board.innerHTML = rows.map((row, index) => `
+    <div class="contribution-row ${index < 3 ? 'top-rank' : ''}">
+      <span class="contribution-rank">${contributionRankIcon(index)}</span>
+      <span class="contribution-user">${escapeHTML(row.username)}</span>
+      <span class="contribution-total">${Number(row.total || 0).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+window.refreshContributionTally = async function() {
+  try {
+    const rows = (await fetchContributionTally())
+      .sort((a, b) => b.total - a.total || a.username.localeCompare(b.username));
+    renderContributionPreview(rows);
+    renderContributionBoard(rows);
+  } catch (error) {
+    const preview = document.getElementById('lobby-contribution-preview');
+    if (preview) preview.innerHTML = `<p class="lobby-open-empty">${escapeHTML(error.message)}</p>`;
+    const board = document.getElementById('contribution-board-list');
+    if (board) board.innerHTML = `<p class="lobby-open-empty">${escapeHTML(error.message)}</p>`;
+  }
+};
+
+window.openContributionTallyModal = async function() {
+  removeDynamicModal('contribution-tally-modal');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="contribution-tally-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+      <div class="custom-modal-box contribution-modal-box border-blue">
+        <button class="modal-close-btn" onclick="removeDynamicModal('contribution-tally-modal')">&times;</button>
+        <h3 class="modal-title text-blue">Contribution Tally</h3>
+        <p class="modal-text align-left">Counts original uploads only. Copied or moved items do not add points.</p>
+        <div class="contribution-board-list" id="contribution-board-list">${createInlineLoader('Loading contributions...')}</div>
+      </div>
+    </div>
+  `);
+  refreshContributionTally();
+};
+
 window.refreshAppOpenCount = async function() {
   const btn = document.getElementById('app-open-count-btn');
   if (btn) btn.textContent = 'App opens: loading...';
@@ -2265,6 +2368,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (currentUser) recordAppOpen();
   else window.refreshAppOpenCount();
   fetchSharedAnnouncements();
+  refreshContributionTally();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
@@ -3288,10 +3392,11 @@ async function gUploadFiles(pfx, fileList, folderId, inputEl) {
       const r = await fetch('/api/upload', { method:'POST', body:fd });
       if (!r.ok) throw new Error('Upload failed');
       const data = await r.json();
-      const { error } = await sb.from('files').insert([{
+      const { error } = await insertFileRecord({
         folder_id: folderId, name: file.name, url: data.url,
         type: file.type, uploader: currentUser.username, size: data.size,
-      }]);
+        is_original_upload: true, source_file_id: null,
+      });
       if (error) throw new Error(error.message);
       done++;
       if (bar) bar.innerHTML = `<div class="ep-uploading">Uploading ${done} / ${files.length}…</div>`;
@@ -3489,6 +3594,11 @@ function initSharedRealtime() {
       if (currentPage === 'announcement') fetchSharedAnnouncements();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_updates' }, () => fetchAppUpdates())
+    .subscribe();
+  sb.channel('public:contribution_tally')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'files' }, (payload) => {
+      if (payload?.new?.is_original_upload !== false) refreshContributionTally();
+    })
     .subscribe();
 }
 

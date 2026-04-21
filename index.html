@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="style.css?v=25">
-  <link rel="stylesheet" href="assets/css/codelab.css?v=3">
+  <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
   <link rel="stylesheet" href="features/academics/academics.css?v=1">
   <link rel="stylesheet" href="features/lobby/lobby.css?v=1">
@@ -824,12 +824,12 @@
   </div>
 
   <div class="page" id="page-codelab">
-    <div class="code-lab-shell is-portrait" id="code-lab-shell">
+    <div class="code-lab-shell is-home is-view-editor" id="code-lab-shell">
       <div class="code-lab-header">
         <div>
           <div class="code-lab-kicker">Sandboxed Practice</div>
           <h1 class="code-lab-title">CODE LAB</h1>
-          <p class="code-lab-sub">Pick an isolated practice environment. Portrait is the selection screen; landscape is the workspace.</p>
+          <p class="code-lab-sub">Pick a practice environment, then code in a portrait-first mobile editor workspace.</p>
         </div>
         <div class="code-lab-header-actions">
           <button class="code-lab-btn ghost" id="code-lab-leaderboard-btn" type="button">Leaderboard</button>
@@ -837,7 +837,7 @@
         </div>
       </div>
 
-      <div class="code-lab-portrait" id="code-lab-portrait">
+      <div class="code-lab-home" id="code-lab-home">
         <button class="code-lab-env-card web-env" type="button" data-code-lab-env="web">
           <span class="code-lab-env-icon">HTML</span>
           <strong>HTML / CSS / JavaScript</strong>
@@ -850,16 +850,13 @@
         </button>
       </div>
 
-      <div class="code-lab-landscape" id="code-lab-landscape">
-        <div class="code-lab-landscape-top">
+      <div class="code-lab-workbench" id="code-lab-workbench">
+        <div class="code-lab-workbench-top">
           <button class="code-lab-btn ghost" id="code-lab-return-btn" type="button">Return</button>
           <div>
             <div class="code-lab-kicker" id="code-lab-env-label">HTML / CSS / JavaScript</div>
             <h2 id="code-lab-workspace-title">Workspace</h2>
           </div>
-        </div>
-        <div class="code-lab-rotate-overlay" id="code-lab-rotate-overlay">
-          Rotate your phone or tablet for the cleanest coding workspace. If rotation is locked, this layout stays usable in portrait.
         </div>
 
         <div class="code-lab-tabs">
@@ -881,7 +878,7 @@
               <span id="code-lab-streak-badge">Streak: 0</span>
             </div>
           </div>
-          <div class="code-lab-card asset-card">
+          <div class="code-lab-card asset-card code-lab-assets-panel">
             <div class="code-lab-card-top">
               <span>Practice Assets</span>
               <label class="code-lab-upload-btn">
@@ -895,16 +892,23 @@
           </div>
         </div>
 
+        <div class="code-lab-view-tabs" aria-label="Code Lab panels">
+          <button class="code-lab-view-tab active" data-code-lab-view="editor" type="button">Editor</button>
+          <button class="code-lab-view-tab" data-code-lab-view="preview" type="button">Preview</button>
+          <button class="code-lab-view-tab" data-code-lab-view="console" type="button">Console</button>
+          <button class="code-lab-view-tab" data-code-lab-view="assets" type="button">Assets</button>
+        </div>
+
         <div class="code-lab-workspace">
           <div class="code-lab-editor-panel">
             <div class="code-lab-toolbar">
               <div class="code-lab-file-tabs">
-                <button class="code-lab-file-tab active" data-lang="html" type="button">HTML</button>
-                <button class="code-lab-file-tab" data-lang="css" type="button">CSS</button>
-                <button class="code-lab-file-tab" data-lang="javascript" type="button">JavaScript</button>
-                <button class="code-lab-file-tab" data-lang="java" type="button">Java</button>
+                <button class="code-lab-file-tab active" data-lang="html" type="button">index.html</button>
+                <button class="code-lab-file-tab" data-lang="css" type="button">style.css</button>
+                <button class="code-lab-file-tab" data-lang="javascript" type="button">script.js</button>
+                <button class="code-lab-file-tab" data-lang="java" type="button">Main.java</button>
               </div>
-          <div class="code-lab-run-actions">
+              <div class="code-lab-run-actions">
                 <button class="code-lab-btn ghost" id="code-lab-clear-btn" type="button">Clear</button>
                 <button class="code-lab-btn ghost" id="code-lab-run-btn" type="button">Run</button>
                 <button class="code-lab-btn" id="code-lab-submit-btn" type="button">Submit Daily</button>
@@ -915,10 +919,14 @@
           </div>
 
           <div class="code-lab-output-panel">
-            <div class="code-lab-panel-title" id="code-lab-preview-title">Preview</div>
-            <iframe id="code-lab-preview" class="code-lab-preview" title="Code Lab sandbox preview" sandbox="allow-scripts allow-forms allow-modals"></iframe>
-            <div class="code-lab-panel-title">Console</div>
-            <pre id="code-lab-console" class="code-lab-console">Ready.</pre>
+            <div class="code-lab-preview-panel">
+              <div class="code-lab-panel-title" id="code-lab-preview-title">Preview</div>
+              <iframe id="code-lab-preview" class="code-lab-preview" title="Code Lab sandbox preview" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+            </div>
+            <div class="code-lab-console-panel">
+              <div class="code-lab-panel-title">Console</div>
+              <pre id="code-lab-console" class="code-lab-console">Ready.</pre>
+            </div>
           </div>
         </div>
       </div>
@@ -1140,7 +1148,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=29"></script>
+  <script src="script.js?v=30"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1153,7 +1161,7 @@
   <script src="features/updates/updates.js?v=1" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>
-  <script src="assets/js/codelab.js?v=3" defer></script>
+  <script src="assets/js/codelab.js?v=4" defer></script>
   <script src="features/pokemon/pokemon.js?v=2"></script>
   <script src="features/royale/royale.js?v=2"></script>
 

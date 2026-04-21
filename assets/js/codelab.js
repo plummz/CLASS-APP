@@ -87,6 +87,7 @@
   let codeLabEnvironment = 'web';
   let codeLabMode = 'daily';
   let codeLabLanguage = 'html';
+  let codeLabView = 'editor';
   let codeLabEditor = null;
   let codeLabInitialized = false;
   let codeLabRealtimeReady = false;
@@ -270,25 +271,19 @@
       theme: 'vs-dark',
       automaticLayout: true,
       minimap: { enabled: false },
-      fontSize: 14,
+      fontSize: 13,
       lineNumbers: 'on',
       bracketPairColorization: { enabled: true },
       tabSize: 2,
+      wordWrap: 'on',
+      scrollBeyondLastLine: false,
+      glyphMargin: false,
+      folding: true,
+      renderLineHighlight: 'line',
       suggestOnTriggerCharacters: true,
       quickSuggestions: true,
     });
     codeLabEditor.onDidChangeModelContent(() => saveActiveCodeLabFile());
-  }
-
-  async function requestLandscapeLock() {
-    try {
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch (_) {}
-    try {
-      if (screen.orientation?.lock) await screen.orientation.lock('landscape');
-    } catch (_) {}
   }
 
   async function checkJavaStatus(force = false) {
@@ -325,6 +320,31 @@
       const visible = codeLabEnvironment === 'java' ? lang === 'java' : lang !== 'java';
       tab.hidden = !visible;
     });
+    const previewTab = document.querySelector('[data-code-lab-view="preview"]');
+    if (previewTab) {
+      previewTab.hidden = codeLabEnvironment === 'java';
+      if (codeLabEnvironment === 'java' && codeLabView === 'preview') setCodeLabView('console');
+    }
+  }
+
+  function setCodeLabView(view) {
+    const allowed = ['editor', 'preview', 'console', 'assets'];
+    const next = allowed.includes(view) ? view : 'editor';
+    if (codeLabEnvironment === 'java' && next === 'preview') {
+      codeLabView = 'console';
+    } else {
+      codeLabView = next;
+    }
+    const shell = document.getElementById('code-lab-shell');
+    if (shell) {
+      allowed.forEach((name) => shell.classList.toggle(`is-view-${name}`, codeLabView === name));
+    }
+    document.querySelectorAll('.code-lab-view-tab').forEach((tab) => {
+      tab.classList.toggle('active', tab.dataset.codeLabView === codeLabView);
+    });
+    if (codeLabView === 'editor') {
+      setTimeout(() => codeLabEditor?.layout?.(), 60);
+    }
   }
 
   function refreshCodeLabHeader() {
@@ -414,9 +434,10 @@
     saveActiveCodeLabFile();
     codeLabEnvironment = env === 'java' ? 'java' : 'web';
     codeLabLanguage = codeLabEnvironment === 'java' ? 'java' : 'html';
-    requestLandscapeLock();
-    document.getElementById('code-lab-shell')?.classList.remove('is-portrait');
-    document.getElementById('code-lab-shell')?.classList.add('is-landscape');
+    const shell = document.getElementById('code-lab-shell');
+    shell?.classList.remove('is-home');
+    shell?.classList.add('is-workbench');
+    setCodeLabView('editor');
     updateEnvironmentUi();
     await initCodeLabEditor();
     if (codeLabMode === 'daily') loadDailyCodeLabChallenge();
@@ -430,12 +451,9 @@
 
   window.returnCodeLabHome = function () {
     saveActiveCodeLabFile();
-    document.getElementById('code-lab-shell')?.classList.add('is-portrait');
-    document.getElementById('code-lab-shell')?.classList.remove('is-landscape');
-    try {
-      if (screen.orientation?.unlock) screen.orientation.unlock();
-      if (document.fullscreenElement) document.exitFullscreen();
-    } catch (_) {}
+    const shell = document.getElementById('code-lab-shell');
+    shell?.classList.add('is-home');
+    shell?.classList.remove('is-workbench');
   };
 
   window.switchCodeLabMode = function (mode) {
@@ -458,6 +476,7 @@
     codeLabLanguage = lang;
     document.querySelectorAll('.code-lab-file-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.lang === lang));
     setCodeLabEditorValue(codeLabFiles[lang] || '', lang);
+    setCodeLabView('editor');
   };
 
   function buildCodeLabPreviewSource() {
@@ -487,6 +506,7 @@
     saveActiveCodeLabFile();
     codeLabConsoleLines = [];
     if (codeLabEnvironment === 'java' || codeLabLanguage === 'java') {
+      setCodeLabView('console');
       codeLabSetConsole('Compiling Java...');
       try {
         const res = await fetch('/api/code-lab/run-java', {
@@ -504,6 +524,7 @@
     codeLabSetConsole('Rendering browser preview...');
     const frame = document.getElementById('code-lab-preview');
     if (frame) frame.srcdoc = buildCodeLabPreviewSource();
+    setCodeLabView('preview');
   };
 
   window.submitCodeLabChallenge = async function () {
@@ -511,6 +532,7 @@
     if (!activeUser?.username) return alertUser('Login first to claim debug points.');
     saveActiveCodeLabFile();
     const challenge = getDailyCodeLabChallenge();
+    setCodeLabView('console');
     codeLabSetConsole('Checking solution...');
     try {
       const validation = await fetch('/api/code-lab/validate', {
@@ -614,6 +636,7 @@
     }
     localStorage.setItem('codeLabAssets', JSON.stringify(codeLabAssets.slice(0, 30)));
     renderCodeLabAssets();
+    setCodeLabView('assets');
     codeLabSetConsole('Practice asset upload complete.', 'success');
     event.target.value = '';
   };
@@ -639,6 +662,7 @@
     const current = getCodeLabEditorValue();
     setCodeLabEditorValue(`${current}\n${snippet}`, codeLabLanguage);
     saveActiveCodeLabFile();
+    setCodeLabView('editor');
   };
 
   function bindCodeLabEvents() {
@@ -652,6 +676,9 @@
     });
     document.querySelectorAll('.code-lab-file-tab').forEach((button) => {
       button.addEventListener('click', () => window.setCodeLabLanguage(button.dataset.lang));
+    });
+    document.querySelectorAll('[data-code-lab-view]').forEach((button) => {
+      button.addEventListener('click', () => setCodeLabView(button.dataset.codeLabView));
     });
     document.getElementById('code-lab-return-btn')?.addEventListener('click', window.returnCodeLabHome);
     document.getElementById('code-lab-clear-btn')?.addEventListener('click', window.clearCodeLabWorkspace);

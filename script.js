@@ -224,17 +224,29 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.1',
+    date: '2026-04-21',
+    title: 'Code Lab Portrait Editor',
+    summary: 'CODE LAB now uses a portrait-first mobile editor layout with WebCode-style file tabs and switchable editor, preview, console, and asset panels.',
+    changes: [
+      'Removed CODE LAB orientation lock, fullscreen rotation behavior, and rotate-device prompt.',
+      'Added mobile editor file tabs for index.html, style.css, script.js, and Main.java.',
+      'Added Editor, Preview, Console, and Assets panel switching to keep the coding screen clean in portrait mode.',
+      'Kept Java backend execution and sandboxed HTML/CSS/JavaScript preview behavior intact.',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-04-21',
     title: 'Code Lab Java and Structure Fixes',
-    summary: 'Java execution now has a real OpenJDK Docker runtime path, CODE LAB cards use real visuals, the workspace pushes landscape mode, and update visibility is more reliable.',
+    summary: 'Java execution now has a real OpenJDK Docker runtime path, CODE LAB cards use real visuals, and update visibility is more reliable.',
     changes: [
       'Added Docker/OpenJDK configuration so CODE LAB Java can compile and run with javac/java on Render when deployed as Docker.',
       'Added a Java toolchain status probe and clean unavailable message instead of raw spawn javac ENOENT.',
-      'Improved CODE LAB landscape workspace behavior and added a clear workspace button.',
+      'Added the first CODE LAB workspace behavior and a clear workspace button.',
       'Added real background graphics for HTML/CSS/JavaScript and Java cards.',
       'Moved Pokemon and Battle Royale assets into feature folders and added feature directories for major app areas.',
       'Improved the ! update indicator with latest/current version state and seen tracking.',

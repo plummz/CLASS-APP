@@ -224,8 +224,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.3',
+    date: '2026-04-21',
+    title: 'Code Lab Real Java Output',
+    summary: 'Java runs now show the actual program output in the Code Lab console instead of internal wrapper/status messages.',
+    changes: [
+      'Removed auto-wrap and compile-success helper text from the visible Java console.',
+      'Kept Java fallback wrapping silent so simple println snippets show only what the program printed.',
+      'Updated empty successful Java runs to show [No output] and preserved real compile/runtime errors.',
+    ],
+  },
   {
     version: '1.2.2',
     date: '2026-04-21',

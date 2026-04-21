@@ -970,7 +970,7 @@ function cleanJavaError(value, processed) {
   if (/Main method not found/i.test(raw)) {
     return {
       message: processed.autoWrapped
-        ? 'Your code was wrapped for execution, but Java still could not find a runnable entry point. Add a run() method to your class or write executable statements.'
+        ? 'Java could not find a runnable entry point. Add executable statements, a run() method, or public static void main(String[] args).'
         : 'Your program needs public static void main(String[] args).',
       raw,
     };
@@ -1025,7 +1025,7 @@ function processJavaSource(code) {
     const isMemberSource = looksLikeMemberSource(body);
     const memberRunner = hasRunnableMethod(body)
       ? '    Main app = new Main();\n    app.run();'
-      : '    System.out.println("Compiled successfully. Add a run() method to execute class behavior.");';
+      : '';
     const source = isMemberSource
       ? `${importBlock ? `${importBlock}\n\n` : ''}public class Main {\n${body}\n\n  public static void main(String[] args) {\n${memberRunner}\n  }\n}`
       : `${importBlock ? `${importBlock}\n\n` : ''}public class Main {\n  public static void main(String[] args) {\n${body.split(/\r?\n/).map((line) => `    ${line}`).join('\n')}\n  }\n}`;
@@ -1045,7 +1045,7 @@ function processJavaSource(code) {
   }
   const runner = hasRunnableMethod(body) && runnerClassName
     ? `    new ${runnerClassName}().run();`
-    : `    System.out.println("Compiled successfully. Add a run() method to ${runnerClassName || 'your class'} to execute class behavior.");`;
+    : '';
   return {
     source: `${importBlock ? `${importBlock}\n\n` : ''}${classSource}\n\npublic class Main {\n  public static void main(String[] args) {\n${runner}\n  }\n}`,
     autoWrapped: true,
@@ -1157,8 +1157,7 @@ async function runJavaSource(code) {
     if (processed.swing) {
       return {
         ok: true,
-        status: 'Compiled successfully',
-        output: `${processed.autoWrapped ? 'Auto-wrapped for execution.\n' : ''}GUI windows cannot be displayed in this environment (headless mode), but your code compiled successfully.`,
+        output: 'Your Swing code compiled, but GUI windows cannot open in this headless environment.',
         autoWrapped: processed.autoWrapped,
         wrapperType: processed.wrapperType,
       };
@@ -1177,8 +1176,7 @@ async function runJavaSource(code) {
     }
     return {
       ok: true,
-      status: 'Compiled successfully',
-      output: `${processed.autoWrapped ? 'Auto-wrapped for execution.\n' : ''}${stdout || 'Program completed without console output.'}`,
+      output: stdout || '[No output]',
       autoWrapped: processed.autoWrapped,
       wrapperType: processed.wrapperType,
     };

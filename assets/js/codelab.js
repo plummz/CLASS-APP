@@ -170,10 +170,10 @@
     return list[seed % list.length];
   }
 
-  function codeLabSetConsole(message, type = 'info') {
+  function codeLabSetConsole(message, type = 'info', plain = false) {
     const panel = document.getElementById('code-lab-console');
     if (!panel) return;
-    codeLabConsoleLines = [`[${type.toUpperCase()}] ${message}`];
+    codeLabConsoleLines = [plain ? String(message || '') : `[${type.toUpperCase()}] ${message}`];
     panel.textContent = codeLabConsoleLines.join('\n');
   }
 
@@ -515,10 +515,12 @@
           body: JSON.stringify({ code: codeLabFiles.java || '' }),
         });
         const data = await res.json();
-        const prefix = data.status ? `${data.status}\n` : '';
-        codeLabSetConsole(`${prefix}${data.output || data.error || 'No output.'}`, data.ok ? 'success' : 'error');
+        const output = data.ok
+          ? (data.output || '[No output]')
+          : (data.error || data.output || 'Execution failed.');
+        codeLabSetConsole(output, data.ok ? 'success' : 'error', true);
       } catch (error) {
-        codeLabSetConsole(error.message, 'error');
+        codeLabSetConsole(error.message, 'error', true);
       }
       return;
     }

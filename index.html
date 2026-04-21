@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
   <link rel="stylesheet" href="pokemon.css?v=1">
   <link rel="stylesheet" href="royale.css?v=1">
   <link rel="manifest" href="manifest.json">
@@ -225,7 +225,7 @@
       <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
     
-    <div class="sidebar-footer">School Portfolio &nbsp;·&nbsp; 2024–2026</div>
+    <div class="sidebar-footer" id="sidebar-footer-year">School Portfolio &nbsp;·&nbsp; 2025–2026</div>
   </nav>
  
   <div id="overlay" onclick="closeMenu()"></div>
@@ -753,6 +753,15 @@
           <p class="lobby-open-empty">Loading activity...</p>
         </div>
       </div>
+      <div class="lobby-presence-board">
+        <div class="lobby-open-board-head">
+          <span>Live Presence</span>
+          <button type="button" onclick="openChangelogModal()">View Updates</button>
+        </div>
+        <div class="lobby-presence-list" id="lobby-presence-list">
+          <p class="lobby-open-empty">Open the lobby to see active users.</p>
+        </div>
+      </div>
       <div class="lobby-canvas-area">
         <canvas id="lobby-canvas" width="800" height="500"></canvas>
         <div class="dpad" id="lobby-dpad">
@@ -1017,7 +1026,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=24"></script>
+  <script src="script.js?v=25"></script>
   <script src="pokemon.js?v=1"></script>
   <script src="royale.js?v=1"></script>
 

@@ -97,6 +97,13 @@ function createInlineLoader(text = 'Loading...') {
   return `<div class="inline-loader"><span></span>${escapeHTML(text)}</div>`;
 }
 
+function updateFooterYear() {
+  const footer = document.getElementById('sidebar-footer-year');
+  if (!footer) return;
+  const endYear = Math.max(2026, new Date().getFullYear());
+  footer.innerHTML = `School Portfolio &nbsp;·&nbsp; 2025–${endYear}`;
+}
+
 /* ============================================================
    DATA — Subjects & Teachers
    ============================================================ */
@@ -216,6 +223,39 @@ let currentPlaylist = [];
 let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
+
+const APP_VERSION = '1.1.0';
+const APP_CHANGELOG = [
+  {
+    version: '1.1.0',
+    date: '2026-04-21',
+    changes: [
+      'Fixed Music folder playback so songs continue through the queue.',
+      'Updated Loop All so it restarts the queue only after the last track.',
+      'Added dynamic footer year text.',
+      'Added update banner, changelog access, and lobby update viewer.',
+      'Improved lobby presence visibility with live online status.',
+    ],
+  },
+  {
+    version: '1.0.9',
+    date: '2026-04-21',
+    changes: [
+      'Added Copy & Move To with source-aware folder filtering.',
+      'Added shared app-open tally in the lobby.',
+      'Auto-loads announcements on app startup.',
+    ],
+  },
+  {
+    version: '1.0.8',
+    date: '2026-04-21',
+    changes: [
+      'Matched Social Media cards to the Games page design.',
+      'Added in-app embedded social media view.',
+      'Simplified folder permission controls.',
+    ],
+  },
+];
 
 function normalizeFolderPermissions(folder) {
     const raw = folder?.permissions;
@@ -484,7 +524,7 @@ function fetchAndRenderFiles() {
                     <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}Uploaded by ${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
                 <div class="file-row-actions">
-                    <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}')" class="file-action primary">Open</button>
+                    <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}', false, '${escapeJS(currentFolderContext.id)}')" class="file-action primary">Open</button>
                     ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action">Copy & Move To</button>` : ''}
                     ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger">Delete</button>` : ''}
                 </div>
@@ -1243,17 +1283,41 @@ window.startBlockVisualizer = (audioElement) => {
     draw();
 };
 
-window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
+function isAudioFile(file = {}) {
+    const name = String(file.name || '').toLowerCase();
+    return (file.type && String(file.type).startsWith('audio')) || name.endsWith('.mp3') || name.endsWith('.wav') || name.endsWith('.ogg') || name.endsWith('.m4a');
+}
+
+async function rebuildQueueFromFolder(folderId, selectedUrl, selectedName) {
+    if (!folderId) return false;
+    const { data, error } = await sb.from('files').select('*').eq('folder_id', folderId).order('name', { ascending: true });
+    if (error) throw error;
+    const audioFiles = (data || []).filter(isAudioFile);
+    if (!audioFiles.length) return false;
+    currentPlaylist = audioFiles;
+    currentTrackIndex = currentPlaylist.findIndex((f) => f.url === selectedUrl);
+    if (currentTrackIndex === -1) currentTrackIndex = currentPlaylist.findIndex((f) => f.name === selectedName);
+    if (currentTrackIndex === -1) currentTrackIndex = 0;
+    return true;
+}
+
+window.playOrOpenFileAPI = async function(url, name, skipIndexUpdate = false, folderId = null) {
     const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
     const player = document.getElementById('audio-player');
     
-    if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav')) {
+    if (isAudioFile({ name, url })) {
         if (!skipIndexUpdate) {
-            if (currentPlaylist.length > 0) {
+            if (folderId) {
+                try {
+                    await rebuildQueueFromFolder(folderId, url, name);
+                } catch (error) {
+                    console.warn('Could not rebuild folder queue:', error);
+                }
+            }
+            if (!folderId && currentPlaylist.length > 0) {
                 currentTrackIndex = currentPlaylist.findIndex(f => f.url === url);
                 if (currentTrackIndex === -1) currentTrackIndex = currentPlaylist.findIndex(f => f.name === name);
             }
-            // If still not found, seed a single-item playlist so loop still triggers
             if (currentPlaylist.length === 0 || currentTrackIndex === -1) {
                 currentPlaylist = [{ url, name }];
                 currentTrackIndex = 0;
@@ -1262,7 +1326,7 @@ window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
         
         if(player) {
             player.src = fullUrl;
-            player.loop = isRepeat;
+            player.loop = false;
             player.play().catch(e => console.warn('Autoplay blocked:', e));
             
             // Background Play Support (Media Session)
@@ -1275,6 +1339,7 @@ window.playOrOpenFileAPI = function(url, name, skipIndexUpdate = false) {
                 
                 navigator.mediaSession.setActionHandler('nexttrack', window.playNextSong);
                 navigator.mediaSession.setActionHandler('previoustrack', window.playPrevSong);
+                navigator.mediaSession.playbackState = 'playing';
             }
         }
         
@@ -1297,12 +1362,26 @@ window.playNextSong = function() {
         currentTrackIndex++;
         if (currentTrackIndex >= currentPlaylist.length) {
             if (isLoop) currentTrackIndex = 0;
-            else { currentTrackIndex = -1; return; }
+            else {
+                currentTrackIndex = currentPlaylist.length - 1;
+                const text = document.getElementById('now-playing-text');
+                if (text) text.innerText = 'Playlist finished';
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+                return;
+            }
         }
     }
     const nextSong = currentPlaylist[currentTrackIndex];
     playOrOpenFileAPI(nextSong.url, nextSong.name, true);
 };
+
+function handleAudioEnded() {
+    if (isRepeat && currentPlaylist[currentTrackIndex]) {
+        playOrOpenFileAPI(currentPlaylist[currentTrackIndex]?.url, currentPlaylist[currentTrackIndex]?.name, true);
+        return;
+    }
+    window.playNextSong();
+}
 
 window.playPrevSong = function() {
     if (currentPlaylist.length === 0) return;
@@ -1381,7 +1460,7 @@ window.searchMusicFiles = async function() {
                 <div class="music-search-item-name">${f.name}</div>
                 <div class="music-search-item-meta">📂 ${folderPath} · by ${f.uploader}</div>
               </div>
-              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
+              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}',false,'${escapeJS(f.folder_id)}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
             </div>`;
         }).join('');
     } catch (e) {
@@ -1403,13 +1482,11 @@ window.toggleLoop = function() {
 window.toggleRepeat = function() {
     isRepeat = !isRepeat;
     const btn = document.getElementById('btn-repeat');
-    const player = document.getElementById('audio-player');
     if(btn) {
         btn.innerText = `🔂 Repeat 1: ${isRepeat ? 'ON' : 'OFF'}`;
         btn.classList.toggle('neon-active', isRepeat);
         btn.style.color = isRepeat ? 'var(--neon-green)' : 'white';
     }
-    if(player) player.loop = isRepeat;
 };
 
 /* ============================================================
@@ -2183,6 +2260,8 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
+  updateFooterYear();
+  ensureAdminUpdateControl();
   if (currentUser) recordAppOpen();
   else window.refreshAppOpenCount();
   fetchSharedAnnouncements();
@@ -2227,7 +2306,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchCalendarNotes(); updateClock();
 
   const player = document.getElementById('audio-player');
-  if(player) player.addEventListener('ended', () => { if (!player.loop) window.playNextSong(); });
+  if(player) player.addEventListener('ended', handleAudioEnded);
 
   // Reflect initial toggle states on buttons
   const loopBtn = document.getElementById('btn-loop');
@@ -2346,6 +2425,11 @@ if ('serviceWorker' in navigator) {
 }
 
 async function fetchAppUpdates() {
+  const seenVersion = localStorage.getItem('seenSoftwareVersion');
+  if (seenVersion !== APP_VERSION) {
+    showSoftwareUpdateBanner();
+    return;
+  }
   const { data, error } = await sb.from('app_updates')
     .select('*')
     .eq('active', true)
@@ -2358,6 +2442,16 @@ async function fetchAppUpdates() {
   const seenKey = `seenAppUpdate:${update.id}`;
   if (localStorage.getItem(seenKey)) return;
   showFloatingUpdate(update, seenKey);
+}
+
+function showSoftwareUpdateBanner() {
+  const seenVersion = localStorage.getItem('seenSoftwareVersion');
+  if (seenVersion === APP_VERSION) return;
+  showFloatingUpdate({
+    id: `version-${APP_VERSION}`,
+    title: `New Update Applied – Version ${APP_VERSION}`,
+    message: 'Tap the ! button or View Updates in the lobby to see the latest changes.',
+  }, 'seenSoftwareVersion');
 }
 
 function showFloatingUpdate(update, seenKey) {
@@ -2373,31 +2467,56 @@ function showFloatingUpdate(update, seenKey) {
   `;
   document.body.appendChild(note);
   note.querySelector('button').onclick = () => {
-    localStorage.setItem(seenKey, '1');
+    localStorage.setItem(seenKey, seenKey === 'seenSoftwareVersion' ? APP_VERSION : '1');
     note.classList.remove('show');
     setTimeout(() => note.remove(), 220);
+  };
+  note.onclick = (event) => {
+    if (event.target.closest('button')) return;
+    openChangelogModal();
   };
   requestAnimationFrame(() => note.classList.add('show'));
   setTimeout(() => {
     if (!document.body.contains(note)) return;
-    localStorage.setItem(seenKey, '1');
+    localStorage.setItem(seenKey, seenKey === 'seenSoftwareVersion' ? APP_VERSION : '1');
     note.classList.remove('show');
     setTimeout(() => note.remove(), 220);
   }, 6500);
 }
 
 function ensureAdminUpdateControl() {
-  if (!isAdmin || document.getElementById('admin-update-btn')) return;
+  if (document.getElementById('admin-update-btn')) return;
   const controls = document.querySelector('.sidebar-controls');
   if (!controls) return;
   const btn = document.createElement('button');
   btn.id = 'admin-update-btn';
   btn.className = 'theme-toggle-btn admin-update-btn';
-  btn.title = 'Post app update';
+  btn.title = 'View software updates';
   btn.textContent = '!';
-  btn.onclick = openAdminUpdateComposer;
+  btn.onclick = openChangelogModal;
   controls.appendChild(btn);
 }
+
+window.openChangelogModal = function() {
+  removeDynamicModal('changelog-modal');
+  const entries = APP_CHANGELOG.map((entry) => `
+    <div class="changelog-entry">
+      <div class="changelog-version">Version ${escapeHTML(entry.version)} <span>${escapeHTML(entry.date)}</span></div>
+      <ul>${entry.changes.map((change) => `<li>${escapeHTML(change)}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="changelog-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+      <div class="custom-modal-box changelog-modal-box border-blue">
+        <button class="modal-close-btn" onclick="removeDynamicModal('changelog-modal')">&times;</button>
+        <h3 class="modal-title text-blue">Software Updates</h3>
+        <p class="modal-text align-left">Current Version: ${escapeHTML(APP_VERSION)}</p>
+        <div class="changelog-list">${entries}</div>
+        ${isAdmin ? `<button class="btn-primary full-width mt-10" onclick="removeDynamicModal('changelog-modal'); openAdminUpdateComposer();">Post Admin Update</button>` : ''}
+      </div>
+    </div>
+  `);
+};
 
 function openAdminUpdateComposer() {
   if (!isAdmin) return customAlert('Admin only.');
@@ -2712,6 +2831,28 @@ const lobbyModule = (() => {
   function updateCount() {
     const el = document.getElementById('lobby-online-count');
     if (el) el.textContent = (players.size + (myPlayer ? 1 : 0)) + ' online';
+    renderLobbyPresence();
+  }
+
+  function renderLobbyPresence() {
+    const list = document.getElementById('lobby-presence-list');
+    if (!list) return;
+    const active = [];
+    if (myPlayer) active.push({ ...myPlayer, self: true });
+    players.forEach((player) => active.push(player));
+    if (!active.length) {
+      list.innerHTML = '<p class="lobby-open-empty">No active users in the lobby yet.</p>';
+      return;
+    }
+    list.innerHTML = active
+      .sort((a, b) => String(a.username).localeCompare(String(b.username)))
+      .map((player) => `
+        <div class="lobby-presence-row ${player.self ? 'self' : ''}">
+          <span class="presence-dot"></span>
+          <span class="presence-name">${safe(player.username)}${player.self ? ' (you)' : ''}</span>
+          <span class="presence-status">${player.moving ? 'Moving' : 'Online'}</span>
+        </div>
+      `).join('');
   }
 
   function safe(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -2762,6 +2903,7 @@ const lobbyModule = (() => {
       s.on('lobby:player_moved', ({ username, x, y, dir }) => {
         const p = players.get(username);
         if (p) { p.moving = (x !== p.x || y !== p.y); p.x = x; p.y = y; p.dir = dir; p.frame = (p.frame + 1) % 4; }
+        renderLobbyPresence();
       });
       s.on('lobby:player_left', ({ username }) => {
         players.delete(username);
@@ -2847,6 +2989,7 @@ const lobbyModule = (() => {
       if (sock && sock.connected && myPlayer) sock.emit('lobby:leave');
       players.clear();
       myPlayer = null;
+      updateCount();
       currentStar = null;
       canvas = null; ctx = null;
     }

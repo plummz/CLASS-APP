@@ -73,6 +73,7 @@ function loadData() {
       pushSubscriptions: {},
       sentPushMessageIds: [],
       appOpenCount: 0,
+      appOpenCounts: {},
     }, null, 2));
   }
   try {
@@ -82,6 +83,7 @@ function loadData() {
     if (!data.pushSubscriptions) data.pushSubscriptions = {};
     if (!data.sentPushMessageIds) data.sentPushMessageIds = [];
     if (typeof data.appOpenCount !== 'number') data.appOpenCount = 0;
+    if (!data.appOpenCounts || typeof data.appOpenCounts !== 'object' || Array.isArray(data.appOpenCounts)) data.appOpenCounts = {};
     return data;
   } catch (error) {
     console.error('Error loading data.json:', error);
@@ -93,6 +95,7 @@ function loadData() {
       pushSubscriptions: {},
       sentPushMessageIds: [],
       appOpenCount: 0,
+      appOpenCounts: {},
     };
   }
 }
@@ -152,14 +155,26 @@ app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
 app.get('/api/app-open-count', (req, res) => {
-  res.json({ count: state.appOpenCount || 0 });
+  const users = Object.entries(state.appOpenCounts || {})
+    .map(([username, count]) => ({ username, count }))
+    .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
+  res.json({ count: state.appOpenCount || 0, users });
 });
 
 app.post('/api/app-open-count', (req, res) => {
   state.appOpenCount = (state.appOpenCount || 0) + 1;
+  const username = String(req.body?.username || '').trim().slice(0, 40);
+  if (username) {
+    if (!state.appOpenCounts || typeof state.appOpenCounts !== 'object' || Array.isArray(state.appOpenCounts)) state.appOpenCounts = {};
+    state.appOpenCounts[username] = (state.appOpenCounts[username] || 0) + 1;
+  }
   saveData(state);
-  io.emit('appOpenCount', { count: state.appOpenCount });
-  res.json({ count: state.appOpenCount });
+  const users = Object.entries(state.appOpenCounts || {})
+    .map(([name, count]) => ({ username: name, count }))
+    .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
+  const payload = { count: state.appOpenCount, users };
+  io.emit('appOpenCount', payload);
+  res.json(payload);
 });
 
 /* ── Search diagnostics — visit /api/search-test?q=test to debug ─────── */

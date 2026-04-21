@@ -1760,6 +1760,65 @@ body.light-mode .folder-card .folder-view-label { color: #e8f4ff; }
   background: rgba(0,212,255,0.18);
   color: #fff;
 }
+.lobby-open-board {
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(0,212,255,0.12), transparent 34%),
+    rgba(5,10,24,0.62);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06);
+  padding: 14px;
+}
+.lobby-open-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.lobby-open-board-head button {
+  border: 1px solid rgba(0,255,136,0.32);
+  border-radius: 999px;
+  background: rgba(0,255,136,0.08);
+  color: #d7ffe8;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.lobby-open-list {
+  display: grid;
+  gap: 8px;
+}
+.lobby-open-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(255,255,255,0.045);
+}
+.lobby-open-user {
+  color: rgba(255,255,255,0.88);
+  font-weight: 800;
+}
+.lobby-open-total {
+  min-width: 52px;
+  text-align: right;
+  color: var(--neon-green);
+  font-weight: 900;
+}
+.lobby-open-empty {
+  color: rgba(255,255,255,0.48);
+  margin: 0;
+}
 .lobby-canvas-area {
   display: flex;
   flex-direction: column;
@@ -2936,6 +2995,19 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
 }
 .permission-quick-btn.success:hover {
   box-shadow: 0 16px 36px rgba(0,255,136,0.15);
+}
+.move-filter-note {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.24);
+  background: rgba(0,212,255,0.08);
+  color: #b8f3ff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 .move-target-card {
   display: grid;

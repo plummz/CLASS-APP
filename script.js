@@ -135,6 +135,17 @@ const y3secondSem = [];
 const y4firstSem  = [];
 const y4secondSem = [];
 
+const ACADEMIC_FOLDER_ROOTS = new Set([
+  ...firstSem,
+  ...secondSem,
+  ...y2firstSem,
+  ...y2secondSem,
+  ...y3firstSem,
+  ...y3secondSem,
+  ...y4firstSem,
+  ...y4secondSem,
+].map((subject) => subject.code));
+
 const eventCount  = 15;
 const randomCount = 10;
  
@@ -474,7 +485,7 @@ function fetchAndRenderFiles() {
                 </div>
                 <div class="file-row-actions">
                     <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}')" class="file-action primary">Open</button>
-                    ${canModifyFile ? `<button onclick="window.openMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action">Move</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action">Copy & Move To</button>` : ''}
                     ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger">Delete</button>` : ''}
                 </div>
             </div>
@@ -782,17 +793,48 @@ function buildFolderPath(folder, folderMap) {
     return `${folder.parent || 'General'} / ${folder.name}`;
 }
 
-window.openMoveFileModal = async function(fileId, currentFolderId, refreshMode = 'folder') {
+function getFolderRootParent(folder, folderMap) {
+    if (!folder) return '';
+    const parent = String(folder.parent || '');
+    if (!parent || parent.startsWith(PROFILE_FOLDER_PREFIX)) return parent;
+    const parentFolder = folderMap.get(parent);
+    return parentFolder ? getFolderRootParent(parentFolder, folderMap) : parent;
+}
+
+function getFolderTransferArea(folder, folderMap) {
+    const root = getFolderRootParent(folder, folderMap);
+    if (root.startsWith(PROFILE_FOLDER_PREFIX)) return 'profile';
+    if (root === 'Music Hub') return 'music';
+    if (ACADEMIC_FOLDER_ROOTS.has(root)) return 'academic';
+    if (/^(ep|rp)_/.test(root)) return root.split('_')[0];
+    return root || 'general';
+}
+
+function canUseAsCopyMoveDestination(sourceFolder, targetFolder, folderMap) {
+    if (!sourceFolder || !targetFolder) return false;
+    if (String(sourceFolder.id) === String(targetFolder.id)) return false;
+    if (!canEditFolder(targetFolder)) return false;
+    const sourceArea = getFolderTransferArea(sourceFolder, folderMap);
+    const targetArea = getFolderTransferArea(targetFolder, folderMap);
+    if (targetArea === 'profile') return true;
+    if (sourceArea === 'profile') return true;
+    if (sourceArea === 'academic') return targetArea === 'academic';
+    if (sourceArea === 'music') return targetArea === 'music';
+    return targetArea === sourceArea;
+}
+
+window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMode = 'folder') {
     if (!currentUser) return customAlert('Please log in.');
     let folders;
     try { folders = await getAllFolders(); } catch (error) { return customAlert(error.message); }
     const folderMap = new Map(folders.map((folder) => [String(folder.id), folder]));
     const source = folderMap.get(String(currentFolderId));
-    if (!canEditFolder(source)) return customAlert('You do not have permission to move files from this folder.');
-    const targets = folders.filter((folder) => String(folder.id) !== String(currentFolderId) && canEditFolder(folder));
+    if (!canViewFolder(source)) return customAlert('You do not have permission to copy files from this folder.');
+    const sourceArea = getFolderTransferArea(source, folderMap);
+    const targets = folders.filter((folder) => canUseAsCopyMoveDestination(source, folder, folderMap));
     removeDynamicModal('move-file-modal');
     const cards = targets.map((folder) => `
-      <button class="move-target-card" onclick="moveFileToFolder('${escapeJS(fileId)}','${escapeJS(folder.id)}','${escapeJS(refreshMode)}')">
+      <button class="move-target-card" onclick="copyFileToFolder('${escapeJS(fileId)}','${escapeJS(folder.id)}','${escapeJS(refreshMode)}')">
         <span class="move-target-icon">📁</span>
         <span class="move-target-title">${escapeHTML(folder.name)}</span>
         <span class="move-target-path">${escapeHTML(buildFolderPath(folder, folderMap))}</span>
@@ -801,25 +843,45 @@ window.openMoveFileModal = async function(fileId, currentFolderId, refreshMode =
       <div id="move-file-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal-box move-modal-box">
           <button class="modal-close-btn" onclick="removeDynamicModal('move-file-modal')">&times;</button>
-          <h3 class="modal-title text-green">Move File</h3>
-          <p class="modal-text align-left">Choose a destination folder where you have editor access.</p>
+          <h3 class="modal-title text-green">Copy & Move To</h3>
+          <p class="modal-text align-left">Choose a destination in the same area, or a profile folder from Users. The original file will stay where it is.</p>
+          <p class="move-filter-note">Source area: ${escapeHTML(sourceArea.toUpperCase())}</p>
           <div class="move-target-grid">${cards}</div>
         </div>
       </div>`);
 };
 
-window.moveFileToFolder = async function(fileId, targetFolderId, refreshMode = 'folder') {
+window.openMoveFileModal = window.openCopyMoveFileModal;
+
+window.copyFileToFolder = async function(fileId, targetFolderId, refreshMode = 'folder') {
+    let sourceFile;
     let target;
-    try { target = await fetchFolderById(targetFolderId); } catch (error) { return customAlert(error.message); }
-    if (!canEditFolder(target)) return customAlert('You do not have permission to move files to that folder.');
-    const { error } = await sb.from('files').update({ folder_id: targetFolderId, moved_at: new Date().toISOString() }).eq('id', fileId);
+    try {
+        const fileRes = await sb.from('files').select('*').eq('id', fileId).single();
+        if (fileRes.error) throw fileRes.error;
+        sourceFile = fileRes.data;
+        target = await fetchFolderById(targetFolderId);
+    } catch (error) {
+        return customAlert(error.message);
+    }
+    if (!canEditFolder(target)) return customAlert('You do not have permission to copy files to that folder.');
+    const { error } = await sb.from('files').insert([{
+        folder_id: targetFolderId,
+        name: sourceFile.name,
+        url: sourceFile.url,
+        type: sourceFile.type,
+        uploader: currentUser?.username || sourceFile.uploader,
+        size: sourceFile.size || null,
+    }]);
     if (error) return customAlert(error.message);
     removeDynamicModal('move-file-modal');
-    showToast('File moved.');
+    showToast('File copied to destination.');
     if (refreshMode === 'gallery-ep') renderGallery('ep');
     else if (refreshMode === 'gallery-rp') renderGallery('rp');
     else fetchAndRenderFiles();
 };
+
+window.moveFileToFolder = window.copyFileToFolder;
 
 /* ============================================================
    MUSIC PLAYER & ADVANCED VISUALIZER (TOP TO BOTTOM)
@@ -1383,6 +1445,7 @@ window.login = async function() {
   saveSession();
   await sb.from('profiles').update({ online: true }).eq('username', currentUser.username);
   establishSession();
+  recordAppOpen();
 };
 
 window.register = async function() {
@@ -2058,6 +2121,26 @@ function renderAppOpenCount(count) {
   btn.textContent = `App opens: ${safeCount.toLocaleString()}`;
 }
 
+function renderAppOpenUsers(list = []) {
+  const box = document.getElementById('app-open-user-list');
+  if (!box) return;
+  if (!list.length) {
+    box.innerHTML = '<p class="lobby-open-empty">No app opens recorded yet.</p>';
+    return;
+  }
+  box.innerHTML = list.map((item) => `
+    <div class="lobby-open-row">
+      <span class="lobby-open-user">${escapeHTML(item.username || 'Unknown')}</span>
+      <span class="lobby-open-total">${Number(item.count || 0).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+function renderAppOpenStats(data = {}) {
+  renderAppOpenCount(data.count);
+  renderAppOpenUsers(data.users || []);
+}
+
 window.refreshAppOpenCount = async function() {
   const btn = document.getElementById('app-open-count-btn');
   if (btn) btn.textContent = 'App opens: loading...';
@@ -2065,18 +2148,27 @@ window.refreshAppOpenCount = async function() {
     const res = await fetch('/api/app-open-count');
     if (!res.ok) throw new Error('Count unavailable');
     const data = await res.json();
-    renderAppOpenCount(data.count);
+    renderAppOpenStats(data);
   } catch (_) {
     if (btn) btn.textContent = 'App opens: unavailable';
   }
 };
 
+let recordedAppOpenFor = null;
 async function recordAppOpen() {
+  if (!currentUser?.username || recordedAppOpenFor === currentUser.username) {
+    return window.refreshAppOpenCount();
+  }
   try {
-    const res = await fetch('/api/app-open-count', { method: 'POST' });
+    const res = await fetch('/api/app-open-count', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser.username }),
+    });
     if (!res.ok) throw new Error('Count unavailable');
     const data = await res.json();
-    renderAppOpenCount(data.count);
+    recordedAppOpenFor = currentUser.username;
+    renderAppOpenStats(data);
   } catch (_) {
     window.refreshAppOpenCount();
   }
@@ -2091,7 +2183,9 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
-  recordAppOpen();
+  if (currentUser) recordAppOpen();
+  else window.refreshAppOpenCount();
+  fetchSharedAnnouncements();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
@@ -2379,7 +2473,7 @@ function _ensureSocket() {
     lobbyModule.setupSocket(_socket);
   });
   _socket.on('appOpenCount', (payload) => {
-    renderAppOpenCount(payload?.count);
+    renderAppOpenStats(payload || {});
   });
   // If connected immediately (reconnect case), setup at once
   if (_socket.connected) {
@@ -2970,7 +3064,7 @@ function renderGFiles(pfx, view) {
           const safeFolderId = escapeJS(folderId);
           const actionBtns = allowEdit
             ? `<div class="ep-photo-actions">
-                 <button onclick="openMoveFileModal('${safeId}','${safeFolderId}','gallery-${pfx}')">Move</button>
+                 <button onclick="openCopyMoveFileModal('${safeId}','${safeFolderId}','gallery-${pfx}')">Copy & Move To</button>
                  <button class="danger" onclick="${pfx}DeleteFile('${safeId}')">Delete</button>
                </div>` : '';
           return `

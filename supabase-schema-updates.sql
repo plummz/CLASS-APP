@@ -86,6 +86,9 @@ create table if not exists public.code_lab_completions (
   unique (username, challenge_id, challenge_date)
 );
 
+create unique index if not exists code_lab_one_completion_per_user_day
+on public.code_lab_completions (username, challenge_date);
+
 create or replace function public.class_app_contribution_tally()
 returns table(username text, total bigint)
 language sql
@@ -302,7 +305,7 @@ begin
 
   insert into public.code_lab_completions (username, challenge_id, challenge_date, points)
   values (actor, p_challenge_id, p_challenge_date, 1)
-  on conflict (username, challenge_id, challenge_date) do nothing;
+  on conflict (username, challenge_date) do nothing;
 
   if found then
     return 'claimed';

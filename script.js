@@ -224,8 +224,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.3';
+const APP_VERSION = '1.2.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.4',
+    date: '2026-04-21',
+    title: 'Modal, Profile, and Social Embed Fixes',
+    summary: 'Software update panels are easier to close, user profiles open at the visible top, and social embeds now show a clear fallback when Facebook stalls.',
+    changes: [
+      'Added a prominent bottom Close button and stronger sticky close styling for the Software Updates panel.',
+      'Reset and position the Users profile panel so opening a profile from the bottom of the list shows the profile immediately.',
+      'Added Facebook embed loading/fallback messaging with a direct browser link when third-party embeds do not render.',
+    ],
+  },
   {
     version: '1.2.3',
     date: '2026-04-21',
@@ -1720,7 +1731,13 @@ window.openUserProfile = function(username) {
   if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${safeUsername}')">Delete User</button>`;
   html += `</div><div id="profile-folders-container" class="profile-folders-container"></div>`;
   details.innerHTML = html;
+  profilePanel.setAttribute('tabindex', '-1');
+  profilePanel.scrollTop = 0;
   profilePanel.classList.add('active');
+  requestAnimationFrame(() => {
+    profilePanel.scrollTop = 0;
+    profilePanel.focus?.({ preventScroll: true });
+  });
   renderProfileFolders(profile.username);
 };
 
@@ -2724,6 +2741,7 @@ window.openChangelogModal = function() {
         </div>
         <div class="changelog-list">${entries}</div>
         ${isAdmin ? `<button class="btn-primary full-width mt-10" onclick="removeDynamicModal('changelog-modal'); openAdminUpdateComposer();">Post Admin Update</button>` : ''}
+        <button class="btn-secondary full-width mt-10 changelog-close-action" onclick="removeDynamicModal('changelog-modal')">Close</button>
       </div>
     </div>
   `);
@@ -3541,6 +3559,7 @@ function epOpenPhoto(url, name) {
 let sharedAIOutputs = [];
 let sharedAnnouncements = [];
 let sharedRealtimeReady = false;
+let socialEmbedTimer = null;
 
 function buildFacebookEmbedUrl(url) {
   const encoded = encodeURIComponent(url);
@@ -3554,23 +3573,45 @@ window.openSocialPage = function(title, url) {
   const embed = document.getElementById('social-embed-view');
   const frame = document.getElementById('social-embed-frame');
   const titleEl = document.getElementById('social-embed-title');
+  const status = document.getElementById('social-embed-status');
+  const statusText = document.getElementById('social-embed-status-text');
+  const externalLink = document.getElementById('social-open-external');
   if (!home || !embed || !frame) return;
+  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
   if (titleEl) {
     const decoder = document.createElement('textarea');
     decoder.innerHTML = pageTitle;
     titleEl.textContent = decoder.value;
   }
+  if (externalLink) externalLink.href = pageUrl;
+  if (status) {
+    status.classList.remove('is-warning');
+    status.classList.remove('hidden');
+  }
+  if (statusText) statusText.textContent = 'Loading Facebook embed inside the app...';
+  frame.onload = () => {
+    if (statusText) statusText.textContent = 'If the page keeps loading, Facebook may be blocking the embedded view. Use the browser link below.';
+  };
   frame.src = buildFacebookEmbedUrl(pageUrl);
   home.classList.add('hidden');
   embed.classList.remove('hidden');
   embed.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  socialEmbedTimer = setTimeout(() => {
+    if (!document.getElementById('social-embed-view')?.classList.contains('hidden')) {
+      if (status) status.classList.add('is-warning');
+      if (statusText) statusText.textContent = 'Facebook did not finish loading here. This is usually Facebook blocking third-party embeds, privacy cookies, or a page restriction, not your signal.';
+    }
+  }, 8000);
 };
 
 window.closeSocialPage = function() {
   const home = document.getElementById('social-home-view');
   const embed = document.getElementById('social-embed-view');
   const frame = document.getElementById('social-embed-frame');
+  const status = document.getElementById('social-embed-status');
+  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
   if (frame) frame.src = 'about:blank';
+  if (status) status.classList.add('hidden');
   if (embed) embed.classList.add('hidden');
   if (home) home.classList.remove('hidden');
 };

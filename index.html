@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=26">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
   <link rel="stylesheet" href="features/academics/academics.css?v=1">
@@ -1017,6 +1017,11 @@
         </div>
       </div>
       <iframe id="social-embed-frame" class="social-embed-frame" title="Embedded social media page" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; clipboard-write; web-share"></iframe>
+      <div id="social-embed-status" class="social-embed-status hidden">
+        <span class="social-loader-dot"></span>
+        <p id="social-embed-status-text">Loading Facebook embed inside the app...</p>
+        <a id="social-open-external" href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">Open in browser</a>
+      </div>
     </div>
   </div>
 
@@ -1149,7 +1154,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=32"></script>
+  <script src="script.js?v=33"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

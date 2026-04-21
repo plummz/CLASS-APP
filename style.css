@@ -1398,9 +1398,9 @@ body.page-ai .chat-bauble {
 
 .profile-panel {
   position: fixed;
-  bottom: 20px; right: 20px;
+  top: 92px; right: 20px;
   width: min(420px, calc(100% - 40px));
-  max-height: 78vh; overflow-y: auto;
+  max-height: calc(100vh - 118px); overflow-y: auto;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
@@ -1408,8 +1408,10 @@ body.page-ai .chat-bauble {
   backdrop-filter: blur(20px);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
   z-index: 1001; display: none;
+  scroll-behavior: smooth;
 }
 .profile-panel.active { display: block; }
+.profile-panel:focus { outline: none; }
 .close-profile {
   position: absolute; top: 16px; right: 16px;
   width: 30px; height: 30px; border: none; border-radius: 50%;
@@ -1532,7 +1534,7 @@ body.light-mode .music-search-item-meta { color: #2a4a8a; }
   .chat-input { flex-wrap: wrap; gap: 10px; }
   .chat-input input, .chat-input button, .chat-input input[type="file"] { width: 100%; margin: 0; }
   .page { padding: 100px 20px 90px; }
-  .profile-panel { left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); bottom: 14px; }
+  .profile-panel { top: 86px; left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); max-height: calc(100vh - 108px); }
 }
 
 /* Scrollbar */
@@ -3425,6 +3427,48 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
   background: rgba(255,255,255,0.04);
   box-shadow: 0 28px 90px rgba(0,0,0,0.36);
 }
+.social-embed-status {
+  width: min(100%, 540px);
+  margin: 12px auto 0;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 15px;
+  border: 1px solid rgba(0,212,255,0.28);
+  background: rgba(8,12,30,0.78);
+  color: rgba(255,255,255,0.76);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.26);
+}
+.social-embed-status.is-warning {
+  border-color: rgba(255,214,102,0.45);
+  background: rgba(35,24,6,0.82);
+}
+.social-embed-status p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.social-embed-status a {
+  color: #00d4ff;
+  font-weight: 900;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.social-loader-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: #00d4ff;
+  box-shadow: 0 0 16px rgba(0,212,255,0.8);
+  animation: socialPulse 1.15s ease-in-out infinite;
+}
+@keyframes socialPulse {
+  0%, 100% { transform: scale(0.72); opacity: 0.55; }
+  50% { transform: scale(1); opacity: 1; }
+}
 .social-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -3517,19 +3561,45 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
 }
 .floating-update-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 26px;
-  height: 26px;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(0,212,255,0.4);
+  background: rgba(0,212,255,0.13);
   color: #fff;
   cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: 0 0 18px rgba(0,212,255,0.14);
 }
 .admin-update-btn { color: #00ff88 !important; font-weight: 900; }
 .changelog-modal-box {
   max-width: 680px;
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+  padding-top: 44px;
+}
+.changelog-modal-box .modal-close-btn {
+  position: sticky;
+  top: 0;
+  float: right;
+  width: 40px;
+  height: 40px;
+  margin: -30px -14px 0 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(0,212,255,0.15);
+  border: 1px solid rgba(0,212,255,0.45);
+  box-shadow: 0 0 20px rgba(0,212,255,0.16);
+  z-index: 3;
+}
+.changelog-close-action {
+  border-color: rgba(0,212,255,0.45) !important;
+  color: #fff !important;
+  background: rgba(0,212,255,0.12) !important;
 }
 .changelog-list {
   display: grid;
@@ -3586,6 +3656,8 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
   .social-embed-wrap { padding: 14px 10px 48px; }
   .social-embed-toolbar { align-items: flex-start; flex-direction: column; }
   .social-embed-frame { width: 100%; min-height: 680px; border-radius: 14px; }
+  .social-embed-status { width: 100%; grid-template-columns: auto 1fr; }
+  .social-embed-status a { grid-column: 2; }
   .chat-header { align-items: flex-start; flex-direction: column; }
 }
 

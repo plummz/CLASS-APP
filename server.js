@@ -914,7 +914,9 @@ app.post('/api/code-lab/assets', upload.single('file'), async (req, res) => {
   }
 });
 
-const JAVA_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_TIMEOUT_MS || 5000);
+const JAVA_TOOLCHAIN_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_TOOLCHAIN_TIMEOUT_MS || 5000);
+const JAVA_COMPILE_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_COMPILE_TIMEOUT_MS || process.env.CODE_LAB_JAVA_TIMEOUT_MS || 20000);
+const JAVA_RUN_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_RUN_TIMEOUT_MS || process.env.CODE_LAB_JAVA_TIMEOUT_MS || 8000);
 const JAVAC_BIN = process.env.JAVAC_BIN || 'javac';
 const JAVA_BIN = process.env.JAVA_BIN || 'java';
 const JAVA_BLOCKLIST = [
@@ -932,7 +934,13 @@ let javaToolchainCache = null;
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { ...options, windowsHide: true });
+    const timeoutMs = Number(options.timeoutMs || JAVA_RUN_TIMEOUT_MS);
+    const phase = options.phase || 'command';
+    const spawnOptions = { ...options, windowsHide: true };
+    delete spawnOptions.timeoutMs;
+    delete spawnOptions.phase;
+    delete spawnOptions.stdinText;
+    const child = spawn(command, args, spawnOptions);
     let stdout = '';
     let stderr = '';
     let settled = false;
@@ -940,9 +948,12 @@ function runCommand(command, args, options = {}) {
       if (!settled) {
         settled = true;
         child.kill('SIGKILL');
-        resolve({ code: 124, stdout, stderr: `${stderr}\nTimed out after ${JAVA_TIMEOUT_MS}ms`.trim() });
+        resolve({ code: 124, stdout, stderr: `${stderr}\nTimed out while ${phase} after ${timeoutMs}ms`.trim() });
       }
-    }, JAVA_TIMEOUT_MS);
+    }, timeoutMs);
+    if (child.stdin) {
+      child.stdin.end(options.stdinText || '');
+    }
     child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
     child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     child.on('error', (error) => {
@@ -966,8 +977,8 @@ function firstLine(value) {
 
 async function checkJavaToolchain(force = false) {
   if (javaToolchainCache && !force) return javaToolchainCache;
-  const javac = await runCommand(JAVAC_BIN, ['-version'], {});
-  const java = await runCommand(JAVA_BIN, ['-version'], {});
+  const javac = await runCommand(JAVAC_BIN, ['-version'], { timeoutMs: JAVA_TOOLCHAIN_TIMEOUT_MS, phase: 'checking javac' });
+  const java = await runCommand(JAVA_BIN, ['-version'], { timeoutMs: JAVA_TOOLCHAIN_TIMEOUT_MS, phase: 'checking java' });
   const available = javac.code === 0 && java.code === 0;
   javaToolchainCache = {
     available,
@@ -975,6 +986,11 @@ async function checkJavaToolchain(force = false) {
     javaBin: JAVA_BIN,
     javacVersion: firstLine(javac.stderr || javac.stdout),
     javaVersion: firstLine(java.stderr || java.stdout),
+    timeouts: {
+      toolchainMs: JAVA_TOOLCHAIN_TIMEOUT_MS,
+      compileMs: JAVA_COMPILE_TIMEOUT_MS,
+      runMs: JAVA_RUN_TIMEOUT_MS,
+    },
     message: available
       ? 'Java toolchain is available.'
       : 'Java toolchain is unavailable. Deploy with the included Dockerfile, which installs OpenJDK 17, or configure JAVAC_BIN/JAVA_BIN to valid binaries.',
@@ -1007,7 +1023,11 @@ async function runJavaSource(code) {
   const file = path.join(dir, 'Main.java');
   try {
     fs.writeFileSync(file, source);
-    const compile = await runCommand(JAVAC_BIN, ['Main.java'], { cwd: dir });
+    const compile = await runCommand(JAVAC_BIN, ['-J-Xmx160m', 'Main.java'], {
+      cwd: dir,
+      timeoutMs: JAVA_COMPILE_TIMEOUT_MS,
+      phase: 'compiling Java',
+    });
     if (compile.code !== 0) {
       return { ok: false, error: compile.stderr || compile.stdout || 'Compile failed.' };
     }
@@ -1018,7 +1038,12 @@ async function runJavaSource(code) {
         output: 'Compile successful. Swing GUI source was validated in headless practice mode; desktop windows are not rendered inside the browser.',
       };
     }
-    const run = await runCommand(JAVA_BIN, ['-Djava.awt.headless=true', '-cp', dir, 'Main'], { cwd: dir, env: { ...process.env, JAVA_TOOL_OPTIONS: '-Djava.awt.headless=true' } });
+    const run = await runCommand(JAVA_BIN, ['-Xmx160m', '-Djava.awt.headless=true', '-cp', dir, 'Main'], {
+      cwd: dir,
+      env: { ...process.env, JAVA_TOOL_OPTIONS: '-Djava.awt.headless=true' },
+      timeoutMs: JAVA_RUN_TIMEOUT_MS,
+      phase: 'running Java',
+    });
     if (run.code !== 0) {
       return { ok: false, error: run.stderr || run.stdout || 'Runtime error.' };
     }

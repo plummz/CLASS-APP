@@ -988,13 +988,8 @@ function processJavaSource(code) {
       swing: false,
     };
   }
-  const imports = [];
-  const bodyLines = [];
-  for (const line of original.split(/\r?\n/)) {
-    if (/^\s*import\s+/.test(line)) imports.push(line);
-    else bodyLines.push(line);
-  }
-  const body = bodyLines.join('\n').trim();
+  const imports = original.match(/\bimport\s+[^;]+;/g) || [];
+  const body = original.replace(/\bimport\s+[^;]+;/g, '').trim();
   const importBlock = imports.join('\n');
   const swing = usesSwing(original);
   const validMain = hasJavaMain(original);

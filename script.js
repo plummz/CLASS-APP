@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.2',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Controls Cleanup',
+    summary: 'Battle Royale now has easier beginner bots, one clean end-screen button set, lower-right combat controls, and hold-drag-release throwable aiming.',
+    changes: [
+      'Reduced bot aim accuracy, reaction speed, chase pressure, and firing frequency for an easier match.',
+      'Removed the unused POV button and old view-switching code.',
+      'Removed duplicate canvas-drawn Play Again and Quit buttons so only the working landscape end controls remain.',
+      'Removed the extra right-side weapon image from the first-person overlay.',
+      'Moved combat buttons into a lower-right landscape cluster and improved throwable target aiming.'
+    ]
+  },
   {
     version: '1.3.1',
     date: 'April 23, 2026',

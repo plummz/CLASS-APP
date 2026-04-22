@@ -221,9 +221,6 @@ window.royaleModule = (function () {
   // ── Active throwable type ─────────────────────────────────
   let activeThrowable = 'grenade';
 
-  // ── End screen button rects ───────────────────────────────
-  let endBtnPlay = null, endBtnQuit = null;
-
   // ── Skin menu state ───────────────────────────────────────
   let skinBtnPlay = null, skinTabRects = [], skinItemRects = [];
 
@@ -373,8 +370,7 @@ window.royaleModule = (function () {
   let healCharges = 0;
   let damageIndicator = { life: 0, angle: 0 };
   let pickupBanner = { text: '', life: 0 };
-  let viewMode = 'fps';
-  let throwAim = { active:false, x:0, y:0, sx:0, sy:0, mode:'tap' };
+  let throwAim = { active:false, x:0, y:0, sx:0, sy:0, pointerId:null };
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -440,11 +436,9 @@ window.royaleModule = (function () {
       reloadBtn.addEventListener('mousedown', () => startReload());
     }
     const throwBtn = document.getElementById('rl-throw-btn');
-    if (throwBtn) {
-      // Quick tap = throw current item. Hold 350ms = switch grenade ↔ molotov.
-      let throwHoldTimer = null;
-      let throwDidSwitch = false;
-      let throwDidAim = false;
+    if (throwBtn && !throwBtn.dataset.rlThrowBound) {
+      throwBtn.dataset.rlThrowBound = '1';
+      // Hold, drag, and release to choose a throwable landing point.
 
       function doThrow(target = null) {
         if (gamePhase !== 'playing') return;
@@ -465,21 +459,13 @@ window.royaleModule = (function () {
         const rect = canvas.getBoundingClientRect();
         const sx = (clientX - rect.left) * (canvas.width / rect.width);
         const sy = (clientY - rect.top) * (canvas.height / rect.height);
-        if (viewMode === 'fps') {
-          const fov = adsActive ? Math.PI / 3.4 : Math.PI / 2.55;
-          const rel = (sx / Math.max(1, canvas.width) - 0.5) * fov;
-          const power = 180 + (1 - Math.min(1, sy / Math.max(1, canvas.height))) * 360;
-          return { x: player.x + Math.cos(player.angle + rel) * power, y: player.y + Math.sin(player.angle + rel) * power };
-        }
-        const port = canvas.height > canvas.width;
-        const gx = port ? sy : sx;
-        const gy = port ? (canvas.width - sx) : sy;
-        return { x: cam.x - canvasW / 2 + gx, y: cam.y - canvasH / 2 + gy };
+        const fov = adsActive ? Math.PI / 3.4 : Math.PI / 2.55;
+        const rel = (sx / Math.max(1, canvas.width) - 0.5) * fov;
+        const power = 180 + (1 - Math.min(1, sy / Math.max(1, canvas.height))) * 360;
+        return { x: player.x + Math.cos(player.angle + rel) * power, y: player.y + Math.sin(player.angle + rel) * power };
       }
 
       function startAim(clientX, clientY) {
-        throwDidAim = true;
-        throwDidSwitch = true;
         throwAim.active = true;
         const target = screenToWorld(clientX, clientY);
         throwAim.x = Math.max(0, Math.min(MAP_PX, target.x));
@@ -502,54 +488,41 @@ window.royaleModule = (function () {
       }
 
       throwBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        throwDidSwitch = false;
-        throwDidAim = false;
         const t = e.changedTouches[0];
-        throwHoldTimer = setTimeout(() => {
-          startAim(t.clientX, t.clientY);
-        }, 220);
-      }, {passive: true});
+        startAim(t.clientX, t.clientY);
+      }, {passive: false});
 
       throwBtn.addEventListener('touchmove', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const t = e.changedTouches[0];
         if (throwAim.active) moveAim(t.clientX, t.clientY);
-      }, {passive: true});
+      }, {passive: false});
 
       throwBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
         if (throwAim.active) endAim();
-        else if (!throwDidSwitch && !throwDidAim) doThrow();
-        throwDidSwitch = false;
-        throwDidAim = false;
-      }, {passive: true});
+      }, {passive: false});
 
       throwBtn.addEventListener('touchcancel', () => {
-        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
         throwAim.active = false;
         throwBtn.classList.remove('pressed');
-        throwDidSwitch = false;
-        throwDidAim = false;
       }, {passive: true});
 
-      // Desktop: click = throw, right-click = switch
+      // Desktop: hold-drag-release = throw, right-click = switch throwable.
       throwBtn.addEventListener('mousedown', (e) => {
         if (e.button === 2) { e.preventDefault(); doSwitch(); }
         else {
-          throwDidSwitch = false;
-          throwDidAim = false;
-          throwHoldTimer = setTimeout(() => startAim(e.clientX, e.clientY), 160);
+          e.preventDefault();
+          startAim(e.clientX, e.clientY);
         }
       });
       window.addEventListener('mousemove', (e) => { if (throwAim.active) moveAim(e.clientX, e.clientY); });
       window.addEventListener('mouseup', () => {
-        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
         if (throwAim.active) endAim();
-        else if (!throwDidSwitch && !throwDidAim) doThrow();
-        throwDidSwitch = false;
-        throwDidAim = false;
       });
       throwBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
@@ -559,8 +532,6 @@ window.royaleModule = (function () {
     bindTapButton('rl-prone-btn', () => { stance = stance === 'prone' ? 'stand' : 'prone'; });
     bindTapButton('rl-jump-btn', () => { if (stance !== 'prone') jumpBoost = Math.max(jumpBoost, 0.22); });
     bindTapButton('rl-heal-btn', useHealKit);
-    bindTapButton('rl-pov-btn', toggleViewMode);
-    updatePovButton();
     bindEndActionButtons();
 
     hideLoading();
@@ -651,14 +622,6 @@ window.royaleModule = (function () {
 
   function onTouchStart(e) {
     e.preventDefault();
-    if ((gamePhase === 'dead' || gamePhase === 'win') && viewMode === 'fps') {
-      const rect=canvas.getBoundingClientRect();
-      for (const t of e.changedTouches) {
-        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
-        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
-        if (checkEndBtnClick(sx, sy)) return;
-      }
-    }
     // Skin menu: handle taps immediately on touchstart for responsiveness
     if (gamePhase === 'skinSelect') {
       const rect=canvas.getBoundingClientRect();
@@ -718,7 +681,6 @@ window.royaleModule = (function () {
         const port = canvas.height > canvas.width;
         const gx = port ? sy : sx;
         const gy = port ? (canvas.width - sx) : sy;
-        checkEndBtnClick(gx, gy);
         if (gamePhase==='playing') checkWeaponSlotClick(gx, gy);
       }
     }
@@ -761,21 +723,6 @@ window.royaleModule = (function () {
     btn.addEventListener('mousedown', start);
     btn.addEventListener('mouseup', end);
     btn.addEventListener('mouseleave', end);
-  }
-
-  function toggleViewMode() {
-    viewMode = viewMode === 'fps' ? 'topdown' : 'fps';
-    updatePovButton();
-    showPickup(viewMode === 'fps' ? 'First-person POV' : 'Tactical map view');
-  }
-
-  function updatePovButton() {
-    const btn = document.getElementById('rl-pov-btn');
-    if (!btn) return;
-    const fps = viewMode === 'fps';
-    btn.classList.toggle('active', fps);
-    btn.textContent = fps ? 'POV' : 'MAP';
-    btn.title = fps ? 'First-person view is active' : 'Tactical map view is active';
   }
 
   function pointInRect(x, y, r) {
@@ -854,42 +801,22 @@ window.royaleModule = (function () {
     else if (keys['KeyX']) stance='stand';
     // Auto stand on fast movement handled below
 
-    // Build normalised move vector
+    // Build normalised first-person move vector.
     let mx = 0, my = 0;
-    if (viewMode === 'fps') {
-      let forward = 0, strafe = 0;
-      if (keys['KeyW']||keys['ArrowUp'])    forward += 1;
-      if (keys['KeyS']||keys['ArrowDown'])  forward -= 1;
-      if (keys['KeyA']||keys['ArrowLeft'])  strafe -= 1;
-      if (keys['KeyD']||keys['ArrowRight']) strafe += 1;
-      if (joy.active) {
-        strafe += joy.dx;
-        forward += -joy.dy;
-      }
-      const fl = Math.hypot(forward, strafe);
-      if (fl > 1) { forward /= fl; strafe /= fl; }
-      mx = Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe;
-      my = Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe;
-    } else {
-    if (keys['KeyW']||keys['ArrowUp'])    my -= 1;
-    if (keys['KeyS']||keys['ArrowDown'])  my += 1;
-    if (keys['KeyA']||keys['ArrowLeft'])  mx -= 1;
-    if (keys['KeyD']||keys['ArrowRight']) mx += 1;
+    let forward = 0, strafe = 0;
+    if (keys['KeyW']||keys['ArrowUp'])    forward += 1;
+    if (keys['KeyS']||keys['ArrowDown'])  forward -= 1;
+    if (keys['KeyA']||keys['ArrowLeft'])  strafe -= 1;
+    if (keys['KeyD']||keys['ArrowRight']) strafe += 1;
     if (joy.active) {
-      // Portrait: canvas is rotated 90° CW in render(), so screen +Y = game +X, screen +X = game -Y
-      if (canvas.height > canvas.width) {
-        mx += joy.dy;
-        my -= joy.dx;
-      } else {
-        mx += joy.dx;
-        my += joy.dy;
-      }
+      strafe += joy.dx;
+      forward += -joy.dy;
     }
-
-    }
-
+    const fl = Math.hypot(forward, strafe);
+    if (fl > 1) { forward /= fl; strafe /= fl; }
+    mx = Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe;
+    my = Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe;
     const len = Math.sqrt(mx*mx+my*my);
-    if (len > 1) { mx /= len; my /= len; }
 
     // Smooth mobile-shooter acceleration/deceleration.
     const adsMul = adsActive ? 0.68 : 1;
@@ -928,8 +855,6 @@ window.royaleModule = (function () {
     resolveInteriorCollision(player, PLAYER_R);
     jumpBoost = Math.max(0, jumpBoost - dt);
 
-    // Update facing angle when moving
-    if (viewMode !== 'fps' && len > 0.05 && !aimJoy.active && !adsActive) player.angle = Math.atan2(my, mx);
 
     // Trail particles
     if (len > 0.1 && playerSkin.trail !== 'none') {
@@ -1666,72 +1591,6 @@ window.royaleModule = (function () {
     drawZoneHUD();
     drawWeaponHUD();
     drawKillFeed();
-    drawShooterFeedback();
-  }
-
-  function drawShooterFeedback() {
-    const wkey = inventory[activeSlot];
-    const w = wkey ? WEAPONS[wkey] : null;
-    const sway = Math.sin(weaponSway) * (adsActive ? 2 : 6);
-    const recoil = recoilKick * 24;
-    const gunX = canvasW - 210 + sway;
-    const gunY = canvasH - 92 + recoil;
-    ctx.save();
-    ctx.globalAlpha = 0.94;
-    ctx.fillStyle = adsActive ? 'rgba(12,18,24,0.92)' : 'rgba(18,22,28,0.88)';
-    ctx.fillRect(gunX, gunY, 170, 28);
-    ctx.fillStyle = '#202832';
-    ctx.fillRect(gunX + 112, gunY - 13, 58, 12);
-    ctx.fillStyle = '#10151b';
-    ctx.fillRect(gunX + 22, gunY + 24, 50, 24);
-    ctx.fillStyle = muzzleFlash > 0 ? 'rgba(255,210,80,0.95)' : 'rgba(255,255,255,0.22)';
-    ctx.beginPath();
-    ctx.moveTo(gunX + 176, gunY + 5);
-    ctx.lineTo(gunX + 212 + muzzleFlash * 4, gunY + 14);
-    ctx.lineTo(gunX + 176, gunY + 23);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(w ? w.name.toUpperCase() : 'NO WEAPON', gunX, gunY - 8);
-    if (adsActive) {
-      ctx.strokeStyle = 'rgba(0,212,255,0.35)';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(canvasW/2, canvasH/2, 28, 0, Math.PI*2); ctx.stroke();
-    }
-    ctx.restore();
-
-    if (damageIndicator.life > 0) {
-      const alpha = Math.min(1, damageIndicator.life / 0.85);
-      const rel = damageIndicator.angle - player.angle;
-      const ix = canvasW/2 + Math.cos(rel) * 94;
-      const iy = canvasH/2 + Math.sin(rel) * 70;
-      ctx.save();
-      ctx.translate(ix, iy);
-      ctx.rotate(rel + Math.PI/2);
-      ctx.fillStyle = `rgba(255,55,55,${alpha})`;
-      ctx.beginPath();
-      ctx.moveTo(0, -16); ctx.lineTo(-13, 13); ctx.lineTo(13, 13); ctx.closePath(); ctx.fill();
-      ctx.restore();
-    }
-
-    if (pickupBanner.life > 0) {
-      const alpha = Math.min(1, pickupBanner.life / 0.35);
-      ctx.fillStyle = `rgba(0,0,0,${0.45 * alpha})`;
-      ctx.fillRect(canvasW/2 - 120, canvasH - 102, 240, 28);
-      ctx.strokeStyle = `rgba(0,212,255,${0.45 * alpha})`;
-      ctx.strokeRect(canvasW/2 - 120, canvasH - 102, 240, 28);
-      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-      ctx.font = 'bold 12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(pickupBanner.text, canvasW/2, canvasH - 84);
-      ctx.textAlign = 'left';
-    }
-
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(20, canvasH - 104, 110, 18);
-    ctx.fillStyle = '#a7ffcf';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(`HEALS ${healCharges}`, 28, canvasH - 91);
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -1837,23 +1696,6 @@ window.royaleModule = (function () {
       ctx.moveTo(cx + 18, cy + 18); ctx.lineTo(cx + 7, cy + 7);
       ctx.stroke();
     }
-    const gunW = Math.min(250, sw * 0.42);
-    const gunX = sw - gunW - 20 + Math.sin(weaponSway) * (adsActive ? 2 : 8);
-    const gunY = sh - 110 + recoilKick * 24;
-    ctx.fillStyle = adsActive ? 'rgba(18,25,34,0.96)' : 'rgba(15,20,28,0.92)';
-    ctx.fillRect(gunX, gunY, gunW, 34);
-    ctx.fillStyle = '#263140';
-    ctx.fillRect(gunX + gunW * 0.62, gunY - 16, gunW * 0.36, 14);
-    ctx.fillStyle = '#0b1017';
-    ctx.fillRect(gunX + 32, gunY + 30, gunW * 0.26, 34);
-    if (muzzleFlash > 0) {
-      ctx.fillStyle = 'rgba(255,198,65,0.94)';
-      ctx.beginPath();
-      ctx.moveTo(gunX + gunW + 2, gunY + 6);
-      ctx.lineTo(gunX + gunW + 58 + muzzleFlash * 5, gunY + 17);
-      ctx.lineTo(gunX + gunW + 2, gunY + 29);
-      ctx.fill();
-    }
     ctx.fillStyle = 'rgba(0,0,0,0.48)';
     ctx.fillRect(16, 16, 190, 78);
     ctx.fillStyle = '#eaffff';
@@ -1953,129 +1795,28 @@ window.royaleModule = (function () {
       ctx.fillStyle = gamePhase === 'win' ? '#ffe66b' : '#ff5b5b';
       ctx.font = `bold ${Math.max(34, Math.min(76, sw * 0.09))}px monospace`;
       ctx.textAlign = 'center'; ctx.fillText(gamePhase === 'win' ? 'VICTORY' : 'ELIMINATED', sw / 2, sh / 2 - 12);
-      const bw = Math.min(170, sw * 0.32), bh = 44, gap = 16, by = sh / 2 + 48;
-      const playX = sw / 2 - bw - gap / 2, quitX = sw / 2 + gap / 2;
-      ctx.fillStyle = 'rgba(20,160,70,0.86)'; ctx.fillRect(playX, by, bw, bh);
-      ctx.fillStyle = 'rgba(180,32,42,0.86)'; ctx.fillRect(quitX, by, bw, bh);
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.strokeRect(playX, by, bw, bh); ctx.strokeRect(quitX, by, bw, bh);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace';
-      ctx.fillText('PLAY AGAIN', playX + bw / 2, by + 28);
-      ctx.fillText('QUIT', quitX + bw / 2, by + 28);
-      endBtnPlay = { x:playX, y:by, w:bw, h:bh };
-      endBtnQuit = { x:quitX, y:by, w:bw, h:bh };
       ctx.textAlign = 'left';
+
     }
   }
 
   function render() {
-    // Clear the physical screen (canvas.width × canvas.height = screen size)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (viewMode === 'fps' && gamePhase !== 'skinSelect') {
-      renderFirstPerson();
-      return;
-    }
-
-    // Portrait: rotate canvas 90° CW so the game renders in landscape orientation.
-    // canvas.width < canvas.height means portrait phone.
-    // After this transform, all drawing uses canvasW × canvasH (landscape game dims).
-    const port = canvas.height > canvas.width;
-    if (port) {
-      ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.rotate(Math.PI / 2);
-    }
-
-    // Skin select screen — render locker UI then return
     if (gamePhase === 'skinSelect') {
+      const port = canvas.height > canvas.width;
+      if (port) {
+        ctx.save();
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2);
+      }
       drawSkinMenu();
       if (port) ctx.restore();
       return;
     }
 
-    // Use spectate cam when dead
-    const renderCam = (gamePhase==='dead' && spectateTarget)
-      ? spectateCam : cam;
-
-    const offX = Math.round(canvasW/2 - renderCam.x) + shakeX;
-    const offY = Math.round(canvasH/2 - renderCam.y) + shakeY;
-    ctx.save();
-    ctx.translate(offX, offY);
-
-    // Visible tile range
-    const tx1=Math.max(0,Math.floor((renderCam.x-canvasW/2)/TILE)-1);
-    const tx2=Math.min(MAP_W,Math.ceil((renderCam.x+canvasW/2)/TILE)+1);
-    const ty1=Math.max(0,Math.floor((renderCam.y-canvasH/2)/TILE)-1);
-    const ty2=Math.min(MAP_H,Math.ceil((renderCam.y+canvasH/2)/TILE)+1);
-
-    // World-space viewport for tree culling
-    const wx1=(tx1-1)*TILE, wx2=(tx2+1)*TILE;
-    const wy1=(ty1-1)*TILE, wy2=(ty2+1)*TILE;
-
-    drawTiles(tx1, tx2, ty1, ty2);
-    drawZone();
-    drawLoot();
-    drawCrates();
-    drawFires();
-    drawTreeBases(wx1,wx2,wy1,wy2);
-    drawBoulders();
-    drawBuildings(ty1, ty2);
-    drawBots();
-    drawThrowables();
-    drawWorldThrowAim();
-
-    // Remote players
-    for (const id in remotePlayers) drawRemotePlayer(remotePlayers[id]);
-
-    // Trail particles (drawn behind player)
-    for (const p of trailParticles) {
-      ctx.globalAlpha = Math.max(0, p.life/p.maxLife)*0.7;
-      ctx.fillStyle = p.col;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(p.life/p.maxLife), 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    // Local player — drawn before canopies so trees overlay it when hidden
-    if (!player.hidden) drawPlayer();
-
-    drawTreeCanopies(wx1,wx2,wy1,wy2);
-
-    if (player.hidden) {
-      ctx.globalAlpha=0.45;
-      drawPlayer();
-      ctx.globalAlpha=1;
-    }
-
-    drawBullets();
-    drawExplosions();
-    drawBloodSplatters();
-    drawAirdrop();
-    drawMuzzleFlash();
-    drawDmgNumbers();
-
-    // Parachute overlay (drawn in world space)
-    if (gamePhase==='parachute') drawParachute();
-
-    ctx.restore();
-    if (gamePhase !== 'dead' && gamePhase !== 'win') {
-      drawHUD();
-      drawCrosshair();
-    }
-    drawSpectateTag();
-    drawEndScreen();
-
-    // Parachute instruction HUD
-    if (gamePhase==='parachute' && !paraDeployed) {
-      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(canvasW/2-120,canvasH/2-20,240,34);
-      ctx.fillStyle='#fff'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
-      ctx.fillText('SPACE / tap right side to deploy chute', canvasW/2, canvasH/2+2);
-      ctx.textAlign='left';
-    }
-
-    // Close portrait rotation transform
-    if (port) ctx.restore();
+    renderFirstPerson();
   }
-
   // ── Weapon definitions ────────────────────────────────────
   const WEAPONS = {
     pistol:  {name:'Pistol',   dmg:25,  rof:400,  spd:520, range:380, spread:0.06, ammo:12, maxAmmo:60,  auto:false, pellets:1, reload:1400},
@@ -2407,26 +2148,16 @@ window.royaleModule = (function () {
     aimJoy.dx=dx/Math.max(len,max);
     aimJoy.dy=dy/Math.max(len,max);
     if (len>8) {
-      if (viewMode === 'fps') {
-        player.angle += dx * 0.0048;
-        aimJoy.sx = aimJoy.cx;
-        aimJoy.sy = aimJoy.cy;
-      } else {
-      // Portrait: canvas rotated 90° CW → screen +Y = game +X, screen +X = game -Y
-      if (canvas.height > canvas.width) {
-        player.angle = Math.atan2(-dx, dy);
-      } else {
-        player.angle = Math.atan2(dy, dx);
-      }
-    }
+      player.angle += dx * 0.0048;
+      aimJoy.sx = aimJoy.cx;
+      aimJoy.sy = aimJoy.cy;
     }
     joyShow(aimJoy.sx,aimJoy.sy,
       aimJoy.sx+dx/Math.max(len/max,1),
       aimJoy.sy+dy/Math.max(len/max,1),
       'rl-aim-base','rl-aim-knob');
-    // Aim stick no longer auto-fires — use the FIRE button
-  }
-  function onAimTouchEnd(t) {
+    // Aim stick no longer auto-fires - use the FIRE button
+  }  function onAimTouchEnd(t) {
     if (!aimJoy.active||t.identifier!==aimJoy.id) return;
     aimJoy.active=false; aimJoy.dx=0; aimJoy.dy=0;
     joyHide('rl-aim-base','rl-aim-knob');
@@ -3191,71 +2922,6 @@ window.royaleModule = (function () {
     return false;
   }
 
-  // ── End screen ────────────────────────────────────────────
-  function drawEndScreen() {
-    if (gamePhase === 'playing') return;
-    const alpha = Math.min(1, gameEndTimer / 1.2);
-    ctx.fillStyle = `rgba(0,0,0,${alpha*0.78})`;
-    ctx.fillRect(0,0,canvasW,canvasH);
-    if (alpha < 0.3) return;
-
-    const cx=canvasW/2, cy=canvasH/2;
-    if (gamePhase === 'win') {
-      ctx.fillStyle=`rgba(255,220,0,${alpha})`;
-      ctx.font=`bold ${Math.round(canvasH*0.1)}px monospace`;
-      ctx.textAlign='center';
-      ctx.fillText('VICTORY ROYALE', cx, cy-40);
-      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
-      ctx.font=`bold 22px monospace`;
-      ctx.fillText(`Kills: ${player.kills}`, cx, cy+10);
-    } else {
-      ctx.fillStyle=`rgba(220,60,60,${alpha})`;
-      ctx.font=`bold ${Math.round(canvasH*0.09)}px monospace`;
-      ctx.textAlign='center';
-      ctx.fillText('ELIMINATED', cx, cy-40);
-      ctx.fillStyle=`rgba(255,255,255,${alpha})`;
-      ctx.font='bold 18px monospace';
-      ctx.fillText(`Kills: ${player.kills}`, cx, cy+10);
-    }
-
-    // Scoreboard
-    const sorted = bots.slice().sort((a,b)=>(!a.alive?1:0)-(!b.alive?1:0));
-    ctx.font='12px monospace'; ctx.fillStyle=`rgba(200,200,200,${alpha})`;
-    let row=cy+50;
-    ctx.fillText('NAME            HP', cx, row); row+=18;
-    ctx.fillText('─────────────────────', cx, row); row+=18;
-    for (const b of sorted.slice(0,8)) {
-      const hp = b.alive ? b.hp : 0;
-      ctx.fillStyle = b.alive ? `rgba(150,255,150,${alpha})` : `rgba(180,180,180,${alpha*0.6})`;
-      ctx.fillText(`${(b.name||'Bot').padEnd(16)} ${hp}`, cx, row); row+=16;
-    }
-
-    if (gameEndTimer > 1) {
-      // Play Again button
-      const bw=160, bh=44, gap=16;
-      const playX = cx - bw - gap/2, quitX = cx + gap/2, btnY = canvasH - 80;
-      ctx.fillStyle=`rgba(20,160,60,${alpha*0.9})`;
-      ctx.fillRect(playX, btnY, bw, bh);
-      ctx.strokeStyle=`rgba(80,255,120,${alpha})`; ctx.lineWidth=2;
-      ctx.strokeRect(playX, btnY, bw, bh);
-      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace'; ctx.textAlign='center';
-      ctx.fillText('▶ PLAY AGAIN', playX+bw/2, btnY+28);
-      endBtnPlay = {x:playX, y:btnY, w:bw, h:bh};
-
-      // Quit button
-      ctx.fillStyle=`rgba(180,30,30,${alpha*0.9})`;
-      ctx.fillRect(quitX, btnY, bw, bh);
-      ctx.strokeStyle=`rgba(255,80,80,${alpha})`; ctx.lineWidth=2;
-      ctx.strokeRect(quitX, btnY, bw, bh);
-      ctx.fillStyle=`rgba(255,255,255,${alpha})`; ctx.font='bold 15px monospace';
-      ctx.fillText('✕ QUIT', quitX+bw/2, btnY+28);
-      endBtnQuit = {x:quitX, y:btnY, w:bw, h:bh};
-    } else {
-      endBtnPlay = null; endBtnQuit = null;
-    }
-    ctx.textAlign='left';
-  }
-
   // ── Dynamic crosshair ────────────────────────────────────
   function drawCrosshair() {
     if (gamePhase !== 'playing') return;
@@ -3308,30 +2974,10 @@ window.royaleModule = (function () {
   // ── Mouse aim + click-to-fire (desktop) ──────────────────
   function onMouseMove(e) {
     if (gamePhase !== 'playing') return;
-    if (viewMode === 'fps') {
-      if (e.buttons || document.pointerLockElement === canvas) {
-        player.angle += (e.movementX || 0) * 0.0042;
-      }
-      return;
+    if (e.buttons || document.pointerLockElement === canvas) {
+      player.angle += (e.movementX || 0) * 0.0042;
     }
-    const rect=canvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left)*(canvas.width/rect.width);
-    const my=(e.clientY-rect.top)*(canvas.height/rect.height);
-    player.angle=Math.atan2(my-canvasH/2, mx-canvasW/2);
   }
-
-  function checkEndBtnClick(gx, gy) {
-    if ((gamePhase==='dead'||gamePhase==='win') && gameEndTimer>1) {
-      if (endBtnPlay && gx>=endBtnPlay.x && gx<=endBtnPlay.x+endBtnPlay.w && gy>=endBtnPlay.y && gy<=endBtnPlay.y+endBtnPlay.h) {
-        restartGame(); return true;
-      }
-      if (endBtnQuit && gx>=endBtnQuit.x && gx<=endBtnQuit.x+endBtnQuit.w && gy>=endBtnQuit.y && gy<=endBtnQuit.y+endBtnQuit.h) {
-        goToPage('games'); return true;
-      }
-    }
-    return false;
-  }
-
   function checkWeaponSlotClick(gx, gy) {
     const slotW=110, slotH=44, gap=8, startX=canvasW/2-slotW-gap/2, y=canvasH-slotH-12;
     for (let i=0; i<2; i++) {
@@ -3353,8 +2999,6 @@ window.royaleModule = (function () {
     const gx = port ? sy : sx;
     const gy = port ? (canvas.width - sx) : sy;
 
-    if (viewMode === 'fps' && checkEndBtnClick(sx, sy)) return;
-    if (checkEndBtnClick(gx, gy)) return;
     if (checkSkinMenuClick(gx, gy)) return;
     if (gamePhase !== 'playing') return;
     if (checkWeaponSlotClick(gx, gy)) return;
@@ -3378,7 +3022,7 @@ window.royaleModule = (function () {
       const dz=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (dz > zone.r*0.85) {
         const az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
-        bt.x+=Math.cos(az)*160*dt; bt.y+=Math.sin(az)*160*dt;
+        bt.x+=Math.cos(az)*115*dt; bt.y+=Math.sin(az)*115*dt;
         bt.angle=az;
         bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
         bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
@@ -3393,9 +3037,9 @@ window.royaleModule = (function () {
           const d=Math.sqrt((it.x-bt.x)**2+(it.y-bt.y)**2);
           if (d<cdist){cdist=d;closest=it;}
         }
-        if (closest && cdist<400) {
+        if (closest && cdist<320) {
           const al=Math.atan2(closest.y-bt.y,closest.x-bt.x);
-          bt.x+=Math.cos(al)*130*dt; bt.y+=Math.sin(al)*130*dt; bt.angle=al;
+          bt.x+=Math.cos(al)*85*dt; bt.y+=Math.sin(al)*85*dt; bt.angle=al;
           if (cdist<30 && WEAPONS[closest.key]) { bt.weapon=closest.key; bt.ammo=WEAPONS[closest.key].ammo; loot.splice(loot.indexOf(closest),1); }
           continue;
         }
@@ -3403,26 +3047,29 @@ window.royaleModule = (function () {
 
       const dx=player.x-bt.x, dy=player.y-bt.y;
       const distToPlayer=Math.sqrt(dx*dx+dy*dy);
-      if (distToPlayer<440) bt.state='chase'; else if (distToPlayer>680) bt.state='roam';
+      const wasChasing = bt.state === 'chase';
+      if (distToPlayer<310 && !player.hidden) bt.state='chase'; else if (distToPlayer>460 || player.hidden) bt.state='roam';
+      if (!wasChasing && bt.state === 'chase') bt.fireT = Math.max(bt.fireT || 0, now + 950 + Math.random() * 500);
 
       if (bt.state==='chase') {
-        bt.angle=Math.atan2(dy,dx);
+        const desiredAngle=Math.atan2(dy,dx);
+        bt.angle += normalizeAngle(desiredAngle - bt.angle) * Math.min(1, 1.6 * dt);
         const indoor = isInsideBuilding(bt.x, bt.y) || isInsideBuilding(player.x, player.y);
-        const flank = indoor ? Math.sin(gameTime * 1.7 + bt.x * 0.01) * 0.55 : 0;
-        const moveAngle = bt.angle + (distToPlayer < 150 ? Math.PI * 0.62 : flank);
+        const flank = indoor ? Math.sin(gameTime * 1.15 + bt.x * 0.01) * 0.32 : 0;
+        const moveAngle = bt.angle + (distToPlayer < 180 ? Math.PI * 0.9 : flank);
         const coverNear = nearestInteriorCover(bt.x, bt.y, 150);
-        if (coverNear && distToPlayer < 310 && bt.hp < 72) {
+        if (coverNear && distToPlayer < 230 && bt.hp < 55) {
           const ca = Math.atan2(coverNear.y - bt.y, coverNear.x - bt.x);
-          bt.x+=Math.cos(ca)*125*dt; bt.y+=Math.sin(ca)*125*dt;
+          bt.x+=Math.cos(ca)*78*dt; bt.y+=Math.sin(ca)*78*dt;
         } else {
-          const pace = indoor ? 132 : 122;
+          const pace = indoor ? 70 : 76;
           bt.x+=Math.cos(moveAngle)*pace*dt; bt.y+=Math.sin(moveAngle)*pace*dt;
         }
-        if (distToPlayer<390 && bt.ammo>0 && now>bt.fireT) {
-          const accuracy = indoor ? 0.055 : 0.085;
+        if (distToPlayer<265 && bt.ammo>0 && now>bt.fireT) {
+          const accuracy = indoor ? 0.22 : 0.30;
           tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*accuracy,bt.weapon||'pistol',bt.id);
           bt.ammo=Math.max(0,bt.ammo-1);
-          bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*1.18;
+          bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*2.65 + 500 + Math.random() * 550;
         }
       } else {
         const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
@@ -3433,7 +3080,7 @@ window.royaleModule = (function () {
           bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
         } else {
           bt.angle=Math.atan2(wy,wx);
-          bt.x+=Math.cos(bt.angle)*85*dt; bt.y+=Math.sin(bt.angle)*85*dt;
+          bt.x+=Math.cos(bt.angle)*55*dt; bt.y+=Math.sin(bt.angle)*55*dt;
         }
       }
       bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
@@ -3467,7 +3114,7 @@ window.royaleModule = (function () {
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
-    bloodSplatters=[]; trailParticles=[]; endBtnPlay=null; endBtnQuit=null;
+    bloodSplatters=[]; trailParticles=[];
     hideEndActionButtons();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();

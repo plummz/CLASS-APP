@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.7';
+const APP_VERSION = '1.2.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.8',
+    date: 'April 23, 2026',
+    title: 'Pac-Man Portrait and Royale End Screen Fix',
+    summary: 'Pac-Man now uses a portrait-only mobile layout, and Battle Royale end-screen actions are real tap-safe buttons.',
+    changes: [
+      'Converted Pac-Man to portrait-only play with a larger mobile board.',
+      'Added large bottom arrow controls inspired by the Pokemon D-pad.',
+      'Moved Pac-Man score and lives into a fixed top bar.',
+      'Replaced Battle Royale canvas end actions with DOM buttons above the canvas.',
+      'Play Again now reliably returns to the Royale skin selection screen, while Quit returns to the Games page.'
+    ]
+  },
   {
     version: '1.2.7',
     date: 'April 22, 2026',

@@ -1,7 +1,7 @@
 window.pacmanModule = (function () {
   'use strict';
 
-  const TILE = 24;
+  const TILE = 26;
   const MAP = [
     '#########################',
     '#...........#...........#',
@@ -28,6 +28,7 @@ window.pacmanModule = (function () {
   ];
 
   let canvas, ctx, raf = null, running = false, last = 0;
+  let scoreEl, livesEl;
   let grid, player, ghosts, score, lives, pellets, state, nextDir, touchStart = null;
 
   function reset() {
@@ -51,6 +52,10 @@ window.pacmanModule = (function () {
     canvas = document.getElementById('pacman-canvas');
     if (!canvas) return;
     ctx = canvas.getContext('2d');
+    canvas.width = 672;
+    canvas.height = 592;
+    scoreEl = document.getElementById('pacman-score');
+    livesEl = document.getElementById('pacman-lives');
     reset();
     bind();
     running = true;
@@ -68,6 +73,25 @@ window.pacmanModule = (function () {
     if (canvas.dataset.pacBound) return;
     canvas.dataset.pacBound = '1';
     document.getElementById('pacman-start-btn')?.addEventListener('click', () => { if (state !== 'play') state = 'play'; });
+    document.querySelectorAll('.pacman-dpad-btn').forEach((btn) => {
+      const dirs = {
+        up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0},
+      };
+      const set = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        nextDir = dirs[btn.dataset.dir] || nextDir;
+        state = 'play';
+        btn.classList.add('pressed');
+      };
+      const clear = () => btn.classList.remove('pressed');
+      btn.addEventListener('pointerdown', set, { passive:false });
+      btn.addEventListener('pointerup', clear);
+      btn.addEventListener('pointerleave', clear);
+      btn.addEventListener('touchstart', set, { passive:false });
+      btn.addEventListener('touchend', clear);
+      btn.addEventListener('click', set);
+    });
     document.addEventListener('keydown', (e) => {
       if (!document.getElementById('page-pacman')?.classList.contains('active')) return;
       const dirs = {
@@ -155,8 +179,10 @@ window.pacmanModule = (function () {
 
   function draw() {
     ctx.fillStyle = '#050514'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    const scale = Math.min(canvas.width/(grid[0].length*TILE), (canvas.height-54)/(grid.length*TILE));
-    const ox = (canvas.width-grid[0].length*TILE*scale)/2, oy = 42;
+    if (scoreEl) scoreEl.textContent = `SCORE ${score}`;
+    if (livesEl) livesEl.textContent = `LIVES ${lives}`;
+    const scale = Math.min(canvas.width/(grid[0].length*TILE), canvas.height/(grid.length*TILE));
+    const ox = (canvas.width-grid[0].length*TILE*scale)/2, oy = (canvas.height-grid.length*TILE*scale)/2;
     ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
     for (let y=0;y<grid.length;y++) for (let x=0;x<grid[y].length;x++) {
       const c = grid[y][x];
@@ -178,8 +204,6 @@ window.pacmanModule = (function () {
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(g.px-4,g.py-3,2,0,Math.PI*2); ctx.arc(g.px+4,g.py-3,2,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
-    ctx.fillStyle = '#ffe600'; ctx.font = 'bold 18px monospace';
-    ctx.fillText(`SCORE ${score}`, 20, 26); ctx.fillText(`LIVES ${lives}`, 180, 26);
     if (state !== 'play') {
       ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.fillStyle = state === 'win' ? '#ffe600' : state === 'lose' ? '#ff3158' : '#fff';

@@ -561,6 +561,7 @@ window.royaleModule = (function () {
     bindTapButton('rl-heal-btn', useHealKit);
     bindTapButton('rl-pov-btn', toggleViewMode);
     updatePovButton();
+    bindEndActionButtons();
 
     hideLoading();
 
@@ -589,6 +590,7 @@ window.royaleModule = (function () {
     }
     document.body.classList.remove('rl-active');
     shootPressed = false; shootJustDown = false;
+    hideEndActionButtons();
     destroyMultiplayer();
   }
 
@@ -609,6 +611,33 @@ window.royaleModule = (function () {
   function hideLoading() {
     const el = document.getElementById('rl-loading');
     if (el) { el.classList.add('hidden'); setTimeout(()=>el.remove(), 700); }
+  }
+
+  function bindEndActionButtons() {
+    const play = document.getElementById('rl-play-again-btn');
+    const quit = document.getElementById('rl-quit-btn');
+    if (play && !play.dataset.rlBound) {
+      play.dataset.rlBound = '1';
+      const replay = (e) => { e.preventDefault(); e.stopPropagation(); restartGame(); hideEndActionButtons(); };
+      play.addEventListener('click', replay);
+      play.addEventListener('touchstart', replay, { passive:false });
+    }
+    if (quit && !quit.dataset.rlBound) {
+      quit.dataset.rlBound = '1';
+      const leave = (e) => { e.preventDefault(); e.stopPropagation(); hideEndActionButtons(); goToPage('games'); };
+      quit.addEventListener('click', leave);
+      quit.addEventListener('touchstart', leave, { passive:false });
+    }
+  }
+
+  function showEndActionButtons() {
+    const el = document.getElementById('rl-end-actions');
+    if (el) el.classList.remove('hidden');
+  }
+
+  function hideEndActionButtons() {
+    const el = document.getElementById('rl-end-actions');
+    if (el) el.classList.add('hidden');
   }
 
   // ── Input handlers ────────────────────────────────────────
@@ -804,6 +833,7 @@ window.royaleModule = (function () {
 
     // Skin select — no game logic
     if (gamePhase === 'skinSelect') return;
+    hideEndActionButtons();
 
     // Parachute phase
     if (gamePhase === 'parachute') {
@@ -814,6 +844,7 @@ window.royaleModule = (function () {
     if (gamePhase === 'dead' || gamePhase === 'win') {
       gameEndTimer += dt;
       updateKillFeed(dt);
+      if (gameEndTimer > 0.25) showEndActionButtons();
       return;
     }
 
@@ -3363,6 +3394,7 @@ window.royaleModule = (function () {
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
     bloodSplatters=[]; trailParticles=[]; endBtnPlay=null; endBtnQuit=null;
+    hideEndActionButtons();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();
     running = true;

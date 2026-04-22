@@ -524,10 +524,20 @@
   <!-- ── POKEMON ──────────────────────────────────────────── -->
   <div class="page" id="page-pacman">
     <div class="pacman-wrapper">
-      <canvas id="pacman-canvas" width="896" height="504"></canvas>
+      <div class="pacman-topbar">
+        <span id="pacman-score">SCORE 0</span>
+        <span id="pacman-lives">LIVES 3</span>
+      </div>
+      <canvas id="pacman-canvas" width="672" height="592"></canvas>
       <button class="pacman-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
       <button class="pacman-start-btn" id="pacman-start-btn" type="button">START</button>
-      <div class="pacman-mobile-hint">Swipe or use arrows/WASD</div>
+      <div class="pacman-dpad" id="pacman-dpad">
+        <button class="pacman-dpad-btn pacman-up" data-dir="up" type="button">▲</button>
+        <button class="pacman-dpad-btn pacman-left" data-dir="left" type="button">◀</button>
+        <button class="pacman-dpad-center" type="button" disabled></button>
+        <button class="pacman-dpad-btn pacman-right" data-dir="right" type="button">▶</button>
+        <button class="pacman-dpad-btn pacman-down" data-dir="down" type="button">▼</button>
+      </div>
     </div>
   </div>
 
@@ -710,6 +720,10 @@
       <button id="rl-prone-btn">PRONE</button>
       <button id="rl-jump-btn">JUMP</button>
       <button id="rl-heal-btn">HEAL</button>
+      <div id="rl-end-actions" class="rl-end-actions hidden">
+        <button id="rl-play-again-btn" type="button">PLAY AGAIN</button>
+        <button id="rl-quit-btn" type="button">QUIT</button>
+      </div>
     </div>
   </div>
 
@@ -1176,7 +1190,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=35"></script>
+  <script src="script.js?v=36"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

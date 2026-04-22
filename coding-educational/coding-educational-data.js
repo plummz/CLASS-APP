@@ -61,8 +61,46 @@ const codingEducationalData = (function () {
     };
   }
 
+  function makeQuiz(chapterId, lessons) {
+    const usable = lessons.slice(0, 5);
+    return usable.map((item, index) => ({
+      id: `${chapterId}-q${index + 1}`,
+      question: `Which idea best matches "${item.title}"?`,
+      choices: [
+        item.recap,
+        'It is only used by advanced developers and should be skipped by beginners.',
+        'It is unrelated to building software projects.',
+        'It is a visual design choice only.',
+      ],
+      answerIndex: 0,
+    }));
+  }
+
+  function chapter(title, description, lessons) {
+    const chapterId = id(title);
+    return {
+      id: chapterId,
+      title,
+      description,
+      level: 'Beginner',
+      lessons,
+      quiz: makeQuiz(chapterId, lessons),
+    };
+  }
+
+  function buildBookChapters(title, lessons) {
+    if (lessons.length <= 5) {
+      return [chapter(`${title} Foundations`, `Start with the essential ideas in ${title}.`, lessons)];
+    }
+    const midpoint = Math.ceil(lessons.length / 2);
+    return [
+      chapter(`${title} Foundations`, `Start with the essential ideas in ${title}.`, lessons.slice(0, midpoint)),
+      chapter(`${title} Practice Book`, `Continue with more ${title} lessons and practical examples.`, lessons.slice(midpoint)),
+    ];
+  }
+
   function subfolder(title, description, image, lessons, level = 'Beginner') {
-    return { id: id(title), title, description, level, image, lessons };
+    return { id: id(title), title, description, level, image, chapters: buildBookChapters(title, lessons) };
   }
 
   function category(title, description, image, subfolders, level = 'Beginner') {

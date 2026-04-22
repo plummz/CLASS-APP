@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.1',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Textbook Upgrade',
+    summary: 'CODING LESSONS now uses book-style chapters, paginated lesson batches, progress tracking, bookmarks, Continue Learning, quizzes, and copyable code blocks.',
+    changes: [
+      'Changed lesson data to category → subfolder → chapters → lessons.',
+      'Added chapter lesson pagination with Previous 5 and Next 5 controls.',
+      'Added local progress tracking, chapter/subfolder completion percentages, and Mark as Completed.',
+      'Added Continue Learning and Bookmarked Lessons using localStorage.',
+      'Added per-chapter multiple-choice quizzes and copy buttons for lesson code examples.'
+    ]
+  },
   {
     version: '1.3.0',
     date: 'April 23, 2026',

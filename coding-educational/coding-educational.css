@@ -109,6 +109,64 @@
   cursor: pointer;
 }
 
+.coding-edu-learn-panel,
+.coding-edu-chapter-head,
+.coding-edu-bookmarks,
+.coding-edu-quiz {
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 22px;
+  padding: 16px;
+  margin-bottom: 18px;
+  background: rgba(4, 12, 28, 0.66);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.24);
+  backdrop-filter: blur(18px);
+}
+
+.coding-edu-learn-panel,
+.coding-edu-chapter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.coding-edu-learn-panel span,
+.coding-edu-chapter-head p,
+.coding-edu-chapter-head small {
+  color: rgba(255,255,255,0.72);
+}
+
+.coding-edu-section-title {
+  color: #fff;
+  font: 900 1.1rem 'Rajdhani', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.coding-edu-mini-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.coding-edu-mini-card {
+  text-align: left;
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  cursor: pointer;
+}
+
+.coding-edu-mini-card span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255,255,255,0.62);
+  font-size: 0.82rem;
+}
+
 .coding-edu-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -188,6 +246,91 @@
   font-weight: 800;
 }
 
+.coding-edu-pill.success {
+  border-color: rgba(80,255,150,0.38);
+  background: rgba(80,255,150,0.13);
+  color: #b9ffd7;
+}
+
+.coding-edu-progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+}
+
+.coding-edu-progress.wide {
+  margin: 10px 0 6px;
+  max-width: 460px;
+}
+
+.coding-edu-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent, #00d4ff), #7dffb5);
+  box-shadow: 0 0 18px rgba(0,212,255,0.25);
+}
+
+.coding-edu-progress-label {
+  color: rgba(255,255,255,0.64);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.coding-edu-action-row,
+.coding-edu-lesson-actions,
+.coding-edu-code-title,
+.coding-edu-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.coding-edu-action {
+  border: 1px solid rgba(0,212,255,0.28);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(0,212,255,0.1);
+  color: #e8fbff;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
+}
+
+.coding-edu-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(0,212,255,0.18);
+}
+
+.coding-edu-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.coding-edu-action.primary {
+  background: linear-gradient(135deg, rgba(0,212,255,0.86), rgba(125,255,181,0.75));
+  color: #03111a;
+}
+
+.coding-edu-action.compact {
+  padding: 7px 11px;
+  font-size: 0.8rem;
+}
+
+.coding-edu-pager {
+  margin-top: 18px;
+  justify-content: center;
+}
+
+.coding-edu-pager span {
+  color: rgba(255,255,255,0.74);
+  font-weight: 900;
+}
+
 .coding-edu-empty {
   padding: 28px;
   border-radius: 20px;
@@ -238,6 +381,10 @@
   font: 0.9rem/1.55 Consolas, 'Courier New', monospace;
 }
 
+.coding-edu-code-title h3 {
+  margin: 0;
+}
+
 .coding-edu-sources {
   display: flex;
   flex-wrap: wrap;
@@ -253,6 +400,35 @@
   padding: 7px 11px;
 }
 
+.coding-edu-question {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 14px;
+  margin: 14px 0;
+  background: rgba(255,255,255,0.055);
+}
+
+.coding-edu-question legend {
+  color: #fff;
+  font-weight: 900;
+  padding: 0 8px;
+}
+
+.coding-edu-question label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 10px;
+  color: rgba(255,255,255,0.82);
+}
+
+.coding-edu-quiz-result {
+  min-height: 24px;
+  margin-top: 12px;
+  color: #b9ffd7;
+  font-weight: 900;
+}
+
 @media (max-width: 760px) {
   #page-coding-educational {
     padding: 76px 14px 30px;
@@ -261,6 +437,11 @@
     grid-template-columns: 1fr;
   }
   .coding-edu-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .coding-edu-learn-panel,
+  .coding-edu-chapter-head {
     align-items: flex-start;
     flex-direction: column;
   }

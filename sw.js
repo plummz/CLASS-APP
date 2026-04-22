@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v67';
+const CACHE_VERSION = 'v68';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -18,8 +18,8 @@ const ASSETS = [
   '/features/folders/folders.css?v=1',
   '/features/gallery/gallery.css?v=1',
   '/features/pokemon/pokemon.css?v=3',
-  '/features/royale/royale.css?v=3',
-  '/script.js?v=33',
+  '/features/royale/royale.css?v=4',
+  '/script.js?v=34',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -34,7 +34,7 @@ const ASSETS = [
   '/features/gallery/gallery.js?v=1',
   '/assets/js/codelab.js?v=5',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=3',
+  '/features/royale/royale.js?v=4',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

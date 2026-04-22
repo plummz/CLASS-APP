@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.5',
+    date: '2026-04-22',
+    title: 'Battle Royale CQB Mobile Shooter Upgrade',
+    summary: 'Battle Royale now has enterable room layouts, indoor loot, cover props, smoother mobile controls, ADS, heal controls, and smarter indoor bot behavior.',
+    changes: [
+      'Converted building visuals into enterable interiors with room dividers, doors, stairs, rooftops, and cover props.',
+      'Moved loot spawning toward logical indoor cover/table/shelf spots while preserving outdoor loot.',
+      'Added ADS, crouch, prone, jump, and heal mobile controls with faster press feedback.',
+      'Improved movement smoothing, recoil feedback, throwable behavior, pickup readability, and damage direction feedback.',
+      'Improved bot indoor chasing, flanking, loot seeking, and cover use.',
+    ],
+  },
   {
     version: '1.2.4',
     date: '2026-04-21',

@@ -99,6 +99,7 @@ window.royaleModule = (function () {
         for (let bx = b.tx; bx < b.tx+b.tw; bx++)
           setTile(bx, by, T.FLOOR);
     }
+    prepareBuildingInteriors();
 
     generateTrees();
     generateBoulders();
@@ -139,12 +140,74 @@ window.royaleModule = (function () {
     {tx:23,ty:93,tw:7,th:5,roof:'#3d8b5a',wall:'#1a5a35'},
   ];
 
+  const BUILDING_TYPES = ['house','apartment','warehouse','office','industrial'];
+
+  function prepareBuildingInteriors() {
+    interiorProps = [];
+    BUILDINGS.forEach((b, idx) => {
+      const type = BUILDING_TYPES[idx % BUILDING_TYPES.length];
+      const floors = (b.tw >= 9 && b.th >= 7) ? 2 : 1;
+      const hasRoof = floors > 1 || type === 'warehouse' || type === 'industrial';
+      b.kind = type;
+      b.floors = floors;
+      b.hasRoof = hasRoof;
+      b.door = { side: 'south', x: b.tx + Math.floor(b.tw / 2), y: b.ty + b.th };
+      b.rooms = makeBuildingRooms(b);
+      b.cover = makeBuildingCover(b, idx);
+      for (const c of b.cover) interiorProps.push(c);
+    });
+  }
+
+  function makeBuildingRooms(b) {
+    const rooms = [];
+    const x = b.tx * TILE, y = b.ty * TILE, w = b.tw * TILE, h = b.th * TILE;
+    const midX = x + w * 0.5;
+    const midY = y + h * 0.5;
+    if (b.tw >= 9) rooms.push({ x: midX, y: y + 14, w: 3, h: h - 28, orient: 'v', gapY: midY });
+    if (b.th >= 7) rooms.push({ x: x + 14, y: midY, w: w - 28, h: 3, orient: 'h', gapX: midX });
+    if (b.floors > 1) rooms.push({ stairs: true, x: x + w - 36, y: y + 22, w: 22, h: 42 });
+    return rooms;
+  }
+
+  function makeBuildingCover(b, seed) {
+    const rng = seededRng(seed * 91 + 13);
+    const list = [];
+    const x = b.tx * TILE, y = b.ty * TILE, w = b.tw * TILE, h = b.th * TILE;
+    const count = Math.max(3, Math.min(8, Math.floor((b.tw * b.th) / 12)));
+    const types = b.kind === 'warehouse'
+      ? ['crate','crate','shelf','barrier']
+      : b.kind === 'office'
+        ? ['desk','shelf','cabinet','barrier']
+        : ['table','sofa','cabinet','crate'];
+    for (let i = 0; i < count; i++) {
+      const px = x + 24 + rng() * Math.max(1, w - 48);
+      const py = y + 24 + rng() * Math.max(1, h - 52);
+      const type = types[Math.floor(rng() * types.length)];
+      const wide = type === 'sofa' || type === 'shelf' || type === 'barrier';
+      list.push({
+        x: px,
+        y: py,
+        w: wide ? 34 + rng() * 16 : 22 + rng() * 10,
+        h: wide ? 14 + rng() * 10 : 20 + rng() * 10,
+        type,
+        building: seed,
+        solid: true,
+        lootSpot: i % 2 === 0,
+      });
+    }
+    if (b.floors > 1) {
+      list.push({ x: x + w - 28, y: y + 42, w: 28, h: 42, type:'stairs', building: seed, solid:false, lootSpot:true });
+    }
+    return list;
+  }
+
   // ── Trees ─────────────────────────────────────────────────
   // { x, y — world px; r — canopy radius px; type: 'oak'|'pine'|'bush' }
   let trees = [];
 
   // ── Boulders ──────────────────────────────────────────────
   let boulders = [];
+  let interiorProps = [];
 
   // ── Blood splatters ───────────────────────────────────────
   let bloodSplatters = [];
@@ -301,6 +364,15 @@ window.royaleModule = (function () {
 
   // ── Camera ────────────────────────────────────────────────
   let cam = { x: 100*TILE, y: 100*TILE };
+  let moveVel = { x: 0, y: 0 };
+  let aimVel = 0;
+  let adsActive = false;
+  let jumpBoost = 0;
+  let recoilKick = 0;
+  let weaponSway = 0;
+  let healCharges = 0;
+  let damageIndicator = { life: 0, angle: 0 };
+  let pickupBanner = { text: '', life: 0 };
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -319,11 +391,14 @@ window.royaleModule = (function () {
     checkOrientation(); // set portrait rotation class immediately
 
     if (!mapTiles) { generateMap(); }
+    else if (!interiorProps.length) { prepareBuildingInteriors(); }
 
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
     gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
     paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
+    moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
+    damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
@@ -411,6 +486,12 @@ window.royaleModule = (function () {
       });
       throwBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
+
+    bindHoldButton('rl-ads-btn', () => { adsActive = true; }, () => { adsActive = false; });
+    bindTapButton('rl-crouch-btn', () => { stance = stance === 'crouch' ? 'stand' : 'crouch'; });
+    bindTapButton('rl-prone-btn', () => { stance = stance === 'prone' ? 'stand' : 'prone'; });
+    bindTapButton('rl-jump-btn', () => { if (stance !== 'prone') jumpBoost = Math.max(jumpBoost, 0.22); });
+    bindTapButton('rl-heal-btn', useHealKit);
 
     hideLoading();
 
@@ -547,6 +628,71 @@ window.royaleModule = (function () {
     if(b)b.style.display='none'; if(k)k.style.display='none';
   }
 
+  function bindTapButton(id, fn) {
+    const btn = document.getElementById(id);
+    if (!btn || btn.dataset.rlBound) return;
+    btn.dataset.rlBound = '1';
+    const press = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      btn.classList.add('pressed');
+      fn();
+      setTimeout(() => btn.classList.remove('pressed'), 130);
+    };
+    btn.addEventListener('touchstart', press, { passive:false });
+    btn.addEventListener('mousedown', press);
+  }
+
+  function bindHoldButton(id, down, up) {
+    const btn = document.getElementById(id);
+    if (!btn || btn.dataset.rlBound) return;
+    btn.dataset.rlBound = '1';
+    const start = (e) => { e.preventDefault(); e.stopPropagation(); btn.classList.add('pressed'); down(); };
+    const end = (e) => { e?.preventDefault?.(); e?.stopPropagation?.(); btn.classList.remove('pressed'); up(); };
+    btn.addEventListener('touchstart', start, { passive:false });
+    btn.addEventListener('touchend', end, { passive:false });
+    btn.addEventListener('touchcancel', end, { passive:false });
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+  }
+
+  function pointInRect(x, y, r) {
+    return x >= r.x - r.w/2 && x <= r.x + r.w/2 && y >= r.y - r.h/2 && y <= r.y + r.h/2;
+  }
+
+  function resolveInteriorCollision(entity, radius = PLAYER_R) {
+    for (const p of interiorProps) {
+      if (!p.solid) continue;
+      const left = p.x - p.w / 2 - radius;
+      const right = p.x + p.w / 2 + radius;
+      const top = p.y - p.h / 2 - radius;
+      const bottom = p.y + p.h / 2 + radius;
+      if (entity.x < left || entity.x > right || entity.y < top || entity.y > bottom) continue;
+      const dx = entity.x - p.x;
+      const dy = entity.y - p.y;
+      const pushX = (p.w / 2 + radius) - Math.abs(dx);
+      const pushY = (p.h / 2 + radius) - Math.abs(dy);
+      if (pushX < pushY) entity.x += (dx < 0 ? -pushX : pushX);
+      else entity.y += (dy < 0 ? -pushY : pushY);
+    }
+  }
+
+  function isInsideBuilding(x, y) {
+    return BUILDINGS.find((b) => x >= b.tx*TILE && x <= (b.tx+b.tw)*TILE && y >= b.ty*TILE && y <= (b.ty+b.th)*TILE) || null;
+  }
+
+  function nearestInteriorCover(x, y, maxDist) {
+    let best = null;
+    let bestD = maxDist * maxDist;
+    for (const p of interiorProps) {
+      if (!p.solid) continue;
+      const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+      if (d < bestD) { best = p; bestD = d; }
+    }
+    return best;
+  }
+
   // ── Game loop ─────────────────────────────────────────────
   function loop(ts) {
     if (!running) return;
@@ -605,10 +751,17 @@ window.royaleModule = (function () {
     const len = Math.sqrt(mx*mx+my*my);
     if (len > 1) { mx /= len; my /= len; }
 
-    // Try to move
-    const spd = STANCE_SPEED[stance];
-    const nx = player.x + mx * spd * dt;
-    const ny = player.y + my * spd * dt;
+    // Smooth mobile-shooter acceleration/deceleration.
+    const adsMul = adsActive ? 0.68 : 1;
+    const jumpMul = jumpBoost > 0 ? 1.08 : 1;
+    const spd = STANCE_SPEED[stance] * adsMul * jumpMul;
+    const targetVX = mx * spd;
+    const targetVY = my * spd;
+    const accel = len > 0.05 ? 15 : 18;
+    moveVel.x += (targetVX - moveVel.x) * Math.min(1, accel * dt);
+    moveVel.y += (targetVY - moveVel.y) * Math.min(1, accel * dt);
+    const nx = player.x + moveVel.x * dt;
+    const ny = player.y + moveVel.y * dt;
 
     // Clamp to map
     const cx = Math.max(PLAYER_R, Math.min(MAP_W*TILE-PLAYER_R, nx));
@@ -632,9 +785,11 @@ window.royaleModule = (function () {
         player.x += bdx * push; player.y += bdy * push;
       }
     }
+    resolveInteriorCollision(player, PLAYER_R);
+    jumpBoost = Math.max(0, jumpBoost - dt);
 
     // Update facing angle when moving
-    if (len > 0.05) player.angle = Math.atan2(my, mx);
+    if (len > 0.05 && !aimJoy.active && !adsActive) player.angle = Math.atan2(my, mx);
 
     // Trail particles
     if (len > 0.1 && playerSkin.trail !== 'none') {
@@ -682,6 +837,10 @@ window.royaleModule = (function () {
     updateAirdrop(dt);
     updatePickups();
     updateKillFeed(dt);
+    pickupBanner.life = Math.max(0, pickupBanner.life - dt);
+    damageIndicator.life = Math.max(0, damageIndicator.life - dt);
+    recoilKick = Math.max(0, recoilKick - dt * 12);
+    weaponSway += dt * (len > 0.1 ? 8 : 2);
     tickAirdropSpawn(dt);
     checkEndCondition();
     broadcastState();
@@ -784,6 +943,11 @@ window.royaleModule = (function () {
   }
 
   function drawBuilding(px, py, pw, ph, roof, wall) {
+    const meta = BUILDINGS.find((b) => b.tx*TILE === px && b.ty*TILE === py);
+    if (meta) {
+      drawEnterableBuilding(meta, px, py, pw, ph, roof, wall);
+      return;
+    }
     // Drop shadow
     ctx.fillStyle='rgba(0,0,0,0.20)';
     ctx.beginPath();
@@ -844,6 +1008,109 @@ window.royaleModule = (function () {
       ctx.fillStyle=shade(wall,8); ctx.fillRect(cx2,cy2-10,10,12);
       ctx.fillStyle=shade(wall,-10); ctx.fillRect(cx2+8,cy2-10,3,12);
       ctx.fillStyle='#222'; ctx.fillRect(cx2-1,cy2-11,12,3);
+    }
+  }
+
+  function drawEnterableBuilding(b, px, py, pw, ph, roof, wall) {
+    const floorGrad = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    floorGrad.addColorStop(0, b.kind === 'industrial' ? '#7c7f7d' : '#b8aa96');
+    floorGrad.addColorStop(1, b.kind === 'warehouse' ? '#8d806c' : '#d0c1aa');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(px, py, pw, ph);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    for (let gx = px + 24; gx < px + pw; gx += 24) {
+      ctx.beginPath(); ctx.moveTo(gx, py); ctx.lineTo(gx, py + ph); ctx.stroke();
+    }
+    for (let gy = py + 24; gy < py + ph; gy += 24) {
+      ctx.beginPath(); ctx.moveTo(px, gy); ctx.lineTo(px + pw, gy); ctx.stroke();
+    }
+
+    drawBuildingOuterWalls(px, py, pw, ph, wall);
+    drawInteriorWalls(b, px, py, pw, ph, wall);
+    drawInteriorProps(b);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(px + 7, py + 7, Math.max(16, pw * 0.18), 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.24)';
+    ctx.fillRect(px, py + ph - 4, pw, 4);
+    if (b.hasRoof) {
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(px + pw - 44, py + 8, 34, 22);
+      ctx.fillStyle = shade(roof, 18);
+      ctx.fillRect(px + pw - 40, py + 10, 26, 16);
+      ctx.fillStyle = '#e8d27a';
+      ctx.font = '9px monospace';
+      ctx.fillText('ROOF', px + pw - 39, py + 21);
+    }
+  }
+
+  function drawBuildingOuterWalls(px, py, pw, ph, wall) {
+    const doorW = Math.min(42, pw * 0.28);
+    const doorX = px + pw / 2 - doorW / 2;
+    ctx.strokeStyle = shade(wall, 18);
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.lineTo(px + pw, py);
+    ctx.moveTo(px, py); ctx.lineTo(px, py + ph);
+    ctx.moveTo(px + pw, py); ctx.lineTo(px + pw, py + ph);
+    ctx.moveTo(px, py + ph); ctx.lineTo(doorX, py + ph);
+    ctx.moveTo(doorX + doorW, py + ph); ctx.lineTo(px + pw, py + ph);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.strokeRect(px + 3, py + 3, pw - 6, ph - 6);
+    ctx.fillStyle = 'rgba(0,255,136,0.22)';
+    ctx.fillRect(doorX, py + ph - 5, doorW, 10);
+  }
+
+  function drawInteriorWalls(b, px, py, pw, ph, wall) {
+    ctx.strokeStyle = shade(wall, 40);
+    ctx.lineWidth = 4;
+    for (const r of b.rooms || []) {
+      if (r.stairs) {
+        ctx.fillStyle = 'rgba(50,55,62,0.76)';
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        for (let sy = r.y + 6; sy < r.y + r.h; sy += 7) {
+          ctx.beginPath(); ctx.moveTo(r.x + 3, sy); ctx.lineTo(r.x + r.w - 3, sy); ctx.stroke();
+        }
+        ctx.strokeStyle = shade(wall, 40);
+      } else if (r.orient === 'v') {
+        ctx.beginPath();
+        ctx.moveTo(r.x, r.y); ctx.lineTo(r.x, r.gapY - 17);
+        ctx.moveTo(r.x, r.gapY + 17); ctx.lineTo(r.x, r.y + r.h);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(r.x, r.y); ctx.lineTo(r.gapX - 17, r.y);
+        ctx.moveTo(r.gapX + 17, r.y); ctx.lineTo(r.x + r.w, r.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawInteriorProps(b) {
+    for (const p of b.cover || []) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(-p.w/2 + 3, -p.h/2 + 4, p.w, p.h);
+      const colors = {
+        crate:'#8a5c2d', shelf:'#5b4738', table:'#765438', sofa:'#536b8a',
+        cabinet:'#6b604e', barrier:'#8f9396', desk:'#70543f', stairs:'#40464f',
+      };
+      ctx.fillStyle = colors[p.type] || '#765438';
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-p.w/2 + 0.5, -p.h/2 + 0.5, p.w - 1, p.h - 1);
+      if (p.lootSpot) {
+        ctx.fillStyle = 'rgba(255,220,80,0.35)';
+        ctx.beginPath(); ctx.arc(p.w/2 - 5, -p.h/2 + 5, 3, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
     }
   }
 
@@ -1259,6 +1526,72 @@ window.royaleModule = (function () {
     drawZoneHUD();
     drawWeaponHUD();
     drawKillFeed();
+    drawShooterFeedback();
+  }
+
+  function drawShooterFeedback() {
+    const wkey = inventory[activeSlot];
+    const w = wkey ? WEAPONS[wkey] : null;
+    const sway = Math.sin(weaponSway) * (adsActive ? 2 : 6);
+    const recoil = recoilKick * 24;
+    const gunX = canvasW - 210 + sway;
+    const gunY = canvasH - 92 + recoil;
+    ctx.save();
+    ctx.globalAlpha = 0.94;
+    ctx.fillStyle = adsActive ? 'rgba(12,18,24,0.92)' : 'rgba(18,22,28,0.88)';
+    ctx.fillRect(gunX, gunY, 170, 28);
+    ctx.fillStyle = '#202832';
+    ctx.fillRect(gunX + 112, gunY - 13, 58, 12);
+    ctx.fillStyle = '#10151b';
+    ctx.fillRect(gunX + 22, gunY + 24, 50, 24);
+    ctx.fillStyle = muzzleFlash > 0 ? 'rgba(255,210,80,0.95)' : 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(gunX + 176, gunY + 5);
+    ctx.lineTo(gunX + 212 + muzzleFlash * 4, gunY + 14);
+    ctx.lineTo(gunX + 176, gunY + 23);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(w ? w.name.toUpperCase() : 'NO WEAPON', gunX, gunY - 8);
+    if (adsActive) {
+      ctx.strokeStyle = 'rgba(0,212,255,0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(canvasW/2, canvasH/2, 28, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+
+    if (damageIndicator.life > 0) {
+      const alpha = Math.min(1, damageIndicator.life / 0.85);
+      const rel = damageIndicator.angle - player.angle;
+      const ix = canvasW/2 + Math.cos(rel) * 94;
+      const iy = canvasH/2 + Math.sin(rel) * 70;
+      ctx.save();
+      ctx.translate(ix, iy);
+      ctx.rotate(rel + Math.PI/2);
+      ctx.fillStyle = `rgba(255,55,55,${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(0, -16); ctx.lineTo(-13, 13); ctx.lineTo(13, 13); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    if (pickupBanner.life > 0) {
+      const alpha = Math.min(1, pickupBanner.life / 0.35);
+      ctx.fillStyle = `rgba(0,0,0,${0.45 * alpha})`;
+      ctx.fillRect(canvasW/2 - 120, canvasH - 102, 240, 28);
+      ctx.strokeStyle = `rgba(0,212,255,${0.45 * alpha})`;
+      ctx.strokeRect(canvasW/2 - 120, canvasH - 102, 240, 28);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(pickupBanner.text, canvasW/2, canvasH - 84);
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(20, canvasH - 104, 110, 18);
+    ctx.fillStyle = '#a7ffcf';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(`HEALS ${healCharges}`, 28, canvasH - 91);
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -1430,12 +1763,26 @@ window.royaleModule = (function () {
 
   // ── Loot & crate spawning ────────────────────────────────
   const LOOT_POOL = ['pistol','smg','ar','shotgun','sniper','revolver','battlerifle','grenade','molotov','rpg'];
+  const WEAPON_RARITY = ['pistol','pistol','smg','smg','ar','ar','shotgun','revolver','battlerifle','sniper','grenade','grenade','molotov','molotov','rpg'];
   const SUPPLY_POOL = ['armor_light','armor_heavy','medkit','ammo_box'];
 
   function spawnLoot() {
     loot = []; crates = [];
     const rng = seededRng(99);
-    for (let i = 0; i < 140; i++) {
+    for (const p of interiorProps) {
+      if (!p.lootSpot || rng() > 0.82) continue;
+      const supply = rng() < 0.28;
+      const key = supply ? SUPPLY_POOL[Math.floor(rng()*SUPPLY_POOL.length)] : WEAPON_RARITY[Math.floor(rng()*WEAPON_RARITY.length)];
+      loot.push({
+        x: p.x + (rng()-0.5) * Math.max(8, p.w * 0.65),
+        y: p.y + (rng()-0.5) * Math.max(8, p.h * 0.65),
+        key,
+        ammo: WEAPONS[key] ? WEAPONS[key].ammo * (key === 'grenade' || key === 'molotov' ? 1 : 2) : 0,
+        supply,
+        indoor: true,
+      });
+    }
+    for (let i = 0; i < 125; i++) {
       const tx = 3 + rng()*(MAP_W-6), ty = 3 + rng()*(MAP_H-6);
       const tile = mapTiles[Math.floor(ty)][Math.floor(tx)];
       if (tile === T.WATER || tile === T.DEEP_WATER) continue;
@@ -1444,7 +1791,7 @@ window.royaleModule = (function () {
         const key = SUPPLY_POOL[Math.floor(rng()*SUPPLY_POOL.length)];
         loot.push({ x:tx*TILE, y:ty*TILE, key, ammo:0, supply:true });
       } else {
-        const key = LOOT_POOL[Math.floor(rng()*LOOT_POOL.length)];
+        const key = WEAPON_RARITY[Math.floor(rng()*WEAPON_RARITY.length)];
         loot.push({ x:tx*TILE, y:ty*TILE, key, ammo: WEAPONS[key].ammo*2 });
       }
     }
@@ -1499,12 +1846,16 @@ window.royaleModule = (function () {
       ammoCache[weaponKey]--;
       lastFireT[weaponKey] = now;
       muzzleFlash = 3;
+      recoilKick = Math.min(1, recoilKick + (w.recoil || 0.16));
+      player.angle += (Math.random() - 0.5) * (adsActive ? 0.01 : 0.025);
       const shakeMap={pistol:3,revolver:7,smg:2,ar:4,battlerifle:6,shotgun:9,sniper:12,rpg:0};
-      addShake(shakeMap[weaponKey]||3);
+      addShake((shakeMap[weaponKey]||3) * (adsActive ? 0.55 : 1));
     }
     if (w.pellets === 0) { throwItem(fromX, fromY, angle, weaponKey, ownerId); return; }
     for (let p = 0; p < w.pellets; p++) {
-      const a = angle + (Math.random()-0.5)*w.spread;
+      const moving = Math.hypot(moveVel.x, moveVel.y) > 50 ? 1.28 : 1;
+      const aimSpread = w.spread * STANCE_SPREAD[stance] * moving * (adsActive ? 0.55 : 1);
+      const a = angle + (Math.random()-0.5)*aimSpread;
       bullets.push({
         x:fromX, y:fromY,
         vx: Math.cos(a)*w.spd, vy: Math.sin(a)*w.spd,
@@ -1522,6 +1873,8 @@ window.royaleModule = (function () {
       vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd,
       z:0, vz: weaponKey==='rpg' ? 0 : 120,
       type:weaponKey, timer:0, ownerId,
+      fuse: weaponKey === 'grenade' ? 2.35 : 0,
+      bounces: 0,
       armed: weaponKey==='rpg',
     });
   }
@@ -1536,21 +1889,49 @@ window.royaleModule = (function () {
 
   function pickupLoot(item) {
     if (item.supply) {
-      if (item.key==='medkit')       { player.health=Math.min(player.maxHealth,player.health+60); killFeed.push({text:'Medkit +60 HP',life:2}); }
-      else if (item.key==='armor_light') { player.armor=Math.min(player.maxArmor,player.armor+50); killFeed.push({text:'Light Armor +50',life:2}); }
-      else if (item.key==='armor_heavy') { player.armor=Math.min(player.maxArmor,player.armor+100); killFeed.push({text:'Heavy Armor +100',life:2}); }
+      if (item.key==='medkit')       { healCharges=Math.min(3,healCharges+1); showPickup('Health kit ready'); killFeed.push({text:'Health kit picked up',life:2}); }
+      else if (item.key==='armor_light') { player.armor=Math.min(player.maxArmor,player.armor+50); showPickup('Light armor equipped'); killFeed.push({text:'Light Armor +50',life:2}); }
+      else if (item.key==='armor_heavy') { player.armor=Math.min(player.maxArmor,player.armor+100); showPickup('Heavy armor equipped'); killFeed.push({text:'Heavy Armor +100',life:2}); }
       else if (item.key==='ammo_box') {
         for (const k of inventory) ammoCache[k]=(ammoCache[k]||0)+WEAPONS[k].ammo*3;
+        ammoCache.grenade=(ammoCache.grenade||0)+1;
+        ammoCache.molotov=(ammoCache.molotov||0)+1;
+        showPickup('Ammo box');
         killFeed.push({text:'Ammo Box',life:2});
       }
+      return;
+    }
+    if (item.key === 'grenade' || item.key === 'molotov') {
+      ammoCache[item.key] = Math.min(WEAPONS[item.key].maxAmmo, (ammoCache[item.key]||0) + Math.max(1, item.ammo || 1));
+      activeThrowable = item.key;
+      const throwBtn = document.getElementById('rl-throw-btn');
+      if (throwBtn) throwBtn.textContent = item.key === 'grenade' ? '💣' : '🍾';
+      showPickup(`${WEAPONS[item.key].name} x${ammoCache[item.key]}`);
       return;
     }
     if (inventory.length < 2 && !inventory.includes(item.key)) {
       inventory.push(item.key);
       ammoCache[item.key] = (ammoCache[item.key]||0) + item.ammo;
+      showPickup(`${WEAPONS[item.key]?.name || item.key} picked up`);
     } else {
       ammoCache[item.key] = (ammoCache[item.key]||0) + item.ammo;
+      showPickup(`${WEAPONS[item.key]?.name || item.key} ammo`);
     }
+  }
+
+  function showPickup(text) {
+    pickupBanner.text = text;
+    pickupBanner.life = 2.2;
+  }
+
+  function useHealKit() {
+    if (gamePhase !== 'playing') return;
+    if (healCharges <= 0) { showPickup('No health kits'); return; }
+    if (player.health >= player.maxHealth) { showPickup('Health already full'); return; }
+    healCharges--;
+    player.health = Math.min(player.maxHealth, player.health + 55);
+    showPickup('Health kit used +55 HP');
+    killFeed.push({ text:'Health kit used', life:2 });
   }
 
   // ── Right joystick (aim) ──────────────────────────────────
@@ -1597,11 +1978,19 @@ window.royaleModule = (function () {
       if (b.dist > b.range || b.x<0||b.x>MAP_PX||b.y<0||b.y>MAP_PX) {
         bullets.splice(i,1); continue;
       }
+      let blocked = false;
+      for (const p of interiorProps) {
+        if (p.solid && pointInRect(b.x, b.y, p)) { blocked = true; break; }
+      }
+      if (blocked) {
+        spawnDmgNum(b.x, b.y - 8, '•', 'rgba(220,220,220,0.8)');
+        bullets.splice(i,1); continue;
+      }
       // Hit player
       if (b.owner !== localId) {
         const dx=b.x-player.x, dy=b.y-player.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
-          applyDamageToPlayer(b.dmg);
+          applyDamageToPlayer(b.dmg, b.x - b.vx * 0.08, b.y - b.vy * 0.08);
           addShake(6); spawnDmgNum(player.x, player.y-20, b.dmg, '#ff4444');
           bullets.splice(i,1); continue;
         }
@@ -1643,8 +2032,15 @@ window.royaleModule = (function () {
         }
         if (t.timer>4) { doExplosion(t.x,t.y,160,200); throwables.splice(i,1); continue; }
       } else if (t.z <= 0) {
-        if (t.type==='grenade') { doExplosion(t.x,t.y,120,120); throwables.splice(i,1); }
-        else if (t.type==='molotov') { fires.push({x:t.x,y:t.y,r:55,life:8,maxLife:8}); throwables.splice(i,1); }
+        if (t.type==='grenade') {
+          if (t.timer >= t.fuse || t.bounces >= 2) { doExplosion(t.x,t.y,120,120); throwables.splice(i,1); }
+          else {
+            t.z = 1;
+            t.vz = 70 * Math.pow(0.55, t.bounces);
+            t.vx *= 0.72; t.vy *= 0.72; t.bounces++;
+          }
+        }
+        else if (t.type==='molotov') { fires.push({x:t.x,y:t.y,r:62,life:8,maxLife:8}); throwables.splice(i,1); }
         else throwables.splice(i,1);
       }
     }
@@ -1653,11 +2049,19 @@ window.royaleModule = (function () {
   function doExplosion(x,y,r,dmg) {
     explosions.push({x,y,r:10,maxR:r,life:0.55,maxLife:0.55});
     const d2=(x-player.x)**2+(y-player.y)**2;
-    if (d2<r*r) { applyDamageToPlayer(dmg*Math.max(0,1-Math.sqrt(d2)/r)); addShake(18); }
+    if (d2<r*r) { applyDamageToPlayer(dmg*Math.max(0,1-Math.sqrt(d2)/r), x, y); addShake(18); }
     for (const bt of bots) {
       if (!bt.alive) continue;
       const bd2=(x-bt.x)**2+(y-bt.y)**2;
-      if (bd2<r*r) bt.hp=Math.max(0,bt.hp-dmg*Math.max(0,1-Math.sqrt(bd2)/r));
+      if (bd2<r*r) {
+        bt.hp=Math.max(0,bt.hp-dmg*Math.max(0,1-Math.sqrt(bd2)/r));
+        if (bt.hp <= 0) {
+          bt.alive=false; player.kills++;
+          spawnBlood(bt.x, bt.y);
+          coins+=15; saveCoins();
+          killFeed.push({text:`Explosion eliminated ${bt.name} (+15)`,life:4});
+        }
+      }
     }
   }
 
@@ -1666,7 +2070,20 @@ window.royaleModule = (function () {
       const f=fires[i]; f.life -= dt;
       if (f.life<=0) { fires.splice(i,1); continue; }
       const d2=(f.x-player.x)**2+(f.y-player.y)**2;
-      if (d2<f.r*f.r) applyDamageToPlayer(8*dt);
+      if (d2<f.r*f.r) applyDamageToPlayer(8*dt, f.x, f.y);
+      for (const bt of bots) {
+        if (!bt.alive) continue;
+        const bd2=(f.x-bt.x)**2+(f.y-bt.y)**2;
+        if (bd2<f.r*f.r) {
+          bt.hp = Math.max(0, bt.hp - 9*dt);
+          if (bt.hp <= 0) {
+            bt.alive=false; player.kills++;
+            spawnBlood(bt.x, bt.y);
+            coins+=15; saveCoins();
+            killFeed.push({text:`${bt.name} burned out (+15)`,life:4});
+          }
+        }
+      }
     }
   }
 
@@ -1765,10 +2182,21 @@ window.royaleModule = (function () {
   function drawLoot() {
     const ICONS = {pistol:'🔫',smg:'🔫',ar:'🔫',shotgun:'🔫',sniper:'🔫',revolver:'🔫',battlerifle:'🔫',grenade:'💣',molotov:'🍾',rpg:'🚀',medkit:'💊',armor_light:'🦺',armor_heavy:'🛡️',ammo_box:'📦'};
     for (const it of loot) {
-      ctx.fillStyle='rgba(255,220,0,0.18)';
-      ctx.beginPath(); ctx.arc(it.x,it.y,16,0,Math.PI*2); ctx.fill();
+      const pulse = 0.75 + Math.sin(gameTime * 4 + it.x * 0.01) * 0.25;
+      ctx.fillStyle=it.indoor ? `rgba(0,212,255,${0.10 + pulse*0.08})` : `rgba(255,220,0,${0.12 + pulse*0.08})`;
+      ctx.beginPath(); ctx.arc(it.x,it.y,16 + pulse*2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=it.supply ? 'rgba(80,255,150,0.7)' : 'rgba(255,235,120,0.62)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(it.x,it.y,16,0,Math.PI*2); ctx.stroke();
       ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(ICONS[it.key]||'?', it.x, it.y);
+      if (Math.hypot(player.x-it.x, player.y-it.y) < 95) {
+        ctx.fillStyle='rgba(0,0,0,0.58)';
+        ctx.fillRect(it.x-42,it.y+18,84,16);
+        ctx.fillStyle='#fff'; ctx.font='bold 9px monospace';
+        const label = it.supply ? it.key.replace('_',' ') : (WEAPONS[it.key]?.name || it.key);
+        ctx.fillText(label.toUpperCase(), it.x, it.y+29);
+      }
     }
     ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   }
@@ -2010,7 +2438,7 @@ window.royaleModule = (function () {
   }
 
   // ── Damage helper ─────────────────────────────────────────
-  function applyDamageToPlayer(rawDmg) {
+  function applyDamageToPlayer(rawDmg, sourceX = null, sourceY = null) {
     if (!player.alive) return;
     let dmg = rawDmg;
     if (player.armor > 0) {
@@ -2019,6 +2447,9 @@ window.royaleModule = (function () {
       dmg -= absorbed;
     }
     player.health = Math.max(0, player.health - dmg);
+    damageIndicator.life = 0.85;
+    damageIndicator.angle = sourceX == null ? player.angle + Math.PI : Math.atan2(sourceY - player.y, sourceX - player.x);
+    if (dmg > 2) spawnBlood(player.x, player.y);
     if (player.health <= 0) {
       player.alive = false;
       gamePhase = 'dead';
@@ -2040,7 +2471,7 @@ window.royaleModule = (function () {
 
   // ── Floating damage numbers ───────────────────────────────
   function spawnDmgNum(wx, wy, val, col) {
-    dmgNumbers.push({ x:wx, y:wy, val:Math.ceil(val), life:1.2, maxLife:1.2, col:col||'#ff4444' });
+    dmgNumbers.push({ x:wx, y:wy, val:Number.isFinite(val) ? Math.ceil(val) : String(val), life:1.2, maxLife:1.2, col:col||'#ff4444' });
   }
 
   function updateDmgNumbers(dt) {
@@ -2469,14 +2900,14 @@ window.royaleModule = (function () {
       if (!bt.weapon || bt.ammo<=0) {
         let closest=null, cdist=Infinity;
         for (const it of loot) {
-          if (it.supply) continue;
+          if (it.supply || it.key === 'grenade' || it.key === 'molotov') continue;
           const d=Math.sqrt((it.x-bt.x)**2+(it.y-bt.y)**2);
           if (d<cdist){cdist=d;closest=it;}
         }
         if (closest && cdist<400) {
           const al=Math.atan2(closest.y-bt.y,closest.x-bt.x);
           bt.x+=Math.cos(al)*130*dt; bt.y+=Math.sin(al)*130*dt; bt.angle=al;
-          if (cdist<30) { bt.weapon=closest.key; bt.ammo=WEAPONS[closest.key].ammo; loot.splice(loot.indexOf(closest),1); }
+          if (cdist<30 && WEAPONS[closest.key]) { bt.weapon=closest.key; bt.ammo=WEAPONS[closest.key].ammo; loot.splice(loot.indexOf(closest),1); }
           continue;
         }
       }
@@ -2487,9 +2918,18 @@ window.royaleModule = (function () {
 
       if (bt.state==='chase') {
         bt.angle=Math.atan2(dy,dx);
-        bt.x+=Math.cos(bt.angle)*125*dt; bt.y+=Math.sin(bt.angle)*125*dt;
+        const indoor = isInsideBuilding(bt.x, bt.y) || isInsideBuilding(player.x, player.y);
+        const flank = indoor ? Math.sin(gameTime * 1.7 + bt.x * 0.01) * 0.55 : 0;
+        const moveAngle = bt.angle + (distToPlayer < 130 ? Math.PI * 0.55 : flank);
+        const coverNear = nearestInteriorCover(bt.x, bt.y, 150);
+        if (coverNear && distToPlayer < 260 && bt.hp < 55) {
+          const ca = Math.atan2(coverNear.y - bt.y, coverNear.x - bt.x);
+          bt.x+=Math.cos(ca)*105*dt; bt.y+=Math.sin(ca)*105*dt;
+        } else {
+          bt.x+=Math.cos(moveAngle)*118*dt; bt.y+=Math.sin(moveAngle)*118*dt;
+        }
         if (distToPlayer<320 && bt.ammo>0 && now>bt.fireT) {
-          tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*0.14,bt.weapon||'pistol',bt.id);
+          tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*(indoor ? 0.09 : 0.14),bt.weapon||'pistol',bt.id);
           bt.ammo=Math.max(0,bt.ammo-1);
           bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*1.6;
         }
@@ -2516,6 +2956,7 @@ window.royaleModule = (function () {
           bt.x+=bdx*push; bt.y+=bdy*push;
         }
       }
+      resolveInteriorCollision(bt, PLAYER_R);
 
       const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (zd>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
@@ -2535,6 +2976,8 @@ window.royaleModule = (function () {
     gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
     paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
+    moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
+    damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;

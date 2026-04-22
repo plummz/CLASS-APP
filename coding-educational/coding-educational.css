@@ -1,0 +1,273 @@
+#page-coding-educational {
+  overflow-y: auto;
+  padding: 88px 24px 44px;
+}
+
+.coding-edu-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  color: #f5fbff;
+}
+
+.coding-edu-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.coding-edu-kicker {
+  color: var(--accent, #00d4ff);
+  font: 800 0.78rem 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.coding-edu-title {
+  margin: 4px 0 8px;
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 28px rgba(0, 212, 255, 0.28);
+}
+
+.coding-edu-sub {
+  max-width: 720px;
+  color: rgba(245, 251, 255, 0.72);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.coding-edu-search {
+  position: relative;
+}
+
+.coding-edu-search input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 18px;
+  padding: 0 18px 0 48px;
+  background: rgba(5, 14, 32, 0.62);
+  color: #fff;
+  outline: none;
+  box-shadow: 0 20px 55px rgba(0,0,0,0.22), inset 0 0 22px rgba(255,255,255,0.035);
+  backdrop-filter: blur(18px);
+}
+
+.coding-edu-search::before {
+  content: "⌕";
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent, #00d4ff);
+  font-size: 1.3rem;
+  z-index: 1;
+}
+
+.coding-edu-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin: 14px 0 22px;
+}
+
+.coding-edu-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: rgba(255,255,255,0.62);
+  font-size: 0.92rem;
+}
+
+.coding-edu-crumb {
+  border: 0;
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 7px 11px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.coding-edu-crumb:hover {
+  transform: translateY(-1px);
+  background: rgba(0, 212, 255, 0.18);
+}
+
+.coding-edu-back {
+  border: 1px solid rgba(0,212,255,0.35);
+  background: rgba(0, 212, 255, 0.12);
+  color: #dffaff;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coding-edu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.coding-edu-card {
+  --card-bg: linear-gradient(135deg, #0c2440, #120827);
+  min-height: 190px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 22px;
+  padding: 20px;
+  color: #fff;
+  cursor: pointer;
+  background:
+    linear-gradient(180deg, rgba(2,5,16,0.18), rgba(2,5,16,0.86)),
+    radial-gradient(circle at 20% 10%, rgba(0,212,255,0.22), transparent 34%),
+    var(--card-bg);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 22px 65px rgba(0,0,0,0.32), inset 0 0 26px rgba(255,255,255,0.035);
+  backdrop-filter: blur(18px);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.coding-edu-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,212,255,0.16), transparent 45%, rgba(142,79,255,0.18));
+  opacity: 0.8;
+}
+
+.coding-edu-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0,212,255,0.55);
+  box-shadow: 0 28px 80px rgba(0,0,0,0.38), 0 0 32px rgba(0,212,255,0.14);
+}
+
+.coding-edu-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.coding-edu-card h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+}
+
+.coding-edu-card p {
+  margin: 0;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.45;
+}
+
+.coding-edu-card-meta,
+.coding-edu-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.coding-edu-pill {
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.86);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.coding-edu-empty {
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.72);
+  text-align: center;
+}
+
+.coding-edu-lesson {
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px;
+  padding: clamp(18px, 4vw, 34px);
+  background: rgba(4, 12, 28, 0.74);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.34);
+  backdrop-filter: blur(22px);
+}
+
+.coding-edu-lesson h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.coding-edu-lesson-section {
+  margin-top: 22px;
+}
+
+.coding-edu-lesson-section h3 {
+  margin: 0 0 10px;
+  color: var(--accent, #00d4ff);
+}
+
+.coding-edu-lesson p,
+.coding-edu-lesson li {
+  color: rgba(255,255,255,0.82);
+  line-height: 1.65;
+}
+
+.coding-edu-code {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border-radius: 16px;
+  padding: 16px;
+  background: #050914;
+  border: 1px solid rgba(0,212,255,0.18);
+  color: #e8f6ff;
+  font: 0.9rem/1.55 Consolas, 'Courier New', monospace;
+}
+
+.coding-edu-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coding-edu-source {
+  color: #dffaff;
+  text-decoration: none;
+  border: 1px solid rgba(0,212,255,0.28);
+  background: rgba(0,212,255,0.09);
+  border-radius: 999px;
+  padding: 7px 11px;
+}
+
+@media (max-width: 760px) {
+  #page-coding-educational {
+    padding: 76px 14px 30px;
+  }
+  .coding-edu-hero {
+    grid-template-columns: 1fr;
+  }
+  .coding-edu-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .coding-edu-grid {
+    grid-template-columns: 1fr;
+  }
+  .coding-edu-card {
+    min-height: 168px;
+  }
+}

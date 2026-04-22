@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.9';
+const APP_VERSION = '1.3.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons',
+    summary: 'Added a new in-app CODING LESSONS feature with local beginner lessons, glass cards, breadcrumbs, and search.',
+    changes: [
+      'Added CODING LESSONS below CODE LAB in the sidebar.',
+      'Created local structured lesson data for programming, web, databases, deployment, Git, cybersecurity, networking, Linux, APIs, mobile, UI/UX, cloud, testing, and DSA.',
+      'Preloaded detailed beginner lessons for Java, HTML, CSS, JavaScript, Python, Git Basics, Cybersecurity Basics, and SQL Basics.',
+      'Added in-app lesson rendering with summaries, key points, code examples, recaps, and source attribution.',
+      'Added glassmorphism folder cards with remote background images and a local fallback image.'
+    ]
+  },
   {
     version: '1.2.9',
     date: 'April 23, 2026',
@@ -2141,6 +2154,7 @@ const pageConfig = {
   ai:       { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🤖 AI Assistants' },
 };
 pageConfig.codelab = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'CODE LAB' };
+pageConfig['coding-educational'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📚 CODING LESSONS' };
 pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'PAC-MAN' };
 
 let currentPage = 'announcement';
@@ -2171,11 +2185,11 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
-  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab') ? 'none' : '';
+  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -2226,6 +2240,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'witfb') closeSocialPage();
   if (pageName === 'outputai') fetchSharedAIOutputs();
   if (pageName === 'codelab') window.initCodeLab?.();
+  if (pageName === 'coding-educational') window.initCodingEducational?.();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
 };

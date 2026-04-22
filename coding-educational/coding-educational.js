@@ -79,6 +79,82 @@ window.codingEducationalModule = (function () {
       .replace(/'/g, '&#039;');
   }
 
+  function asArray(value) {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+  }
+
+  function renderTerms(terms) {
+    const items = asArray(terms);
+    if (!items.length) return '';
+    return `
+      <section class="coding-edu-lesson-section">
+        <h3>Terms to Know</h3>
+        <dl class="coding-edu-terms">
+          ${items.map((term) => `
+            <div>
+              <dt>${escapeHTML(term.term || term.name || '')}</dt>
+              <dd>${escapeHTML(term.definition || term.meaning || '')}</dd>
+            </div>
+          `).join('')}
+        </dl>
+      </section>
+    `;
+  }
+
+  function renderParagraphSection(title, paragraphs) {
+    const items = asArray(paragraphs).filter(Boolean);
+    if (!items.length) return '';
+    return `
+      <section class="coding-edu-lesson-section">
+        <h3>${escapeHTML(title)}</h3>
+        ${items.map((text) => `<p>${escapeHTML(text)}</p>`).join('')}
+      </section>
+    `;
+  }
+
+  function renderBreakdown(items) {
+    const parts = asArray(items);
+    if (!parts.length) return '';
+    return `
+      <section class="coding-edu-lesson-section">
+        <h3>Item-by-Item Breakdown</h3>
+        <div class="coding-edu-breakdown">
+          ${parts.map((item) => `
+            <div class="coding-edu-breakdown-item">
+              <h4>${escapeHTML(item.item || item.title || '')}</h4>
+              <p>${escapeHTML(item.explanation || '')}</p>
+              ${item.syntax ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.syntax)}</code></pre>` : ''}
+              ${item.example ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.example)}</code></pre>` : ''}
+              ${item.output ? `<p class="coding-edu-output"><strong>Output/result:</strong> ${escapeHTML(item.output)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderExamples(examples) {
+    const items = asArray(examples);
+    if (!items.length) return '';
+    return `
+      <section class="coding-edu-lesson-section">
+        <div class="coding-edu-code-title">
+          <h3>Examples</h3>
+          <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy First Example</button>
+        </div>
+        ${items.map((example, index) => `
+          <div class="coding-edu-example" data-example-index="${index}">
+            <h4>${escapeHTML(example.title || `Example ${index + 1}`)}</h4>
+            <pre class="coding-edu-code"><code>${escapeHTML(example.code || '')}</code></pre>
+            ${example.output ? `<p class="coding-edu-output"><strong>Output/result:</strong> ${escapeHTML(example.output)}</p>` : ''}
+            ${example.explanation ? `<p>${escapeHTML(example.explanation)}</p>` : ''}
+          </div>
+        `).join('')}
+      </section>
+    `;
+  }
+
   function lessonKey(categoryId, subfolderId, chapterId, lessonId) {
     return `${categoryId}/${subfolderId}/${chapterId}/${lessonId}`;
   }
@@ -257,17 +333,27 @@ window.codingEducationalModule = (function () {
           </div>
         </div>
         <h2>${escapeHTML(lesson.title)}</h2>
-        <p>${escapeHTML(lesson.summary)}</p>
+        <p>${escapeHTML(lesson.summary || lesson.overview)}</p>
+        ${renderParagraphSection('Overview', lesson.overview)}
+        ${renderTerms(lesson.termsToKnow)}
+        ${renderParagraphSection('Detailed Explanation', lesson.detailedExplanation)}
+        ${renderBreakdown(lesson.breakdown)}
+        ${renderParagraphSection('Syntax', lesson.syntax)}
         <section class="coding-edu-lesson-section">
           <h3>Key Points</h3>
           <ul>${(lesson.keyPoints || []).map((point) => `<li>${escapeHTML(point)}</li>`).join('')}</ul>
         </section>
-        <section class="coding-edu-lesson-section">
+        ${lesson.examples ? renderExamples(lesson.examples) : `<section class="coding-edu-lesson-section">
           <div class="coding-edu-code-title">
             <h3>${escapeHTML(lesson.example?.title || 'Example')}</h3>
             <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy</button>
           </div>
           <pre class="coding-edu-code"><code>${escapeHTML(lesson.example?.code || '')}</code></pre>
+        </section>`}
+        ${renderParagraphSection('Explanation of Output / Result', lesson.outputExplanation)}
+        <section class="coding-edu-lesson-section">
+          <h3>Common Mistakes</h3>
+          <ul>${(lesson.commonMistakes || []).map((point) => `<li>${escapeHTML(point)}</li>`).join('')}</ul>
         </section>
         <section class="coding-edu-lesson-section">
           <h3>Recap</h3>
@@ -344,8 +430,29 @@ window.codingEducationalModule = (function () {
     preloadCardImages();
   }
 
+  function searchableText(item) {
+    const chunks = [
+      item.title,
+      item.description,
+      item.summary,
+      item.overview,
+      item.syntax,
+      item.recap,
+      ...(item.tags || []),
+      ...(item.keywords || []),
+      ...(item.keyPoints || []),
+      ...asArray(item.detailedExplanation),
+      ...asArray(item.outputExplanation),
+      ...(item.commonMistakes || []),
+      ...(item.termsToKnow || []).flatMap((term) => [term.term, term.definition]),
+      ...(item.breakdown || []).flatMap((part) => [part.item, part.explanation, part.syntax, part.example, part.output]),
+      ...(item.examples || []).flatMap((example) => [example.title, example.code, example.output, example.explanation]),
+    ];
+    return chunks.filter(Boolean).join(' ').toLowerCase();
+  }
+
   function matches(item, query) {
-    return [item.title, item.description, item.summary, ...(item.tags || []), ...(item.keyPoints || [])].join(' ').toLowerCase().includes(query);
+    return searchableText(item).includes(query);
   }
 
   function handleClick(event) {
@@ -389,7 +496,10 @@ window.codingEducationalModule = (function () {
       route = { categoryId: el.dataset.categoryId, subfolderId: el.dataset.subfolderId, chapterId: el.dataset.chapterId, lessonId: el.dataset.lessonId, quiz: false, page: 0 };
     }
     if (action === 'copy-code') {
-      const code = getLesson()?.example?.code || '';
+      const code = event.target.closest('.coding-edu-lesson-section')?.querySelector('.coding-edu-code code')?.textContent
+        || getLesson()?.examples?.[0]?.code
+        || getLesson()?.example?.code
+        || '';
       navigator.clipboard?.writeText(code).catch(() => {});
     }
     if (action === 'submit-quiz') {

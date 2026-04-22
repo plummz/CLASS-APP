@@ -327,4 +327,296 @@ const codingEducationalData = (function () {
   ];
 })();
 
+(function expandCodingEducationalLibrary() {
+  'use strict';
+
+  const sources = {
+    mdn: { name: 'MDN Web Docs', url: 'https://developer.mozilla.org/' },
+    oracle: { name: 'Oracle Java Tutorials', url: 'https://docs.oracle.com/javase/tutorial/' },
+    python: { name: 'Python Official Documentation', url: 'https://docs.python.org/3/' },
+    git: { name: 'Git Documentation', url: 'https://git-scm.com/doc' },
+    owasp: { name: 'OWASP Foundation', url: 'https://owasp.org/www-project-top-ten/' },
+    postgres: { name: 'PostgreSQL Documentation', url: 'https://www.postgresql.org/docs/' },
+    linux: { name: 'Linux Foundation Resources', url: 'https://www.linuxfoundation.org/resources/' },
+    cloud: { name: 'AWS Cloud Concepts', url: 'https://aws.amazon.com/what-is-cloud-computing/' },
+  };
+
+  function slug(value) {
+    return String(value).toLowerCase().replace(/c\+\+/g, 'cpp').replace(/c#/g, 'csharp').replace(/[^a-z0-9+&|!<>=?:%#.-]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  function sourceFor(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('java') && !lower.includes('javascript')) return [sources.oracle];
+    if (lower.includes('python')) return [sources.python];
+    if (lower.includes('sql') || lower.includes('database') || lower.includes('crud') || lower.includes('keys')) return [sources.postgres];
+    if (lower.includes('git') || lower.includes('branch') || lower.includes('merge') || lower.includes('repositories')) return [sources.git];
+    if (lower.includes('cyber') || lower.includes('password') || lower.includes('phishing') || lower.includes('owasp') || lower.includes('secure')) return [sources.owasp];
+    if (lower.includes('linux') || lower.includes('command') || lower.includes('operating') || lower.includes('permissions')) return [sources.linux];
+    if (lower.includes('cloud') || lower.includes('hosting') || lower.includes('storage') || lower.includes('render') || lower.includes('firebase') || lower.includes('supabase')) return [sources.cloud];
+    return [sources.mdn];
+  }
+
+  function syntaxFor(moduleTitle, topic) {
+    const m = moduleTitle.toLowerCase();
+    const t = topic.toLowerCase();
+    if (m.includes('java') && !m.includes('javascript')) return t.includes('method') ? 'returnType methodName(parameters) { ... }' : 'type name = value;';
+    if (m.includes('html')) return t.includes('attribute') || ['id','class','href','src','alt','title','target','style'].some((x) => t.includes(x)) ? '<tag attribute="value">content</tag>' : '<tag>content</tag>';
+    if (m.includes('css')) return 'selector { property: value; }';
+    if (m.includes('javascript') || m.includes('typescript')) return 'const value = input;\nfunction action(value) { return value; }';
+    if (m.includes('python')) return 'name = value\ndef action(value):\n    return value';
+    if (m.includes('sql') || m.includes('database')) return 'SELECT column FROM table WHERE condition;';
+    if (m.includes('git')) return 'git status\ngit add .\ngit commit -m "message"';
+    if (m.includes('linux')) return 'pwd\nls\ncd folder';
+    return 'concept -> example -> result';
+  }
+
+  function cssValue(topic) {
+    const t = topic.toLowerCase();
+    if (t.includes('background-color')) return 'background-color: #0f172a;';
+    if (t.includes('background-image')) return 'background-image: linear-gradient(135deg, #0ea5e9, #22c55e);';
+    if (t.includes('width') || t.includes('height')) return 'width: 240px;\n  height: 120px;';
+    if (t.includes('margin')) return 'margin: 16px;';
+    if (t.includes('padding')) return 'padding: 16px;';
+    if (t.includes('border-radius')) return 'border-radius: 12px;';
+    if (t.includes('border')) return 'border: 2px solid #38bdf8;';
+    if (t.includes('font-size')) return 'font-size: 1.2rem;';
+    if (t.includes('font-family')) return 'font-family: Arial, sans-serif;';
+    if (t.includes('text-align')) return 'text-align: center;';
+    if (t.includes('display')) return 'display: flex;';
+    if (t.includes('position')) return 'position: relative;';
+    if (t.includes('z-index')) return 'z-index: 10;';
+    if (t.includes('overflow')) return 'overflow: hidden;';
+    if (t.includes('opacity')) return 'opacity: 0.85;';
+    if (t.includes('box-shadow')) return 'box-shadow: 0 12px 30px rgba(0,0,0,0.25);';
+    if (t.includes('flex')) return 'display: flex;\n  justify-content: center;\n  align-items: center;';
+    if (t.includes('grid')) return 'display: grid;\n  grid-template-columns: repeat(3, 1fr);';
+    return 'color: #0ea5e9;';
+  }
+
+  function codeFor(moduleTitle, topic) {
+    const safe = topic.replace(/["`]/g, '').replace(/\s+/g, ' ').trim();
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('java') && !m.includes('javascript')) return `public class Main {\n  public static void main(String[] args) {\n    System.out.println("${safe}");\n  }\n}`;
+    if (m.includes('html')) return `<section class="lesson">\n  <h1>${safe}</h1>\n  <p>This page demonstrates ${safe}.</p>\n</section>`;
+    if (m.includes('css')) return `.lesson {\n  ${cssValue(topic)}\n}`;
+    if (m.includes('javascript') || m.includes('typescript')) return `const topic = "${safe}";\nconsole.log(topic);`;
+    if (m.includes('python')) return `topic = "${safe}"\nprint(topic)`;
+    if (m.includes('sql') || m.includes('database')) return `SELECT '${safe}' AS topic;`;
+    if (m.includes('git')) return `git status\ngit add .\ngit commit -m "practice ${safe}"`;
+    if (m.includes('linux')) return `pwd\nls\nmkdir ${slug(safe)}`;
+    if (m.includes('api')) return `fetch('/api/${slug(safe)}')\n  .then(response => response.json())\n  .then(data => console.log(data));`;
+    return `Practice: ${safe}\nCheck: explain the result`;
+  }
+
+  function resultFor(moduleTitle, topic) {
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('css')) return `The selected element visually changes based on ${topic}.`;
+    if (m.includes('html')) return `The browser renders a visible section for ${topic}.`;
+    if (m.includes('sql') || m.includes('database')) return `A small result table is returned for ${topic}.`;
+    if (m.includes('git') || m.includes('linux')) return `The terminal shows status or file information related to ${topic}.`;
+    return `${topic}`;
+  }
+
+  function item(name, explanation, example, output) {
+    return { item: name, explanation, syntax: name, example: example || '', output: output || '' };
+  }
+
+  function examples(moduleTitle, topic) {
+    return [
+      { title: `${topic} - Basic`, code: codeFor(moduleTitle, topic), output: resultFor(moduleTitle, topic), explanation: `This is the smallest version of ${topic}. It focuses on the main pattern first.` },
+      { title: `${topic} - Changed Value`, code: codeFor(moduleTitle, `${topic} changed value`), output: resultFor(moduleTitle, `${topic} changed value`), explanation: `This version changes one value so students can compare the result.` },
+      { title: `${topic} - Practice`, code: codeFor(moduleTitle, `${topic} practice`), output: resultFor(moduleTitle, `${topic} practice`), explanation: `This classroom practice version is meant to be copied, edited, and tested.` },
+    ];
+  }
+
+  function richLesson(moduleTitle, chapterTitle, topicSpec) {
+    const topic = typeof topicSpec === 'string' ? topicSpec : topicSpec.title;
+    const customItems = typeof topicSpec === 'string' ? null : topicSpec.items;
+    const customKeywords = typeof topicSpec === 'string' ? [] : (topicSpec.keywords || []);
+    const sourceList = sourceFor(moduleTitle);
+    const lessonExamples = (typeof topicSpec === 'string' ? null : topicSpec.examples) || examples(moduleTitle, topic);
+    const breakdown = (customItems && customItems.length ? customItems : [
+      item('Purpose', `${topic} solves a specific beginner problem in ${moduleTitle}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item('Syntax Pattern', `The syntax shows the order of words, symbols, or values used by ${topic}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item('Result Check', `The result tells you whether ${topic} was used correctly.`, codeFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+    ]).map((part) => ({
+      item: part.item,
+      explanation: part.explanation,
+      syntax: part.syntax || syntaxFor(moduleTitle, part.item),
+      example: part.example || codeFor(moduleTitle, part.item),
+      output: part.output || resultFor(moduleTitle, part.item),
+    }));
+    return {
+      id: slug(`${moduleTitle}-${chapterTitle}-${topic}`),
+      title: topic,
+      readingTime: '8 min',
+      tags: ['Beginner', moduleTitle, chapterTitle],
+      keywords: [moduleTitle, chapterTitle, topic, ...customKeywords, ...breakdown.flatMap((part) => [part.item, part.syntax, part.example, part.output])].filter(Boolean),
+      summary: `${topic} is a beginner lesson in ${moduleTitle}. It belongs to the ${chapterTitle} chapter. The goal is to understand the idea, write the syntax correctly, and explain the result. Practice by changing one small value at a time.`,
+      overview: `${topic} appears often in real student projects and classroom exercises. Beginners should learn what it means, when to use it, and what result to expect. This lesson starts with plain language before moving into syntax. It also includes multiple examples so you compare patterns instead of memorizing one line.`,
+      termsToKnow: [
+        { term: 'Syntax', definition: 'The exact writing pattern that the language, browser, command, or query expects.' },
+        { term: 'Value', definition: 'The text, number, setting, command, or data being used.' },
+        { term: 'Result', definition: 'What appears after the code, markup, command, or query runs.' },
+      ],
+      detailedExplanation: [
+        `${topic} should be studied as a small tool with a purpose, a pattern, and a result. If you can name those three parts, you can usually debug beginner mistakes faster. Do not rush into memorizing; read the symbols and words carefully.`,
+        `In ${moduleTitle}, many errors happen because a student copies syntax without checking meaning. A stronger habit is to predict the result before running the example. When the actual result is different, compare spelling, punctuation, order, and values.`,
+        `Use this lesson like a textbook page. Read the breakdown first, run the examples second, and then explain the output in your own words. That explanation is what turns a copied example into real understanding.`,
+      ],
+      breakdown,
+      syntax: syntaxFor(moduleTitle, topic),
+      keyPoints: [
+        `${topic} has a clear purpose in ${moduleTitle}.`,
+        'Small syntax details matter because one missing symbol can change the result.',
+        'You should run at least three examples before moving on.',
+        'The output or visual result is part of the lesson, not an extra step.',
+      ],
+      example: { title: `${topic} Example`, code: lessonExamples[0].code },
+      examples: lessonExamples,
+      outputExplanation: [
+        `The result shows whether ${topic} was written correctly. Text output should match the expected words or values. Visual output should match the described change on screen.`,
+        `If the result is wrong, compare the syntax and values with the examples. Debug one small change at a time so the cause becomes easier to find.`,
+      ],
+      commonMistakes: [
+        `Using ${topic} without knowing what result it should create.`,
+        'Forgetting capitalization, quotes, brackets, semicolons, indentation, or the correct order of values.',
+      ],
+      recap: `${topic} is part of the ${moduleTitle} foundation. You should know the terms, syntax, examples, result, and common mistakes before continuing.`,
+      sources: sourceList,
+    };
+  }
+
+  function makeQuiz(chapterId, lessons) {
+    return lessons.slice(0, 5).map((lesson, index) => ({
+      id: `${chapterId}-q${index + 1}`,
+      question: `Which statement best describes ${lesson.title}?`,
+      choices: [lesson.recap, 'It should be memorized without running examples.', 'It is unrelated to beginner projects.', 'It only changes decoration and never affects results.'],
+      answerIndex: 0,
+    }));
+  }
+
+  function chapter(moduleTitle, spec) {
+    const lessons = spec.topics.map((topic) => richLesson(moduleTitle, spec.title, topic));
+    while (lessons.length < 5) lessons.push(richLesson(moduleTitle, spec.title, `${spec.title} Practice ${lessons.length + 1}`));
+    const chapterId = slug(`${moduleTitle}-${spec.title}`);
+    return { id: chapterId, title: spec.title, description: spec.description || `Study ${spec.title} in ${moduleTitle} with textbook-style lessons.`, level: 'Beginner', lessons, quiz: makeQuiz(chapterId, lessons) };
+  }
+
+  function op(parts) {
+    return parts.map(([name, explanation, example, output]) => item(name, explanation, example, output));
+  }
+
+  const javaPlan = [
+    ['Introduction', ['What Java Is','JVM and Portability','Compiling and Running','Java in School Projects','Reading Java Errors']],
+    ['Setup', ['Installing a JDK','Using javac','Using java','Project Folders','Classpath Basics']],
+    ['Program Structure', ['Class Declaration','Main Method','Statements','Comments','Package Basics']],
+    ['Variables', ['Declaring Variables','Assigning Values','final Constants','Naming Rules','Variable Scope']],
+    ['Data Types', ['int','double','char','boolean','String as Text']],
+    ['Operators', [
+      { title: 'Arithmetic Operators (+, -, *, /, %)', keywords: ['+', '-', '*', '/', '%', 'modulo'], items: op([['+', 'Adds numbers or joins text.', 'System.out.println(5 + 3);', '8'], ['-', 'Subtracts the right value from the left value.', 'System.out.println(9 - 4);', '5'], ['*', 'Multiplies values.', 'System.out.println(6 * 7);', '42'], ['/', 'Divides values. Integer division removes decimals.', 'System.out.println(10 / 3);', '3'], ['%', 'Returns the remainder after division.', 'System.out.println(10 % 3);', '1']]) },
+      { title: 'Relational Operators (==, !=, >, <, >=, <=)', keywords: ['==','!=','>','<','>=','<='], items: op([['==', 'Checks equality.', 'System.out.println(5 == 5);', 'true'], ['!=', 'Checks not equal.', 'System.out.println(5 != 3);', 'true'], ['>', 'Checks greater than.', 'System.out.println(7 > 4);', 'true'], ['<', 'Checks less than.', 'System.out.println(2 < 9);', 'true'], ['>=', 'Checks greater than or equal.', 'System.out.println(5 >= 5);', 'true'], ['<=', 'Checks less than or equal.', 'System.out.println(4 <= 6);', 'true']]) },
+      { title: 'Logical Operators (&&, ||, !)', keywords: ['&&','||','!'], items: op([['&&', 'True only when both conditions are true.', 'System.out.println(90 >= 75 && true);', 'true'], ['||', 'True when at least one condition is true.', 'System.out.println(false || true);', 'true'], ['!', 'Reverses a boolean value.', 'System.out.println(!false);', 'true']]) },
+      { title: 'Assignment Operators (=, +=, -=, *=, /=)', keywords: ['=','+=','-=','*=','/='], items: op([['=', 'Stores a value.', 'int score = 10;', 'score becomes 10'], ['+=', 'Adds and stores.', 'score += 5;', 'score becomes 15'], ['-=', 'Subtracts and stores.', 'score -= 2;', 'score becomes 8'], ['*=', 'Multiplies and stores.', 'score *= 3;', 'score becomes 30'], ['/=', 'Divides and stores.', 'score /= 2;', 'score becomes 5']]) },
+      { title: 'Unary Operators (++, --)', keywords: ['++','--'], items: op([['++', 'Increases by one.', 'int x = 1; x++; System.out.println(x);', '2'], ['--', 'Decreases by one.', 'int x = 2; x--; System.out.println(x);', '1']]) },
+      { title: 'Ternary Operator (?:)', keywords: ['?:','?',':'], items: op([['?:', 'Chooses one of two values based on a condition.', 'String result = grade >= 75 ? "Pass" : "Fail";', 'Pass if grade is at least 75']]) },
+    ]],
+    ['Input/Output', ['System.out.print','System.out.println','Scanner Input','Reading Numbers','Reading Strings']],
+    ['Conditions', ['if Statement','else Statement','else if Ladder','Nested Conditions','switch Statement']],
+    ['Loops', ['for Loop','while Loop','do while Loop','break and continue','Nested Loops']],
+    ['Methods', ['Method Declaration','Parameters','Return Values','void Methods','Method Overloading']],
+    ['Arrays', ['Creating Arrays','Array Indexes','Array Length','Looping Arrays','Two-Dimensional Arrays']],
+    ['Strings', ['String Creation','length()','charAt()','equals()','substring()']],
+    ['OOP', ['Classes and Objects','Fields','Constructors','Encapsulation','Inheritance']],
+    ['Exceptions', ['try and catch','finally','throw','Checked Exceptions','Reading Stack Traces']],
+    ['File Handling', ['Reading Files','Writing Files','Paths','Closing Resources','Handling File Errors']],
+    ['Swing Basics', ['JFrame','JPanel','JButton','JLabel and JTextField','Event Listeners']],
+  ];
+
+  const htmlPlan = [
+    ['Structure', ['DOCTYPE','html Element','head Element','body Element','Page Nesting']],
+    ['Text Elements', ['Headings h1 to h6','Paragraphs','Strong and Emphasis','Line Breaks','Blockquote']],
+    ['Links', ['Anchor Element','href Attribute','Relative Links','External Links','Email and Phone Links']],
+    ['Images', ['img Element','src Attribute','alt Attribute','Image Size','Figure and Figcaption']],
+    ['Lists', ['Unordered Lists','Ordered Lists','List Items','Nested Lists','Description Lists']],
+    ['Tables', ['table Element','tr Rows','th Headers','td Cells','caption and scope']],
+    ['Forms', ['form Element','label Element','input Types','textarea and select','button Element']],
+    ['Semantic HTML', ['header','main','section','article','footer']],
+    ['Media', ['audio Element','video Element','source Element','track Element','Media Fallback Text']],
+    ['Attributes', ['id Attribute','class Attribute','href Attribute','src Attribute','alt Attribute','title Attribute','target Attribute','style Attribute']],
+  ];
+
+  const cssProps = ['color','background-color','background-image','width / height','margin','padding','border','border-radius','font-size','font-family','text-align','display','position','z-index','overflow','opacity','box-shadow','flex properties','grid properties'].map((name) => ({ title: name, keywords: [name], items: [item(name, `${name} controls one visual part of an element. Common values should be tested in the browser.`, `.box {\n  ${cssValue(name)}\n}`, `The selected element changes according to ${name}.`)] }));
+  const cssPlan = [
+    ['Selectors', ['Type Selectors','Class Selectors','ID Selectors','Attribute Selectors','Pseudo-class Selectors']],
+    ['Box Model', ['Content Area','width / height','margin','padding','border']],
+    ['Properties', cssProps],
+    ['Flexbox', ['display flex','flex-direction','justify-content','align-items','gap']],
+    ['Grid', ['display grid','grid-template-columns','grid-template-rows','grid-area','minmax()']],
+    ['Responsive Design', ['Viewport','Media Queries','Fluid Widths','Responsive Images','Mobile First']],
+    ['Transitions', ['transition-property','transition-duration','transition-timing-function','transition-delay','Hover Transitions']],
+    ['Animations', ['@keyframes','animation-name','animation-duration','animation-iteration-count','Reduced Motion']],
+    ['Typography', ['font-size','font-family','font-weight','line-height','letter-spacing']],
+    ['Visual Effects', ['opacity','box-shadow','filter','backdrop-filter','transform']],
+  ];
+
+  const jsPlan = [
+    ['Basics', ['What JavaScript Does','script Tags','Console Output','Statements','Comments']],
+    ['Variables', ['let','const','var','Naming Variables','Scope Basics']],
+    ['Data Types', ['String','Number','Boolean','null and undefined','typeof']],
+    ['Operators', ['Arithmetic Operators','Comparison Operators','Logical Operators','Assignment Operators','Ternary Operator']],
+    ['Conditions', ['if Statement','else Statement','else if','switch','Truthy and Falsy']],
+    ['Loops', ['for Loop','while Loop','for...of','break','continue']],
+    ['Functions', ['Function Declaration','Parameters','Return Values','Arrow Functions','Callback Basics']],
+    ['Arrays', ['Creating Arrays','Indexes','push and pop','map','filter']],
+    ['Objects', ['Object Literals','Properties','Methods','this Basics','Nested Objects']],
+    ['DOM', ['querySelector','textContent','classList','createElement','appendChild']],
+    ['Events', ['click Events','input Events','submit Events','event Object','preventDefault']],
+  ];
+
+  const pythonPlan = [
+    ['Basics', ['What Python Is','Running Python','print()','Comments','Indentation']],
+    ['Variables', ['Assigning Variables','Naming Rules','Reassignment','Constants by Convention','Scope Basics']],
+    ['Data Types', ['int','float','str','bool','None']],
+    ['Input/Output', ['input()','print Formatting','Converting Input','f-strings','Reading Simple Values']],
+    ['Conditions', ['if','elif','else','Comparison Operators','Logical Operators']],
+    ['Loops', ['for Loop','while Loop','range()','break','continue']],
+    ['Functions', ['def','Parameters','Return Values','Default Values','Docstrings']],
+    ['Lists', ['Creating Lists','Indexes','append()','remove()','Looping Lists']],
+    ['Dictionaries', ['Key Value Pairs','Reading Values','Adding Values','Looping Dictionaries','get()']],
+    ['OOP', ['Classes','Objects','__init__','Methods','Attributes']],
+  ];
+
+  const genericNames = ['Foundations','Syntax and Structure','Core Concepts','Common Commands','Project Workflow','Debugging','Security and Safety','Collaboration','Best Practices','Mini Projects'];
+  function genericPlan(title, extras = []) {
+    return genericNames.map((name, index) => [name, [`${title} ${name} Meaning`, `${title} ${name} Vocabulary`, `${title} ${name} Syntax`, `${title} ${name} Example Reading`, `${title} ${name} Practice Task`, ...(index === 0 ? extras : [])]]);
+  }
+
+  function planFor(title) {
+    const lower = title.toLowerCase();
+    if (title === 'Java') return javaPlan;
+    if (title === 'HTML') return htmlPlan;
+    if (title === 'CSS') return cssPlan;
+    if (title === 'JavaScript') return jsPlan;
+    if (title === 'Python') return pythonPlan;
+    if (lower.includes('sql')) return genericPlan(title, ['SELECT','WHERE','INSERT','UPDATE','DELETE','PRIMARY KEY','FOREIGN KEY','JOIN','GROUP BY','ORDER BY']);
+    if (lower.includes('git')) return genericPlan(title, ['git init','git status','git add','git commit','git push','git pull','branch','merge','remote','conflict']);
+    if (lower.includes('cyber') || lower.includes('password') || lower.includes('phishing') || lower.includes('secure') || lower.includes('owasp')) return genericPlan(title, ['password safety','phishing','MFA','OWASP','input validation','XSS','SQL injection','least privilege']);
+    if (lower.includes('network') || lower.includes('internet') || lower.includes('ip address') || lower.includes('dns') || lower.includes('router') || lower.includes('client')) return genericPlan(title, ['IP address','DNS','router','switch','HTTP','HTTPS','TCP','UDP','client','server']);
+    if (lower.includes('api') || lower.includes('rest') || lower.includes('json') || lower.includes('request')) return genericPlan(title, ['API','REST','endpoint','request','response','JSON','status code','GET','POST']);
+    if (lower.includes('database') || lower.includes('table') || lower.includes('crud') || lower.includes('keys')) return genericPlan(title, ['table','record','column','primary key','foreign key','CRUD','relationship','index']);
+    if (lower.includes('linux') || lower.includes('command') || lower.includes('operating') || lower.includes('permissions')) return genericPlan(title, ['pwd','ls','cd','mkdir','chmod','permissions','sudo','path']);
+    if (lower.includes('cloud') || lower.includes('hosting') || lower.includes('storage') || lower.includes('backend services')) return genericPlan(title, ['cloud','hosting','storage','serverless','region','scaling','environment variables','monitoring']);
+    return genericPlan(title);
+  }
+
+  function expandSubfolder(subfolder) {
+    const plan = planFor(subfolder.title);
+    subfolder.chapters = plan.map(([title, topics]) => chapter(subfolder.title, { title, topics }));
+  }
+
+  codingEducationalData.forEach((category) => (category.subfolders || []).forEach(expandSubfolder));
+})();
+
 window.codingEducationalData = codingEducationalData;

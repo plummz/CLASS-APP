@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.3.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.3',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Library Expansion',
+    summary: 'CODING LESSONS now enforces deeper textbook coverage with 10+ chapters and 50+ lessons for major modules, richer lesson sections, and deep keyword search.',
+    changes: [
+      'Expanded every Coding Lessons subfolder into at least 10 chapters with at least 5 lessons per chapter.',
+      'Added rich lesson fields for overview, terms, detailed explanation, breakdowns, syntax, examples, outputs, mistakes, recaps, and sources.',
+      'Added specific coverage for Java operators, CSS properties, HTML attributes, SQL keys, Git, cybersecurity, networking, APIs, Linux, and cloud topics.',
+      'Expanded search indexing to include explanation text, examples, outputs, operators, CSS properties, HTML attributes, and technical keywords.',
+      'Kept lesson pagination at 5 visible lessons per page for mobile performance.'
+    ]
+  },
   {
     version: '1.3.2',
     date: 'April 23, 2026',

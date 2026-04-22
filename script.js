@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.2.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.6',
+    date: 'April 22, 2026',
+    title: 'Battle Royale First-Person POV',
+    summary: 'Battle Royale now includes a first-person POV mode, mobile shooter camera movement, and safer bot damage handling.',
+    changes: [
+      'Added a POV toggle that switches between first-person combat and the tactical map view.',
+      'Added a first-person renderer using the existing Royale map, buildings, loot, bots, and weapon data.',
+      'Changed first-person movement to use camera-relative forward and strafe controls.',
+      'Centralized bot damage so nearby players only trigger awareness/chase behavior, not health loss.',
+      'Added optional Royale damage debug logging through window.CLASS_APP_DEBUG_ROYALE_DAMAGE.'
+    ]
+  },
   {
     version: '1.2.5',
     date: '2026-04-22',

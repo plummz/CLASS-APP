@@ -373,6 +373,7 @@ window.royaleModule = (function () {
   let healCharges = 0;
   let damageIndicator = { life: 0, angle: 0 };
   let pickupBanner = { text: '', life: 0 };
+  let viewMode = 'fps';
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -492,6 +493,8 @@ window.royaleModule = (function () {
     bindTapButton('rl-prone-btn', () => { stance = stance === 'prone' ? 'stand' : 'prone'; });
     bindTapButton('rl-jump-btn', () => { if (stance !== 'prone') jumpBoost = Math.max(jumpBoost, 0.22); });
     bindTapButton('rl-heal-btn', useHealKit);
+    bindTapButton('rl-pov-btn', toggleViewMode);
+    updatePovButton();
 
     hideLoading();
 
@@ -657,6 +660,21 @@ window.royaleModule = (function () {
     btn.addEventListener('mouseleave', end);
   }
 
+  function toggleViewMode() {
+    viewMode = viewMode === 'fps' ? 'topdown' : 'fps';
+    updatePovButton();
+    showPickup(viewMode === 'fps' ? 'First-person POV' : 'Tactical map view');
+  }
+
+  function updatePovButton() {
+    const btn = document.getElementById('rl-pov-btn');
+    if (!btn) return;
+    const fps = viewMode === 'fps';
+    btn.classList.toggle('active', fps);
+    btn.textContent = fps ? 'POV' : 'MAP';
+    btn.title = fps ? 'First-person view is active' : 'Tactical map view is active';
+  }
+
   function pointInRect(x, y, r) {
     return x >= r.x - r.w/2 && x <= r.x + r.w/2 && y >= r.y - r.h/2 && y <= r.y + r.h/2;
   }
@@ -733,6 +751,21 @@ window.royaleModule = (function () {
 
     // Build normalised move vector
     let mx = 0, my = 0;
+    if (viewMode === 'fps') {
+      let forward = 0, strafe = 0;
+      if (keys['KeyW']||keys['ArrowUp'])    forward += 1;
+      if (keys['KeyS']||keys['ArrowDown'])  forward -= 1;
+      if (keys['KeyA']||keys['ArrowLeft'])  strafe -= 1;
+      if (keys['KeyD']||keys['ArrowRight']) strafe += 1;
+      if (joy.active) {
+        strafe += joy.dx;
+        forward += -joy.dy;
+      }
+      const fl = Math.hypot(forward, strafe);
+      if (fl > 1) { forward /= fl; strafe /= fl; }
+      mx = Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe;
+      my = Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe;
+    } else {
     if (keys['KeyW']||keys['ArrowUp'])    my -= 1;
     if (keys['KeyS']||keys['ArrowDown'])  my += 1;
     if (keys['KeyA']||keys['ArrowLeft'])  mx -= 1;
@@ -746,6 +779,8 @@ window.royaleModule = (function () {
         mx += joy.dx;
         my += joy.dy;
       }
+    }
+
     }
 
     const len = Math.sqrt(mx*mx+my*my);
@@ -789,7 +824,7 @@ window.royaleModule = (function () {
     jumpBoost = Math.max(0, jumpBoost - dt);
 
     // Update facing angle when moving
-    if (len > 0.05 && !aimJoy.active && !adsActive) player.angle = Math.atan2(my, mx);
+    if (viewMode !== 'fps' && len > 0.05 && !aimJoy.active && !adsActive) player.angle = Math.atan2(my, mx);
 
     // Trail particles
     if (len > 0.1 && playerSkin.trail !== 'none') {
@@ -1595,9 +1630,201 @@ window.royaleModule = (function () {
   }
 
   // ── Render ────────────────────────────────────────────────
+  function normalizeAngle(a) {
+    while (a < -Math.PI) a += Math.PI * 2;
+    while (a > Math.PI) a -= Math.PI * 2;
+    return a;
+  }
+
+  function fpsSample(x, y) {
+    if (x < 0 || y < 0 || x >= MAP_PX || y >= MAP_PX) return { hit:true, color:'#111827' };
+    const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+    const tile = mapTiles?.[ty]?.[tx];
+    if (tile === T.WATER || tile === T.DEEP_WATER) return { hit:true, color:'#1e6da8' };
+    for (const p of interiorProps) {
+      if (p.solid && pointInRect(x, y, p)) return { hit:true, color:p.type === 'sofa' ? '#62483f' : '#7b6748' };
+    }
+    for (const b of BUILDINGS) {
+      const bx = b.tx * TILE, by = b.ty * TILE, bw = b.tw * TILE, bh = b.th * TILE;
+      if (x < bx || x > bx + bw || y < by || y > by + bh) continue;
+      const wall = 7;
+      const doorCx = (b.tx + Math.floor(b.tw / 2) + 0.5) * TILE;
+      const nearSouth = y > by + bh - wall;
+      const inDoor = nearSouth && Math.abs(x - doorCx) < TILE * 0.65;
+      if ((x < bx + wall || x > bx + bw - wall || y < by + wall || nearSouth) && !inDoor) return { hit:true, color:b.wall || '#3a3a3a' };
+      for (const room of b.rooms || []) {
+        if (room.stairs) continue;
+        if (room.orient === 'v' && Math.abs(x - room.x) < 3 && y > room.y && y < room.y + room.h && Math.abs(y - room.gapY) > TILE * 0.72) return { hit:true, color:'#2f3440' };
+        if (room.orient === 'h' && Math.abs(y - room.y) < 3 && x > room.x && x < room.x + room.w && Math.abs(x - room.gapX) > TILE * 0.72) return { hit:true, color:'#2f3440' };
+      }
+    }
+    return { hit:false, color:'#24321f' };
+  }
+
+  function castFpsRay(angle, maxDist = 950) {
+    for (let dist = 0; dist < maxDist; dist += 7) {
+      const x = player.x + Math.cos(angle) * dist;
+      const y = player.y + Math.sin(angle) * dist;
+      const hit = fpsSample(x, y);
+      if (hit.hit) return { ...hit, x, y, dist };
+    }
+    return { hit:false, dist:maxDist, color:'#24321f' };
+  }
+
+  function shadeColor(hex, factor) {
+    const raw = (hex || '#555').replace('#', '');
+    const n = parseInt(raw.length === 3 ? raw.split('').map(c => c + c).join('') : raw, 16);
+    const r = Math.max(0, Math.min(255, ((n >> 16) & 255) * factor));
+    const g = Math.max(0, Math.min(255, ((n >> 8) & 255) * factor));
+    const b = Math.max(0, Math.min(255, (n & 255) * factor));
+    return `rgb(${r|0},${g|0},${b|0})`;
+  }
+
+  function drawFpsSprite(obj, color, label, size, sw, sh, fov, projection) {
+    const dx = obj.x - player.x, dy = obj.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 18 || dist > 800) return;
+    const rel = normalizeAngle(Math.atan2(dy, dx) - player.angle);
+    if (Math.abs(rel) > fov * 0.62) return;
+    const wallHit = castFpsRay(player.angle + rel, dist);
+    if (wallHit.hit && wallHit.dist < dist - 16) return;
+    const sx = sw / 2 + Math.tan(rel) * projection;
+    const h = Math.max(10, (size * projection) / Math.max(1, dist));
+    const w = h * 0.62;
+    const sy = sh * 0.56 - h * 0.5 + Math.sin(gameTime * 4 + obj.x * 0.01) * 4;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.35, 1 - dist / 900);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.roundRect(sx - w / 2, sy, w, h, Math.min(12, w * 0.3));
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    if (label) {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, sx, sy - 6);
+    }
+    ctx.restore();
+  }
+
+  function drawFpsOverlay(sw, sh) {
+    const key = inventory[activeSlot];
+    const w = WEAPONS[key];
+    const ammo = key ? (ammoCache[key] || 0) : 0;
+    const cx = sw / 2, cy = sh / 2;
+    ctx.strokeStyle = adsActive ? 'rgba(0,212,255,0.82)' : 'rgba(255,255,255,0.72)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy); ctx.lineTo(cx - 5, cy);
+    ctx.moveTo(cx + 5, cy); ctx.lineTo(cx + 14, cy);
+    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy - 5);
+    ctx.moveTo(cx, cy + 5); ctx.lineTo(cx, cy + 14);
+    ctx.stroke();
+    if (hitMarker > 0) {
+      ctx.strokeStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(cx - 18, cy - 18); ctx.lineTo(cx - 7, cy - 7);
+      ctx.moveTo(cx + 18, cy - 18); ctx.lineTo(cx + 7, cy - 7);
+      ctx.moveTo(cx - 18, cy + 18); ctx.lineTo(cx - 7, cy + 7);
+      ctx.moveTo(cx + 18, cy + 18); ctx.lineTo(cx + 7, cy + 7);
+      ctx.stroke();
+    }
+    const gunW = Math.min(250, sw * 0.42);
+    const gunX = sw - gunW - 20 + Math.sin(weaponSway) * (adsActive ? 2 : 8);
+    const gunY = sh - 110 + recoilKick * 24;
+    ctx.fillStyle = adsActive ? 'rgba(18,25,34,0.96)' : 'rgba(15,20,28,0.92)';
+    ctx.fillRect(gunX, gunY, gunW, 34);
+    ctx.fillStyle = '#263140';
+    ctx.fillRect(gunX + gunW * 0.62, gunY - 16, gunW * 0.36, 14);
+    ctx.fillStyle = '#0b1017';
+    ctx.fillRect(gunX + 32, gunY + 30, gunW * 0.26, 34);
+    if (muzzleFlash > 0) {
+      ctx.fillStyle = 'rgba(255,198,65,0.94)';
+      ctx.beginPath();
+      ctx.moveTo(gunX + gunW + 2, gunY + 6);
+      ctx.lineTo(gunX + gunW + 58 + muzzleFlash * 5, gunY + 17);
+      ctx.lineTo(gunX + gunW + 2, gunY + 29);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.48)';
+    ctx.fillRect(16, 16, 190, 78);
+    ctx.fillStyle = '#eaffff';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`HP ${Math.ceil(player.health)}  ARMOR ${Math.ceil(player.armor || 0)}`, 28, 38);
+    ctx.fillText(`${w ? w.name.toUpperCase() : 'NO WEAPON'}  ${ammo}`, 28, 61);
+    ctx.fillText(`ALIVE ${bots.filter(b => b.alive).length + 1}  KILLS ${player.kills}`, 28, 84);
+    if (pickupBanner.life > 0) {
+      const alpha = Math.min(1, pickupBanner.life / 0.35);
+      ctx.fillStyle = `rgba(0,0,0,${0.5 * alpha})`;
+      ctx.fillRect(cx - 120, sh - 146, 240, 30);
+      ctx.strokeStyle = `rgba(0,212,255,${0.5 * alpha})`;
+      ctx.strokeRect(cx - 120, sh - 146, 240, 30);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(pickupBanner.text, cx, sh - 126);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function renderFirstPerson() {
+    const sw = canvas.width, sh = canvas.height;
+    ctx.clearRect(0, 0, sw, sh);
+    const horizon = sh * (adsActive ? 0.47 : 0.44) + jumpBoost * -35 + recoilKick * 14;
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#7eb8df');
+    sky.addColorStop(1, '#d6eefb');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, sw, horizon);
+    const indoor = isInsideBuilding(player.x, player.y);
+    const floor = ctx.createLinearGradient(0, horizon, 0, sh);
+    floor.addColorStop(0, indoor ? '#34302a' : '#4f7b34');
+    floor.addColorStop(1, indoor ? '#151515' : '#263a1d');
+    ctx.fillStyle = floor; ctx.fillRect(0, horizon, sw, sh - horizon);
+    const fov = adsActive ? Math.PI / 3.4 : Math.PI / 2.55;
+    const projection = (sw / 2) / Math.tan(fov / 2);
+    const columns = Math.min(260, Math.max(120, Math.floor(sw / 3)));
+    const strip = Math.ceil(sw / columns) + 1;
+    for (let i = 0; i < columns; i++) {
+      const rayA = player.angle + (i / columns - 0.5) * fov;
+      const hit = castFpsRay(rayA);
+      const corrected = Math.max(1, hit.dist * Math.cos(rayA - player.angle));
+      const wallH = Math.min(sh * 1.45, (TILE * 1.95 * projection) / corrected);
+      const x = i * (sw / columns);
+      const shade = Math.max(0.28, 1 - corrected / 1000);
+      ctx.fillStyle = shadeColor(hit.color, shade);
+      ctx.fillRect(x, horizon - wallH * 0.5, strip, wallH);
+    }
+    for (const it of loot) drawFpsSprite(it, it.supply ? '#64ff9d' : '#ffd35a', it.supply ? 'SUPPLY' : (WEAPONS[it.key]?.name || 'LOOT'), 28, sw, sh, fov, projection);
+    for (const bt of bots) if (bt.alive) drawFpsSprite(bt, '#ff4b55', bt.name, 46, sw, sh, fov, projection);
+    for (const b of bullets) drawFpsSprite(b, '#ffe66b', '', 8, sw, sh, fov, projection);
+    for (const ex of explosions) drawFpsSprite(ex, '#ff7a2f', 'BOOM', Math.max(36, ex.r), sw, sh, fov, projection);
+    drawFpsOverlay(sw, sh);
+    if (gamePhase === 'parachute') {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(sw / 2 - 130, sh / 2 - 22, 260, 40);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('Tap FIRE to deploy chute', sw / 2, sh / 2 + 3); ctx.textAlign = 'left';
+    }
+    if (gamePhase === 'dead' || gamePhase === 'win') {
+      ctx.fillStyle = 'rgba(0,0,0,0.66)'; ctx.fillRect(0, 0, sw, sh);
+      ctx.fillStyle = gamePhase === 'win' ? '#ffe66b' : '#ff5b5b';
+      ctx.font = `bold ${Math.max(34, Math.min(76, sw * 0.09))}px monospace`;
+      ctx.textAlign = 'center'; ctx.fillText(gamePhase === 'win' ? 'VICTORY' : 'ELIMINATED', sw / 2, sh / 2 - 12);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 15px monospace'; ctx.fillText('Tap or press any key to return', sw / 2, sh / 2 + 28);
+      ctx.textAlign = 'left';
+    }
+  }
+
   function render() {
     // Clear the physical screen (canvas.width × canvas.height = screen size)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (viewMode === 'fps' && gamePhase !== 'skinSelect') {
+      renderFirstPerson();
+      return;
+    }
 
     // Portrait: rotate canvas 90° CW so the game renders in landscape orientation.
     // canvas.width < canvas.height means portrait phone.
@@ -1821,9 +2048,42 @@ window.royaleModule = (function () {
         state:'roam', target:null,
         fireT:0, reloadT:0,
         waypointX:tx*TILE, waypointY:ty*TILE,
+        damageCooldowns:{},
         alive:true,
       });
     }
+  }
+
+  function damageBot(bot, amount, source, options = {}) {
+    if (!bot || !bot.alive) return false;
+    const dmg = Math.max(0, Number(amount) || 0);
+    if (dmg <= 0) return false;
+
+    const now = performance.now();
+    const cooldown = Math.max(0, options.cooldown || 0);
+    const key = source || 'unknown';
+    bot.damageCooldowns = bot.damageCooldowns || {};
+    if (cooldown && now - (bot.damageCooldowns[key] || 0) < cooldown) return false;
+    if (cooldown) bot.damageCooldowns[key] = now;
+
+    bot.hp = Math.max(0, Math.min(bot.maxHp || 100, bot.hp) - dmg);
+    if (window.CLASS_APP_DEBUG_ROYALE_DAMAGE) {
+      console.debug(`[Royale] Bot took ${Math.round(dmg * 10) / 10} damage from ${key}`, bot.name);
+    }
+
+    if (bot.hp <= 0) {
+      bot.alive = false;
+      if (options.credit !== false) {
+        player.kills++;
+        coins += 15;
+        saveCoins();
+      }
+      spawnBlood(bot.x, bot.y);
+      const message = options.message || `${bot.name} eliminated by ${key}${options.credit === false ? '' : ' (+15)'}`;
+      killFeed.push({ text: message, life: 4 });
+      return true;
+    }
+    return false;
   }
 
   function initZone() {
@@ -1950,12 +2210,18 @@ window.royaleModule = (function () {
     aimJoy.dx=dx/Math.max(len,max);
     aimJoy.dy=dy/Math.max(len,max);
     if (len>8) {
+      if (viewMode === 'fps') {
+        player.angle += dx * 0.0048;
+        aimJoy.sx = aimJoy.cx;
+        aimJoy.sy = aimJoy.cy;
+      } else {
       // Portrait: canvas rotated 90° CW → screen +Y = game +X, screen +X = game -Y
       if (canvas.height > canvas.width) {
         player.angle = Math.atan2(-dx, dy);
       } else {
         player.angle = Math.atan2(dy, dx);
       }
+    }
     }
     joyShow(aimJoy.sx,aimJoy.sy,
       aimJoy.sx+dx/Math.max(len/max,1),
@@ -2000,10 +2266,10 @@ window.royaleModule = (function () {
         const bt=bots[j]; if (!bt.alive) continue;
         const dx=b.x-bt.x, dy=b.y-bt.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
-          bt.hp -= b.dmg;
+          damageBot(bt, b.dmg, 'bullet', { message:`You killed ${bt.name} (+15 coins)` });
           hitMarker = 6;
           spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
-          if (bt.hp <= 0) {
+          if (false && bt.hp <= 0) {
             bt.alive=false; player.kills++;
             spawnBlood(bt.x, bt.y);
             coins+=15; saveCoins();
@@ -2054,8 +2320,8 @@ window.royaleModule = (function () {
       if (!bt.alive) continue;
       const bd2=(x-bt.x)**2+(y-bt.y)**2;
       if (bd2<r*r) {
-        bt.hp=Math.max(0,bt.hp-dmg*Math.max(0,1-Math.sqrt(bd2)/r));
-        if (bt.hp <= 0) {
+        damageBot(bt, dmg*Math.max(0,1-Math.sqrt(bd2)/r), 'explosion', { message:`Explosion eliminated ${bt.name} (+15)` });
+        if (false && bt.hp <= 0) {
           bt.alive=false; player.kills++;
           spawnBlood(bt.x, bt.y);
           coins+=15; saveCoins();
@@ -2075,8 +2341,8 @@ window.royaleModule = (function () {
         if (!bt.alive) continue;
         const bd2=(f.x-bt.x)**2+(f.y-bt.y)**2;
         if (bd2<f.r*f.r) {
-          bt.hp = Math.max(0, bt.hp - 9*dt);
-          if (bt.hp <= 0) {
+          damageBot(bt, 9*dt, 'molotov fire', { message:`${bt.name} burned out (+15)` });
+          if (false && bt.hp <= 0) {
             bt.alive=false; player.kills++;
             spawnBlood(bt.x, bt.y);
             coins+=15; saveCoins();
@@ -2826,6 +3092,12 @@ window.royaleModule = (function () {
   // ── Mouse aim + click-to-fire (desktop) ──────────────────
   function onMouseMove(e) {
     if (gamePhase !== 'playing') return;
+    if (viewMode === 'fps') {
+      if (e.buttons || document.pointerLockElement === canvas) {
+        player.angle += (e.movementX || 0) * 0.0042;
+      }
+      return;
+    }
     const rect=canvas.getBoundingClientRect();
     const mx=(e.clientX-rect.left)*(canvas.width/rect.width);
     const my=(e.clientY-rect.top)*(canvas.height/rect.height);
@@ -2959,8 +3231,8 @@ window.royaleModule = (function () {
       resolveInteriorCollision(bt, PLAYER_R);
 
       const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
-      if (zd>zone.r) bt.hp=Math.max(0,bt.hp-4*dt);
-      if (bt.hp<=0) {
+      if (zd>zone.r) damageBot(bt, 4*dt, 'storm zone', { credit:false, message:`${bt.name} was lost in the storm` });
+      if (false && bt.hp<=0) {
         bt.alive=false; player.kills++;
         spawnBlood(bt.x, bt.y);
         coins+=15; saveCoins();

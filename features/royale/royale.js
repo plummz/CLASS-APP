@@ -374,6 +374,7 @@ window.royaleModule = (function () {
   let damageIndicator = { life: 0, angle: 0 };
   let pickupBanner = { text: '', life: 0 };
   let viewMode = 'fps';
+  let throwAim = { active:false, x:0, y:0, sx:0, sy:0, mode:'tap' };
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -443,13 +444,14 @@ window.royaleModule = (function () {
       // Quick tap = throw current item. Hold 350ms = switch grenade ↔ molotov.
       let throwHoldTimer = null;
       let throwDidSwitch = false;
+      let throwDidAim = false;
 
-      function doThrow() {
+      function doThrow(target = null) {
         if (gamePhase !== 'playing') return;
         const tKey = activeThrowable;
         if (ammoCache[tKey] && ammoCache[tKey] > 0) {
           ammoCache[tKey]--;
-          throwItem(player.x, player.y, player.angle, tKey, localId);
+          throwItem(player.x, player.y, player.angle, tKey, localId, target);
         }
       }
       function doSwitch() {
@@ -459,31 +461,95 @@ window.royaleModule = (function () {
         setTimeout(() => throwBtn.classList.remove('pressed'), 200);
       }
 
+      function screenToWorld(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = (clientX - rect.left) * (canvas.width / rect.width);
+        const sy = (clientY - rect.top) * (canvas.height / rect.height);
+        if (viewMode === 'fps') {
+          const fov = adsActive ? Math.PI / 3.4 : Math.PI / 2.55;
+          const rel = (sx / Math.max(1, canvas.width) - 0.5) * fov;
+          const power = 180 + (1 - Math.min(1, sy / Math.max(1, canvas.height))) * 360;
+          return { x: player.x + Math.cos(player.angle + rel) * power, y: player.y + Math.sin(player.angle + rel) * power };
+        }
+        const port = canvas.height > canvas.width;
+        const gx = port ? sy : sx;
+        const gy = port ? (canvas.width - sx) : sy;
+        return { x: cam.x - canvasW / 2 + gx, y: cam.y - canvasH / 2 + gy };
+      }
+
+      function startAim(clientX, clientY) {
+        throwDidAim = true;
+        throwDidSwitch = true;
+        throwAim.active = true;
+        const target = screenToWorld(clientX, clientY);
+        throwAim.x = Math.max(0, Math.min(MAP_PX, target.x));
+        throwAim.y = Math.max(0, Math.min(MAP_PX, target.y));
+        throwBtn.classList.add('pressed');
+      }
+
+      function moveAim(clientX, clientY) {
+        if (!throwAim.active) return;
+        const target = screenToWorld(clientX, clientY);
+        throwAim.x = Math.max(0, Math.min(MAP_PX, target.x));
+        throwAim.y = Math.max(0, Math.min(MAP_PX, target.y));
+      }
+
+      function endAim() {
+        const target = throwAim.active ? { x: throwAim.x, y: throwAim.y } : null;
+        throwAim.active = false;
+        throwBtn.classList.remove('pressed');
+        if (target) doThrow(target);
+      }
+
       throwBtn.addEventListener('touchstart', (e) => {
         e.stopPropagation();
         throwDidSwitch = false;
+        throwDidAim = false;
+        const t = e.changedTouches[0];
         throwHoldTimer = setTimeout(() => {
-          throwDidSwitch = true;
-          doSwitch();
-        }, 350);
+          startAim(t.clientX, t.clientY);
+        }, 220);
+      }, {passive: true});
+
+      throwBtn.addEventListener('touchmove', (e) => {
+        e.stopPropagation();
+        const t = e.changedTouches[0];
+        if (throwAim.active) moveAim(t.clientX, t.clientY);
       }, {passive: true});
 
       throwBtn.addEventListener('touchend', (e) => {
         e.stopPropagation();
         if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
-        if (!throwDidSwitch) doThrow();
+        if (throwAim.active) endAim();
+        else if (!throwDidSwitch && !throwDidAim) doThrow();
         throwDidSwitch = false;
+        throwDidAim = false;
       }, {passive: true});
 
       throwBtn.addEventListener('touchcancel', () => {
         if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        throwAim.active = false;
+        throwBtn.classList.remove('pressed');
         throwDidSwitch = false;
+        throwDidAim = false;
       }, {passive: true});
 
       // Desktop: click = throw, right-click = switch
       throwBtn.addEventListener('mousedown', (e) => {
         if (e.button === 2) { e.preventDefault(); doSwitch(); }
-        else doThrow();
+        else {
+          throwDidSwitch = false;
+          throwDidAim = false;
+          throwHoldTimer = setTimeout(() => startAim(e.clientX, e.clientY), 160);
+        }
+      });
+      window.addEventListener('mousemove', (e) => { if (throwAim.active) moveAim(e.clientX, e.clientY); });
+      window.addEventListener('mouseup', () => {
+        if (throwHoldTimer) { clearTimeout(throwHoldTimer); throwHoldTimer = null; }
+        if (throwAim.active) endAim();
+        else if (!throwDidSwitch && !throwDidAim) doThrow();
+        throwDidSwitch = false;
+        throwDidAim = false;
       });
       throwBtn.addEventListener('contextmenu', (e) => e.preventDefault());
     }
@@ -556,6 +622,14 @@ window.royaleModule = (function () {
 
   function onTouchStart(e) {
     e.preventDefault();
+    if ((gamePhase === 'dead' || gamePhase === 'win') && viewMode === 'fps') {
+      const rect=canvas.getBoundingClientRect();
+      for (const t of e.changedTouches) {
+        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
+        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        if (checkEndBtnClick(sx, sy)) return;
+      }
+    }
     // Skin menu: handle taps immediately on touchstart for responsiveness
     if (gamePhase === 'skinSelect') {
       const rect=canvas.getBoundingClientRect();
@@ -1770,6 +1844,41 @@ window.royaleModule = (function () {
     }
   }
 
+  function drawFpsThrowAim(sw, sh, fov, projection) {
+    if (!throwAim.active) return;
+    const dx = throwAim.x - player.x, dy = throwAim.y - player.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const rel = normalizeAngle(Math.atan2(dy, dx) - player.angle);
+    const sx = sw / 2 + Math.tan(rel) * projection;
+    const sy = sh * 0.58 + Math.min(110, dist * 0.12);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,214,90,0.92)';
+    ctx.fillStyle = 'rgba(255,214,90,0.16)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(sx, sy, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.setLineDash([8, 7]);
+    ctx.beginPath(); ctx.moveTo(sw / 2, sh * 0.72); ctx.quadraticCurveTo(sw / 2 + (sx - sw / 2) * 0.5, sh * 0.36, sx, sy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffeaa0';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${activeThrowable.toUpperCase()} TARGET`, sx, sy - 30);
+    ctx.restore();
+  }
+
+  function drawWorldThrowAim() {
+    if (!throwAim.active) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,214,90,0.95)';
+    ctx.fillStyle = 'rgba(255,214,90,0.14)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(throwAim.x, throwAim.y, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.setLineDash([14, 10]);
+    ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.quadraticCurveTo((player.x + throwAim.x) / 2, (player.y + throwAim.y) / 2 - 120, throwAim.x, throwAim.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   function renderFirstPerson() {
     const sw = canvas.width, sh = canvas.height;
     ctx.clearRect(0, 0, sw, sh);
@@ -1801,6 +1910,7 @@ window.royaleModule = (function () {
     for (const bt of bots) if (bt.alive) drawFpsSprite(bt, '#ff4b55', bt.name, 46, sw, sh, fov, projection);
     for (const b of bullets) drawFpsSprite(b, '#ffe66b', '', 8, sw, sh, fov, projection);
     for (const ex of explosions) drawFpsSprite(ex, '#ff7a2f', 'BOOM', Math.max(36, ex.r), sw, sh, fov, projection);
+    drawFpsThrowAim(sw, sh, fov, projection);
     drawFpsOverlay(sw, sh);
     if (gamePhase === 'parachute') {
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(sw / 2 - 130, sh / 2 - 22, 260, 40);
@@ -1812,7 +1922,16 @@ window.royaleModule = (function () {
       ctx.fillStyle = gamePhase === 'win' ? '#ffe66b' : '#ff5b5b';
       ctx.font = `bold ${Math.max(34, Math.min(76, sw * 0.09))}px monospace`;
       ctx.textAlign = 'center'; ctx.fillText(gamePhase === 'win' ? 'VICTORY' : 'ELIMINATED', sw / 2, sh / 2 - 12);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 15px monospace'; ctx.fillText('Tap or press any key to return', sw / 2, sh / 2 + 28);
+      const bw = Math.min(170, sw * 0.32), bh = 44, gap = 16, by = sh / 2 + 48;
+      const playX = sw / 2 - bw - gap / 2, quitX = sw / 2 + gap / 2;
+      ctx.fillStyle = 'rgba(20,160,70,0.86)'; ctx.fillRect(playX, by, bw, bh);
+      ctx.fillStyle = 'rgba(180,32,42,0.86)'; ctx.fillRect(quitX, by, bw, bh);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.strokeRect(playX, by, bw, bh); ctx.strokeRect(quitX, by, bw, bh);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace';
+      ctx.fillText('PLAY AGAIN', playX + bw / 2, by + 28);
+      ctx.fillText('QUIT', quitX + bw / 2, by + 28);
+      endBtnPlay = { x:playX, y:by, w:bw, h:bh };
+      endBtnQuit = { x:quitX, y:by, w:bw, h:bh };
       ctx.textAlign = 'left';
     }
   }
@@ -1872,6 +1991,7 @@ window.royaleModule = (function () {
     drawBuildings(ty1, ty2);
     drawBots();
     drawThrowables();
+    drawWorldThrowAim();
 
     // Remote players
     for (const id in remotePlayers) drawRemotePlayer(remotePlayers[id]);
@@ -2067,9 +2187,7 @@ window.royaleModule = (function () {
     if (cooldown) bot.damageCooldowns[key] = now;
 
     bot.hp = Math.max(0, Math.min(bot.maxHp || 100, bot.hp) - dmg);
-    if (window.CLASS_APP_DEBUG_ROYALE_DAMAGE) {
-      console.debug(`[Royale] Bot took ${Math.round(dmg * 10) / 10} damage from ${key}`, bot.name);
-    }
+    console.info(`[Royale] Bot took ${Math.round(dmg * 10) / 10} damage from ${key}`, bot.name);
 
     if (bot.hp <= 0) {
       bot.alive = false;
@@ -2126,11 +2244,21 @@ window.royaleModule = (function () {
     }
   }
 
-  function throwItem(fromX, fromY, angle, weaponKey, ownerId) {
-    const spd = weaponKey==='rpg' ? 260 : 220;
+  function throwItem(fromX, fromY, angle, weaponKey, ownerId, target = null) {
+    let aim = angle;
+    let spd = weaponKey==='rpg' ? 260 : 220;
+    if (target && Number.isFinite(target.x) && Number.isFinite(target.y)) {
+      const dx = target.x - fromX;
+      const dy = target.y - fromY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 12) {
+        aim = Math.atan2(dy, dx);
+        spd = Math.max(140, Math.min(340, dist * 1.35));
+      }
+    }
     throwables.push({
       x:fromX, y:fromY,
-      vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd,
+      vx:Math.cos(aim)*spd, vy:Math.sin(aim)*spd,
       z:0, vz: weaponKey==='rpg' ? 0 : 120,
       type:weaponKey, timer:0, ownerId,
       fuse: weaponKey === 'grenade' ? 2.35 : 0,
@@ -2264,17 +2392,12 @@ window.royaleModule = (function () {
       // Hit bots
       for (let j=bots.length-1; j>=0; j--) {
         const bt=bots[j]; if (!bt.alive) continue;
+        if (b.owner === bt.id) continue;
         const dx=b.x-bt.x, dy=b.y-bt.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
           damageBot(bt, b.dmg, 'bullet', { message:`You killed ${bt.name} (+15 coins)` });
           hitMarker = 6;
           spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
-          if (false && bt.hp <= 0) {
-            bt.alive=false; player.kills++;
-            spawnBlood(bt.x, bt.y);
-            coins+=15; saveCoins();
-            killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
-          }
           bullets.splice(i,1); break;
         }
       }
@@ -2321,12 +2444,6 @@ window.royaleModule = (function () {
       const bd2=(x-bt.x)**2+(y-bt.y)**2;
       if (bd2<r*r) {
         damageBot(bt, dmg*Math.max(0,1-Math.sqrt(bd2)/r), 'explosion', { message:`Explosion eliminated ${bt.name} (+15)` });
-        if (false && bt.hp <= 0) {
-          bt.alive=false; player.kills++;
-          spawnBlood(bt.x, bt.y);
-          coins+=15; saveCoins();
-          killFeed.push({text:`Explosion eliminated ${bt.name} (+15)`,life:4});
-        }
       }
     }
   }
@@ -2342,12 +2459,6 @@ window.royaleModule = (function () {
         const bd2=(f.x-bt.x)**2+(f.y-bt.y)**2;
         if (bd2<f.r*f.r) {
           damageBot(bt, 9*dt, 'molotov fire', { message:`${bt.name} burned out (+15)` });
-          if (false && bt.hp <= 0) {
-            bt.alive=false; player.kills++;
-            spawnBlood(bt.x, bt.y);
-            coins+=15; saveCoins();
-            killFeed.push({text:`${bt.name} burned out (+15)`,life:4});
-          }
         }
       }
     }
@@ -3137,6 +3248,7 @@ window.royaleModule = (function () {
     const gx = port ? sy : sx;
     const gy = port ? (canvas.width - sx) : sy;
 
+    if (viewMode === 'fps' && checkEndBtnClick(sx, sy)) return;
     if (checkEndBtnClick(gx, gy)) return;
     if (checkSkinMenuClick(gx, gy)) return;
     if (gamePhase !== 'playing') return;
@@ -3186,24 +3298,26 @@ window.royaleModule = (function () {
 
       const dx=player.x-bt.x, dy=player.y-bt.y;
       const distToPlayer=Math.sqrt(dx*dx+dy*dy);
-      if (distToPlayer<350) bt.state='chase'; else if (distToPlayer>550) bt.state='roam';
+      if (distToPlayer<440) bt.state='chase'; else if (distToPlayer>680) bt.state='roam';
 
       if (bt.state==='chase') {
         bt.angle=Math.atan2(dy,dx);
         const indoor = isInsideBuilding(bt.x, bt.y) || isInsideBuilding(player.x, player.y);
         const flank = indoor ? Math.sin(gameTime * 1.7 + bt.x * 0.01) * 0.55 : 0;
-        const moveAngle = bt.angle + (distToPlayer < 130 ? Math.PI * 0.55 : flank);
+        const moveAngle = bt.angle + (distToPlayer < 150 ? Math.PI * 0.62 : flank);
         const coverNear = nearestInteriorCover(bt.x, bt.y, 150);
-        if (coverNear && distToPlayer < 260 && bt.hp < 55) {
+        if (coverNear && distToPlayer < 310 && bt.hp < 72) {
           const ca = Math.atan2(coverNear.y - bt.y, coverNear.x - bt.x);
-          bt.x+=Math.cos(ca)*105*dt; bt.y+=Math.sin(ca)*105*dt;
+          bt.x+=Math.cos(ca)*125*dt; bt.y+=Math.sin(ca)*125*dt;
         } else {
-          bt.x+=Math.cos(moveAngle)*118*dt; bt.y+=Math.sin(moveAngle)*118*dt;
+          const pace = indoor ? 132 : 122;
+          bt.x+=Math.cos(moveAngle)*pace*dt; bt.y+=Math.sin(moveAngle)*pace*dt;
         }
-        if (distToPlayer<320 && bt.ammo>0 && now>bt.fireT) {
-          tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*(indoor ? 0.09 : 0.14),bt.weapon||'pistol',bt.id);
+        if (distToPlayer<390 && bt.ammo>0 && now>bt.fireT) {
+          const accuracy = indoor ? 0.055 : 0.085;
+          tryFire(bt.x,bt.y,bt.angle+(Math.random()-0.5)*accuracy,bt.weapon||'pistol',bt.id);
           bt.ammo=Math.max(0,bt.ammo-1);
-          bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*1.6;
+          bt.fireT=now+(WEAPONS[bt.weapon||'pistol'].rof)*1.18;
         }
       } else {
         const wx=bt.waypointX-bt.x, wy=bt.waypointY-bt.y;
@@ -3232,12 +3346,6 @@ window.royaleModule = (function () {
 
       const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (zd>zone.r) damageBot(bt, 4*dt, 'storm zone', { credit:false, message:`${bt.name} was lost in the storm` });
-      if (false && bt.hp<=0) {
-        bt.alive=false; player.kills++;
-        spawnBlood(bt.x, bt.y);
-        coins+=15; saveCoins();
-        killFeed.push({text:`You killed ${bt.name} (+15 💰)`,life:4});
-      }
     }
   }
 

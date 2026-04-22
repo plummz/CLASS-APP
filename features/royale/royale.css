@@ -444,3 +444,38 @@ body.rl-active {
     font-size: 0.7rem;
   }
 }
+
+@media (orientation: landscape) {
+  #rl-fire-btn {
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  #rl-ads-btn {
+    right: 104px;
+    bottom: 26px;
+  }
+  #rl-reload-btn {
+    right: 20px;
+    bottom: 104px;
+  }
+  #rl-throw-btn {
+    right: 92px;
+    bottom: 100px;
+  }
+  #rl-crouch-btn {
+    right: 164px;
+    bottom: 36px;
+  }
+  #rl-prone-btn {
+    right: 154px;
+    bottom: 96px;
+  }
+  #rl-jump-btn {
+    right: 28px;
+    bottom: 172px;
+  }
+  #rl-heal-btn {
+    right: 98px;
+    bottom: 168px;
+  }
+}

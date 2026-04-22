@@ -1,0 +1,161 @@
+#page-pacman {
+  position: fixed !important;
+  inset: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 9994;
+  overflow: hidden !important;
+  background: #02030b;
+  display: none;
+}
+#page-pacman.active { display: block; }
+
+.pacman-wrapper {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 230, 0, 0.16), transparent 28%),
+    radial-gradient(circle at 80% 70%, rgba(0, 180, 255, 0.15), transparent 30%),
+    linear-gradient(135deg, #03040d, #07021b 58%, #100006);
+  touch-action: none;
+}
+
+#pacman-canvas {
+  width: min(100vw, 177.78vh);
+  height: min(56.25vw, 100vh);
+  max-width: 100vw;
+  max-height: 100vh;
+  image-rendering: pixelated;
+  border: 2px solid rgba(255, 230, 0, 0.55);
+  box-shadow: 0 0 34px rgba(255, 230, 0, 0.2), 0 0 48px rgba(0, 120, 255, 0.18);
+  background: #050514;
+}
+
+.pacman-return-btn,
+.pacman-start-btn {
+  position: absolute;
+  z-index: 10;
+  height: 42px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.28);
+  color: #fff;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+.pacman-return-btn {
+  top: 12px;
+  left: 12px;
+  padding: 0 14px;
+  background: rgba(0,0,0,0.62);
+}
+.pacman-start-btn {
+  right: 12px;
+  bottom: 12px;
+  min-width: 104px;
+  background: linear-gradient(135deg, rgba(255,230,0,0.9), rgba(255,130,0,0.82));
+  color: #111;
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 0 0 24px rgba(255, 230, 0, 0.28);
+}
+.pacman-mobile-hint {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  color: rgba(255,255,255,0.68);
+  font: 800 11px monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pacman-thumb {
+  background:
+    radial-gradient(circle at 30% 46%, rgba(255,230,0,0.95) 0 16%, transparent 17%),
+    radial-gradient(circle at 72% 45%, rgba(255,40,80,0.95) 0 12%, transparent 13%),
+    linear-gradient(135deg, #05051c, #090931 55%, #160013);
+}
+.pacman-card-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.pacman-card-art::before,
+.pacman-card-art::after {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  border: 3px solid rgba(30,110,255,0.84);
+  border-radius: 12px;
+  box-shadow: inset 0 0 18px rgba(30,110,255,0.26), 0 0 18px rgba(30,110,255,0.24);
+}
+.pacman-card-art::after {
+  inset: 54px 34px;
+  border-color: rgba(30,110,255,0.55);
+}
+.pac-card-player,
+.pac-card-ghost,
+.pac-dot {
+  position: absolute;
+  display: block;
+}
+.pac-card-player {
+  width: 54px;
+  height: 54px;
+  left: 30%;
+  top: 44%;
+  border-radius: 50%;
+  background: #ffe600;
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 60% 50%, 100% 65%, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 16px rgba(255,230,0,0.65));
+}
+.pac-card-ghost {
+  width: 42px;
+  height: 46px;
+  border-radius: 18px 18px 8px 8px;
+  top: 42%;
+}
+.pac-card-ghost.red { right: 24%; background: #ff2b55; }
+.pac-card-ghost.cyan { right: 10%; background: #00d4ff; top: 58%; }
+.pac-card-ghost::before,
+.pac-card-ghost::after {
+  content:"";
+  position:absolute;
+  top:13px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#fff;
+}
+.pac-card-ghost::before { left:10px; }
+.pac-card-ghost::after { right:10px; }
+.pac-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffeeb0;
+  top: 50%;
+  left: 48%;
+  box-shadow: 34px 0 #ffeeb0, 68px 0 #ffeeb0;
+}
+.pacman-btn {
+  background: linear-gradient(135deg, #ffe600, #ff9f1c) !important;
+  color: #111 !important;
+}
+
+@media (orientation: portrait) {
+  .pacman-wrapper::after {
+    content: "Rotate for arcade landscape";
+    position: absolute;
+    top: 64px;
+    right: 14px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    color: #ffe600;
+    background: rgba(0,0,0,0.58);
+    border: 1px solid rgba(255,230,0,0.32);
+    font: 900 11px monospace;
+  }
+}

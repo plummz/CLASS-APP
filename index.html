@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
   <link rel="stylesheet" href="features/royale/royale.css?v=5">
+  <link rel="stylesheet" href="features/pacman/pacman.css?v=1">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -482,18 +483,24 @@
           <div class="game-card-shine"></div>
         </div>
 
-        <!-- Placeholder slot 1 -->
-        <div class="game-card game-card-soon">
-          <div class="game-thumb soon-thumb">
-            <div class="soon-question">?</div>
-            <div class="game-thumb-badge soon-badge">SOON</div>
+        <!-- Pac-Man -->
+        <div class="game-card" onclick="goToPage('pacman')">
+          <div class="game-thumb pacman-thumb">
+            <div class="pacman-card-art">
+              <span class="pac-dot"></span><span class="pac-dot"></span><span class="pac-dot"></span>
+              <span class="pac-card-player"></span>
+              <span class="pac-card-ghost red"></span>
+              <span class="pac-card-ghost cyan"></span>
+            </div>
+            <div class="game-thumb-badge">ARCADE</div>
           </div>
           <div class="game-info">
-            <div class="game-tags"><span class="game-tag">COMING SOON</span></div>
-            <h3 class="game-name">Mystery Game</h3>
-            <p class="game-desc">A new adventure is in development. Stay tuned for something epic...</p>
-            <button class="game-play-btn" disabled>🔒  LOCKED</button>
+            <div class="game-tags"><span class="game-tag">MAZE</span><span class="game-tag">CLASSIC</span></div>
+            <h3 class="game-name">Pac-Man</h3>
+            <p class="game-desc">Eat pellets, dodge ghosts, clear the maze, and chase the high score in landscape arcade mode.</p>
+            <button class="game-play-btn pacman-btn">▶  PLAY NOW</button>
           </div>
+          <div class="game-card-shine"></div>
         </div>
 
         <!-- Placeholder slot 2 -->
@@ -515,6 +522,15 @@
   </div>
 
   <!-- ── POKEMON ──────────────────────────────────────────── -->
+  <div class="page" id="page-pacman">
+    <div class="pacman-wrapper">
+      <canvas id="pacman-canvas" width="896" height="504"></canvas>
+      <button class="pacman-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
+      <button class="pacman-start-btn" id="pacman-start-btn" type="button">START</button>
+      <div class="pacman-mobile-hint">Swipe or use arrows/WASD</div>
+    </div>
+  </div>
+
   <div class="page" id="page-pokemon">
     <div class="pk-wrapper">
       <div class="pk-game-column" id="pk-game-column">
@@ -1160,7 +1176,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=34"></script>
+  <script src="script.js?v=35"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1176,6 +1192,7 @@
   <script src="assets/js/codelab.js?v=5" defer></script>
   <script src="features/pokemon/pokemon.js?v=3"></script>
   <script src="features/royale/royale.js?v=5"></script>
+  <script src="features/pacman/pacman.js?v=1"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

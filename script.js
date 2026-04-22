@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.6';
+const APP_VERSION = '1.2.7';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.7',
+    date: 'April 22, 2026',
+    title: 'Games Module Expansion',
+    summary: 'Battle Royale bot damage, throw aiming, HUD controls, and the new Pac-Man arcade game were updated.',
+    changes: [
+      'Fixed bot self-hit damage by preventing bot bullets from damaging their shooter.',
+      'Added validated bot damage logging for bullets, explosions, fire, and storm zone damage.',
+      'Improved bot reaction distance, fire timing, aim accuracy, cover movement, and indoor pressure.',
+      'Added hold-and-drag throwable aiming with visual target feedback.',
+      'Added a landscape Pac-Man game with pellets, ghosts, score, lives, win and lose states.'
+    ]
+  },
   {
     version: '1.2.6',
     date: 'April 22, 2026',
@@ -2102,6 +2115,7 @@ const pageConfig = {
   ai:       { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🤖 AI Assistants' },
 };
 pageConfig.codelab = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'CODE LAB' };
+pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'PAC-MAN' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2117,6 +2131,7 @@ window.goToPage = function(pageName) {
   if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
   // Royale: tear down when leaving
   if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
+  if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -2130,7 +2145,7 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
@@ -2175,6 +2190,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
   // Royale: start after page is visible
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
+  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();
   // Event Pictures & Random Pictures: reset and render year cards

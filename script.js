@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.2.8';
+const APP_VERSION = '1.2.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.2.9',
+    date: 'April 23, 2026',
+    title: 'Pac-Man Controls and Royale Bullet Safety',
+    summary: 'Pac-Man restart/death handling was tightened, the D-pad is now a true 3x3 cross, and Battle Royale bullets now reject shooter self-hits.',
+    changes: [
+      'Rebuilt Pac-Man state handling around idle, playing, and gameOver so death stops all updates until Start resets the game.',
+      'Changed Pac-Man controls to a centered 3x3 D-pad grid with instant pointer input and no diagonal/double direction state.',
+      'Added Battle Royale bullet shooter metadata, muzzle spawn offsets, and bullet target validation.',
+      'Blocked bot bullet self-damage and bot friendly bullet damage when friendly fire is off.',
+      'Expanded Royale damage logs to include shooter, target, weapon, source, and damage amount.'
+    ]
+  },
   {
     version: '1.2.8',
     date: 'April 23, 2026',

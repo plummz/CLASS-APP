@@ -2091,7 +2091,7 @@ window.royaleModule = (function () {
   };
 
   // ── Runtime arrays ────────────────────────────────────────
-  let bullets    = [];   // { x,y,vx,vy,dmg,range,dist,owner,tracer }
+  let bullets    = [];   // { x,y,vx,vy,dmg,range,dist,shooterId,shooterType,teamId,weaponKey,tracer }
   let throwables = [];   // { x,y,vx,vy,vy3,z,type,timer,ownerId }
   let fires      = [];   // { x,y,r,life,maxLife }
   let explosions = [];   // { x,y,r,maxR,life,maxLife }
@@ -2109,6 +2109,7 @@ window.royaleModule = (function () {
   let reloadEnd     = 0;
   let shootPressed  = false; // fire button held (auto weapons)
   let shootJustDown = false; // fire button just tapped (semi-auto, cleared each frame)
+  const FRIENDLY_FIRE = false;
 
   // ── Safe zone ─────────────────────────────────────────────
   const ZONE_PHASES = [
@@ -2209,16 +2210,42 @@ window.royaleModule = (function () {
     if (!bot || !bot.alive) return false;
     const dmg = Math.max(0, Number(amount) || 0);
     if (dmg <= 0) return false;
+    const key = source || 'unknown';
+
+    if (key === 'bullet' && options.shooterId && options.shooterId === bot.id) {
+      console.warn('[Royale] Blocked bullet self-damage', {
+        shooter: options.shooterId,
+        target: bot.id,
+        weapon: options.weaponKey || 'unknown',
+        source: key,
+      });
+      return false;
+    }
+    if (key === 'bullet' && !FRIENDLY_FIRE && options.shooterType === 'bot' && options.targetType === 'bot') {
+      console.info('[Royale] Blocked bot friendly bullet damage', {
+        shooter: options.shooterId,
+        target: bot.id,
+        weapon: options.weaponKey || 'unknown',
+        source: key,
+      });
+      return false;
+    }
 
     const now = performance.now();
     const cooldown = Math.max(0, options.cooldown || 0);
-    const key = source || 'unknown';
     bot.damageCooldowns = bot.damageCooldowns || {};
     if (cooldown && now - (bot.damageCooldowns[key] || 0) < cooldown) return false;
     if (cooldown) bot.damageCooldowns[key] = now;
 
     bot.hp = Math.max(0, Math.min(bot.maxHp || 100, bot.hp) - dmg);
-    console.info(`[Royale] Bot took ${Math.round(dmg * 10) / 10} damage from ${key}`, bot.name);
+    console.info('[Royale] Damage event', {
+      shooter: options.shooterId || key,
+      target: bot.id,
+      targetName: bot.name,
+      weapon: options.weaponKey || key,
+      source: key,
+      damage: Math.round(dmg * 10) / 10,
+    });
 
     if (bot.hp <= 0) {
       bot.alive = false;
@@ -2248,6 +2275,9 @@ window.royaleModule = (function () {
     const w = WEAPONS[weaponKey];
     if (!w) return;
     const now = performance.now();
+    const shooterId = ownerId || localId;
+    const shooterType = shooterId === localId ? 'player' : 'bot';
+    const teamId = shooterType;
     if (ownerId === localId) {
       if (reloading) return;
       if (now - (lastFireT[weaponKey]||0) < w.rof) return;
@@ -2260,16 +2290,24 @@ window.royaleModule = (function () {
       const shakeMap={pistol:3,revolver:7,smg:2,ar:4,battlerifle:6,shotgun:9,sniper:12,rpg:0};
       addShake((shakeMap[weaponKey]||3) * (adsActive ? 0.55 : 1));
     }
-    if (w.pellets === 0) { throwItem(fromX, fromY, angle, weaponKey, ownerId); return; }
+    if (w.pellets === 0) { throwItem(fromX, fromY, angle, weaponKey, shooterId); return; }
     for (let p = 0; p < w.pellets; p++) {
       const moving = Math.hypot(moveVel.x, moveVel.y) > 50 ? 1.28 : 1;
       const aimSpread = w.spread * STANCE_SPREAD[stance] * moving * (adsActive ? 0.55 : 1);
       const a = angle + (Math.random()-0.5)*aimSpread;
+      const muzzleOffset = PLAYER_R + 12;
       bullets.push({
-        x:fromX, y:fromY,
+        x:fromX + Math.cos(a) * muzzleOffset,
+        y:fromY + Math.sin(a) * muzzleOffset,
         vx: Math.cos(a)*w.spd, vy: Math.sin(a)*w.spd,
         dmg:w.dmg, range:w.range, dist:0,
-        owner:ownerId,
+        owner:shooterId,
+        shooterId,
+        shooterType,
+        teamId,
+        weaponKey,
+        age:0,
+        ignoreOwnerRadius: PLAYER_R + 12,
         tracer: weaponKey==='sniper',
       });
     }
@@ -2395,9 +2433,38 @@ window.royaleModule = (function () {
   }
 
   // ── Physics updates ───────────────────────────────────────
+  function canBulletDamageTarget(bullet, target) {
+    const shooterId = bullet.shooterId || bullet.owner;
+    const shooterType = bullet.shooterType || (shooterId === localId ? 'player' : 'bot');
+    const shooterTeam = bullet.teamId || shooterType;
+    const targetTeam = target.teamId || target.type;
+
+    if (!shooterId || !target?.id) return true;
+    if (target.id === shooterId) {
+      console.warn('[Royale] Blocked bullet self-hit', {
+        shooter: shooterId,
+        target: target.id,
+        weapon: bullet.weaponKey || 'unknown',
+        source: 'bullet',
+      });
+      return false;
+    }
+    if (!FRIENDLY_FIRE && shooterTeam && targetTeam && shooterTeam === targetTeam) {
+      console.info('[Royale] Blocked friendly bullet hit', {
+        shooter: shooterId,
+        target: target.id,
+        weapon: bullet.weaponKey || 'unknown',
+        source: 'bullet',
+      });
+      return false;
+    }
+    return true;
+  }
+
   function updateBullets(dt) {
     for (let i = bullets.length-1; i >= 0; i--) {
       const b = bullets[i];
+      b.age = (b.age || 0) + dt;
       b.x += b.vx*dt; b.y += b.vy*dt;
       b.dist += Math.sqrt(b.vx*b.vx+b.vy*b.vy)*dt;
       if (b.dist > b.range || b.x<0||b.x>MAP_PX||b.y<0||b.y>MAP_PX) {
@@ -2412,7 +2479,7 @@ window.royaleModule = (function () {
         bullets.splice(i,1); continue;
       }
       // Hit player
-      if (b.owner !== localId) {
+      if (canBulletDamageTarget(b, { id: localId, type: 'player', teamId: 'player' })) {
         const dx=b.x-player.x, dy=b.y-player.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
           applyDamageToPlayer(b.dmg, b.x - b.vx * 0.08, b.y - b.vy * 0.08);
@@ -2423,10 +2490,17 @@ window.royaleModule = (function () {
       // Hit bots
       for (let j=bots.length-1; j>=0; j--) {
         const bt=bots[j]; if (!bt.alive) continue;
-        if (b.owner === bt.id) continue;
+        if (!canBulletDamageTarget(b, { id: bt.id, type: 'bot', teamId: 'bot' })) continue;
         const dx=b.x-bt.x, dy=b.y-bt.y;
         if (Math.sqrt(dx*dx+dy*dy) < PLAYER_R+4) {
-          damageBot(bt, b.dmg, 'bullet', { message:`You killed ${bt.name} (+15 coins)` });
+          damageBot(bt, b.dmg, 'bullet', {
+            shooterId: b.shooterId || b.owner,
+            shooterType: b.shooterType || ((b.shooterId || b.owner) === localId ? 'player' : 'bot'),
+            targetType: 'bot',
+            weaponKey: b.weaponKey,
+            message: (b.shooterId || b.owner) === localId ? `You killed ${bt.name} (+15 coins)` : `${bt.name} was eliminated by gunfire`,
+            credit: (b.shooterId || b.owner) === localId,
+          });
           hitMarker = 6;
           spawnDmgNum(bt.x, bt.y-20, b.dmg, bt.hp<=0?'#ff0':'#fff');
           bullets.splice(i,1); break;

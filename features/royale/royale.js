@@ -611,28 +611,41 @@ window.royaleModule = (function () {
   function bindEndActionButtons() {
     const play = document.getElementById('rl-play-again-btn');
     const quit = document.getElementById('rl-quit-btn');
+    const runEndAction = (button, action) => (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (button.dataset.rlBusy === '1') return;
+      button.dataset.rlBusy = '1';
+      action();
+      setTimeout(() => { button.dataset.rlBusy = '0'; }, 280);
+    };
     if (play && !play.dataset.rlBound) {
       play.dataset.rlBound = '1';
-      const replay = (e) => { e.preventDefault(); e.stopPropagation(); restartGame(); hideEndActionButtons(); };
+      const replay = runEndAction(play, () => { restartGame(); hideEndActionButtons(); });
       play.addEventListener('click', replay);
-      play.addEventListener('touchstart', replay, { passive:false });
+      play.addEventListener('pointerup', replay);
+      play.addEventListener('touchend', replay, { passive:false });
     }
     if (quit && !quit.dataset.rlBound) {
       quit.dataset.rlBound = '1';
-      const leave = (e) => { e.preventDefault(); e.stopPropagation(); hideEndActionButtons(); goToPage('games'); };
+      const leave = runEndAction(quit, () => { hideEndActionButtons(); goToPage('games'); });
       quit.addEventListener('click', leave);
-      quit.addEventListener('touchstart', leave, { passive:false });
+      quit.addEventListener('pointerup', leave);
+      quit.addEventListener('touchend', leave, { passive:false });
     }
   }
 
   function showEndActionButtons() {
+    bindEndActionButtons();
     const el = document.getElementById('rl-end-actions');
     if (el) el.classList.remove('hidden');
+    document.querySelector('.rl-wrapper')?.classList.add('end-active');
   }
 
   function hideEndActionButtons() {
     const el = document.getElementById('rl-end-actions');
     if (el) el.classList.add('hidden');
+    document.querySelector('.rl-wrapper')?.classList.remove('end-active');
   }
 
   // ── Input handlers ────────────────────────────────────────

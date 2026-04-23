@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.4.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.3',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Landscape Controls Reliability',
+    summary: 'Battle Royale action buttons are now anchored as a true bottom-right landscape thumb cluster, and end-screen actions have stronger touch handling.',
+    changes: [
+      'Rebuilt the Royale action controls into a bottom-right landscape grid with Fire as the largest lower-right button.',
+      'Hardened Play Again and Quit with pointer, touch, and click handlers so Android taps are not swallowed by the canvas.',
+      'Dimmed gameplay controls while the match-end actions are visible to avoid blocked or conflicting input.',
+      'Bumped Royale and service-worker asset versions so devices fetch the corrected HUD layout.'
+    ]
+  },
   {
     version: '1.4.2',
     date: 'April 23, 2026',

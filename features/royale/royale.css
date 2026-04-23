@@ -266,12 +266,13 @@ body.rl-portrait-blocked .rl-end-actions {
   left: 50%;
   bottom: max(28px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  z-index: 250;
+  z-index: 360;
   display: flex;
   gap: 14px;
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  touch-action: manipulation;
 }
 .rl-end-actions.hidden {
   display: none;
@@ -298,6 +299,12 @@ body.rl-portrait-blocked .rl-end-actions {
 .rl-end-actions button:active {
   transform: scale(0.96);
 }
+.rl-wrapper.end-active .controls-right,
+.rl-wrapper.end-active #rl-joy-base,
+.rl-wrapper.end-active #rl-joy-knob {
+  opacity: 0.28;
+  pointer-events: none;
+}
 #rl-joy-base {
   width: 112px;
   height: 112px;
@@ -315,14 +322,19 @@ body.rl-portrait-blocked .rl-end-actions {
 /* Strict landscape HUD layout override */
 .controls-right {
   position: absolute;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  right: max(20px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  right: max(18px, env(safe-area-inset-right));
   z-index: 90;
-  display: flex;
-  flex-direction: column-reverse;
+  display: grid;
+  grid-template-columns: 58px 58px 88px;
+  grid-template-rows: 58px 88px;
   gap: 10px;
-  align-items: flex-end;
+  align-items: end;
+  justify-items: end;
   pointer-events: auto;
+  width: auto;
+  max-width: calc(100vw - 160px);
+  touch-action: none;
 }
 
 .controls-right button {
@@ -349,12 +361,34 @@ body.rl-portrait-blocked .rl-end-actions {
 }
 
 .controls-right .fire-button {
-  width: 84px !important;
-  height: 84px !important;
+  grid-column: 3;
+  grid-row: 2;
+  width: 88px !important;
+  height: 88px !important;
   background: rgba(220,30,30,0.88) !important;
   border-color: rgba(255,255,255,0.55) !important;
   font-size: 16px;
   box-shadow: 0 0 20px rgba(255,80,0,0.42), 0 12px 34px rgba(0,0,0,0.34);
+}
+
+#rl-reload-btn {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#rl-crouch-btn {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#rl-jump-btn {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#rl-throw-btn {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .controls-right button:active,

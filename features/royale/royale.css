@@ -26,6 +26,16 @@
   background: #1a2e0a;
 }
 
+body.rl-force-landscape-shell #page-royale .rl-wrapper {
+  width: 100vh;
+  height: 100vw;
+  inset: auto;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  transform: rotate(90deg) translateY(-100%);
+}
+
 /* Main canvas — always fills the wrapper exactly */
 #rl-canvas {
   display: block;
@@ -200,6 +210,9 @@ body.rl-active {
 }
 .rl-rotate-prompt.visible {
   display: flex;
+}
+body.rl-force-landscape-shell .rl-rotate-prompt {
+  display: none !important;
 }
 .rl-rotate-prompt .rl-rotate-icon {
   font-size: 64px;

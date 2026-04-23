@@ -400,6 +400,7 @@ window.royaleModule = (function () {
   let pickupBanner = { text: '', life: 0 };
   let throwAim = { active:false, x:0, y:0, sx:0, sy:0, pointerId:null };
   let landscapeReady = true;
+  let rotatedLandscapeShell = false;
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -415,7 +416,7 @@ window.royaleModule = (function () {
     ctx = canvas.getContext('2d');
 
     document.body.classList.add('rl-active');
-    checkOrientation(); // set portrait rotation class immediately
+    checkOrientation(); // set the in-app landscape shell immediately
 
     if (!mapTiles) { generateMap(); }
     else if (!interiorProps.length) { prepareBuildingInteriors(); }
@@ -485,9 +486,7 @@ window.royaleModule = (function () {
       }
 
       function screenToWorld(clientX, clientY) {
-        const rect = canvas.getBoundingClientRect();
-        const sx = (clientX - rect.left) * (canvas.width / rect.width);
-        const sy = (clientY - rect.top) * (canvas.height / rect.height);
+        const { x: sx, y: sy } = canvasPointFromClient(clientX, clientY);
         const focus = gamePhase === 'dead' && spectateTarget ? spectateCam : cam;
         return { x: focus.x + sx - canvasW / 2, y: focus.y + sy - canvasH / 2 };
       }
@@ -584,23 +583,59 @@ window.royaleModule = (function () {
       canvas.removeEventListener('touchcancel',onTouchEnd);
     }
     document.body.classList.remove('rl-active');
+    document.body.classList.remove('rl-force-landscape-shell', 'rl-portrait-blocked');
     shootPressed = false; shootJustDown = false;
     hideEndActionButtons();
     destroyMultiplayer();
   }
 
   function checkOrientation() {
+    rotatedLandscapeShell = window.innerWidth < window.innerHeight;
+    landscapeReady = true;
+    document.body.classList.toggle('rl-force-landscape-shell', rotatedLandscapeShell);
+    document.body.classList.remove('rl-portrait-blocked');
+    document.getElementById('rl-rotate-prompt')?.classList.remove('visible');
     resize();
-    landscapeReady = window.innerWidth >= window.innerHeight;
-    document.body.classList.toggle('rl-portrait-blocked', !landscapeReady);
-    document.getElementById('rl-rotate-prompt')?.classList.toggle('visible', !landscapeReady);
   }
 
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const wrapper = document.querySelector('#page-royale .rl-wrapper');
+    const width = Math.max(1, Math.round(wrapper?.clientWidth || window.innerWidth));
+    const height = Math.max(1, Math.round(wrapper?.clientHeight || window.innerHeight));
+    canvas.width  = width;
+    canvas.height = height;
     canvasW = canvas.width;
     canvasH = canvas.height;
+  }
+
+  function canvasPointFromClient(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const safeW = Math.max(1, rect.width);
+    const safeH = Math.max(1, rect.height);
+    if (rotatedLandscapeShell) {
+      return {
+        x: (clientY - rect.top) * (canvas.width / safeH),
+        y: (rect.right - clientX) * (canvas.height / safeW),
+      };
+    }
+    return {
+      x: (clientX - rect.left) * (canvas.width / safeW),
+      y: (clientY - rect.top) * (canvas.height / safeH),
+    };
+  }
+
+  function controlPointFromClient(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    if (rotatedLandscapeShell) {
+      return {
+        x: clientY - rect.top,
+        y: rect.right - clientX,
+      };
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
   }
 
   function hideLoading() {
@@ -661,22 +696,21 @@ window.royaleModule = (function () {
     e.preventDefault();
     // Skin menu: handle taps immediately on touchstart for responsiveness
     if (gamePhase === 'skinSelect') {
-      const rect=canvas.getBoundingClientRect();
       for (const t of e.changedTouches) {
-        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
-        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
+        const { x: sx, y: sy } = canvasPointFromClient(t.clientX, t.clientY);
         checkSkinMenuClick(sx, sy);
       }
       return;
     }
-    const splitX = window.innerWidth * 0.5; // always screen space
     for (const t of e.changedTouches) {
-      if (t.clientX < splitX && !joy.active) {
+      const p = controlPointFromClient(t.clientX, t.clientY);
+      const splitX = canvasW * 0.5;
+      if (p.x < splitX && !joy.active) {
         joy.active=true; joy.id=t.identifier;
-        joy.sx=joy.cx=t.clientX; joy.sy=joy.cy=t.clientY;
+        joy.sx=joy.cx=p.x; joy.sy=joy.cy=p.y;
         joy.dx=joy.dy=0;
         joyShow(joy.sx,joy.sy,joy.cx,joy.cy,'rl-joy-base','rl-joy-knob');
-      } else if (t.clientX >= splitX) {
+      } else if (p.x >= splitX) {
         if (gamePhase==='parachute' && !paraDeployed) { paraDeployed=true; }
         else onAimTouchStart(t);
       }
@@ -687,7 +721,8 @@ window.royaleModule = (function () {
     e.preventDefault();
     for (const t of e.changedTouches) {
       if (joy.active && t.identifier===joy.id) {
-        joy.cx=t.clientX; joy.cy=t.clientY;
+        const p = controlPointFromClient(t.clientX, t.clientY);
+        joy.cx=p.x; joy.cy=p.y;
         const dx=joy.cx-joy.sx, dy=joy.cy-joy.sy;
         const len=Math.sqrt(dx*dx+dy*dy)||1, max=45;
         joy.dx=dx/Math.max(len,max); joy.dy=dy/Math.max(len,max);
@@ -709,10 +744,6 @@ window.royaleModule = (function () {
         joyHide('rl-joy-base','rl-joy-knob');
       } else {
         onAimTouchEnd(t);
-        // Convert touch screen coords to game coords for button checks
-        const rect=canvas.getBoundingClientRect();
-        const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
-        const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
         if (gamePhase==='playing') {
           // Gameplay buttons are DOM controls now; the canvas no longer owns weapon UI taps.
         }
@@ -2121,13 +2152,15 @@ window.royaleModule = (function () {
   // ── Touch aim drag (no visible joystick UI) ───────────────
   function onAimTouchStart(t) {
     if (aimJoy.active) return;
+    const p = controlPointFromClient(t.clientX, t.clientY);
     aimJoy.active=true; aimJoy.id=t.identifier;
-    aimJoy.sx=aimJoy.cx=t.clientX; aimJoy.sy=aimJoy.cy=t.clientY;
+    aimJoy.sx=aimJoy.cx=p.x; aimJoy.sy=aimJoy.cy=p.y;
     aimJoy.dx=0; aimJoy.dy=0;
   }
   function onAimTouchMove(t) {
     if (!aimJoy.active||t.identifier!==aimJoy.id) return;
-    aimJoy.cx=t.clientX; aimJoy.cy=t.clientY;
+    const p = controlPointFromClient(t.clientX, t.clientY);
+    aimJoy.cx=p.x; aimJoy.cy=p.y;
     const dx=aimJoy.cx-aimJoy.sx, dy=aimJoy.cy-aimJoy.sy;
     const len=Math.sqrt(dx*dx+dy*dy)||1, max=40;
     aimJoy.dx=dx/Math.max(len,max);
@@ -2960,10 +2993,7 @@ window.royaleModule = (function () {
   }
   function onMouseDown(e) {
     if (e.button!==0) return;
-    // Convert mouse coords to game coords (portrait rotation handled)
-    const rect=canvas.getBoundingClientRect();
-    const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
-    const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    const { x: sx, y: sy } = canvasPointFromClient(e.clientX, e.clientY);
 
     if (checkSkinMenuClick(sx, sy)) return;
     if (gamePhase !== 'playing') return;

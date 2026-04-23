@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.4.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.4',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Auto Landscape Shell',
+    summary: 'Battle Royale now opens in an in-app horizontal layout even when the phone browser does not report rotation correctly, and leaving the match restores the normal app view.',
+    changes: [
+      'Removed the blocking rotate prompt from Battle Royale gameplay.',
+      'Added an automatic rotated landscape shell for portrait phones so the game still plays horizontally.',
+      'Mapped touch and click coordinates correctly inside the rotated shell for skin selection, aiming, and throw targeting.',
+      'Cleaned up the landscape class on exit so Quit returns to the regular Games page layout.'
+    ]
+  },
   {
     version: '1.4.3',
     date: 'April 23, 2026',

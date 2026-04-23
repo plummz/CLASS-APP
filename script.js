@@ -929,7 +929,7 @@ function fetchAndRenderFiles() {
             <div class="file-row-modern">
                 <div class="file-row-meta">
                     <div class="file-row-name">📄 ${escapeHTML(f.name)}</div>
-                    <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}Uploaded by ${escapeHTML(f.uploader || 'Unknown')}</div>
+                    <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}${getUploaderAvatarHTML(f.uploader)}${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
                 <div class="file-row-actions">
                     <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}', false, '${escapeJS(currentFolderContext.id)}')" class="file-action primary">Open</button>
@@ -2137,6 +2137,26 @@ function establishSession() {
   handleNotificationDeepLink();
 }
 
+function getInitials(user) {
+  return String(user.display_name || user.username || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase() || '?';
+}
+
+function makeAvatarHTML(user, cls, liveOnline) {
+  const initials = escapeHTML(getInitials(user));
+  const onlineCls = liveOnline ? ' online' : '';
+  if (user.avatar) {
+    return `<div class="${cls}${onlineCls}"><img src="${escapeHTML(user.avatar)}" alt="${initials}" onerror="this.style.display='none';this.parentElement.dataset.fb='1';this.parentElement.textContent='${initials}'"></div>`;
+  }
+  return `<div class="${cls}${onlineCls}">${initials}</div>`;
+}
+
+function getUploaderAvatarHTML(uploaderUsername) {
+  const u = users.find((user) => user.username === uploaderUsername);
+  if (!u) return `<span class="file-uploader-avatar"><span>${escapeHTML((uploaderUsername || '?')[0].toUpperCase())}</span></span>`;
+  if (u.avatar) return `<span class="file-uploader-avatar"><img src="${escapeHTML(u.avatar)}" alt="" onerror="this.style.display='none'"></span>`;
+  return `<span class="file-uploader-avatar"><span>${escapeHTML(getInitials(u)[0] || '?')}</span></span>`;
+}
+
 function fetchUsers() {
   sb.from('profiles').select('*')
     .then(({data}) => {
@@ -2184,10 +2204,9 @@ function renderUserDirectory() {
     card.className = 'user-card';
     const safeUsername = escapeJS(user.username);
     const liveOnline = isUserLiveOnline(user);
-    const initials = String(user.display_name || user.username || '?').trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
     card.innerHTML = `
       <div class="user-card-top">
-        <div class="user-avatar-mini ${liveOnline ? 'online' : ''}">${escapeHTML(initials || '?')}</div>
+        ${makeAvatarHTML(user, 'user-avatar-mini', liveOnline)}
         <div>
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="user-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
@@ -2214,7 +2233,8 @@ function renderChatUsersList() {
       const safeUsername = escapeJS(user.username);
       const liveOnline = isUserLiveOnline(user);
       item.innerHTML = `
-        <div>
+        ${makeAvatarHTML(user, 'chat-user-avatar', liveOnline)}
+        <div style="flex:1;min-width:0;">
           <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
@@ -2233,7 +2253,12 @@ window.openUserProfile = function(username) {
   
   const isMine = currentUser?.username === profile.username;
   const safeUsername = escapeJS(profile.username);
+  const liveOnline = isUserLiveOnline(profile);
+  const avatarLarge = profile.avatar
+    ? `<div class="profile-avatar-large"><img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='${escapeHTML(getInitials(profile))}'"></div>`
+    : `<div class="profile-avatar-large">${escapeHTML(getInitials(profile))}</div>`;
   let html = `
+    ${avatarLarge}
     <h2 class="modal-title text-blue" style="margin-bottom: 10px;">${escapeHTML(profile.display_name || profile.username)}</h2>
     <div class="profile-row"><strong>Username:</strong> ${escapeHTML(profile.username)}</div>
     <div class="profile-row"><strong>Birthday:</strong> ${escapeHTML(profile.birthday || 'Unknown')}</div>
@@ -2277,8 +2302,24 @@ window.editUserProfile = function(username) {
     : `Username locked for ${formatRemainingTime(nextChange.getTime() - Date.now())}.`;
   const safeUsername = escapeJS(profile.username);
   
+  const currentInitials = escapeHTML(getInitials(profile));
+  const avatarPreviewContent = profile.avatar
+    ? `<img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none'">`
+    : currentInitials;
+
   details.innerHTML = `
     <h2 class="modal-title text-blue" style="margin-bottom: 15px;">Edit Profile</h2>
+    <div style="margin-bottom: 14px;">
+      <label style="font-size: 12px; color: #00d4ff; display:block; margin-bottom:8px;">Profile Picture</label>
+      <div class="avatar-upload-area">
+        <div class="avatar-upload-preview" id="avatar-preview">${avatarPreviewContent}</div>
+        <div class="avatar-upload-info">
+          <input type="file" id="profile-avatar-file" accept="image/*" style="font-size:12px; color:rgba(255,255,255,0.7); background:none; border:none; padding:0; cursor:pointer;">
+          <p class="profile-field-hint" style="margin:0;">Max 5 MB. Square images work best.</p>
+          ${profile.avatar ? `<button class="btn-outline-red" style="padding:4px 10px;font-size:11px;" onclick="window._clearProfileAvatar()">Remove photo</button>` : ''}
+        </div>
+      </div>
+    </div>
     <div style="margin-bottom: 10px;"><label style="font-size: 12px; color: #00d4ff;">Username</label>
         <input type="text" id="profile-username" class="modal-input" style="margin-bottom: 5px; padding: 8px;" value="${escapeHTML(profile.username || '')}" ${canChangeUsername ? '' : 'disabled'}>
         <p class="profile-field-hint">${escapeHTML(usernameHelp)}</p></div>
@@ -2299,6 +2340,28 @@ window.editUserProfile = function(username) {
       <button class="btn-outline-red flex-1" onclick="openUserProfile('${safeUsername}')">Cancel</button>
     </div>
   `;
+
+  // Live avatar preview
+  window._pendingAvatarClear = false;
+  window._clearProfileAvatar = () => {
+    window._pendingAvatarClear = true;
+    const preview = document.getElementById('avatar-preview');
+    if (preview) preview.innerHTML = currentInitials;
+  };
+  const avatarFileInput = document.getElementById('profile-avatar-file');
+  if (avatarFileInput) {
+    avatarFileInput.addEventListener('change', () => {
+      const file = avatarFileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = document.getElementById('avatar-preview');
+        if (preview) preview.innerHTML = `<img src="${e.target.result}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">`;
+        window._pendingAvatarClear = false;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 };
 
 function formatRemainingTime(ms) {
@@ -2355,6 +2418,25 @@ window.saveProfileEdits = async function(username) {
     if (existing && existing.length) return customAlert('That username is already taken.');
   }
 
+  // Handle avatar upload
+  let avatarUrl = profile?.avatar || null;
+  const avatarFile = document.getElementById('profile-avatar-file')?.files?.[0];
+  if (window._pendingAvatarClear) {
+    avatarUrl = null;
+  } else if (avatarFile) {
+    if (avatarFile.size > 5 * 1024 * 1024) return customAlert('Profile picture must be under 5 MB.');
+    const fd = new FormData();
+    fd.append('file', avatarFile);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Upload failed');
+      const uploadData = await res.json();
+      avatarUrl = uploadData.url || avatarUrl;
+    } catch (err) {
+      return customAlert('Could not upload profile picture. Please try again.');
+    }
+  }
+
   const payload = {
     username: newUsername,
     display_name: document.getElementById('profile-displayName').value.trim(),
@@ -2363,9 +2445,10 @@ window.saveProfileEdits = async function(username) {
     github: document.getElementById('profile-github').value.trim(),
     email: document.getElementById('profile-email').value.trim(),
     note: document.getElementById('profile-note').value.trim(),
+    avatar: avatarUrl,
   };
   if (usernameChanged) payload.username_last_changed_at = new Date().toISOString();
-  
+
   const { data, error } = await sb.from('profiles').update(payload).eq('username', username).select('*').single();
   if (error) return customAlert(error.message);
   if (usernameChanged) await replaceUsernameReferences(username, newUsername);

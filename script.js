@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.9';
+const APP_VERSION = '1.5.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.0',
+    date: 'April 23, 2026',
+    title: 'Coded Backgrounds and Live Presence',
+    summary: 'Replaced unreliable online background references with local CSS-designed backgrounds, cleaned Lobby duplicate controls, and made online status use live presence instead of stale saved flags.',
+    changes: [
+      'Added 50 handcrafted CSS still backgrounds and 25 animated CSS backgrounds, including several Information Technology themed designs.',
+      'Removed unreliable online image background presets so the picker works without remote image loading.',
+      'Removed duplicate Lobby tally buttons and kept the cleaner dashboard cards.',
+      'Updated Users and chat online badges to use Supabase Presence so users only show online while actively connected.'
+    ]
+  },
   {
     version: '1.4.9',
     date: 'April 23, 2026',
@@ -1893,10 +1905,53 @@ window.toggleRepeat = function() {
 let users = [];
 let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
 let isAdmin = currentUser?.username === 'Marquillero';
+let appPresenceChannel = null;
+let livePresenceUsers = new Set();
 
 function saveSession() {
   if (currentUser) { localStorage.setItem('classAppUser', JSON.stringify(currentUser)); } 
   else { localStorage.removeItem('classAppUser'); }
+}
+
+function isUserLiveOnline(user) {
+  const username = typeof user === 'string' ? user : user?.username;
+  return Boolean(username && livePresenceUsers.has(username));
+}
+
+function refreshPresenceViews() {
+  renderUserDirectory();
+  renderChatUsersList();
+}
+
+function initAppPresence() {
+  if (!currentUser?.username || appPresenceChannel) return;
+  appPresenceChannel = sb.channel('class-app-active-users', {
+    config: { presence: { key: currentUser.username } },
+  });
+  appPresenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = appPresenceChannel.presenceState() || {};
+      livePresenceUsers = new Set(Object.keys(state));
+      refreshPresenceViews();
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await appPresenceChannel.track({
+          username: currentUser.username,
+          displayName: currentUser.display_name || currentUser.username,
+          page: currentPage,
+          activeAt: new Date().toISOString(),
+        });
+      }
+    });
+}
+
+function destroyAppPresence() {
+  if (!appPresenceChannel) return;
+  try { appPresenceChannel.untrack(); } catch (_) {}
+  try { sb.removeChannel(appPresenceChannel); } catch (_) {}
+  appPresenceChannel = null;
+  livePresenceUsers = new Set();
 }
 
 window.login = async function() {
@@ -1944,6 +1999,7 @@ window.register = async function() {
 };
 
 window.handleLogout = async function() {
+    destroyAppPresence();
     if(currentUser) {
         await sb.from('profiles').update({ online: false }).eq('username', currentUser.username);
     }
@@ -1952,6 +2008,10 @@ window.handleLogout = async function() {
     location.reload();
 };
 
+window.addEventListener('beforeunload', () => {
+  try { appPresenceChannel?.untrack(); } catch (_) {}
+});
+
 function establishSession() {
   const authModal = document.getElementById('auth-modal');
   if(authModal) authModal.style.display = 'none';
@@ -1959,6 +2019,7 @@ function establishSession() {
   if(navLogout) navLogout.style.display = 'flex';
 
   fetchUsers();
+  initAppPresence();
   updateChatHeader();
   initSupabaseRealtimeChat();
   initSharedRealtime();
@@ -1988,8 +2049,9 @@ function renderUserDirectory() {
   const sortMode = document.getElementById('user-sort-select')?.value || 'online';
   const visibleUsers = users
     .filter((user) => {
-      if (statusFilter === 'online' && !user.online) return false;
-      if (statusFilter === 'offline' && user.online) return false;
+      const liveOnline = isUserLiveOnline(user);
+      if (statusFilter === 'online' && !liveOnline) return false;
+      if (statusFilter === 'offline' && liveOnline) return false;
       if (!term) return true;
       return [
         user.username,
@@ -2003,7 +2065,7 @@ function renderUserDirectory() {
     .sort((a, b) => {
       if (sortMode === 'name') return String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
       if (sortMode === 'recent') return new Date(b.updated_at || b.last_seen_at || 0) - new Date(a.updated_at || a.last_seen_at || 0);
-      return Number(Boolean(b.online)) - Number(Boolean(a.online)) || String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
+      return Number(isUserLiveOnline(b)) - Number(isUserLiveOnline(a)) || String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
     });
 
   if (!visibleUsers.length) {
@@ -2015,11 +2077,14 @@ function renderUserDirectory() {
     const card = document.createElement('div');
     card.className = 'user-card';
     const safeUsername = escapeJS(user.username);
+    const liveOnline = isUserLiveOnline(user);
+    const initials = String(user.display_name || user.username || '?').trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
     card.innerHTML = `
       <div class="user-card-top">
+        <div class="user-avatar-mini ${liveOnline ? 'online' : ''}">${escapeHTML(initials || '?')}</div>
         <div>
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="user-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
+          <div class="user-status ${liveOnline ? 'online' : 'offline'}">${liveOnline ? 'Online now' : 'Offline'}</div>
         </div>
         <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
       </div>
@@ -2041,10 +2106,11 @@ function renderChatUsersList() {
       const item = document.createElement('div');
       item.className = 'chat-user-item';
       const safeUsername = escapeJS(user.username);
+      const liveOnline = isUserLiveOnline(user);
       item.innerHTML = `
         <div>
           <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="chat-status ${user.online ? 'online' : 'offline'}">${user.online ? 'Online' : 'Offline'}</div>
+          <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${liveOnline ? 'Online now' : 'Offline'}</div>
         </div>
         <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
@@ -2430,37 +2496,65 @@ let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 let calendarNotes = {};
 
-const BACKGROUND_THEMES = [
-  { key: 'jujutsu', label: 'JJK Inspired', terms: ['anime sorcerer dark blue city', 'anime cursed energy city night', 'anime school rooftop night', 'anime neon battle aura', 'anime blue black magic', 'anime urban fantasy alley', 'anime temple moonlight', 'anime cinematic rain city', 'anime violet energy portrait', 'anime modern japanese school'] },
-  { key: 'pokemon', label: 'Pokemon Inspired', terms: ['fantasy creature meadow', 'colorful monster adventure forest', 'cute electric creature landscape', 'anime game grass route', 'fantasy arena bright sky', 'monster trainer journey road', 'cartoon forest river', 'fantasy volcano creature', 'bright island adventure', 'game mascot cute background'] },
-  { key: 'naruto', label: 'Naruto Inspired', terms: ['anime ninja village sunset', 'japanese village mountain anime', 'orange energy anime background', 'forest training ground anime', 'shinobi village night', 'anime ramen street night', 'ninja temple forest', 'anime chakra blue orange', 'mountain faces village', 'anime desert village'] },
-  { key: 'movies', label: 'Movie Worlds', terms: ['cinematic sci fi city', 'fantasy castle night', 'superhero skyline dusk', 'space opera planet', 'cyberpunk movie street', 'adventure jungle ruins', 'noir city rain', 'epic battlefield sunset', 'mystery mansion fog', 'futuristic cockpit'] },
-  { key: 'gaming', label: 'Gaming', terms: ['gaming neon room', 'arcade city lights', 'esports arena stage', 'retro game landscape', 'fantasy RPG town', 'battle royale island', 'pixel art city night', 'game controller neon', 'open world mountains', 'futuristic game hub'] },
-  { key: 'study', label: 'Study Tech', terms: ['study desk coding laptop', 'computer lab neon', 'classroom technology', 'library night laptop', 'programming workstation', 'digital whiteboard classroom', 'cyber study room', 'student coding desk', 'school hallway modern', 'tech notes workspace'] },
-  { key: 'nature', label: 'Nature', terms: ['misty mountain sunrise', 'ocean sunset waves', 'forest path sunlight', 'northern lights lake', 'tropical beach palms', 'waterfall jungle', 'snow mountain stars', 'flower field sky', 'green valley clouds', 'desert dunes sunset'] },
-  { key: 'space', label: 'Space', terms: ['galaxy nebula purple', 'astronaut planet horizon', 'deep space stars', 'moon surface earth', 'sci fi space station', 'cosmic blue nebula', 'planet rings space', 'meteor shower night', 'space portal', 'starfield violet'] },
-  { key: 'city', label: 'City', terms: ['tokyo neon street', 'manila city night', 'rainy city lights', 'skyscraper rooftop sunset', 'urban street photography', 'city skyline dusk', 'train station night', 'neon alley blue', 'modern campus city', 'downtown cyber lights'] },
-  { key: 'minimal', label: 'Minimal', terms: ['abstract gradient glass', 'minimal dark wallpaper', 'soft geometric background', 'clean blue gradient', 'black neon abstract', 'pastel grid background', 'frosted glass abstract', 'minimal tech lines', 'dark carbon texture', 'calm gradient wallpaper'] },
-  { key: 'anime', label: 'Anime General', terms: ['anime classroom sunset', 'anime city night', 'anime cherry blossom street', 'anime rainy window', 'anime fantasy sky', 'anime school hallway', 'anime mountain village', 'anime summer road', 'anime cyberpunk city', 'anime magical forest'] },
-  { key: 'cinema', label: 'Cinematic', terms: ['cinematic landscape moody', 'dramatic clouds sunset', 'film still city night', 'cinematic forest fog', 'cinematic ocean storm', 'cinematic mountain road', 'dramatic neon silhouette', 'cinematic desert night', 'cinematic blue lighting', 'epic fantasy landscape'] },
-  { key: 'abstract', label: 'Abstract', terms: ['abstract neon waves', 'liquid gradient background', 'holographic texture', 'fractal light background', 'abstract particles dark', '3d abstract shapes', 'glass morphism background', 'blue purple abstract', 'green cyber pattern', 'futuristic mesh gradient'] },
-  { key: 'school', label: 'School Life', terms: ['college campus sunset', 'classroom window sunlight', 'school library shelves', 'student notebook desk', 'university hallway modern', 'study group table', 'campus garden path', 'graduation stage lights', 'lecture room empty', 'school courtyard'] },
-  { key: 'music', label: 'Music', terms: ['concert stage lights', 'music studio neon', 'headphones desk dark', 'vinyl records colorful', 'guitar stage spotlight', 'piano room moody', 'audio mixer lights', 'festival crowd lights', 'microphone neon', 'lofi music room'] },
-];
-
-const ONLINE_BACKGROUND_PRESETS = BACKGROUND_THEMES.flatMap((theme) =>
-  theme.terms.map((term, index) => {
-    const id = `${theme.key}-${index + 1}`;
-    return {
-      id,
-      type: 'image',
-      category: theme.label,
-      title: `${theme.label} ${index + 1}`,
-      query: term,
-      url: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${term}, clean widescreen app background, readable center space, cinematic lighting`)}?width=1600&height=900&seed=${encodeURIComponent(id)}&nologo=true`,
-    };
-  })
-);
+const CODED_BACKGROUND_PRESETS = [
+  ['terminal-nexus', 'Terminal Nexus', 'IT Systems', 'radial-gradient(circle at 18% 28%, rgba(0,255,136,.24), transparent 26%), linear-gradient(90deg, rgba(0,255,136,.08) 1px, transparent 1px), linear-gradient(180deg,#020807,#061421)', 'Servers, shells, and command-line energy'],
+  ['circuit-campus', 'Circuit Campus', 'IT Systems', 'linear-gradient(135deg, rgba(0,212,255,.16) 25%, transparent 25%), radial-gradient(circle at 80% 20%, rgba(0,255,136,.22), transparent 30%), linear-gradient(135deg,#03111f,#0d0620)', 'Circuit traces over a quiet school-night base'],
+  ['server-room', 'Server Room', 'IT Systems', 'repeating-linear-gradient(90deg, rgba(0,212,255,.08) 0 10px, transparent 10px 34px), radial-gradient(circle at 75% 45%, rgba(0,255,136,.18), transparent 34%), linear-gradient(135deg,#020617,#111827)', 'Cool server aisle glow'],
+  ['database-core', 'Database Core', 'IT Systems', 'radial-gradient(ellipse at 50% 35%, rgba(59,130,246,.32), transparent 32%), repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 2px, transparent 2px 26px), linear-gradient(135deg,#07111f,#020617)', 'Layered database storage mood'],
+  ['debug-grid', 'Debug Grid', 'IT Systems', 'linear-gradient(rgba(34,197,94,.11) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,.11) 1px, transparent 1px), radial-gradient(circle at 25% 20%, rgba(255,215,0,.16), transparent 28%), #020617', 'A clean debugging grid'],
+  ['packet-flow', 'Packet Flow', 'IT Systems', 'radial-gradient(circle at 15% 75%, rgba(0,255,136,.22), transparent 28%), radial-gradient(circle at 82% 20%, rgba(0,212,255,.28), transparent 28%), linear-gradient(45deg, transparent 45%, rgba(255,255,255,.08) 45% 46%, transparent 46%), #04111f', 'Network packets moving through dark glass'],
+  ['cyber-tools', 'Cyber Tools', 'IT Systems', 'conic-gradient(from 220deg at 25% 30%, rgba(0,255,136,.22), transparent, rgba(0,212,255,.22), transparent), linear-gradient(135deg,#050816,#101728)', 'Security tools and scanning light'],
+  ['compiler-fire', 'Compiler Fire', 'IT Systems', 'radial-gradient(circle at 22% 72%, rgba(255,120,0,.26), transparent 30%), radial-gradient(circle at 80% 28%, rgba(0,212,255,.22), transparent 32%), linear-gradient(135deg,#160500,#061525)', 'Build heat meeting blue logs'],
+  ['cloud-console', 'Cloud Console', 'IT Systems', 'radial-gradient(circle at 80% 20%, rgba(125,211,252,.26), transparent 28%), radial-gradient(circle at 20% 80%, rgba(147,51,234,.20), transparent 34%), linear-gradient(135deg,#020617,#091632)', 'Cloud dashboard atmosphere'],
+  ['ai-lab', 'AI Lab', 'IT Systems', 'radial-gradient(circle at 50% 45%, rgba(199,125,255,.28), transparent 30%), linear-gradient(120deg, rgba(0,255,200,.12), transparent 46%), linear-gradient(135deg,#090016,#071224)', 'Neural lab glow'],
+  ['neon-shibuya', 'Anime Mood', 'radial-gradient(circle at 18% 26%, rgba(255,0,128,.24), transparent 28%), radial-gradient(circle at 78% 66%, rgba(0,212,255,.26), transparent 32%), linear-gradient(135deg,#120019,#020617)', 'Rainy neon anime-city feeling'],
+  ['sorcerer-blue', 'Anime Mood', 'radial-gradient(circle at 58% 42%, rgba(30,64,175,.38), transparent 28%), radial-gradient(circle at 18% 72%, rgba(0,255,200,.20), transparent 26%), linear-gradient(135deg,#020617,#0b1028)', 'Blue energy without external art'],
+  ['chakra-sunset', 'Anime Mood', 'radial-gradient(circle at 20% 30%, rgba(255,145,0,.28), transparent 28%), radial-gradient(circle at 82% 70%, rgba(255,0,80,.18), transparent 32%), linear-gradient(135deg,#180700,#0b1020)', 'Warm training-ground energy'],
+  ['monster-meadow', 'Anime Mood', 'radial-gradient(circle at 25% 72%, rgba(0,255,136,.28), transparent 28%), radial-gradient(circle at 78% 22%, rgba(255,215,0,.26), transparent 24%), linear-gradient(135deg,#04200d,#073047)', 'Bright adventure meadow'],
+  ['hero-screen', 'Anime Mood', 'radial-gradient(circle at 50% 32%, rgba(255,255,255,.16), transparent 24%), radial-gradient(circle at 75% 70%, rgba(0,212,255,.22), transparent 34%), linear-gradient(135deg,#060712,#1e293b)', 'Cinematic hero spotlight'],
+  ['arcade-fever', 'Games', 'linear-gradient(90deg, rgba(255,0,128,.18) 1px, transparent 1px), linear-gradient(rgba(0,212,255,.18) 1px, transparent 1px), radial-gradient(circle at 70% 30%, rgba(255,215,0,.18), transparent 28%), #080019', 'Arcade cabinet glow'],
+  ['pixel-dawn', 'Games', 'repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 12px, transparent 12px 24px), radial-gradient(circle at 80% 20%, rgba(255,215,0,.26), transparent 28%), linear-gradient(135deg,#120820,#0b2a38)', 'Retro game morning'],
+  ['battle-island', 'Games', 'radial-gradient(circle at 18% 75%, rgba(34,197,94,.22), transparent 30%), radial-gradient(circle at 78% 25%, rgba(56,189,248,.22), transparent 34%), linear-gradient(135deg,#062314,#071629)', 'Island arena energy'],
+  ['pacman-night', 'Games', 'linear-gradient(90deg, rgba(255,215,0,.12) 1px, transparent 1px), linear-gradient(rgba(59,130,246,.18) 1px, transparent 1px), radial-gradient(circle at 20% 25%, rgba(255,215,0,.22), transparent 18%), #050816', 'Arcade maze night'],
+  ['console-dream', 'Games', 'radial-gradient(circle at 16% 20%, rgba(0,255,136,.20), transparent 24%), radial-gradient(circle at 84% 76%, rgba(255,0,128,.22), transparent 30%), linear-gradient(135deg,#050816,#0f1028)', 'Controller-light dreamscape'],
+  ['midnight-library', 'School', 'radial-gradient(circle at 16% 18%, rgba(255,215,0,.18), transparent 24%), radial-gradient(circle at 80% 80%, rgba(0,212,255,.16), transparent 30%), linear-gradient(135deg,#080b13,#171326)', 'Quiet late-night study'],
+  ['classroom-holo', 'School', 'linear-gradient(120deg, rgba(0,212,255,.18), transparent 42%), radial-gradient(circle at 82% 24%, rgba(0,255,136,.20), transparent 26%), linear-gradient(135deg,#06111f,#100b24)', 'Digital classroom board'],
+  ['notebook-glow', 'School', 'repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 30px), radial-gradient(circle at 72% 20%, rgba(255,215,0,.18), transparent 24%), linear-gradient(135deg,#101318,#050816)', 'Notebook lines in dark mode'],
+  ['campus-mist', 'School', 'radial-gradient(circle at 20% 80%, rgba(0,255,136,.18), transparent 30%), radial-gradient(circle at 75% 18%, rgba(125,211,252,.22), transparent 28%), linear-gradient(135deg,#071b18,#081225)', 'Soft campus morning'],
+  ['exam-focus', 'School', 'linear-gradient(135deg, rgba(255,255,255,.08), transparent 40%), radial-gradient(circle at 50% 78%, rgba(0,212,255,.20), transparent 32%), linear-gradient(135deg,#0b1020,#080716)', 'Clean review-session backdrop'],
+  ['galaxy-violet', 'Space', 'radial-gradient(circle at 20% 30%, rgba(147,51,234,.34), transparent 28%), radial-gradient(circle at 78% 64%, rgba(0,212,255,.20), transparent 32%), linear-gradient(135deg,#030712,#13001f)', 'Purple nebula field'],
+  ['moon-terminal', 'Space', 'radial-gradient(circle at 72% 28%, rgba(255,255,255,.18), transparent 18%), radial-gradient(circle at 20% 80%, rgba(0,212,255,.18), transparent 30%), linear-gradient(135deg,#020617,#111827)', 'Moonlit console atmosphere'],
+  ['meteor-lab', 'Space', 'linear-gradient(120deg, transparent 35%, rgba(255,255,255,.12) 36%, transparent 37%), radial-gradient(circle at 80% 18%, rgba(255,215,0,.18), transparent 22%), #020617', 'Meteor streaks over a lab'],
+  ['cosmic-river', 'Space', 'linear-gradient(110deg, transparent 18%, rgba(0,212,255,.18) 28%, rgba(199,125,255,.18) 48%, transparent 60%), linear-gradient(135deg,#020617,#12001e)', 'River of stars'],
+  ['starship-ui', 'Space', 'repeating-linear-gradient(90deg, rgba(125,211,252,.07) 0 2px, transparent 2px 42px), radial-gradient(circle at 50% 50%, rgba(0,212,255,.18), transparent 32%), #07111f', 'Starship interface mood'],
+  ['forest-console', 'Nature', 'radial-gradient(circle at 20% 72%, rgba(34,197,94,.26), transparent 28%), radial-gradient(circle at 80% 20%, rgba(190,242,100,.18), transparent 24%), linear-gradient(135deg,#031407,#081c12)', 'Forest with tech glow'],
+  ['ocean-dashboard', 'Nature', 'radial-gradient(circle at 50% 90%, rgba(0,212,255,.36), transparent 40%), linear-gradient(180deg,#001b2e,#03001c)', 'Deep ocean dashboard'],
+  ['aurora-field', 'Nature', 'linear-gradient(120deg, rgba(0,255,200,.24), transparent 38%), radial-gradient(circle at 80% 20%, rgba(88,101,242,.32), transparent 34%), linear-gradient(135deg,#02111f,#120024)', 'Northern-light field'],
+  ['mountain-code', 'Nature', 'radial-gradient(ellipse at 50% 100%, rgba(34,197,94,.28), transparent 44%), radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 20%), linear-gradient(180deg,#081225,#0a1a0f)', 'Mountain horizon for focus'],
+  ['rain-garden', 'Nature', 'repeating-linear-gradient(105deg, rgba(125,211,252,.08) 0 2px, transparent 2px 18px), radial-gradient(circle at 22% 78%, rgba(34,197,94,.20), transparent 30%), #07111f', 'Rainy garden glass'],
+  ['tokyo-blue', 'City', 'radial-gradient(circle at 18% 22%, rgba(0,212,255,.24), transparent 28%), radial-gradient(circle at 84% 74%, rgba(255,0,128,.20), transparent 30%), linear-gradient(135deg,#050816,#111827)', 'Blue neon city'],
+  ['manila-night', 'City', 'linear-gradient(180deg, transparent 45%, rgba(255,215,0,.10)), radial-gradient(circle at 72% 22%, rgba(0,212,255,.18), transparent 26%), #07111f', 'Warm city night'],
+  ['rainy-alley', 'City', 'repeating-linear-gradient(105deg, rgba(255,255,255,.05) 0 1px, transparent 1px 16px), radial-gradient(circle at 20% 25%, rgba(255,0,128,.18), transparent 26%), linear-gradient(135deg,#080716,#111827)', 'Rain streaks and alley glow'],
+  ['skyline-coral', 'City', 'radial-gradient(circle at 20% 20%, rgba(255,112,0,.24), transparent 28%), radial-gradient(circle at 80% 70%, rgba(0,212,255,.18), transparent 32%), linear-gradient(135deg,#190b08,#071426)', 'Sunset skyline energy'],
+  ['metro-lines', 'City', 'linear-gradient(90deg, transparent 30%, rgba(0,212,255,.12) 31%, transparent 32%), repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 24px), #07111f', 'Metro map linework'],
+  ['glass-emerald', 'Abstract', 'radial-gradient(circle at 20% 20%, rgba(0,255,136,.22), transparent 32%), radial-gradient(circle at 82% 72%, rgba(0,212,255,.18), transparent 34%), linear-gradient(135deg,#020617,#06221a)', 'Emerald glassmorphism'],
+  ['violet-mesh', 'Abstract', 'linear-gradient(45deg, rgba(199,125,255,.18), transparent 35%), linear-gradient(135deg, transparent 55%, rgba(255,0,128,.16)), #090016', 'Violet mesh'],
+  ['gold-carbon', 'Abstract', 'repeating-linear-gradient(45deg, rgba(255,215,0,.06) 0 8px, transparent 8px 18px), radial-gradient(circle at 78% 22%, rgba(255,215,0,.20), transparent 24%), #080806', 'Gold carbon texture'],
+  ['ice-panel', 'Abstract', 'linear-gradient(120deg, rgba(125,211,252,.22), transparent 38%), radial-gradient(circle at 82% 18%, rgba(255,255,255,.18), transparent 24%), linear-gradient(135deg,#061626,#0b1020)', 'Frosted interface panel'],
+  ['rose-hologram', 'Abstract', 'radial-gradient(circle at 30% 25%, rgba(244,63,94,.26), transparent 26%), radial-gradient(circle at 78% 62%, rgba(147,51,234,.26), transparent 34%), linear-gradient(135deg,#080012,#1b0321)', 'Rose holographic glow'],
+  ['stage-audio', 'Music', 'radial-gradient(circle at 50% 12%, rgba(255,255,255,.16), transparent 20%), radial-gradient(circle at 18% 72%, rgba(255,0,128,.20), transparent 28%), linear-gradient(135deg,#090012,#07111f)', 'Concert stage lights'],
+  ['lofi-desk', 'Music', 'radial-gradient(circle at 22% 24%, rgba(255,215,0,.16), transparent 24%), radial-gradient(circle at 80% 78%, rgba(0,212,255,.14), transparent 30%), linear-gradient(135deg,#0b1020,#171326)', 'Lofi study desk mood'],
+  ['vinyl-wave', 'Music', 'conic-gradient(from 0deg at 20% 50%, rgba(255,255,255,.10), transparent, rgba(255,0,128,.16), transparent), linear-gradient(135deg,#090016,#111827)', 'Vinyl-inspired rings'],
+  ['spectrum-bars', 'Music', 'repeating-linear-gradient(90deg, rgba(0,255,136,.16) 0 8px, transparent 8px 22px), radial-gradient(circle at 78% 18%, rgba(0,212,255,.16), transparent 24%), #020617', 'Audio spectrum bars'],
+  ['piano-night', 'Music', 'linear-gradient(90deg, rgba(255,255,255,.05) 0 8%, transparent 8% 13%), radial-gradient(circle at 72% 24%, rgba(255,215,0,.14), transparent 24%), #080b13', 'Piano-key night'],
+].map((item) => {
+  let [id, title, category, background, query] = item;
+  if (item.length === 4) {
+    [id, category, background, query] = item;
+    title = id.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }
+  return { id, title, type: 'coded', category, background, query };
+});
 
 const ANIMATED_BACKGROUND_PRESETS = [
   ['aurora-cyan', 'Aurora Cyan', 'linear-gradient(120deg, rgba(0,255,200,.28), transparent 38%), radial-gradient(circle at 80% 20%, rgba(88,101,242,.42), transparent 34%), linear-gradient(135deg,#02111f,#120024 62%,#001b1c)', 'motion-pan'],
@@ -2523,9 +2617,10 @@ function applyPageBackground(pageName = currentPage) {
   if (document.getElementById('mountain-svg')) document.getElementById('mountain-svg').classList.remove('active');
   if (document.getElementById('aurora')) document.getElementById('aurora').classList.remove('active');
 
-  if (selected?.type === 'animated' && customBgLayer) {
+  if (selected?.background && customBgLayer) {
     customBgLayer.style.background = selected.background;
-    customBgLayer.classList.add('active', selected.motion || 'motion-pan');
+    customBgLayer.classList.add('active');
+    if (selected.type === 'animated') customBgLayer.classList.add(selected.motion || 'motion-pan');
     return;
   }
 
@@ -2585,6 +2680,14 @@ window.goToPage = function(pageName) {
   if (old.aurora) document.getElementById('aurora').classList.remove('active');
 
   currentPage = pageName;
+  if (appPresenceChannel && currentUser?.username) {
+    appPresenceChannel.track({
+      username: currentUser.username,
+      displayName: currentUser.display_name || currentUser.username,
+      page: currentPage,
+      activeAt: new Date().toISOString(),
+    }).catch(() => {});
+  }
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
   if(newPage) newPage.classList.add('active');
@@ -2619,11 +2722,11 @@ window.goToPage = function(pageName) {
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
 };
 
-let backgroundPickerTab = 'online';
+let backgroundPickerTab = 'coded';
 let backgroundPickerSearch = '';
 
 function backgroundCardMarkup(bg) {
-  const previewStyle = bg.type === 'animated'
+  const previewStyle = bg.background
     ? `style="background:${escapeHTML(bg.background)}"`
     : `style="background-image:linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.58)), url('${escapeHTML(bg.url)}')"`;
   const badge = bg.type === 'animated' ? 'Live' : bg.category;
@@ -2641,9 +2744,9 @@ function renderBackgroundPicker() {
   const count = document.getElementById('background-picker-count');
   if (!grid) return;
   const term = backgroundPickerSearch.toLowerCase();
-  const source = backgroundPickerTab === 'animated' ? ANIMATED_BACKGROUND_PRESETS : ONLINE_BACKGROUND_PRESETS;
+  const source = backgroundPickerTab === 'animated' ? ANIMATED_BACKGROUND_PRESETS : CODED_BACKGROUND_PRESETS;
   const filtered = source.filter((bg) => [bg.title, bg.category, bg.query].some((value) => String(value || '').toLowerCase().includes(term)));
-  if (count) count.textContent = `${filtered.length} ${backgroundPickerTab === 'animated' ? 'live presets' : 'online references'}`;
+  if (count) count.textContent = `${filtered.length} ${backgroundPickerTab === 'animated' ? 'live presets' : 'coded designs'}`;
   grid.innerHTML = filtered.length
     ? filtered.map(backgroundCardMarkup).join('')
     : '<div class="bg-picker-empty">No backgrounds match that search.</div>';
@@ -2660,13 +2763,13 @@ window.openBackgroundPicker = function() {
           <div>
             <p class="bg-picker-kicker">Page background</p>
             <h3 class="modal-title text-blue">Choose a Background</h3>
-            <p class="modal-text align-left">Apply a reference image or live animated background to ${escapeHTML(pageConfig[currentPage]?.label || currentPage)}.</p>
+            <p class="modal-text align-left">Apply a handcrafted coded background, live animated design, or uploaded file to ${escapeHTML(pageConfig[currentPage]?.label || currentPage)}.</p>
           </div>
           <div class="bg-current-pill">${current ? escapeHTML(current.title || 'Custom active') : 'Default scene active'}</div>
         </div>
         <div class="bg-picker-controls">
           <div class="bg-picker-tabs">
-            <button class="bg-picker-tab ${backgroundPickerTab === 'online' ? 'active' : ''}" onclick="setBackgroundPickerTab('online')">Online References</button>
+            <button class="bg-picker-tab ${backgroundPickerTab === 'coded' ? 'active' : ''}" onclick="setBackgroundPickerTab('coded')">Coded Designs</button>
             <button class="bg-picker-tab ${backgroundPickerTab === 'animated' ? 'active' : ''}" onclick="setBackgroundPickerTab('animated')">Live Animated</button>
             <button class="bg-picker-tab" onclick="document.getElementById('custom-bg-upload')?.click()">Upload</button>
           </div>
@@ -2693,13 +2796,14 @@ window.openBackgroundPicker = function() {
 window.setBackgroundPickerTab = function(tab) {
   backgroundPickerTab = tab;
   document.querySelectorAll('.bg-picker-tab').forEach((button) => {
-    button.classList.toggle('active', button.textContent.toLowerCase().includes(tab === 'online' ? 'online' : 'live'));
+    const text = button.textContent.toLowerCase();
+    button.classList.toggle('active', tab === 'coded' ? text.includes('coded') : text.includes('live'));
   });
   renderBackgroundPicker();
 };
 
 window.selectPresetBackground = function(type, id) {
-  const source = type === 'animated' ? ANIMATED_BACKGROUND_PRESETS : ONLINE_BACKGROUND_PRESETS;
+  const source = type === 'animated' ? ANIMATED_BACKGROUND_PRESETS : CODED_BACKGROUND_PRESETS;
   const bg = source.find((item) => item.id === id);
   if (!bg) return;
   setPageBackground(currentPage, bg);
@@ -2935,11 +3039,9 @@ function updateClock() { const now = new Date(); const el = document.getElementB
 setInterval(updateClock, 1000);
 
 function renderAppOpenCount(count) {
-  const btn = document.getElementById('app-open-count-btn');
-  if (!btn) return;
   const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
-  btn.textContent = 'App Opens';
-  btn.title = `${safeCount.toLocaleString()} total app opens`;
+  const dash = document.getElementById('lobby-dash-open-count');
+  if (dash) dash.textContent = safeCount.toLocaleString();
 }
 
 function renderAppOpenUsers(list = []) {
@@ -3092,9 +3194,7 @@ window.refreshContributionTally = async function() {
   try {
     const rows = (await fetchContributionTally())
       .sort((a, b) => b.total - a.total || a.username.localeCompare(b.username));
-    const btn = document.getElementById('contribution-tally-btn');
     const total = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
-    if (btn) btn.title = `${total.toLocaleString()} original uploads counted`;
     const dash = document.getElementById('lobby-dash-contribution-count');
     if (dash) dash.textContent = total.toLocaleString();
     renderContributionPreview(rows);
@@ -3123,8 +3223,6 @@ window.openContributionTallyModal = async function() {
 };
 
 window.refreshAppOpenCount = async function() {
-  const btn = document.getElementById('app-open-count-btn');
-  if (btn) btn.textContent = 'Loading...';
   try {
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
@@ -3137,7 +3235,6 @@ window.refreshAppOpenCount = async function() {
     } catch (_) {
       const localRows = localAppOpenRows();
       renderAppOpenRows(localRows);
-      if (btn) btn.title = localRows.length ? 'Showing locally saved app-open counts until Supabase schema is updated' : 'App open count unavailable';
     }
   }
 };

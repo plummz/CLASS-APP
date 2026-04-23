@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.5.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.2',
+    date: 'April 24, 2026',
+    title: 'Profile Pictures',
+    summary: 'Users can now upload a profile picture that appears across the app — on their profile card, profile view, chat sidebar, and next to files they uploaded.',
+    changes: [
+      'Added profile picture upload in Edit Profile with live preview and remove-photo option.',
+      'Profile view modal now shows a large avatar at the top.',
+      'Users page cards and chat sidebar now display the user\'s photo instead of initials only.',
+      'Initials badge is shown as a fallback when no photo has been set.',
+      'File rows now show a tiny avatar chip next to the uploader name.'
+    ]
+  },
   {
     version: '1.5.1',
     date: 'April 23, 2026',

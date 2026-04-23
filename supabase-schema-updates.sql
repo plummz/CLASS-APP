@@ -28,7 +28,8 @@ $$;
 
 alter table public.profiles
   add column if not exists username_last_changed_at timestamptz,
-  add column if not exists last_seen_at timestamptz;
+  add column if not exists last_seen_at timestamptz,
+  add column if not exists avatar text;
 
 alter table public.folders
   add column if not exists permissions jsonb not null default '{"viewers":[],"editors":[],"everyone":"edit"}'::jsonb,

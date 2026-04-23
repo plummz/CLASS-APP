@@ -362,6 +362,7 @@ window.royaleModule = (function () {
   let paraDeployed = false;             // player opened chute
   let paraZ        = 800;               // altitude px (0 = ground)
   let paraVZ       = 0;                 // vertical speed (positive = falling)
+  let paraFastDrop = false;             // early-drop descent boost
   let paraLanded   = false;
 
   // ── Stance system ─────────────────────────────────────────
@@ -423,7 +424,7 @@ window.royaleModule = (function () {
 
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
     gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
-    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
+    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraFastDrop=false; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
     damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};
@@ -432,6 +433,8 @@ window.royaleModule = (function () {
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
     updateSwitchWeaponButton();
+    updateHealButton();
+    updateEarlyDropButton();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); initMultiplayer();
 
@@ -484,6 +487,44 @@ window.royaleModule = (function () {
       switchBtn.addEventListener('click', switchAction);
       switchBtn.addEventListener('pointerup', switchAction);
       switchBtn.addEventListener('touchend', switchAction, { passive:false });
+    }
+    const healBtn = document.getElementById('rl-heal-btn');
+    if (healBtn && !healBtn.dataset.rlHealBound) {
+      healBtn.dataset.rlHealBound = '1';
+      const healAction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (healBtn.dataset.rlBusy === '1') return;
+        healBtn.dataset.rlBusy = '1';
+        useHealKit();
+        healBtn.classList.add('pressed');
+        setTimeout(() => {
+          healBtn.dataset.rlBusy = '0';
+          healBtn.classList.remove('pressed');
+        }, 220);
+      };
+      healBtn.addEventListener('click', healAction);
+      healBtn.addEventListener('pointerup', healAction);
+      healBtn.addEventListener('touchend', healAction, { passive:false });
+    }
+    const earlyDropBtn = document.getElementById('rl-early-drop-btn');
+    if (earlyDropBtn && !earlyDropBtn.dataset.rlDropBound) {
+      earlyDropBtn.dataset.rlDropBound = '1';
+      const dropAction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (earlyDropBtn.dataset.rlBusy === '1') return;
+        earlyDropBtn.dataset.rlBusy = '1';
+        earlyDrop();
+        earlyDropBtn.classList.add('pressed');
+        setTimeout(() => {
+          earlyDropBtn.dataset.rlBusy = '0';
+          earlyDropBtn.classList.remove('pressed');
+        }, 220);
+      };
+      earlyDropBtn.addEventListener('click', dropAction);
+      earlyDropBtn.addEventListener('pointerup', dropAction);
+      earlyDropBtn.addEventListener('touchend', dropAction, { passive:false });
     }
     const throwBtn = document.getElementById('rl-throw-btn');
     if (throwBtn && !throwBtn.dataset.rlThrowBound) {
@@ -955,6 +996,7 @@ window.royaleModule = (function () {
 
     // Parachute phase
     if (gamePhase === 'parachute') {
+      updateEarlyDropButton();
       updateParachute(dt);
       updateKillFeed(dt);
       return;
@@ -988,9 +1030,10 @@ window.royaleModule = (function () {
     mx = strafe;
     my = -forward;
     const len = Math.sqrt(mx*mx+my*my);
-    if (len > 0.12 && !aimJoy.active && !shootPressed) {
+    if (len > 0.12 && !aimJoy.active) {
       const moveAngle = Math.atan2(my, mx);
-      player.angle += normalizeAngle(moveAngle - player.angle) * Math.min(1, 10 * dt);
+      const followRate = shootPressed ? 5.5 : 10;
+      player.angle += normalizeAngle(moveAngle - player.angle) * Math.min(1, followRate * dt);
     }
 
     // Smooth mobile-shooter acceleration/deceleration.
@@ -1076,6 +1119,8 @@ window.royaleModule = (function () {
 
     updateReload();
     updateSwitchWeaponButton();
+    updateHealButton();
+    updateEarlyDropButton();
     updateBullets(dt);
     updateThrowables(dt);
     updateFires(dt);
@@ -2173,9 +2218,43 @@ window.royaleModule = (function () {
     btn.title = disabled ? 'Pick up a second weapon to switch' : 'Switch weapon';
   }
 
+  function updateHealButton() {
+    const btn = document.getElementById('rl-heal-btn');
+    if (!btn) return;
+    const count = Math.max(0, healCharges || 0);
+    const disabled = gamePhase !== 'playing' || count <= 0 || player.health >= player.maxHealth;
+    btn.textContent = `Heal x${count}`;
+    btn.classList.toggle('disabled', disabled);
+    btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    btn.title = count <= 0
+      ? 'Pick up a medkit to heal'
+      : player.health >= player.maxHealth
+        ? 'Health is already full'
+        : 'Use one medkit';
+  }
+
+  function updateEarlyDropButton() {
+    const btn = document.getElementById('rl-early-drop-btn');
+    if (!btn) return;
+    const visible = gamePhase === 'parachute' && !paraLanded;
+    btn.classList.toggle('hidden', !visible);
+    btn.textContent = paraDeployed ? 'DROP FAST' : 'DROP';
+    btn.title = paraDeployed ? 'Descend faster' : 'Leave the plane early';
+  }
+
+  function earlyDrop() {
+    if (gamePhase !== 'parachute' || paraLanded) return;
+    paraDeployed = true;
+    paraFastDrop = true;
+    paraVZ = Math.max(paraVZ, 220);
+    paraZ = Math.max(0, paraZ - 120);
+    showPickup('Early drop');
+    updateEarlyDropButton();
+  }
+
   function pickupLoot(item) {
     if (item.supply) {
-      if (item.key==='medkit')       { healCharges=Math.min(3,healCharges+1); showPickup('Health kit ready'); killFeed.push({text:'Health kit picked up',life:2}); }
+      if (item.key==='medkit')       { healCharges=Math.min(3,healCharges+1); showPickup(`Health kit ready x${healCharges}`); killFeed.push({text:'Health kit picked up',life:2}); updateHealButton(); }
       else if (item.key==='armor_light') { player.armor=Math.min(player.maxArmor,player.armor+50); showPickup('Light armor equipped'); killFeed.push({text:'Light Armor +50',life:2}); }
       else if (item.key==='armor_heavy') { player.armor=Math.min(player.maxArmor,player.armor+100); showPickup('Heavy armor equipped'); killFeed.push({text:'Heavy Armor +100',life:2}); }
       else if (item.key==='ammo_box') {
@@ -2212,12 +2291,13 @@ window.royaleModule = (function () {
 
   function useHealKit() {
     if (gamePhase !== 'playing') return;
-    if (healCharges <= 0) { showPickup('No health kits'); return; }
-    if (player.health >= player.maxHealth) { showPickup('Health already full'); return; }
+    if (healCharges <= 0) { showPickup('No health kits'); updateHealButton(); return; }
+    if (player.health >= player.maxHealth) { showPickup('Health already full'); updateHealButton(); return; }
     healCharges--;
     player.health = Math.min(player.maxHealth, player.health + 55);
     showPickup('Health kit used +55 HP');
     killFeed.push({ text:'Health kit used', life:2 });
+    updateHealButton();
   }
 
   // ── Touch aim drag (no visible joystick UI) ───────────────
@@ -2698,18 +2778,20 @@ window.royaleModule = (function () {
 
     // Plane advances east
     paraPlane.x += paraPlane.speed * dt;
-    player.x = paraPlane.x;
-    player.y = PLANE_Y;
-    cam.x += (player.x - cam.x) * 4 * dt;
-    cam.y += (player.y - cam.y) * 4 * dt;
 
     if (!paraDeployed) {
+      player.x = paraPlane.x;
+      player.y = PLANE_Y;
+      cam.x += (player.x - cam.x) * 4 * dt;
+      cam.y += (player.y - cam.y) * 4 * dt;
       // Tap space / touch right half to deploy chute
       paraZ = Math.max(0, paraZ - 320 * dt); // free-fall
       if (paraZ <= 0) paraDeployed = true;   // auto-deploy at ground
     } else {
       // Glide down
-      paraVZ = Math.min(paraVZ + 60 * dt, 80);
+      const maxFallSpeed = paraFastDrop ? 260 : 80;
+      const fallAccel = paraFastDrop ? 180 : 60;
+      paraVZ = Math.min(paraVZ + fallAccel * dt, maxFallSpeed);
       paraZ  = Math.max(0, paraZ - paraVZ * dt);
 
       // Left joystick / WASD steers horizontally while gliding
@@ -2719,9 +2801,13 @@ window.royaleModule = (function () {
       if (keys['KeyA']||keys['ArrowLeft']) mx-=1;
       if (keys['KeyD']||keys['ArrowRight'])mx+=1;
       if (joy.active){mx+=joy.dx;my+=joy.dy;}
-      const len=Math.sqrt(mx*mx+my*my)||1;
-      player.x = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.x + (mx/Math.max(len,1))*90*dt));
-      player.y = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.y + (my/Math.max(len,1))*90*dt));
+      const len=Math.hypot(mx,my);
+      if (len > 0.05) {
+        const driftSpeed = 150;
+        player.x = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.x + (mx/len)*driftSpeed*dt));
+        player.y = Math.max(PLAYER_R, Math.min(MAP_PX-PLAYER_R, player.y + (my/len)*driftSpeed*dt));
+        player.angle += normalizeAngle(Math.atan2(my, mx) - player.angle) * Math.min(1, 5 * dt);
+      }
       cam.x += (player.x - cam.x) * 6 * dt;
       cam.y += (player.y - cam.y) * 6 * dt;
 
@@ -2730,6 +2816,8 @@ window.royaleModule = (function () {
         gamePhase   = 'playing';
         stance      = 'stand';
         killFeed.push({text:'Dropped in! Find weapons!', life:4});
+        updateEarlyDropButton();
+        updateHealButton();
       }
     }
   }
@@ -3182,7 +3270,7 @@ window.royaleModule = (function () {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
     gamePhase='skinSelect'; gameEndTimer=0; totalKills=0;
-    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraLanded=false;
+    paraPlane={x:0, speed:280}; paraDeployed=false; paraZ=800; paraVZ=0; paraFastDrop=false; paraLanded=false;
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
     damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};

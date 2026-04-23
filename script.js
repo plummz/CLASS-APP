@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.6';
+const APP_VERSION = '1.4.7';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.7',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Heal and Parachute Controls',
+    summary: 'Battle Royale medkits now heal correctly, a Heal count button was added beside weapon switching, held fire follows facing better, and parachute drops can be steered or shortened.',
+    changes: [
+      'Added a left-side Heal button with live medkit count beside the Switch Weapon control.',
+      'Fixed medkit use so one kit is consumed, HP increases, and health never exceeds the max HP.',
+      'Improved held Fire aiming so sustained shots follow the player facing direction instead of sticking to an old angle.',
+      'Added an early parachute drop control and joystick steering during the parachute phase without changing the map or existing action cluster.'
+    ]
+  },
   {
     version: '1.4.6',
     date: 'April 23, 2026',

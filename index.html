@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="features/folders/folders.css?v=1">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
-  <link rel="stylesheet" href="features/royale/royale.css?v=13">
+  <link rel="stylesheet" href="features/royale/royale.css?v=14">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
@@ -714,6 +714,8 @@
       <div id="rl-joy-base"  class="rl-joy-base"></div>
       <div id="rl-joy-knob"  class="rl-joy-knob"></div>
       <button id="rl-switch-weapon-btn" class="rl-switch-weapon-btn" type="button" aria-label="Switch weapon">↔ Weapon</button>
+      <button id="rl-heal-btn" class="rl-heal-btn disabled" type="button" aria-label="Use medkit">Heal x0</button>
+      <button id="rl-early-drop-btn" class="rl-early-drop-btn hidden" type="button" aria-label="Drop early from parachute">DROP</button>
       <!-- Landscape action cluster: movement stays left, combat actions stay bottom-right -->
       <div class="controls-right" aria-label="Battle Royale action controls">
         <button id="rl-fire-btn" class="fire-button">FIRE</button>
@@ -1213,7 +1215,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=54"></script>
+  <script src="script.js?v=55"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1230,7 +1232,7 @@
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
   <script src="features/pokemon/pokemon.js?v=3"></script>
-  <script src="features/royale/royale.js?v=13"></script>
+  <script src="features/royale/royale.js?v=14"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

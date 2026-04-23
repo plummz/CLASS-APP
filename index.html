@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=27">
+  <link rel="stylesheet" href="style.css?v=28">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -42,9 +42,10 @@
   <div id="bg-ocean"    class="scene-bg"></div>
   <div id="bg-aerial"   class="scene-bg"></div>
   <div id="bg-galaxy"   class="scene-bg active"></div>
+  <div id="custom-animated-bg" class="custom-animated-bg" aria-hidden="true"></div>
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
-  <label for="custom-bg-upload" class="custom-bg-btn" style="position: absolute; top: 15px; right: 15px; z-index: 100; cursor: pointer; color: #00d4ff; font-weight: bold; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 8px; border: 1px solid #00d4ff;">Upload Custom BG</label>
+  <button type="button" class="custom-bg-btn" onclick="openBackgroundPicker()">Backgrounds</button>
  
   <div class="aurora" id="aurora"></div>
  
@@ -99,6 +100,7 @@
       <span class="accent-label">Accent</span>
     </div>
 
+    <div class="nav-section-title">Main</div>
     <!-- Lobby sits above all year groups -->
     <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
       <span class="nav-icon">🏫</span>
@@ -131,6 +133,7 @@
       <div class="nav-text"><span class="nav-label">CODING LESSONS</span></div>
     </div>
 
+    <div class="nav-section-title">AI & Classes</div>
     <!-- AI Assistants -->
     <div class="nav-item" data-page="ai" onclick="goToPage('ai')">
       <span class="nav-icon">🤖</span>
@@ -209,6 +212,7 @@
       </div>
     </div>
 
+    <div class="nav-section-title">Media & Tools</div>
     <div class="nav-item" data-page="events" onclick="goToPage('events')">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
@@ -327,6 +331,19 @@
   <div class="page" id="page-users">
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
     <div class="section-label">Profile cards, online status, and private chat access</div>
+    <div class="user-tools">
+      <input id="user-search-input" class="user-search-input" type="search" placeholder="Search users..." oninput="renderUserDirectory()">
+      <select id="user-filter-select" class="user-filter-select" onchange="renderUserDirectory()">
+        <option value="all">All users</option>
+        <option value="online">Online only</option>
+        <option value="offline">Offline only</option>
+      </select>
+      <select id="user-sort-select" class="user-filter-select" onchange="renderUserDirectory()">
+        <option value="online">Online first</option>
+        <option value="name">Name A-Z</option>
+        <option value="recent">Recently updated</option>
+      </select>
+    </div>
     <div class="user-grid" id="user-grid"></div>
     <div class="profile-panel" id="profile-panel">
       <button class="close-profile" onclick="closeProfile()">×</button>
@@ -829,6 +846,23 @@
           </div>
         </div>
       </div>
+      <div class="lobby-dashboard">
+        <button class="lobby-dash-card" type="button" onclick="openAppOpenTallyModal()">
+          <span>App Opens</span>
+          <strong id="lobby-dash-open-count">0</strong>
+          <small>Class launch tally</small>
+        </button>
+        <button class="lobby-dash-card" type="button" onclick="openContributionTallyModal()">
+          <span>Contributions</span>
+          <strong id="lobby-dash-contribution-count">0</strong>
+          <small>Original uploads only</small>
+        </button>
+        <button class="lobby-dash-card" type="button" onclick="openChangelogModal()">
+          <span>Latest Update</span>
+          <strong id="lobby-dash-update-version">1.4.9</strong>
+          <small>View changelog</small>
+        </button>
+      </div>
       <div class="lobby-presence-board">
         <div class="lobby-open-board-head">
           <span>Live Presence</span>
@@ -866,9 +900,14 @@
         <div>
           <div class="shared-board-kicker">Public Board</div>
           <h1 class="shared-board-title">ANNOUNCEMENT</h1>
+          <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
         </div>
-        <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+        <div class="board-toolbar">
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
+          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+        </div>
       </div>
+      <div class="announcement-stats" id="announcement-stats"></div>
       <div class="shared-board-feed" id="announcement-feed"></div>
     </div>
   </div>
@@ -1238,7 +1277,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=56"></script>
+  <script src="script.js?v=57"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

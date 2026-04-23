@@ -1,6 +1,6 @@
 {
   "name": "class-app",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "description": "School portfolio app with real-time chat, profiles, and file uploads.",
   "main": "server.js",
   "scripts": {

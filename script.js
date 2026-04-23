@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.8';
+const APP_VERSION = '1.4.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.9',
+    date: 'April 23, 2026',
+    title: 'UI Polish and Background Picker',
+    summary: 'Added a cleaner Lobby dashboard, searchable Users and Announcement views, and an in-app background picker with online references plus animated live presets.',
+    changes: [
+      'Added 150 online background reference choices grouped by theme, including anime-inspired, Pokemon-inspired, Naruto-inspired, movie-style, nature, city, space, gaming, and classroom sets.',
+      'Added 25 animated live background presets that can be selected without uploading a file.',
+      'Improved Lobby summary cards for app opens, contributions, and update access.',
+      'Added search and filter controls for Users and ANNOUNCEMENT so large class data stays easier to scan.'
+    ]
+  },
   {
     version: '1.4.8',
     date: 'April 23, 2026',
@@ -1971,7 +1983,35 @@ function renderUserDirectory() {
   const grid = document.getElementById('user-grid');
   if (!grid) return;
   grid.innerHTML = '';
-  users.forEach((user) => {
+  const term = (document.getElementById('user-search-input')?.value || '').trim().toLowerCase();
+  const statusFilter = document.getElementById('user-filter-select')?.value || 'all';
+  const sortMode = document.getElementById('user-sort-select')?.value || 'online';
+  const visibleUsers = users
+    .filter((user) => {
+      if (statusFilter === 'online' && !user.online) return false;
+      if (statusFilter === 'offline' && user.online) return false;
+      if (!term) return true;
+      return [
+        user.username,
+        user.display_name,
+        user.github,
+        user.email,
+        user.note,
+        user.address,
+      ].some((value) => String(value || '').toLowerCase().includes(term));
+    })
+    .sort((a, b) => {
+      if (sortMode === 'name') return String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
+      if (sortMode === 'recent') return new Date(b.updated_at || b.last_seen_at || 0) - new Date(a.updated_at || a.last_seen_at || 0);
+      return Number(Boolean(b.online)) - Number(Boolean(a.online)) || String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
+    });
+
+  if (!visibleUsers.length) {
+    grid.innerHTML = '<div class="user-empty-state">No users match this search.</div>';
+    return;
+  }
+
+  visibleUsers.forEach((user) => {
     const card = document.createElement('div');
     card.className = 'user-card';
     const safeUsername = escapeJS(user.username);
@@ -2390,6 +2430,121 @@ let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 let calendarNotes = {};
 
+const BACKGROUND_THEMES = [
+  { key: 'jujutsu', label: 'JJK Inspired', terms: ['anime sorcerer dark blue city', 'anime cursed energy city night', 'anime school rooftop night', 'anime neon battle aura', 'anime blue black magic', 'anime urban fantasy alley', 'anime temple moonlight', 'anime cinematic rain city', 'anime violet energy portrait', 'anime modern japanese school'] },
+  { key: 'pokemon', label: 'Pokemon Inspired', terms: ['fantasy creature meadow', 'colorful monster adventure forest', 'cute electric creature landscape', 'anime game grass route', 'fantasy arena bright sky', 'monster trainer journey road', 'cartoon forest river', 'fantasy volcano creature', 'bright island adventure', 'game mascot cute background'] },
+  { key: 'naruto', label: 'Naruto Inspired', terms: ['anime ninja village sunset', 'japanese village mountain anime', 'orange energy anime background', 'forest training ground anime', 'shinobi village night', 'anime ramen street night', 'ninja temple forest', 'anime chakra blue orange', 'mountain faces village', 'anime desert village'] },
+  { key: 'movies', label: 'Movie Worlds', terms: ['cinematic sci fi city', 'fantasy castle night', 'superhero skyline dusk', 'space opera planet', 'cyberpunk movie street', 'adventure jungle ruins', 'noir city rain', 'epic battlefield sunset', 'mystery mansion fog', 'futuristic cockpit'] },
+  { key: 'gaming', label: 'Gaming', terms: ['gaming neon room', 'arcade city lights', 'esports arena stage', 'retro game landscape', 'fantasy RPG town', 'battle royale island', 'pixel art city night', 'game controller neon', 'open world mountains', 'futuristic game hub'] },
+  { key: 'study', label: 'Study Tech', terms: ['study desk coding laptop', 'computer lab neon', 'classroom technology', 'library night laptop', 'programming workstation', 'digital whiteboard classroom', 'cyber study room', 'student coding desk', 'school hallway modern', 'tech notes workspace'] },
+  { key: 'nature', label: 'Nature', terms: ['misty mountain sunrise', 'ocean sunset waves', 'forest path sunlight', 'northern lights lake', 'tropical beach palms', 'waterfall jungle', 'snow mountain stars', 'flower field sky', 'green valley clouds', 'desert dunes sunset'] },
+  { key: 'space', label: 'Space', terms: ['galaxy nebula purple', 'astronaut planet horizon', 'deep space stars', 'moon surface earth', 'sci fi space station', 'cosmic blue nebula', 'planet rings space', 'meteor shower night', 'space portal', 'starfield violet'] },
+  { key: 'city', label: 'City', terms: ['tokyo neon street', 'manila city night', 'rainy city lights', 'skyscraper rooftop sunset', 'urban street photography', 'city skyline dusk', 'train station night', 'neon alley blue', 'modern campus city', 'downtown cyber lights'] },
+  { key: 'minimal', label: 'Minimal', terms: ['abstract gradient glass', 'minimal dark wallpaper', 'soft geometric background', 'clean blue gradient', 'black neon abstract', 'pastel grid background', 'frosted glass abstract', 'minimal tech lines', 'dark carbon texture', 'calm gradient wallpaper'] },
+  { key: 'anime', label: 'Anime General', terms: ['anime classroom sunset', 'anime city night', 'anime cherry blossom street', 'anime rainy window', 'anime fantasy sky', 'anime school hallway', 'anime mountain village', 'anime summer road', 'anime cyberpunk city', 'anime magical forest'] },
+  { key: 'cinema', label: 'Cinematic', terms: ['cinematic landscape moody', 'dramatic clouds sunset', 'film still city night', 'cinematic forest fog', 'cinematic ocean storm', 'cinematic mountain road', 'dramatic neon silhouette', 'cinematic desert night', 'cinematic blue lighting', 'epic fantasy landscape'] },
+  { key: 'abstract', label: 'Abstract', terms: ['abstract neon waves', 'liquid gradient background', 'holographic texture', 'fractal light background', 'abstract particles dark', '3d abstract shapes', 'glass morphism background', 'blue purple abstract', 'green cyber pattern', 'futuristic mesh gradient'] },
+  { key: 'school', label: 'School Life', terms: ['college campus sunset', 'classroom window sunlight', 'school library shelves', 'student notebook desk', 'university hallway modern', 'study group table', 'campus garden path', 'graduation stage lights', 'lecture room empty', 'school courtyard'] },
+  { key: 'music', label: 'Music', terms: ['concert stage lights', 'music studio neon', 'headphones desk dark', 'vinyl records colorful', 'guitar stage spotlight', 'piano room moody', 'audio mixer lights', 'festival crowd lights', 'microphone neon', 'lofi music room'] },
+];
+
+const ONLINE_BACKGROUND_PRESETS = BACKGROUND_THEMES.flatMap((theme) =>
+  theme.terms.map((term, index) => {
+    const id = `${theme.key}-${index + 1}`;
+    return {
+      id,
+      type: 'image',
+      category: theme.label,
+      title: `${theme.label} ${index + 1}`,
+      query: term,
+      url: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${term}, clean widescreen app background, readable center space, cinematic lighting`)}?width=1600&height=900&seed=${encodeURIComponent(id)}&nologo=true`,
+    };
+  })
+);
+
+const ANIMATED_BACKGROUND_PRESETS = [
+  ['aurora-cyan', 'Aurora Cyan', 'linear-gradient(120deg, rgba(0,255,200,.28), transparent 38%), radial-gradient(circle at 80% 20%, rgba(88,101,242,.42), transparent 34%), linear-gradient(135deg,#02111f,#120024 62%,#001b1c)', 'motion-pan'],
+  ['sakura-night', 'Sakura Night', 'radial-gradient(circle at 20% 20%, rgba(255,179,186,.35), transparent 28%), radial-gradient(circle at 80% 70%, rgba(255,0,128,.20), transparent 35%), linear-gradient(135deg,#160014,#09051f)', 'motion-drift'],
+  ['cursed-energy', 'Cursed Energy', 'radial-gradient(circle at 35% 35%, rgba(79,70,229,.42), transparent 30%), radial-gradient(circle at 70% 65%, rgba(0,212,255,.28), transparent 34%), linear-gradient(135deg,#030712,#170026)', 'motion-pulse'],
+  ['electric-meadow', 'Electric Meadow', 'radial-gradient(circle at 18% 80%, rgba(0,255,136,.34), transparent 28%), radial-gradient(circle at 78% 22%, rgba(255,215,0,.3), transparent 24%), linear-gradient(135deg,#06240f,#061726)', 'motion-wave'],
+  ['ninja-flame', 'Ninja Flame', 'radial-gradient(circle at 20% 30%, rgba(255,112,0,.35), transparent 30%), radial-gradient(circle at 85% 65%, rgba(255,0,80,.25), transparent 34%), linear-gradient(135deg,#1b0500,#100015)', 'motion-pan'],
+  ['movie-neon', 'Movie Neon', 'linear-gradient(115deg, rgba(0,212,255,.22), transparent 40%), radial-gradient(circle at 80% 25%, rgba(255,0,128,.34), transparent 32%), linear-gradient(135deg,#03091a,#170322)', 'motion-drift'],
+  ['space-vortex', 'Space Vortex', 'conic-gradient(from 90deg at 50% 50%, #020617, #312e81, #0891b2, #020617, #4c1d95, #020617)', 'motion-spin'],
+  ['green-terminal', 'Green Terminal', 'repeating-linear-gradient(0deg, rgba(0,255,136,.08) 0 1px, transparent 1px 18px), linear-gradient(135deg,#020b07,#001f18)', 'motion-scan'],
+  ['arcade-grid', 'Arcade Grid', 'linear-gradient(rgba(0,212,255,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,128,.18) 1px, transparent 1px), linear-gradient(135deg,#050018,#10002a)', 'motion-grid'],
+  ['ocean-pulse', 'Ocean Pulse', 'radial-gradient(circle at 50% 90%, rgba(0,212,255,.42), transparent 38%), linear-gradient(180deg,#001b2e,#03001c)', 'motion-wave'],
+  ['sunset-code', 'Sunset Code', 'radial-gradient(circle at 22% 18%, rgba(255,196,0,.32), transparent 28%), radial-gradient(circle at 80% 75%, rgba(255,65,108,.28), transparent 34%), linear-gradient(135deg,#1b1200,#13001d)', 'motion-drift'],
+  ['violet-storm', 'Violet Storm', 'radial-gradient(circle at 25% 65%, rgba(199,125,255,.34), transparent 32%), radial-gradient(circle at 78% 28%, rgba(56,189,248,.24), transparent 30%), linear-gradient(135deg,#080012,#16002b)', 'motion-pulse'],
+  ['forest-firefly', 'Forest Firefly', 'radial-gradient(circle at 12% 20%, rgba(190,242,100,.28), transparent 24%), radial-gradient(circle at 78% 78%, rgba(34,197,94,.24), transparent 32%), linear-gradient(135deg,#031407,#09150f)', 'motion-drift'],
+  ['cyber-rain', 'Cyber Rain', 'repeating-linear-gradient(90deg, rgba(0,212,255,.05) 0 2px, transparent 2px 38px), radial-gradient(circle at 80% 25%, rgba(0,255,136,.22), transparent 28%), linear-gradient(135deg,#020617,#08111f)', 'motion-scan'],
+  ['golden-campus', 'Golden Campus', 'radial-gradient(circle at 20% 22%, rgba(255,215,0,.28), transparent 28%), radial-gradient(circle at 70% 80%, rgba(0,212,255,.18), transparent 34%), linear-gradient(135deg,#151006,#05091b)', 'motion-pan'],
+  ['rose-galaxy', 'Rose Galaxy', 'radial-gradient(circle at 30% 25%, rgba(244,63,94,.35), transparent 26%), radial-gradient(circle at 78% 62%, rgba(147,51,234,.34), transparent 34%), linear-gradient(135deg,#080012,#1b0321)', 'motion-pulse'],
+  ['ice-crystal', 'Ice Crystal', 'linear-gradient(120deg, rgba(125,211,252,.22), transparent 38%), radial-gradient(circle at 82% 18%, rgba(255,255,255,.22), transparent 24%), linear-gradient(135deg,#061626,#0b1020)', 'motion-wave'],
+  ['lava-core', 'Lava Core', 'radial-gradient(circle at 72% 70%, rgba(239,68,68,.38), transparent 30%), radial-gradient(circle at 22% 22%, rgba(251,146,60,.28), transparent 28%), linear-gradient(135deg,#1c0500,#080006)', 'motion-pan'],
+  ['dream-cloud', 'Dream Cloud', 'radial-gradient(circle at 28% 30%, rgba(216,180,254,.34), transparent 34%), radial-gradient(circle at 72% 68%, rgba(125,211,252,.26), transparent 34%), linear-gradient(135deg,#0f1028,#071828)', 'motion-drift'],
+  ['matrix-blue', 'Matrix Blue', 'repeating-linear-gradient(180deg, rgba(0,212,255,.07) 0 1px, transparent 1px 22px), linear-gradient(135deg,#020617,#001e2b)', 'motion-scan'],
+  ['hero-spotlight', 'Hero Spotlight', 'radial-gradient(circle at 50% 38%, rgba(255,255,255,.18), transparent 24%), radial-gradient(circle at 72% 68%, rgba(0,212,255,.26), transparent 34%), linear-gradient(135deg,#060712,#121b2f)', 'motion-pulse'],
+  ['midnight-library', 'Midnight Library', 'radial-gradient(circle at 18% 22%, rgba(255,215,0,.18), transparent 24%), radial-gradient(circle at 80% 82%, rgba(0,212,255,.18), transparent 30%), linear-gradient(135deg,#080b13,#171326)', 'motion-drift'],
+  ['hologram', 'Hologram Mesh', 'linear-gradient(45deg, rgba(0,255,200,.16), transparent 35%), linear-gradient(135deg, transparent 55%, rgba(255,0,128,.16)), linear-gradient(135deg,#030712,#0b1026)', 'motion-grid'],
+  ['cosmic-class', 'Cosmic Class', 'radial-gradient(circle at 20% 80%, rgba(0,255,136,.22), transparent 30%), radial-gradient(circle at 80% 20%, rgba(199,125,255,.32), transparent 30%), linear-gradient(135deg,#020617,#100020)', 'motion-spin'],
+  ['soft-rainbow', 'Soft Rainbow', 'linear-gradient(120deg, rgba(0,212,255,.24), rgba(255,0,128,.18), rgba(0,255,136,.18)), linear-gradient(135deg,#050816,#120421)', 'motion-wave'],
+].map(([id, title, background, motion]) => ({ id, title, type: 'animated', category: 'Live Animated', background, motion }));
+
+function normalizeCustomBackground(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return { type: 'image', url: value, title: 'Uploaded background' };
+  return value;
+}
+
+function setPageBackground(pageName, background) {
+  if (background) customPageBgs[pageName] = background;
+  else delete customPageBgs[pageName];
+  try {
+    localStorage.setItem('customPageBgs', JSON.stringify(customPageBgs));
+  } catch (_) {}
+  applyPageBackground(pageName);
+}
+
+function applyPageBackground(pageName = currentPage) {
+  const cfg = pageConfig[pageName];
+  const customBgLayer = document.getElementById('custom-animated-bg');
+  const selected = normalizeCustomBackground(customPageBgs[pageName]);
+  document.body.style.backgroundImage = '';
+  document.body.style.backgroundSize = '';
+  document.body.style.backgroundPosition = '';
+  document.body.style.backgroundAttachment = '';
+  if (customBgLayer) {
+    customBgLayer.className = 'custom-animated-bg';
+    customBgLayer.style.background = '';
+  }
+
+  document.querySelectorAll('.scene-bg').forEach((bg) => bg.classList.remove('active'));
+  if (document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
+  if (document.getElementById('mountain-svg')) document.getElementById('mountain-svg').classList.remove('active');
+  if (document.getElementById('aurora')) document.getElementById('aurora').classList.remove('active');
+
+  if (selected?.type === 'animated' && customBgLayer) {
+    customBgLayer.style.background = selected.background;
+    customBgLayer.classList.add('active', selected.motion || 'motion-pan');
+    return;
+  }
+
+  if (selected?.url) {
+    document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,.24), rgba(0,0,0,.42)), url("${selected.url}")`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+    return;
+  }
+
+  if (!cfg) return;
+  document.getElementById(cfg.bg)?.classList.add('active');
+  document.getElementById(cfg.particles)?.classList.add('active');
+  if (cfg.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.add('active');
+  if (cfg.mountain) document.getElementById('mountain-svg')?.classList.add('active');
+  if (cfg.aurora) document.getElementById('aurora')?.classList.add('active');
+}
+
 window.goToPage = function(pageName) {
   if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
   if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
@@ -2434,18 +2589,7 @@ window.goToPage = function(pageName) {
   const newPage = document.getElementById('page-' + pageName);
   if(newPage) newPage.classList.add('active');
 
-  if (customPageBgs[pageName]) {
-      document.body.style.backgroundImage = `url(${customPageBgs[pageName]})`;
-      document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
-      document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-  } else {
-      document.body.style.backgroundImage = '';
-      document.getElementById(cfg.bg).classList.add('active');
-      document.getElementById(cfg.particles).classList.add('active');
-      if (cfg.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.add('active');
-      if (cfg.mountain) document.getElementById('mountain-svg').classList.add('active');
-      if (cfg.aurora) document.getElementById('aurora').classList.add('active');
-  }
+  applyPageBackground(pageName);
 
   const indicator = document.getElementById('page-indicator');
   if (indicator) indicator.textContent = cfg.label;
@@ -2473,6 +2617,99 @@ window.goToPage = function(pageName) {
   if (pageName === 'coding-educational') window.initCodingEducational?.();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
+};
+
+let backgroundPickerTab = 'online';
+let backgroundPickerSearch = '';
+
+function backgroundCardMarkup(bg) {
+  const previewStyle = bg.type === 'animated'
+    ? `style="background:${escapeHTML(bg.background)}"`
+    : `style="background-image:linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.58)), url('${escapeHTML(bg.url)}')"`;
+  const badge = bg.type === 'animated' ? 'Live' : bg.category;
+  return `
+    <button class="bg-choice-card ${bg.type === 'animated' ? 'is-animated' : ''}" type="button" onclick="selectPresetBackground('${escapeJS(bg.type)}','${escapeJS(bg.id)}')" ${previewStyle}>
+      <span class="bg-choice-badge">${escapeHTML(badge)}</span>
+      <strong>${escapeHTML(bg.title)}</strong>
+      <small>${escapeHTML(bg.query || bg.category || 'Animated background')}</small>
+    </button>
+  `;
+}
+
+function renderBackgroundPicker() {
+  const grid = document.getElementById('background-picker-grid');
+  const count = document.getElementById('background-picker-count');
+  if (!grid) return;
+  const term = backgroundPickerSearch.toLowerCase();
+  const source = backgroundPickerTab === 'animated' ? ANIMATED_BACKGROUND_PRESETS : ONLINE_BACKGROUND_PRESETS;
+  const filtered = source.filter((bg) => [bg.title, bg.category, bg.query].some((value) => String(value || '').toLowerCase().includes(term)));
+  if (count) count.textContent = `${filtered.length} ${backgroundPickerTab === 'animated' ? 'live presets' : 'online references'}`;
+  grid.innerHTML = filtered.length
+    ? filtered.map(backgroundCardMarkup).join('')
+    : '<div class="bg-picker-empty">No backgrounds match that search.</div>';
+}
+
+window.openBackgroundPicker = function() {
+  removeDynamicModal('background-picker-modal');
+  const current = normalizeCustomBackground(customPageBgs[currentPage]);
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="background-picker-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+      <div class="custom-modal-box background-picker-box border-blue">
+        <button class="modal-close-btn" onclick="removeDynamicModal('background-picker-modal')">&times;</button>
+        <div class="bg-picker-head">
+          <div>
+            <p class="bg-picker-kicker">Page background</p>
+            <h3 class="modal-title text-blue">Choose a Background</h3>
+            <p class="modal-text align-left">Apply a reference image or live animated background to ${escapeHTML(pageConfig[currentPage]?.label || currentPage)}.</p>
+          </div>
+          <div class="bg-current-pill">${current ? escapeHTML(current.title || 'Custom active') : 'Default scene active'}</div>
+        </div>
+        <div class="bg-picker-controls">
+          <div class="bg-picker-tabs">
+            <button class="bg-picker-tab ${backgroundPickerTab === 'online' ? 'active' : ''}" onclick="setBackgroundPickerTab('online')">Online References</button>
+            <button class="bg-picker-tab ${backgroundPickerTab === 'animated' ? 'active' : ''}" onclick="setBackgroundPickerTab('animated')">Live Animated</button>
+            <button class="bg-picker-tab" onclick="document.getElementById('custom-bg-upload')?.click()">Upload</button>
+          </div>
+          <input class="bg-picker-search" id="background-picker-search" type="search" placeholder="Search anime, city, space, study..." value="${escapeHTML(backgroundPickerSearch)}">
+        </div>
+        <div class="bg-picker-meta">
+          <span id="background-picker-count"></span>
+          <button class="bg-clear-btn" onclick="clearPageBackground()">Use Default</button>
+        </div>
+        <div class="bg-picker-grid" id="background-picker-grid"></div>
+      </div>
+    </div>
+  `);
+  const search = document.getElementById('background-picker-search');
+  if (search) {
+    search.addEventListener('input', () => {
+      backgroundPickerSearch = search.value;
+      renderBackgroundPicker();
+    });
+  }
+  renderBackgroundPicker();
+};
+
+window.setBackgroundPickerTab = function(tab) {
+  backgroundPickerTab = tab;
+  document.querySelectorAll('.bg-picker-tab').forEach((button) => {
+    button.classList.toggle('active', button.textContent.toLowerCase().includes(tab === 'online' ? 'online' : 'live'));
+  });
+  renderBackgroundPicker();
+};
+
+window.selectPresetBackground = function(type, id) {
+  const source = type === 'animated' ? ANIMATED_BACKGROUND_PRESETS : ONLINE_BACKGROUND_PRESETS;
+  const bg = source.find((item) => item.id === id);
+  if (!bg) return;
+  setPageBackground(currentPage, bg);
+  showToast(`${bg.title} applied to this page.`);
+};
+
+window.clearPageBackground = function() {
+  setPageBackground(currentPage, null);
+  showToast('Default scene restored.');
+  renderBackgroundPicker();
 };
 
 function statusClass(ok, warn = false) {
@@ -2723,6 +2960,8 @@ function renderAppOpenUsers(list = []) {
 function renderAppOpenStats(data = {}) {
   renderAppOpenCount(data.count);
   renderAppOpenUsers(data.users || []);
+  const dash = document.getElementById('lobby-dash-open-count');
+  if (dash) dash.textContent = Number(data.count || 0).toLocaleString();
 }
 
 function getLocalAppOpenTally() {
@@ -2854,7 +3093,10 @@ window.refreshContributionTally = async function() {
     const rows = (await fetchContributionTally())
       .sort((a, b) => b.total - a.total || a.username.localeCompare(b.username));
     const btn = document.getElementById('contribution-tally-btn');
-    if (btn) btn.title = `${rows.reduce((sum, row) => sum + Number(row.total || 0), 0).toLocaleString()} original uploads counted`;
+    const total = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+    if (btn) btn.title = `${total.toLocaleString()} original uploads counted`;
+    const dash = document.getElementById('lobby-dash-contribution-count');
+    if (dash) dash.textContent = total.toLocaleString();
     renderContributionPreview(rows);
     renderContributionBoard(rows);
   } catch (error) {
@@ -2953,6 +3195,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateFooterYear();
   ensureAdminUpdateControl();
   initAppOpenRealtime();
+  const dashVersion = document.getElementById('lobby-dash-update-version');
+  if (dashVersion) dashVersion.textContent = APP_VERSION;
   if (currentUser) recordAppOpen();
   else window.refreshAppOpenCount();
   fetchSharedAnnouncements();
@@ -3006,30 +3250,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const repeatBtn = document.getElementById('btn-repeat');
   if(repeatBtn) repeatBtn.classList.toggle('neon-active', isRepeat);
 
-  if (customPageBgs[currentPage]) {
-      document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-      document.getElementById('aurora').classList.remove('active'); document.getElementById('mountain-svg').classList.remove('active');
-      const wave = document.getElementById('wave-container'); if (wave) wave.classList.remove('active');
-      document.body.style.backgroundImage = `url(${customPageBgs[currentPage]})`;
-      document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
-  }
+  applyPageBackground(currentPage);
 });
 
-document.getElementById('custom-bg-upload').addEventListener('change', function(event) {
+document.getElementById('custom-bg-upload')?.addEventListener('change', function(event) {
     const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         const base64Image = e.target.result;
-        customPageBgs[currentPage] = base64Image;
         try {
-            localStorage.setItem('customPageBgs', JSON.stringify(customPageBgs));
-            customAlert(`Saved to ${currentPage.toUpperCase()} page!`);
-            document.querySelectorAll('.scene-bg').forEach(bg => bg.classList.remove('active'));
-            document.getElementById('aurora').classList.remove('active'); document.getElementById('mountain-svg').classList.remove('active');
-            const wave = document.getElementById('wave-container'); if (wave) wave.classList.remove('active');
-            document.body.style.backgroundImage = `url(${base64Image})`;
-            document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed';
-        } catch (err) { customAlert("Applied! (Note: File too large to save long-term)."); }
+            setPageBackground(currentPage, { type: 'image', url: base64Image, title: file.name || 'Uploaded background' });
+            showToast(`Saved to ${currentPage.toUpperCase()} page.`);
+            removeDynamicModal('background-picker-modal');
+        } catch (err) {
+            customAlert("Applied! (Note: File too large to save long-term).");
+            applyPageBackground(currentPage);
+        }
     };
     reader.readAsDataURL(file);
 });
@@ -4176,11 +4412,37 @@ async function fetchSharedAnnouncements() {
 function renderSharedAnnouncements() {
   const feed = document.getElementById('announcement-feed');
   if (!feed) return;
+  const stats = document.getElementById('announcement-stats');
+  const searchTerm = (document.getElementById('announcement-search-input')?.value || '').trim().toLowerCase();
+  const filtered = sharedAnnouncements.filter((item) => {
+    if (!searchTerm) return true;
+    return [
+      item.title,
+      item.body,
+      item.text,
+      item.sharer,
+      item.schedule,
+      item.date_label,
+      item.source_type,
+    ].some((value) => String(value || '').toLowerCase().includes(searchTerm));
+  });
+  if (stats) {
+    const weekly = sharedAnnouncements.filter((item) => item.source_type === 'weekly_reminder').length;
+    stats.innerHTML = `
+      <span><strong>${sharedAnnouncements.length}</strong> total</span>
+      <span><strong>${weekly}</strong> weekly</span>
+      <span><strong>${filtered.length}</strong> shown</span>
+    `;
+  }
   if (!sharedAnnouncements.length) {
     feed.innerHTML = '<div class="board-empty">No shared announcements yet.</div>';
     return;
   }
-  feed.innerHTML = sharedAnnouncements.map((item) => `
+  if (!filtered.length) {
+    feed.innerHTML = '<div class="board-empty">No announcements match this search.</div>';
+    return;
+  }
+  feed.innerHTML = filtered.map((item) => `
     <article class="board-card announcement-card">
       <div class="announcement-date-chip">${escapeHTML(item.schedule || item.date_label || 'Announcement')}</div>
       <h2>${escapeHTML(item.title || 'Announcement')}</h2>

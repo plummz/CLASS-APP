@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -228,6 +228,11 @@
       <span class="nav-icon">👥</span>
       <div class="nav-text"><span class="nav-label">Users</span></div>
     </div>
+
+    <div class="nav-item" data-page="diagnostics" onclick="goToPage('diagnostics')">
+      <span class="nav-icon">🩺</span>
+      <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
+    </div>
  
     <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
       <span class="nav-icon">📅</span>
@@ -326,6 +331,24 @@
     <div class="profile-panel" id="profile-panel">
       <button class="close-profile" onclick="closeProfile()">×</button>
       <div id="profile-details"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-diagnostics">
+    <div class="page-header"><h1 class="page-title">Diagnostics</h1></div>
+    <div class="section-label">App health, deployment, cache, and service checks</div>
+    <div class="diagnostics-shell">
+      <div class="diagnostics-toolbar">
+        <div>
+          <h2>System Status</h2>
+          <p>Safe runtime checks for the current deployment. No secrets are displayed.</p>
+        </div>
+        <button class="btn-primary" onclick="loadDiagnostics()">Refresh Checks</button>
+      </div>
+      <div id="diagnostics-summary" class="diagnostics-summary"></div>
+      <div id="diagnostics-grid" class="diagnostics-grid">
+        <div class="diagnostics-card loading">Loading diagnostics...</div>
+      </div>
     </div>
   </div>
 
@@ -1215,7 +1238,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=55"></script>
+  <script src="script.js?v=56"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

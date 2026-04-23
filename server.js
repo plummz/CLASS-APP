@@ -126,6 +126,30 @@ const STATIC_ASSET_CHECKS = [
   'features/royale/royale.css',
 ];
 
+function getStaticAssetStatus() {
+  return STATIC_ASSET_CHECKS.map((file) => {
+    const absolutePath = path.join(__dirname, file);
+    const exists = fs.existsSync(absolutePath);
+    const stat = exists ? fs.statSync(absolutePath) : null;
+    return {
+      file,
+      exists,
+      size: stat?.size || 0,
+      mtime: stat?.mtime?.toISOString() || null,
+    };
+  });
+}
+
+function formatUptime(seconds) {
+  const total = Math.max(0, Math.floor(seconds || 0));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 app.use(cors());
 app.use(express.json());
 app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_OPTIONS));
@@ -166,17 +190,65 @@ app.use('/api', (req, res, next) => {
 });
 
 app.get('/api/static-check', (req, res) => {
-  const files = STATIC_ASSET_CHECKS.map((file) => {
-    const absolutePath = path.join(__dirname, file);
-    return {
-      file,
-      exists: fs.existsSync(absolutePath),
-    };
-  });
+  const files = getStaticAssetStatus();
   res.json({
     ok: files.every((file) => file.exists),
     root: path.basename(__dirname),
     files,
+  });
+});
+
+app.get('/api/diagnostics', async (req, res) => {
+  const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+  let cacheVersion = 'unknown';
+  try {
+    const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
+    cacheVersion = sw.match(/CACHE_VERSION\s*=\s*['"`]([^'"`]+)/)?.[1] || cacheVersion;
+  } catch (_) {}
+
+  let java = { available: false, message: 'Java status not checked.' };
+  try {
+    java = await checkJavaToolchain();
+  } catch (error) {
+    java = { available: false, message: error.message };
+  }
+
+  const memory = process.memoryUsage();
+  res.json({
+    ok: true,
+    appVersion: packageInfo.version,
+    cacheVersion,
+    runtime: process.env.RENDER ? 'Render' : 'Local',
+    node: process.version,
+    platform: `${process.platform} ${process.arch}`,
+    dockerDetected: fs.existsSync('/.dockerenv') || Boolean(process.env.RENDER),
+    uptime: formatUptime(process.uptime()),
+    memory: `${Math.round(memory.rss / 1024 / 1024)} MB RSS`,
+    r2: {
+      configured: Boolean(process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && R2_BUCKET),
+      endpointConfigured: Boolean(process.env.R2_ENDPOINT),
+      bucket: R2_BUCKET || '',
+    },
+    push: {
+      ready: PUSH_READY,
+      publicKey: Boolean(VAPID_PUBLIC_KEY),
+      privateKey: Boolean(VAPID_PRIVATE_KEY),
+      subject: VAPID_SUBJECT,
+    },
+    java: {
+      available: Boolean(java.available),
+      javacVersion: java.javacVersion || '',
+      javaVersion: java.javaVersion || '',
+      timeouts: java.timeouts || {},
+      message: java.message || '',
+    },
+    staticAssets: getStaticAssetStatus(),
+    dataCounts: {
+      users: state.users.length,
+      folders: state.folders.length,
+      files: state.files.length,
+      privateRooms: Object.keys(state.chatHistory.private || {}).length,
+    },
   });
 });
 

@@ -1,12 +1,13 @@
 {
   "name": "class-app",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "description": "School portfolio app with real-time chat, profiles, and file uploads.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "npx nodemon server.js",
-    "lint": "npx eslint ."
+    "lint": "npx eslint .",
+    "check": "node --check server.js && node --check script.js && node --check assets/js/codelab.js && node --check coding-educational/coding-educational.js && node --check features/pokemon/pokemon.js && node --check features/royale/royale.js && node --check features/pacman/pacman.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",

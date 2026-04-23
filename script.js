@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.7';
+const APP_VERSION = '1.4.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.8',
+    date: 'April 23, 2026',
+    title: 'Maintenance Branch Diagnostics and Users Grid',
+    summary: 'Added a safe diagnostics page, denser Users cards, a project check script, and lighter PWA icon assets on a separate maintenance branch.',
+    changes: [
+      'Added an in-app Diagnostics page for app version, cache version, Java runner, R2 configuration, push status, static assets, and local data counts.',
+      'Made the Users page show three to four compact profile cards per row on wider screens, with two per row on small phones.',
+      'Added an npm check script for syntax checks across the main server, app script, Code Lab, Coding Lessons, and game modules.',
+      'Prepared this work on a separate branch so main remains available as the stable fallback.'
+    ]
+  },
   {
     version: '1.4.7',
     date: 'April 23, 2026',
@@ -2372,6 +2384,7 @@ const pageConfig = {
 pageConfig.codelab = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'CODE LAB' };
 pageConfig['coding-educational'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📚 CODING LESSONS' };
 pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'PAC-MAN' };
+pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2447,6 +2460,7 @@ window.goToPage = function(pageName) {
   // Royale: start after page is visible
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
+  if (pageName === 'diagnostics') loadDiagnostics();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();
   // Event Pictures & Random Pictures: reset and render year cards
@@ -2459,6 +2473,110 @@ window.goToPage = function(pageName) {
   if (pageName === 'coding-educational') window.initCodingEducational?.();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
+};
+
+function statusClass(ok, warn = false) {
+  if (ok) return 'ok';
+  return warn ? 'warn' : 'fail';
+}
+
+function renderDiagnosticRows(rows = []) {
+  return `<div class="diagnostics-list">${rows.map((row) => `
+    <div class="diagnostics-row">
+      <span>${escapeHTML(row.label)}</span>
+      <code>${escapeHTML(String(row.value ?? ''))}</code>
+    </div>
+  `).join('')}</div>`;
+}
+
+window.loadDiagnostics = async function() {
+  const grid = document.getElementById('diagnostics-grid');
+  const summary = document.getElementById('diagnostics-summary');
+  if (!grid || !summary) return;
+  grid.innerHTML = '<div class="diagnostics-card loading">Loading diagnostics...</div>';
+  summary.innerHTML = '';
+  try {
+    const response = await fetch('/api/diagnostics', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Diagnostics failed (${response.status})`);
+    const data = await response.json();
+    const staticOk = (data.staticAssets || []).every((asset) => asset.exists);
+    summary.innerHTML = [
+      ['App', data.appVersion || APP_VERSION],
+      ['Cache', data.cacheVersion || 'Unknown'],
+      ['Runtime', data.runtime || 'Unknown'],
+      ['Uptime', data.uptime || '0s'],
+    ].map(([label, value]) => `<div class="diagnostics-pill"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong></div>`).join('');
+
+    const cards = [
+      {
+        title: 'Java Runner',
+        state: statusClass(Boolean(data.java?.available), true),
+        rows: [
+          { label: 'Available', value: data.java?.available ? 'Yes' : 'No' },
+          { label: 'javac', value: data.java?.javacVersion || 'Unavailable' },
+          { label: 'java', value: data.java?.javaVersion || 'Unavailable' },
+          { label: 'Run timeout', value: `${data.java?.timeouts?.runMs || 0}ms` },
+        ],
+      },
+      {
+        title: 'R2 Storage',
+        state: statusClass(Boolean(data.r2?.configured), true),
+        rows: [
+          { label: 'Configured', value: data.r2?.configured ? 'Yes' : 'No' },
+          { label: 'Bucket', value: data.r2?.bucket || 'Missing' },
+          { label: 'Endpoint', value: data.r2?.endpointConfigured ? 'Set' : 'Missing' },
+        ],
+      },
+      {
+        title: 'Push Notifications',
+        state: statusClass(Boolean(data.push?.ready), true),
+        rows: [
+          { label: 'Ready', value: data.push?.ready ? 'Yes' : 'No' },
+          { label: 'Public key', value: data.push?.publicKey ? 'Set' : 'Missing' },
+          { label: 'Private key', value: data.push?.privateKey ? 'Set' : 'Missing' },
+          { label: 'Subject', value: data.push?.subject || 'Missing' },
+        ],
+      },
+      {
+        title: 'Static Assets',
+        state: statusClass(staticOk, true),
+        rows: (data.staticAssets || []).map((asset) => ({
+          label: asset.file,
+          value: asset.exists ? `${Math.round((asset.size || 0) / 1024)} KB` : 'Missing',
+        })),
+      },
+      {
+        title: 'Local Data Snapshot',
+        state: 'ok',
+        rows: [
+          { label: 'Users', value: data.dataCounts?.users || 0 },
+          { label: 'Folders', value: data.dataCounts?.folders || 0 },
+          { label: 'Files', value: data.dataCounts?.files || 0 },
+          { label: 'Private rooms', value: data.dataCounts?.privateRooms || 0 },
+        ],
+      },
+      {
+        title: 'Deployment',
+        state: 'ok',
+        rows: [
+          { label: 'Node', value: data.node || 'Unknown' },
+          { label: 'Platform', value: data.platform || 'Unknown' },
+          { label: 'Docker hint', value: data.dockerDetected ? 'Likely Docker' : 'Not detected' },
+          { label: 'Memory', value: data.memory || 'Unknown' },
+        ],
+      },
+    ];
+
+    grid.innerHTML = cards.map((card) => `
+      <article class="diagnostics-card ${card.state}">
+        <span>${escapeHTML(card.state.toUpperCase())}</span>
+        <strong>${escapeHTML(card.title)}</strong>
+        ${renderDiagnosticRows(card.rows)}
+      </article>
+    `).join('');
+  } catch (error) {
+    grid.innerHTML = `<div class="diagnostics-card fail"><span>ERROR</span><strong>Diagnostics unavailable</strong>${renderDiagnosticRows([{ label: 'Message', value: error.message }])}</div>`;
+  }
 };
 
 function drawRoyalePreviewCanvas() {

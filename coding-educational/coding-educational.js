@@ -125,9 +125,6 @@ window.codingEducationalModule = (function () {
             <div class="coding-edu-breakdown-item">
               <h4>${escapeHTML(item.item || item.title || '')}</h4>
               <p>${escapeHTML(item.explanation || '')}</p>
-              ${item.syntax ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.syntax)}</code></pre>` : ''}
-              ${item.example ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.example)}</code></pre>` : ''}
-              ${item.output ? `<p class="coding-edu-output"><strong>What to notice:</strong> ${escapeHTML(item.output)}</p>` : ''}
             </div>
           `).join('')}
         </div>
@@ -141,13 +138,12 @@ window.codingEducationalModule = (function () {
     return `
       <section class="coding-edu-lesson-section">
         <div class="coding-edu-code-title">
-          <h3>Editable Coding Lab</h3>
-          <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy Starter Code</button>
+          <h3>Worked Examples</h3>
         </div>
         ${items.map((example, index) => `
           <div class="coding-edu-example" data-example-index="${index}">
             <h4>${escapeHTML(example.title || `Example ${index + 1}`)}</h4>
-            <p class="coding-edu-workspace-instructions">${escapeHTML(example.instructions || workspaceInstructions(example))}</p>
+            <p class="coding-edu-workspace-instructions">${escapeHTML(example.explanation || example.instructions || workspaceInstructions(example))}</p>
             ${example.before || example.after ? `
               <div class="coding-edu-before-after">
                 <div>
@@ -160,16 +156,48 @@ window.codingEducationalModule = (function () {
                 </div>
               </div>
             ` : ''}
-            <textarea class="coding-edu-live-code" data-example-index="${index}" spellcheck="false" aria-label="Editable code for ${escapeHTML(example.title || `Example ${index + 1}`)}">${escapeHTML(example.code || '')}</textarea>
             <div class="coding-edu-action-row coding-edu-example-actions">
               <button class="coding-edu-action compact" data-action="copy-example" type="button">Copy Example</button>
-              <button class="coding-edu-action compact" data-action="reset-example" type="button">Reset Code</button>
-              <button class="coding-edu-action compact primary" data-action="run-example" type="button">Run</button>
             </div>
+            <pre class="coding-edu-code"><code>${escapeHTML(example.code || '')}</code></pre>
             ${renderWorkspaceOutput(example, index)}
-            ${example.explanation ? `<p>${escapeHTML(example.explanation)}</p>` : ''}
           </div>
         `).join('')}
+      </section>
+    `;
+  }
+
+  function finalWorkspaceExample(lesson = {}) {
+    const source = asArray(lesson.examples)[0] || lesson.example || {};
+    return {
+      ...source,
+      title: lesson.example?.title || `${lesson.title || 'Lesson'} Practice Workspace`,
+      code: source.code || lesson.example?.code || '',
+      instructions: source.instructions || workspaceInstructions(source),
+    };
+  }
+
+  function renderFinalWorkspace(lesson) {
+    const example = finalWorkspaceExample(lesson);
+    const mode = workspaceMode(example);
+    const waiting = mode === 'visual'
+      ? renderWorkspaceOutput(example, 0)
+      : mode === 'table'
+        ? `<div class="coding-edu-output-shell" data-output-mode="table"><div class="coding-edu-preview-label">Query Result</div><div class="coding-edu-table-output"><div class="coding-edu-muted-output">Run the query to see the table result.</div></div></div>`
+        : `<div class="coding-edu-output-shell" data-output-mode="console"><div class="coding-edu-preview-label">Console Output</div><pre class="coding-edu-console-output">Run the program to see output.</pre></div>`;
+    return `
+      <section class="coding-edu-lesson-section coding-edu-final-workspace" data-final-workspace="true">
+        <div class="coding-edu-code-title">
+          <h3>${escapeHTML(example.title || 'Practice Workspace')}</h3>
+        </div>
+        <p class="coding-edu-workspace-instructions">${escapeHTML(example.instructions || workspaceInstructions(example))}</p>
+        <textarea class="coding-edu-live-code coding-edu-workspace-code" data-final-workspace="true" spellcheck="false" aria-label="Editable final workspace">${escapeHTML(example.code || '')}</textarea>
+        <div class="coding-edu-action-row coding-edu-example-actions">
+          <button class="coding-edu-action compact" data-action="copy-workspace" type="button">Copy</button>
+          <button class="coding-edu-action compact" data-action="reset-workspace" type="button">Reset</button>
+          <button class="coding-edu-action compact primary" data-action="run-workspace" type="button">Run</button>
+        </div>
+        ${waiting}
       </section>
     `;
   }
@@ -192,11 +220,12 @@ window.codingEducationalModule = (function () {
   function renderWorkspaceOutput(example, index) {
     const mode = workspaceMode(example);
     const result = runWorkspace(example.code || '', example);
+    const indexAttr = Number.isFinite(Number(index)) ? ` data-example-index="${index}"` : '';
     if (mode === 'visual') {
       return `
         <div class="coding-edu-preview-shell" data-output-mode="visual">
           <div class="coding-edu-preview-label">Browser Preview</div>
-          <iframe class="coding-edu-live-preview" data-example-index="${index}" sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(result.srcdoc)}"></iframe>
+          <iframe class="coding-edu-live-preview"${indexAttr} sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(result.srcdoc)}"></iframe>
         </div>
       `;
     }
@@ -637,6 +666,7 @@ window.codingEducationalModule = (function () {
             </div>
           </section>
         ` : ''}
+        ${renderFinalWorkspace(lesson)}
         <section class="coding-edu-lesson-section">
           <h3>Common Mistakes</h3>
           <ul>${(lesson.commonMistakes || []).map((point) => `<li>${escapeHTML(point)}</li>`).join('')}</ul>
@@ -793,26 +823,27 @@ window.codingEducationalModule = (function () {
       navigator.clipboard?.writeText(code).catch(() => {});
     }
     if (action === 'copy-example') {
-      const code = event.target.closest('.coding-edu-example')?.querySelector('.coding-edu-live-code')?.value || '';
+      const code = event.target.closest('.coding-edu-example')?.querySelector('.coding-edu-code code')?.textContent || '';
       navigator.clipboard?.writeText(code).catch(() => {});
       return;
     }
-    if (action === 'reset-example') {
-      const exampleEl = event.target.closest('.coding-edu-example');
-      const editor = exampleEl?.querySelector('.coding-edu-live-code');
-      const lesson = getLesson();
-      const index = Number(exampleEl?.dataset.exampleIndex || 0);
-      const example = lesson?.examples?.[index] || {};
-      if (editor) editor.value = example.code || '';
-      updateExamplePreview(exampleEl, editor, example);
+    if (action === 'copy-workspace') {
+      const code = event.target.closest('.coding-edu-final-workspace')?.querySelector('.coding-edu-workspace-code')?.value || '';
+      navigator.clipboard?.writeText(code).catch(() => {});
       return;
     }
-    if (action === 'run-example') {
-      const exampleEl = event.target.closest('.coding-edu-example');
-      const editor = exampleEl?.querySelector('.coding-edu-live-code');
-      const lesson = getLesson();
-      const index = Number(exampleEl?.dataset.exampleIndex || 0);
-      updateExamplePreview(exampleEl, editor, lesson?.examples?.[index] || {});
+    if (action === 'reset-workspace') {
+      const workspace = event.target.closest('.coding-edu-final-workspace');
+      const editor = workspace?.querySelector('.coding-edu-workspace-code');
+      const example = finalWorkspaceExample(getLesson());
+      if (editor) editor.value = example.code || '';
+      updateWorkspacePreview(workspace, editor, example, { force: true });
+      return;
+    }
+    if (action === 'run-workspace') {
+      const workspace = event.target.closest('.coding-edu-final-workspace');
+      const editor = workspace?.querySelector('.coding-edu-workspace-code');
+      updateWorkspacePreview(workspace, editor, finalWorkspaceExample(getLesson()), { force: true });
       return;
     }
     if (action === 'check-exercise') {
@@ -829,14 +860,15 @@ window.codingEducationalModule = (function () {
   function handleInput(event) {
     const editor = event.target.closest('.coding-edu-live-code');
     if (!editor) return;
-    const lesson = getLesson();
-    const index = Number(editor.dataset.exampleIndex || 0);
-    const example = lesson?.examples?.[index] || {};
-    updateExamplePreview(editor.closest('.coding-edu-example'), editor, example);
+    const workspace = editor.closest('.coding-edu-final-workspace');
+    if (!workspace) return;
+    const example = finalWorkspaceExample(getLesson());
+    if (workspaceMode(example) === 'visual') updateWorkspacePreview(workspace, editor, example);
   }
 
-  function updateExamplePreview(exampleEl, editor, example = {}) {
+  function updateWorkspacePreview(exampleEl, editor, example = {}, options = {}) {
     if (!exampleEl || !editor) return;
+    if (!options.force && workspaceMode(example) !== 'visual') return;
     const result = runWorkspace(editor.value, example);
     const frame = exampleEl.querySelector('.coding-edu-live-preview');
     const consoleOutput = exampleEl.querySelector('.coding-edu-console-output');

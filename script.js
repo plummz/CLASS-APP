@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.5';
+const APP_VERSION = '1.4.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.6',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Workspace and Example Cleanup',
+    summary: 'CODING LESSONS now renders one final workspace per lesson and uses less repetitive worked examples across modules.',
+    changes: [
+      'Removed duplicate editable workspaces from lesson examples.',
+      'Moved Run, Copy, Reset controls into a single final workspace per lesson.',
+      'Reduced repeated concept/example/result cards by simplifying breakdown rendering.',
+      'Expanded non-web examples into distinct scenarios for security, networking, APIs, cloud, testing, Git, and similar modules.'
+    ]
+  },
   {
     version: '1.4.5',
     date: 'April 23, 2026',

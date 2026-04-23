@@ -757,15 +757,174 @@ const codingEducationalData = (function () {
   }
 
   function explanationForModel(topic, model, variant) {
-    if (variant === 1) return `This example applies ${topic} to a ${model.title}. The preview changes the main element, so students can connect the code to a real interface instead of a generic sample.`;
-    if (variant === 2) return `This example targets a smaller part of the ${model.title}. That matters in real projects because developers often style or update one button, label, table cell, or card section without changing the whole page.`;
-    return `This example turns ${topic} into a mini interface behavior. It shows how the same concept can appear in a project screen, such as a dashboard, menu, banner, product card, or profile area.`;
+    if (variant === 1) return `${topic} is applied to the whole ${model.title}, so the preview lets students connect the rule to a complete interface piece instead of a loose sample.`;
+    if (variant === 2) return `Only a smaller part of the ${model.title} is targeted. Real projects often need that precision: one link, card label, cell, or button changes while the rest of the screen stays stable.`;
+    return `The ${model.title} becomes a small project scene for ${topic}. The result is different from the earlier examples because it changes behavior or structure inside a fuller interface.`;
+  }
+
+  function scenarioExamples(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
+    const safe = topic.replace(/["`]/g, '').replace(/\s+/g, ' ').trim();
+    const lower = `${moduleTitle} ${chapterTitle}`.toLowerCase();
+    const ref = slug(safe);
+    if (lower.includes('cyber') || lower.includes('password') || lower.includes('phishing') || lower.includes('owasp') || lower.includes('secure')) {
+      return [
+        {
+          title: `${topic}: threat triage note`,
+          code: `asset: student portal account\nsignal: unusual ${safe.toLowerCase()} request\nrisk: credential exposure\naction: verify sender before responding`,
+          outputMode: 'console',
+          output: `Risk review\nAsset: student portal account\nAction: verify sender before responding`,
+          explanation: `The first worked example reads like a security triage note. It names the asset, the suspicious signal, the risk, and the action instead of pretending security is just a command to run.`,
+        },
+        {
+          title: `${topic}: defense checklist`,
+          code: `checklist ${ref}\n[ ] confirm source\n[ ] inspect link or permission\n[ ] report if suspicious`,
+          outputMode: 'console',
+          output: `Checklist ready\n1. confirm source\n2. inspect link or permission\n3. report if suspicious`,
+          explanation: `The second worked example changes the structure into a checklist. The result is useful because students can see the exact habit to follow before trusting a message, link, or request.`,
+        },
+        {
+          title: `${topic}: incident message`,
+          code: `message: I received a suspicious request about ${safe}.\nresponse: I did not click it.\nnext step: send screenshot to adviser/admin.`,
+          outputMode: 'console',
+          output: `Incident response drafted\nStatus: avoided click\nNext: send screenshot to adviser/admin`,
+          explanation: `The third worked example uses a real-world response message. It teaches what to say and what evidence to keep when a security issue appears in school or team work.`,
+        },
+      ];
+    }
+    if (lower.includes('network') || lower.includes('internet') || lower.includes('dns') || lower.includes('router') || lower.includes('client')) {
+      return [
+        {
+          title: `${topic}: connectivity check`,
+          code: `ping class-app.example\nstatus: waiting for response`,
+          outputMode: 'console',
+          output: `Reply from class-app.example\nLatency: 42ms\nConnection path is reachable`,
+          explanation: `The first worked example checks reachability. It answers a basic networking question: can this device reach the service at all?`,
+        },
+        {
+          title: `${topic}: name lookup`,
+          code: `lookup ${ref}.school.local\nrecord: address requested`,
+          outputMode: 'console',
+          output: `${ref}.school.local -> 192.168.10.24\nName resolution succeeded`,
+          explanation: `The second worked example focuses on naming. A service can be online but still fail if the name cannot be resolved to an address.`,
+        },
+        {
+          title: `${topic}: request path`,
+          code: `client -> router -> server\nrequest: GET /${ref}\nexpect: response code`,
+          outputMode: 'console',
+          output: `Path traced\nClient sent request\nServer returned 200 OK`,
+          explanation: `The third worked example follows the path of a request. It is different from ping because it checks the app-level response, not only the connection.`,
+        },
+      ];
+    }
+    if (lower.includes('api') || lower.includes('rest') || lower.includes('json') || lower.includes('request')) {
+      return [
+        {
+          title: `${topic}: GET request`,
+          code: `GET /api/${ref}\nAccept: application/json`,
+          outputMode: 'console',
+          output: `200 OK\n{"topic":"${safe}","status":"available"}`,
+          explanation: `The first worked example reads data. The visible result is a JSON response, which is the common shape students inspect when an API is working.`,
+        },
+        {
+          title: `${topic}: request body`,
+          code: `POST /api/${ref}\nContent-Type: application/json\n\n{"title":"Practice item","done":false}`,
+          outputMode: 'console',
+          output: `201 Created\n{"id":7,"title":"Practice item","done":false}`,
+          explanation: `The second worked example sends data instead of only reading. The response confirms that the server accepted and stored a new item.`,
+        },
+        {
+          title: `${topic}: error response`,
+          code: `GET /api/${ref}/missing\nAccept: application/json`,
+          outputMode: 'console',
+          output: `404 Not Found\n{"error":"${safe} record was not found"}`,
+          explanation: `The third worked example shows failure handling. APIs should explain problems clearly so the frontend can show useful feedback.`,
+        },
+      ];
+    }
+    if (lower.includes('cloud') || lower.includes('hosting') || lower.includes('storage') || lower.includes('render') || lower.includes('firebase') || lower.includes('supabase')) {
+      return [
+        {
+          title: `${topic}: deploy health check`,
+          code: `service: class-app\nrelease: ${ref}\nhealth: check /api/ping`,
+          outputMode: 'console',
+          output: `Deploy check passed\n/api/ping returned ok\nRelease is reachable`,
+          explanation: `The first worked example checks whether the hosted app is alive after deployment. That is more useful than only saying the upload finished.`,
+        },
+        {
+          title: `${topic}: storage rule review`,
+          code: `bucket: lesson-assets\naccess: authenticated users\nrisk: public upload disabled`,
+          outputMode: 'console',
+          output: `Storage review\nAuthenticated uploads only\nPublic write access: blocked`,
+          explanation: `The second worked example looks at a service setting. Cloud work often fails because permissions are too open or too strict.`,
+        },
+        {
+          title: `${topic}: rollback note`,
+          code: `previous release: stable\ncurrent release: ${ref}\nplan: rollback if errors increase`,
+          outputMode: 'console',
+          output: `Rollback plan ready\nStable release identified\nMonitor errors after launch`,
+          explanation: `The third worked example is an operations note. It teaches students that deployment includes recovery planning, not only pressing deploy.`,
+        },
+      ];
+    }
+    if (lower.includes('testing') || lower.includes('debugging') || lower.includes('errors') || lower.includes('console')) {
+      return [
+        {
+          title: `${topic}: reproduce bug`,
+          code: `steps:\n1. open lesson page\n2. tap ${safe}\n3. compare expected and actual result`,
+          outputMode: 'console',
+          output: `Bug reproduced\nExpected: correct result\nActual: mismatch found`,
+          explanation: `The first worked example records reproduction steps. A bug that cannot be repeated is much harder to fix.`,
+        },
+        {
+          title: `${topic}: inspect value`,
+          code: `console.log("selected topic", "${safe}");\nconsole.log("state", "ready");`,
+          outputMode: 'console',
+          output: `selected topic ${safe}\nstate ready`,
+          explanation: `The second worked example inspects values. This is different from reproducing the bug because it checks what the program is storing while it runs.`,
+        },
+        {
+          title: `${topic}: verify fix`,
+          code: `test: ${ref}\ninput: normal case\nexpected: success message`,
+          outputMode: 'console',
+          output: `Test passed\nNormal case returned success message`,
+          explanation: `The third worked example verifies the fix. Testing is strongest when it proves the behavior after the change, not only before it.`,
+        },
+      ];
+    }
+    if (lower.includes('git') || lower.includes('github') || lower.includes('branch') || lower.includes('merge')) {
+      return [
+        {
+          title: `${topic}: inspect working tree`,
+          code: 'git status',
+          outputMode: 'console',
+          output: 'On branch main\nnothing to commit, working tree clean',
+          explanation: `The first worked example checks project state before changing files. Git work should start by knowing whether the workspace is clean.`,
+        },
+        {
+          title: `${topic}: save a focused change`,
+          code: `git add coding-educational/\ngit commit -m "practice ${ref}"`,
+          outputMode: 'console',
+          output: `[main abc123] practice ${ref}\n1 file changed`,
+          explanation: `The second worked example saves a focused change. It uses a different structure from status because it stages and commits work.`,
+        },
+        {
+          title: `${topic}: sync with remote`,
+          code: 'git pull origin main\ngit push origin main',
+          outputMode: 'console',
+          output: 'Already up to date.\nEverything up-to-date',
+          explanation: `The third worked example deals with the remote repository. Collaboration needs both local commits and remote syncing.`,
+        },
+      ];
+    }
+    return null;
   }
 
   function consoleExampleSet(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
     const safe = topic.replace(/["`]/g, '').replace(/\s+/g, ' ').trim();
     const m = moduleTitle.toLowerCase();
     const seed = (hashText(`${moduleTitle}-${chapterTitle}-${topic}`) + lessonIndex) % 6;
+    const scenarioSet = scenarioExamples(moduleTitle, chapterTitle, topic, lessonIndex);
+    if (scenarioSet) return scenarioSet;
     if (m.includes('java') && !m.includes('javascript')) {
       const javaTemplates = [
         {
@@ -773,7 +932,7 @@ const codingEducationalData = (function () {
           code: `public class Main {\n  public static void main(String[] args) {\n    String topic = "${safe}";\n    int score = ${88 + seed};\n    System.out.println(topic);\n    System.out.println("Score: " + score);\n  }\n}`,
           outputMode: 'console',
           output: `${safe}\nScore: ${88 + seed}`,
-          explanation: `This Java example prints real console lines. If you change the text or the number, the console output changes to match the current code.`,
+          explanation: `The program stores a topic and score, then prints both lines. Changing either value changes the console output directly.`,
         },
         {
           title: `${topic}: Java variable check`,
@@ -801,7 +960,7 @@ const codingEducationalData = (function () {
           code: `public class Main {\n  public static void main(String[] args) {\n    boolean ready = ${seed % 2 === 0 ? 'true' : 'false'};\n    System.out.println("Ready for ${safe}: " + ready);\n  }\n}`,
           outputMode: 'console',
           output: `Ready for ${safe}: ${seed % 2 === 0 ? 'true' : 'false'}`,
-          explanation: `This example uses a boolean so students can see a true/false result in a real console-style output.`,
+          explanation: `The boolean creates a true/false status message, which is useful for beginner checks such as passed, ready, valid, or active.`,
         },
         {
           title: `${topic}: Java text label`,
@@ -820,7 +979,7 @@ const codingEducationalData = (function () {
           code: `topic = "${safe}"\nscore = ${90 + seed}\nprint(topic)\nprint(score)`,
           outputMode: 'console',
           output: `${safe}\n${90 + seed}`,
-          explanation: `This Python example prints the current variable values. Editing the string or number changes the console output.`,
+          explanation: `The script stores a topic and score, then prints them as separate console lines. It is a basic variable-to-output path.`,
         },
         {
           title: `${topic}: Python f-string`,
@@ -834,7 +993,7 @@ const codingEducationalData = (function () {
           code: `activities = ${2 + (seed % 4)}\npoints_each = ${4 + seed}\nprint(activities * points_each)`,
           outputMode: 'console',
           output: String((2 + (seed % 4)) * (4 + seed)),
-          explanation: `This example checks a simple calculation so the output is connected to the current numbers in the code.`,
+          explanation: `The calculation multiplies two stored numbers. The output proves that the result came from the current values, not from a fixed label.`,
         },
         {
           title: `${topic}: Python loop result`,
@@ -881,7 +1040,7 @@ const codingEducationalData = (function () {
           code: `SELECT COUNT(*) AS count\nFROM students;`,
           outputMode: 'table',
           output: 'A one-row table showing the number of mock students.',
-          explanation: `This example returns a summary table instead of every row, which is common in database reporting.`,
+          explanation: `The query returns one summary row instead of every record, which is common in reports and dashboard counters.`,
         },
         {
           title: `${topic}: SQL alias result`,
@@ -895,7 +1054,7 @@ const codingEducationalData = (function () {
           code: `SELECT name, score\nFROM students\nORDER BY score DESC;`,
           outputMode: 'table',
           output: 'Rows are shown as a sorted result table.',
-          explanation: `This example emphasizes that SQL output is a table whose order can be controlled by the query.`,
+          explanation: `The query changes the order of rows, so the table becomes easier to read when the highest score should appear first.`,
         },
       ];
       return [0, 1, 2].map((offset) => sqlTemplates[(seed + offset) % sqlTemplates.length]);
@@ -906,21 +1065,21 @@ const codingEducationalData = (function () {
         code: m.includes('git') ? 'git status' : m.includes('linux') ? 'pwd' : `echo "Start ${safe}"`,
         outputMode: 'console',
         output: m.includes('git') ? 'On branch main\nnothing to commit, working tree clean' : m.includes('linux') ? '/class-app/practice' : `Start ${safe}`,
-        explanation: `This command-style example belongs in a console output panel because it represents a first check for the lesson topic.`,
+        explanation: `The command performs an initial check and returns a short console response tied to the lesson topic.`,
       },
       {
         title: `${topic}: second command`,
         code: m.includes('git') ? 'git add .' : m.includes('linux') ? 'ls' : `echo "Review ${safe}"`,
         outputMode: 'console',
         output: m.includes('git') ? '[No output]' : m.includes('linux') ? 'index.html\nscript.js\ncoding-educational/' : `Review ${safe}`,
-        explanation: `This variation changes the command target so the simulated response is different from the first example.`,
+        explanation: `The second command changes the target action, so the response is not just a renamed copy of the first check.`,
       },
       {
         title: `${topic}: classroom check`,
         code: m.includes('git') ? `git commit -m "practice ${safe}"` : m.includes('linux') ? `mkdir ${slug(safe)}` : `echo "Apply ${safe}"`,
         outputMode: 'console',
         output: m.includes('git') ? '[main abc123] practice commit' : m.includes('linux') ? '[No output]' : `Apply ${safe}`,
-        explanation: `This keeps non-visual lessons in a console-style workspace while showing a third distinct result.`,
+        explanation: `The third command performs a classroom-style action and produces a different kind of console feedback.`,
       },
       {
         title: `${topic}: inspect files`,
@@ -991,15 +1150,15 @@ const codingEducationalData = (function () {
     const lessonExamples = (typeof topicSpec === 'string' ? null : topicSpec.examples) || examples(moduleTitle, chapterTitle, topic, lessonIndex);
     const angles = learningAngles(moduleTitle, chapterTitle, topic);
     const breakdown = (customItems && customItems.length ? customItems : [
-      item(angles.labels[0], `${topic} belongs here because ${chapterTitle} needs this skill in a real beginner project. This part explains the situation where the idea is useful before any code or command is copied.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
-      item(angles.labels[1], `This part shows the action behind ${topic}: what is selected, changed, requested, protected, arranged, or checked. It turns the topic into a step a student can actually perform.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
-      item(angles.labels[2], `This part explains what evidence to look for after using ${topic}. The evidence might be a console message, table row, interface change, safer behavior, or cleaner workflow.`, codeFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item(angles.labels[0], `${topic} has a specific job inside ${chapterTitle}. Start by naming the problem it solves, then connect that problem to a screen, command, query, security habit, or program behavior a beginner can actually recognize.`, '', ''),
+      item(angles.labels[1], `Use ${topic} by choosing the correct target and making one clear change. The target might be a variable, selector, table, route, file, permission, device, or user action depending on the module.`, '', ''),
+      item(angles.labels[2], `Check ${topic} by looking for evidence instead of guessing. Good evidence can be a changed preview, a console line, a table row, a safer warning, a cleaner workflow, or a successful request.`, '', ''),
     ]).map((part) => ({
       item: part.item,
       explanation: part.explanation,
-      syntax: part.syntax || syntaxFor(moduleTitle, part.item),
-      example: part.example || codeFor(moduleTitle, part.item),
-      output: part.output || resultFor(moduleTitle, part.item),
+      syntax: part.syntax !== undefined ? part.syntax : syntaxFor(moduleTitle, part.item),
+      example: part.example !== undefined ? part.example : codeFor(moduleTitle, part.item),
+      output: part.output !== undefined ? part.output : resultFor(moduleTitle, part.item),
     }));
     return {
       id: slug(`${moduleTitle}-${chapterTitle}-${topic}`),

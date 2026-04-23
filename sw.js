@@ -1,11 +1,11 @@
-const CACHE_VERSION = 'v88';
+const CACHE_VERSION = 'v89';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=73',
   '/style.css?v=26',
   '/assets/css/codelab.css?v=4',
-  '/coding-educational/coding-educational.css?v=7',
+  '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
   '/features/academics/academics.css?v=1',
   '/features/lobby/lobby.css?v=1',
@@ -21,7 +21,7 @@ const ASSETS = [
   '/features/pokemon/pokemon.css?v=3',
   '/features/royale/royale.css?v=13',
   '/features/pacman/pacman.css?v=3',
-  '/script.js?v=53',
+  '/script.js?v=54',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -35,8 +35,8 @@ const ASSETS = [
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
   '/assets/js/codelab.js?v=6',
-  '/coding-educational/coding-educational-data.js?v=9',
-  '/coding-educational/coding-educational.js?v=8',
+  '/coding-educational/coding-educational-data.js?v=10',
+  '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
   '/features/royale/royale.js?v=13',

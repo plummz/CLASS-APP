@@ -141,12 +141,13 @@ window.codingEducationalModule = (function () {
     return `
       <section class="coding-edu-lesson-section">
         <div class="coding-edu-code-title">
-          <h3>Examples</h3>
+          <h3>Editable Coding Lab</h3>
           <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy First Example</button>
         </div>
         ${items.map((example, index) => `
           <div class="coding-edu-example" data-example-index="${index}">
             <h4>${escapeHTML(example.title || `Example ${index + 1}`)}</h4>
+            <p class="coding-edu-workspace-instructions">${escapeHTML(example.instructions || workspaceInstructions(example))}</p>
             ${example.before || example.after ? `
               <div class="coding-edu-before-after">
                 <div>
@@ -163,17 +164,55 @@ window.codingEducationalModule = (function () {
             <div class="coding-edu-action-row coding-edu-example-actions">
               <button class="coding-edu-action compact" data-action="copy-example" type="button">Copy Example</button>
               <button class="coding-edu-action compact" data-action="reset-example" type="button">Reset Code</button>
-              <button class="coding-edu-action compact" data-action="run-example" type="button">Run Again</button>
+              <button class="coding-edu-action compact primary" data-action="run-example" type="button">Run</button>
             </div>
-            <div class="coding-edu-preview-shell">
-              <div class="coding-edu-preview-label">Live Preview</div>
-              <iframe class="coding-edu-live-preview" data-example-index="${index}" sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(example.preview || buildPreviewDoc(example.code || '', example))}"></iframe>
-            </div>
-            ${example.output ? `<p class="coding-edu-output"><strong>Output/result:</strong> ${escapeHTML(example.output)}</p>` : ''}
+            ${renderWorkspaceOutput(example, index)}
             ${example.explanation ? `<p>${escapeHTML(example.explanation)}</p>` : ''}
           </div>
         `).join('')}
       </section>
+    `;
+  }
+
+  function workspaceMode(example = {}) {
+    if (example.outputMode) return example.outputMode;
+    const kind = (example.kind || '').toLowerCase();
+    if (kind === 'html' || kind === 'css' || kind === 'javascript') return 'visual';
+    if (kind === 'sql') return 'table';
+    return 'console';
+  }
+
+  function workspaceInstructions(example = {}) {
+    const mode = workspaceMode(example);
+    if (mode === 'visual') return 'Edit the code and watch the browser preview update from your current code.';
+    if (mode === 'table') return 'Edit the query, then run it to see a beginner mock SQL result table.';
+    return 'Edit the code, then run it to see console output based on the current program text.';
+  }
+
+  function renderWorkspaceOutput(example, index) {
+    const mode = workspaceMode(example);
+    const result = runWorkspace(example.code || '', example);
+    if (mode === 'visual') {
+      return `
+        <div class="coding-edu-preview-shell" data-output-mode="visual">
+          <div class="coding-edu-preview-label">Browser Preview</div>
+          <iframe class="coding-edu-live-preview" data-example-index="${index}" sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(result.srcdoc)}"></iframe>
+        </div>
+      `;
+    }
+    if (mode === 'table') {
+      return `
+        <div class="coding-edu-output-shell" data-output-mode="table">
+          <div class="coding-edu-preview-label">Query Result</div>
+          <div class="coding-edu-table-output">${result.html}</div>
+        </div>
+      `;
+    }
+    return `
+      <div class="coding-edu-output-shell" data-output-mode="console">
+        <div class="coding-edu-preview-label">Console Output</div>
+        <pre class="coding-edu-console-output${String(result.text || '').startsWith('[ERROR]') ? ' error' : ''}">${escapeHTML(result.text)}</pre>
+      </div>
     `;
   }
 
@@ -197,6 +236,153 @@ window.codingEducationalModule = (function () {
       document.body.insertAdjacentHTML('beforeend', '<pre class="console">' + logs.join('\\n') + '</pre>');
     <\/script>`);
     return previewFrame(`<pre class="console">${escapeHTML(example.output || safeCode || '[No output]')}</pre>`);
+  }
+
+  function runWorkspace(code, example = {}) {
+    const mode = workspaceMode(example);
+    if (mode === 'visual') return { type: 'visual', srcdoc: renderLivePreview(code, { ...example, preview: '', forceLive: true }) };
+    if (mode === 'table') return { type: 'table', html: renderSqlResult(code) };
+    return { type: 'console', text: simulateConsole(code, example) };
+  }
+
+  function simulateConsole(code, example = {}) {
+    const kind = (example.kind || '').toLowerCase();
+    if (!code.trim()) return '[No code]';
+    if (!hasBalancedDelimiters(code)) return '[ERROR] Check your brackets, braces, parentheses, or quotes.';
+    if (kind === 'java') return simulateJava(code);
+    if (kind === 'python') return simulatePython(code);
+    if (kind === 'terminal') return simulateTerminal(code);
+    return String(example.output || '[No output]');
+  }
+
+  function hasBalancedDelimiters(code) {
+    const pairs = { '(': ')', '[': ']', '{': '}' };
+    const stack = [];
+    let quote = '';
+    for (let i = 0; i < code.length; i++) {
+      const char = code[i];
+      const prev = code[i - 1];
+      if ((char === '"' || char === "'") && prev !== '\\') {
+        quote = quote === char ? '' : quote || char;
+        continue;
+      }
+      if (quote) continue;
+      if (pairs[char]) stack.push(pairs[char]);
+      else if (Object.values(pairs).includes(char) && stack.pop() !== char) return false;
+    }
+    return !quote && !stack.length;
+  }
+
+  function simulateJava(code) {
+    if (/\bJFrame\b|\bJPanel\b|\bJButton\b|setVisible\s*\(/.test(code)) {
+      return 'Swing source detected. GUI windows cannot open in this lesson preview, but the code is treated as console/structure practice here.';
+    }
+    const vars = {};
+    [...code.matchAll(/\b(?:int|double|float|long|String|char|boolean)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)]
+      .forEach((match) => { vars[match[1]] = evalBeginnerExpression(match[2], vars); });
+    const loop = code.match(/for\s*\(\s*int\s+(\w+)\s*=\s*(-?\d+)\s*;\s*\1\s*<=\s*(-?\d+)\s*;\s*\1\+\+\s*\)\s*\{([\s\S]*?)\}/);
+    if (loop) {
+      const [, name, start, end, body] = loop;
+      const print = body.match(/System\.out\.println\s*\(([\s\S]*?)\)\s*;/);
+      if (print) {
+        const output = [];
+        for (let value = Number(start); value <= Number(end); value++) {
+          output.push(String(evalBeginnerExpression(print[1], { ...vars, [name]: value })));
+        }
+        return output.join('\n') || '[No output]';
+      }
+    }
+    const prints = [...code.matchAll(/System\.out\.println\s*\(([\s\S]*?)\)\s*;/g)];
+    if (!prints.length) return '[No output]';
+    return prints.map((match) => String(evalBeginnerExpression(match[1], vars))).join('\n');
+  }
+
+  function simulatePython(code) {
+    const vars = {};
+    code.split('\n').forEach((line) => {
+      const assignment = line.match(/^\s*([A-Za-z_]\w*)\s*=\s*(.+)$/);
+      if (assignment && !assignment[2].includes('input(')) vars[assignment[1]] = evalBeginnerExpression(assignment[2], vars);
+    });
+    const loop = code.match(/for\s+(\w+)\s+in\s+range\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\):\s*\n([\s\S]*)/);
+    if (loop) {
+      const [, name, start, end, body] = loop;
+      const print = body.match(/print\s*\(([\s\S]*?)\)/);
+      if (print) {
+        const output = [];
+        for (let value = Number(start); value < Number(end); value++) {
+          output.push(String(evalBeginnerExpression(print[1], { ...vars, [name]: value })));
+        }
+        return output.join('\n') || '[No output]';
+      }
+    }
+    const prints = [...code.matchAll(/print\s*\(([\s\S]*?)\)/g)];
+    if (!prints.length) return '[No output]';
+    return prints.map((match) => String(evalBeginnerExpression(match[1], vars))).join('\n');
+  }
+
+  function simulateTerminal(code) {
+    const first = code.trim().split('\n')[0] || '';
+    if (first.startsWith('git status')) return 'On branch main\nnothing to commit, working tree clean';
+    if (first.startsWith('git add')) return '[No output]';
+    if (first.startsWith('git commit')) return '[main abc123] practice commit';
+    if (first.startsWith('pwd')) return '/class-app/practice';
+    if (first.startsWith('ls')) return 'index.html\nscript.js\ncoding-educational/';
+    return `Simulated command: ${first}`;
+  }
+
+  function evalBeginnerExpression(expression, vars = {}) {
+    let expr = String(expression || '').trim();
+    if (!expr) return '';
+    if (/^f["']/.test(expr)) expr = expr.slice(1);
+    if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) {
+      return expr.slice(1, -1).replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+    }
+    const strCall = expr.match(/^str\((\w+)\)$/);
+    if (strCall) return String(vars[strCall[1]] ?? '');
+    const parts = splitOutsideQuotes(expr, '+');
+    if (parts.length > 1) {
+      return parts.map((part) => evalBeginnerExpression(part, vars)).join('');
+    }
+    if (Object.prototype.hasOwnProperty.call(vars, expr)) return vars[expr];
+    if (/^(true|false|True|False)$/.test(expr)) return expr.toLowerCase() === 'true' ? 'true' : 'false';
+    if (/^[\d\s+\-*/%().<>=!&|]+$/.test(expr)) {
+      try { return Function(`"use strict"; return (${expr.replace(/\btrue\b/g, 'true').replace(/\bfalse\b/g, 'false')});`)(); }
+      catch (_) { return `[ERROR] Could not evaluate: ${expr}`; }
+    }
+    return expr.replace(/\b[A-Za-z_]\w*\b/g, (name) => Object.prototype.hasOwnProperty.call(vars, name) ? vars[name] : name);
+  }
+
+  function splitOutsideQuotes(value, separator) {
+    const parts = [];
+    let current = '';
+    let quote = '';
+    for (let i = 0; i < value.length; i++) {
+      const char = value[i];
+      if ((char === '"' || char === "'") && value[i - 1] !== '\\') quote = quote === char ? '' : quote || char;
+      if (char === separator && !quote) {
+        parts.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    if (current.trim()) parts.push(current.trim());
+    return parts;
+  }
+
+  function renderSqlResult(code) {
+    const query = code.trim();
+    if (!query) return '<div class="coding-edu-error-output">[ERROR] Write a SELECT query first.</div>';
+    if (!/^select\b/i.test(query)) return '<div class="coding-edu-error-output">[ERROR] This lesson simulator supports beginner SELECT queries.</div>';
+    const rows = /where\s+score\s*>=\s*90/i.test(query)
+      ? [{ id: 1, name: 'Ana', score: 95 }, { id: 3, name: 'Mika', score: 92 }]
+      : /count\s*\(/i.test(query)
+        ? [{ count: 3 }]
+        : /'([^']+)'\s+as\s+(\w+)/i.test(query)
+          ? [{ [query.match(/'([^']+)'\s+as\s+(\w+)/i)[2]]: query.match(/'([^']+)'\s+as\s+(\w+)/i)[1] }]
+          : [{ id: 1, name: 'Ana', score: 95 }, { id: 2, name: 'Leo', score: 88 }, { id: 3, name: 'Mika', score: 92 }];
+    const columns = Object.keys(rows[0] || {});
+    return `<table class="coding-edu-result-table"><thead><tr>${columns.map((col) => `<th>${escapeHTML(col)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHTML(row[col])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   }
 
   function defaultPreviewMarkup(model = 'card') {
@@ -636,8 +822,17 @@ window.codingEducationalModule = (function () {
   }
 
   function updateExamplePreview(exampleEl, editor, example = {}) {
-    const frame = exampleEl?.querySelector('.coding-edu-live-preview');
-    if (frame && editor) frame.srcdoc = renderLivePreview(editor.value, { ...example, preview: '', forceLive: true });
+    if (!exampleEl || !editor) return;
+    const result = runWorkspace(editor.value, example);
+    const frame = exampleEl.querySelector('.coding-edu-live-preview');
+    const consoleOutput = exampleEl.querySelector('.coding-edu-console-output');
+    const tableOutput = exampleEl.querySelector('.coding-edu-table-output');
+    if (frame && result.srcdoc) frame.srcdoc = result.srcdoc;
+    if (consoleOutput && result.text !== undefined) {
+      consoleOutput.textContent = result.text;
+      consoleOutput.classList.toggle('error', String(result.text).startsWith('[ERROR]'));
+    }
+    if (tableOutput && result.html !== undefined) tableOutput.innerHTML = result.html;
   }
 
   function checkExercise(event) {

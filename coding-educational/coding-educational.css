@@ -438,6 +438,11 @@
   padding: 9px 11px;
 }
 
+.coding-edu-workspace-instructions {
+  margin: 0 0 10px;
+  color: rgba(224, 247, 255, 0.78);
+}
+
 .coding-edu-live-code,
 .coding-edu-exercise-input {
   width: 100%;
@@ -459,6 +464,7 @@
 }
 
 .coding-edu-preview-shell,
+.coding-edu-output-shell,
 .coding-edu-before-after {
   margin-top: 12px;
 }
@@ -483,6 +489,57 @@
   border-radius: 16px;
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+.coding-edu-console-output,
+.coding-edu-error-output {
+  width: 100%;
+  min-height: 120px;
+  margin: 0;
+  border: 1px solid rgba(125,255,181,0.24);
+  border-radius: 16px;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #030711;
+  color: #c9ffd9;
+  font: 0.9rem/1.55 Consolas, 'Courier New', monospace;
+  box-shadow: inset 0 0 0 1px rgba(125,255,181,0.08);
+}
+
+.coding-edu-error-output,
+.coding-edu-console-output.error {
+  border-color: rgba(255, 109, 109, 0.45);
+  color: #ffd0d0;
+  background: #17070b;
+}
+
+.coding-edu-table-output {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 16px;
+  background: rgba(3, 7, 17, 0.76);
+}
+
+.coding-edu-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 280px;
+  color: #e8f6ff;
+}
+
+.coding-edu-result-table th,
+.coding-edu-result-table td {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.coding-edu-result-table th {
+  color: #7dffb5;
+  background: rgba(0,212,255,0.08);
 }
 
 .coding-edu-before-after {

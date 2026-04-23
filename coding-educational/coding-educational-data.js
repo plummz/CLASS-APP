@@ -609,9 +609,9 @@ const codingEducationalData = (function () {
   }
 
   function outputForModel(topic, model, variant) {
-    if (variant === 1) return `The ${model.title} changes directly, so ${topic} is visible on the main interface piece.`;
-    if (variant === 2) return `Only one focused part of the ${model.title} changes, making the target easier to compare.`;
-    return `The ${model.title} becomes interactive or project-like, showing how ${topic} can support a real page section.`;
+    if (variant === 1) return `The preview applies ${topic} to the full ${model.title}, so the visible result is tied to the selector or markup in the code.`;
+    if (variant === 2) return `Only the targeted part of the ${model.title} changes, such as one link, button, cell, label, or highlighted section.`;
+    return `The ${model.title} shows a project-style result for ${topic}, such as added content, hover styling, layout spacing, or a highlighted area created by the current code.`;
   }
 
   function explanationForModel(topic, model, variant) {
@@ -620,8 +620,121 @@ const codingEducationalData = (function () {
     return `This example turns ${topic} into a mini interface behavior. It shows how the same concept can appear in a project screen, such as a dashboard, menu, banner, product card, or profile area.`;
   }
 
+  function consoleExampleSet(moduleTitle, topic) {
+    const safe = topic.replace(/["`]/g, '').replace(/\s+/g, ' ').trim();
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('java') && !m.includes('javascript')) {
+      return [
+        {
+          title: `${topic}: Java console output`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    int score = 95;\n    System.out.println("${safe}");\n    System.out.println(score);\n  }\n}`,
+          outputMode: 'console',
+          output: `${safe}\n95`,
+          explanation: `This Java example prints real console lines. If you change the text or the number, the console output changes to match the current code.`,
+        },
+        {
+          title: `${topic}: Java variable check`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    String topic = "${safe}";\n    double grade = 94.5;\n    System.out.println(topic + " grade: " + grade);\n  }\n}`,
+          outputMode: 'console',
+          output: `${safe} grade: 94.5`,
+          explanation: `This uses variables and string joining, the same style beginners use when checking stored values in Java.`,
+        },
+        {
+          title: `${topic}: Java loop result`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    for (int count = 1; count <= 3; count++) {\n      System.out.println("${safe} " + count);\n    }\n  }\n}`,
+          outputMode: 'console',
+          output: `${safe} 1\n${safe} 2\n${safe} 3`,
+          explanation: `This loop prints three console lines. It is intentionally console-based because Java fundamentals normally produce terminal output, not webpage previews.`,
+        },
+      ];
+    }
+    if (m.includes('python')) {
+      return [
+        {
+          title: `${topic}: Python print output`,
+          code: `topic = "${safe}"\nscore = 95\nprint(topic)\nprint(score)`,
+          outputMode: 'console',
+          output: `${safe}\n95`,
+          explanation: `This Python example prints the current variable values. Editing the string or number changes the console output.`,
+        },
+        {
+          title: `${topic}: Python f-string`,
+          code: `topic = "${safe}"\ngrade = 94.5\nprint(f"{topic} grade: {grade}")`,
+          outputMode: 'console',
+          output: `${safe} grade: 94.5`,
+          explanation: `This shows a beginner f-string pattern. The output is text in a console, which matches Python syntax lessons.`,
+        },
+        {
+          title: `${topic}: Python loop result`,
+          code: `topic = "${safe}"\nfor count in range(1, 4):\n    print(topic + " " + str(count))`,
+          outputMode: 'console',
+          output: `${safe} 1\n${safe} 2\n${safe} 3`,
+          explanation: `This loop example shows repeated console output instead of a webpage preview.`,
+        },
+      ];
+    }
+    if (m.includes('sql') || m.includes('database')) {
+      return [
+        {
+          title: `${topic}: SQL SELECT rows`,
+          code: `SELECT id, name, score\nFROM students;`,
+          outputMode: 'table',
+          output: 'A result table with student rows.',
+          explanation: `This query returns rows from a mock students table, so the output is shown as a table instead of a console or webpage card.`,
+        },
+        {
+          title: `${topic}: SQL filtered rows`,
+          code: `SELECT name, score\nFROM students\nWHERE score >= 90;`,
+          outputMode: 'table',
+          output: 'Only rows with score 90 or higher.',
+          explanation: `This query filters the mock dataset. Changing the WHERE value changes which table rows appear in supported beginner cases.`,
+        },
+        {
+          title: `${topic}: SQL alias result`,
+          code: `SELECT '${safe}' AS topic;`,
+          outputMode: 'table',
+          output: 'A one-row table with an alias column.',
+          explanation: `This shows how SQL can return a labeled value. The output is a table because SQL results are normally rows and columns.`,
+        },
+      ];
+    }
+    return [
+      {
+        title: `${topic}: terminal practice`,
+        code: codeFor(moduleTitle, topic),
+        outputMode: 'console',
+        output: resultFor(moduleTitle, topic),
+        explanation: `This command-style example belongs in a console output panel because it represents terminal practice.`,
+      },
+      {
+        title: `${topic}: second command`,
+        code: codeFor(moduleTitle, `${topic} with a second value`),
+        outputMode: 'console',
+        output: resultFor(moduleTitle, `${topic} with a second value`),
+        explanation: `This variation changes the command target so the simulated terminal response is tied to the current code.`,
+      },
+      {
+        title: `${topic}: classroom check`,
+        code: codeFor(moduleTitle, `${topic} classroom check`),
+        outputMode: 'console',
+        output: resultFor(moduleTitle, `${topic} classroom check`),
+        explanation: `This keeps non-visual lessons in a console-style workspace instead of forcing a browser preview.`,
+      },
+    ];
+  }
+
   function examples(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
     const kind = kindFor(moduleTitle);
+    if (!['html', 'css', 'javascript'].includes(kind)) {
+      return consoleExampleSet(moduleTitle, topic).map((example) => ({
+        ...example,
+        kind,
+        editable: true,
+        instructions: kind === 'sql'
+          ? 'Edit the SQL query and run it to update the mock result table.'
+          : 'Edit the program and run it to update the console output.',
+      }));
+    }
     const chosenModels = modelsFor(moduleTitle, chapterTitle, topic, lessonIndex);
     const codes = chosenModels.map((model, index) => {
       const variant = index + 1;
@@ -639,8 +752,12 @@ const codingEducationalData = (function () {
         kind,
         editable: true,
         demoModel: model.name,
+        outputMode: 'visual',
         markup: model.markup,
         baseCss: model.baseCss,
+        instructions: kind === 'javascript'
+          ? 'Edit the JavaScript and run it to update the DOM preview and console log.'
+          : 'Edit the code and run it to update the browser-style preview.',
         preview: previewFor(moduleTitle, topic, code, kind, model),
         output: outputForModel(topic, model, variant),
         explanation: explanationForModel(topic, model, variant),

@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.5';
+const APP_VERSION = '1.3.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.6',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Workspace Output Fix',
+    summary: 'CODING LESSONS now uses language-specific editable workspaces so Java and Python show console output, SQL shows result tables, and web lessons keep real browser previews.',
+    changes: [
+      'Added reusable visual, console, table, and error output panels for lesson examples.',
+      'Changed Java and Python examples to beginner console labs instead of webpage previews.',
+      'Changed SQL examples to mock result tables that update from the current query.',
+      'Made Run, Reset, and Copy operate on the current editable workspace code.',
+      'Added beginner-safe Java, Python, SQL, and terminal simulation for lesson practice output.'
+    ]
+  },
   {
     version: '1.3.5',
     date: 'April 23, 2026',

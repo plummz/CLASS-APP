@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="features/folders/folders.css?v=1">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
-  <link rel="stylesheet" href="features/royale/royale.css?v=7">
+  <link rel="stylesheet" href="features/royale/royale.css?v=8">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=2">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
@@ -713,18 +713,14 @@
       <!-- Joystick elements -->
       <div id="rl-joy-base"  class="rl-joy-base"></div>
       <div id="rl-joy-knob"  class="rl-joy-knob"></div>
-      <div id="rl-aim-base"  class="rl-aim-base"></div>
-      <div id="rl-aim-knob"  class="rl-aim-knob"></div>
-
-      <!-- Action buttons (always at screen corners, outside canvas transform) -->
-      <button id="rl-fire-btn">FIRE</button>
-      <button id="rl-ads-btn">ADS</button>
-      <button id="rl-reload-btn">RELOAD</button>
-      <button id="rl-throw-btn">💣</button>
-      <button id="rl-crouch-btn">CROUCH</button>
-      <button id="rl-prone-btn">PRONE</button>
-      <button id="rl-jump-btn">JUMP</button>
-      <button id="rl-heal-btn">HEAL</button>
+      <!-- Landscape action cluster: movement stays left, combat actions stay bottom-right -->
+      <div class="controls-right" aria-label="Battle Royale action controls">
+        <button id="rl-fire-btn" class="fire-button">FIRE</button>
+        <button id="rl-reload-btn">RELOAD</button>
+        <button id="rl-crouch-btn">CROUCH</button>
+        <button id="rl-jump-btn">JUMP</button>
+        <button id="rl-throw-btn">💣</button>
+      </div>
       <div id="rl-end-actions" class="rl-end-actions hidden">
         <button id="rl-play-again-btn" type="button">PLAY AGAIN</button>
         <button id="rl-quit-btn" type="button">QUIT</button>
@@ -1216,7 +1212,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=44"></script>
+  <script src="script.js?v=45"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1233,7 +1229,7 @@
   <script src="coding-educational/coding-educational-data.js?v=6" defer></script>
   <script src="coding-educational/coding-educational.js?v=6" defer></script>
   <script src="features/pokemon/pokemon.js?v=3"></script>
-  <script src="features/royale/royale.js?v=7"></script>
+  <script src="features/royale/royale.js?v=8"></script>
   <script src="features/pacman/pacman.js?v=2"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

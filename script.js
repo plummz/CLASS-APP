@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.6';
+const APP_VERSION = '1.3.7';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.7',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Tactical HUD Fix',
+    summary: 'Battle Royale now uses the restored tactical landscape camera, a clean bottom-right action cluster, jumpable cover obstacles, and stronger crouch cover behavior.',
+    changes: [
+      'Restored the main tactical gameplay camera and removed the first-person POV render path.',
+      'Moved FIRE, RELOAD, CROUCH, JUMP, and throwable controls into a thumb-friendly bottom-right cluster.',
+      'Removed center/right weapon-slot display and old visible aim joystick elements from gameplay.',
+      'Added jumpable barriers and solid obstacles with collision rules for player and bot movement.',
+      'Made crouch reduce the player hitbox, improve recoil control, and hide better behind tactical cover.'
+    ]
+  },
   {
     version: '1.3.6',
     date: 'April 23, 2026',

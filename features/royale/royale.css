@@ -178,60 +178,7 @@
 }
 
 /* ── Aim Joystick (right side) ───────────────────────────── */
-.rl-aim-base,
-.rl-aim-knob {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  display: none;
-  z-index: 50;
-}
-
-.rl-aim-base {
-  width: 90px;
-  height: 90px;
-  background: rgba(255,100,0,0.08);
-  border: 2px solid rgba(255,150,0,0.35);
-}
-
-.rl-aim-knob {
-  width: 40px;
-  height: 40px;
-  background: rgba(255,150,0,0.4);
-  border: 2px solid rgba(255,200,0,0.7);
-  box-shadow: 0 0 8px rgba(0,0,0,0.5);
-}
-
 /* ── Shoot button (bottom-right) ─────────────────────────── */
-.rl-shoot-btn {
-  position: absolute;
-  bottom: 24px;
-  right: 24px;
-  z-index: 60;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: rgba(220,30,30,0.75);
-  border: 3px solid rgba(255,100,100,0.6);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 16px rgba(200,0,0,0.5);
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.rl-shoot-btn:active {
-  background: rgba(255,60,60,0.9);
-  transform: scale(0.95);
-}
-
 /* Prevent the page from scrolling under the game */
 body.rl-active {
   overflow: hidden;
@@ -305,73 +252,7 @@ body.rl-active {
   transition: width 0.3s ease;
 }
 
-/* Modern mobile-shooter control pass */
-#rl-fire-btn,
-#rl-ads-btn,
-#rl-reload-btn,
-#rl-throw-btn,
-#rl-crouch-btn,
-#rl-prone-btn,
-#rl-jump-btn,
-#rl-heal-btn {
-  z-index: 70;
-  border-radius: 999px;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  -webkit-user-select: none;
-  backdrop-filter: blur(12px);
-  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
-}
-#rl-fire-btn.pressed,
-#rl-ads-btn.pressed,
-#rl-reload-btn.pressed,
-#rl-throw-btn.pressed,
-#rl-crouch-btn.pressed,
-#rl-prone-btn.pressed,
-#rl-jump-btn.pressed,
-#rl-heal-btn.pressed {
-  transform: scale(0.93);
-  box-shadow: 0 0 24px rgba(0,212,255,0.22), 0 0 26px rgba(255,80,0,0.26);
-}
-#rl-ads-btn,
-#rl-crouch-btn,
-#rl-prone-btn,
-#rl-jump-btn,
-#rl-heal-btn {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 900;
-  cursor: pointer;
-}
-#rl-ads-btn {
-  right: 112px;
-  bottom: 34px;
-  width: 58px;
-  height: 58px;
-  background: rgba(20,44,64,0.82);
-  border: 2px solid rgba(0,212,255,0.58);
-  color: #bff4ff;
-  font-size: 12px;
-}
-#rl-crouch-btn,
-#rl-prone-btn,
-#rl-jump-btn,
-#rl-heal-btn {
-  width: 54px;
-  height: 54px;
-  font-size: 10px;
-  background: rgba(7,12,24,0.72);
-  border: 2px solid rgba(255,255,255,0.22);
-  color: rgba(255,255,255,0.88);
-}
-#rl-crouch-btn { right: 102px; bottom: 114px; }
-#rl-prone-btn  { right: 164px; bottom: 98px; }
-#rl-jump-btn   { right: 106px; bottom: 180px; }
-#rl-heal-btn   { right: 166px; bottom: 162px; border-color: rgba(80,255,150,0.38); color: #a7ffcf; }
+/* End-screen controls */
 .rl-end-actions {
   position: absolute;
   left: 50%;
@@ -423,56 +304,60 @@ body.rl-active {
   border-color: rgba(255,255,255,0.72);
   box-shadow: 0 0 12px rgba(0,0,0,0.55);
 }
-#rl-aim-base {
-  width: 96px;
-  height: 96px;
-}
-#rl-aim-knob {
-  width: 44px;
-  height: 44px;
-}
-@media (max-width: 720px) {
-  #rl-fire-btn { right: 18px; bottom: 18px; width: 76px; height: 76px; }
-  #rl-ads-btn { right: 104px; bottom: 28px; }
-  #rl-reload-btn { right: 24px; bottom: 106px; }
-  #rl-throw-btn { right: 24px; bottom: 174px; }
-  #rl-crouch-btn { right: 96px; bottom: 106px; }
-  #rl-prone-btn { right: 154px; bottom: 92px; }
-  #rl-jump-btn { right: 98px; bottom: 168px; }
-  #rl-heal-btn { right: 156px; bottom: 152px; }
+/* Strict landscape HUD layout override */
+.controls-right {
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  right: max(20px, env(safe-area-inset-right));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: auto;
 }
 
-@media (orientation: landscape) {
-  #rl-fire-btn {
-    right: max(18px, env(safe-area-inset-right));
-    bottom: max(18px, env(safe-area-inset-bottom));
-  }
-  #rl-ads-btn {
-    right: 106px;
-    bottom: max(28px, env(safe-area-inset-bottom));
-  }
-  #rl-reload-btn {
-    right: max(22px, env(safe-area-inset-right));
-    bottom: 108px;
-  }
-  #rl-throw-btn {
-    right: 96px;
-    bottom: 104px;
-  }
-  #rl-crouch-btn {
-    right: 174px;
-    bottom: 42px;
-  }
-  #rl-prone-btn {
-    right: 168px;
-    bottom: 106px;
-  }
-  #rl-jump-btn {
-    right: max(28px, env(safe-area-inset-right));
-    bottom: 178px;
-  }
-  #rl-heal-btn {
-    right: 102px;
-    bottom: 174px;
-  }
+.controls-right button {
+  position: static !important;
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 999px !important;
+  border: 2px solid rgba(255,255,255,0.28) !important;
+  background: rgba(7,12,24,0.78) !important;
+  color: rgba(255,255,255,0.92) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 10px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28), inset 0 0 16px rgba(255,255,255,0.04);
+  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.controls-right .fire-button {
+  width: 84px !important;
+  height: 84px !important;
+  background: rgba(220,30,30,0.88) !important;
+  border-color: rgba(255,255,255,0.55) !important;
+  font-size: 16px;
+  box-shadow: 0 0 20px rgba(255,80,0,0.42), 0 12px 34px rgba(0,0,0,0.34);
+}
+
+.controls-right button:active,
+.controls-right button.pressed {
+  transform: scale(0.93);
+  background: rgba(0,212,255,0.2) !important;
+  box-shadow: 0 0 24px rgba(0,212,255,0.22), 0 0 26px rgba(255,80,0,0.26);
+}
+
+.controls-right .fire-button:active,
+.controls-right .fire-button.pressed {
+  background: rgba(255,60,60,0.96) !important;
+  box-shadow: 0 0 24px rgba(255,80,0,0.78);
 }

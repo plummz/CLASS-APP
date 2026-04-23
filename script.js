@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.8';
+const APP_VERSION = '1.3.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.9',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Duplicate Cleanup',
+    summary: 'CODING LESSONS received a full-library duplicate audit and cleanup so nearby chapters and individual lessons no longer repeat the same example output.',
+    changes: [
+      'Checked every Coding Lessons subfolder, including Cybersecurity, GitHub, Linux, APIs, cloud, SQL, Java, Python, and web lessons.',
+      'Removed duplicate example outputs inside non-web lessons.',
+      'Separated Git/GitHub examples into distinct status, add, commit, push, and pull command results.',
+      'Separated Linux examples into distinct pwd, ls, mkdir, chmod, and cd result patterns.',
+      'Verified every lesson still has at least three examples with no duplicate code, title, or output inside the same lesson.'
+    ]
+  },
   {
     version: '1.3.8',
     date: 'April 23, 2026',

@@ -232,7 +232,8 @@ body.rl-force-landscape-shell .rl-rotate-prompt {
 body.rl-portrait-blocked .controls-right,
 body.rl-portrait-blocked .rl-joy-base,
 body.rl-portrait-blocked .rl-joy-knob,
-body.rl-portrait-blocked .rl-end-actions {
+body.rl-portrait-blocked .rl-end-actions,
+body.rl-portrait-blocked .rl-switch-weapon-btn {
   pointer-events: none !important;
   opacity: 0 !important;
 }
@@ -314,7 +315,8 @@ body.rl-portrait-blocked .rl-end-actions {
 }
 .rl-wrapper.end-active .controls-right,
 .rl-wrapper.end-active #rl-joy-base,
-.rl-wrapper.end-active #rl-joy-knob {
+.rl-wrapper.end-active #rl-joy-knob,
+.rl-wrapper.end-active .rl-switch-weapon-btn {
   opacity: 0.28;
   pointer-events: none;
 }
@@ -331,6 +333,41 @@ body.rl-portrait-blocked .rl-end-actions {
   background: rgba(255,255,255,0.45);
   border-color: rgba(255,255,255,0.72);
   box-shadow: 0 0 12px rgba(0,0,0,0.55);
+}
+
+.rl-switch-weapon-btn {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 92;
+  min-width: 112px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.28);
+  background: rgba(7,12,24,0.76);
+  color: rgba(255,255,255,0.92);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.32), inset 0 0 18px rgba(0,212,255,0.08);
+  font: 900 12px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.rl-switch-weapon-btn:active,
+.rl-switch-weapon-btn.pressed {
+  transform: translateY(-50%) scale(0.95);
+  border-color: rgba(0,212,255,0.75);
+  box-shadow: 0 0 24px rgba(0,212,255,0.24), 0 10px 28px rgba(0,0,0,0.34);
+}
+
+.rl-switch-weapon-btn.disabled {
+  opacity: 0.42;
+  filter: grayscale(0.4);
 }
 /* Strict landscape HUD layout override */
 .controls-right {

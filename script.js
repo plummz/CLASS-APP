@@ -224,8 +224,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.4';
+const APP_VERSION = '1.4.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.5',
+    date: 'April 23, 2026',
+    title: 'Battle Royale Ammo and Weapon Switch HUD',
+    summary: 'Battle Royale now shows ammo above HP/Armor and adds a left-side Switch Weapon control without moving the existing landscape HUD.',
+    changes: [
+      'Added a readable ammo display directly above the existing HP and armor bars.',
+      'Added a left-side Switch Weapon button that cycles between carried weapons.',
+      'Kept the existing Fire, Reload, Crouch, Jump, Grenade, minimap, Games, and end-screen placements unchanged.'
+    ]
+  },
   {
     version: '1.4.4',
     date: 'April 23, 2026',

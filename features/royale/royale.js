@@ -431,6 +431,7 @@ window.royaleModule = (function () {
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
+    updateSwitchWeaponButton();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); initMultiplayer();
 
@@ -464,6 +465,25 @@ window.royaleModule = (function () {
     if (reloadBtn) {
       reloadBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); startReload(); }, {passive: true});
       reloadBtn.addEventListener('mousedown', () => startReload());
+    }
+    const switchBtn = document.getElementById('rl-switch-weapon-btn');
+    if (switchBtn && !switchBtn.dataset.rlSwitchBound) {
+      switchBtn.dataset.rlSwitchBound = '1';
+      const switchAction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (switchBtn.dataset.rlBusy === '1') return;
+        switchBtn.dataset.rlBusy = '1';
+        switchWeapon();
+        switchBtn.classList.add('pressed');
+        setTimeout(() => {
+          switchBtn.dataset.rlBusy = '0';
+          switchBtn.classList.remove('pressed');
+        }, 220);
+      };
+      switchBtn.addEventListener('click', switchAction);
+      switchBtn.addEventListener('pointerup', switchAction);
+      switchBtn.addEventListener('touchend', switchAction, { passive:false });
     }
     const throwBtn = document.getElementById('rl-throw-btn');
     if (throwBtn && !throwBtn.dataset.rlThrowBound) {
@@ -1047,13 +1067,15 @@ window.royaleModule = (function () {
       const tapped = keysJustDown.has('Space') || shootJustDown;
       if (w.auto ? held : tapped) tryFire(player.x, player.y, player.angle, wkey, localId);
     }
+    if (keys['KeyR']) startReload();
+    if (keys['Digit1']) { activeSlot=0; reloading=false; }
+    if (keys['Digit2']) { activeSlot=1; reloading=false; }
+    if (keysJustDown.has('KeyQ')) switchWeapon();
     keysJustDown.clear();
     shootJustDown = false;
-    if (keys['KeyR']) startReload();
-    if (keys['Digit1']) activeSlot=0;
-    if (keys['Digit2']) activeSlot=1;
 
     updateReload();
+    updateSwitchWeaponButton();
     updateBullets(dt);
     updateThrowables(dt);
     updateFires(dt);
@@ -1654,6 +1676,21 @@ window.royaleModule = (function () {
     // ── Health bar
     const barW = 190;
     const hx=canvasW/2-barW/2, hy=canvasH-44;
+    const ammo = getAmmoLabel();
+    const ammoW = 126;
+    const ammoH = 24;
+    const ammoX = canvasW/2-ammoW/2;
+    const ammoY = hy - 34;
+    ctx.fillStyle='rgba(0,0,0,0.58)';
+    ctx.fillRect(ammoX, ammoY, ammoW, ammoH);
+    ctx.strokeStyle='rgba(255,255,255,0.22)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(ammoX, ammoY, ammoW, ammoH);
+    ctx.fillStyle=ammo.hasWeapon ? '#fff' : 'rgba(255,255,255,0.62)';
+    ctx.font='bold 15px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(ammo.text, canvasW/2, ammoY+17);
+
     ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(hx-2,hy-2,barW+4,18);
     ctx.fillStyle='#900'; ctx.fillRect(hx,hy,barW,14);
     ctx.fillStyle='#0c0';
@@ -1730,6 +1767,14 @@ window.royaleModule = (function () {
 
     drawZoneHUD();
     drawKillFeed();
+  }
+
+  function getAmmoLabel() {
+    const key = inventory[activeSlot];
+    if (!key || !WEAPONS[key]) return { text: 'No Weapon', hasWeapon: false };
+    const current = Math.max(0, ammoCache[key] || 0);
+    const reserve = Math.max(0, WEAPONS[key].maxAmmo - current);
+    return { text: `${current} / ${reserve}`, hasWeapon: true };
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -2100,6 +2145,32 @@ window.royaleModule = (function () {
     if (!key) return;
     reloading = true;
     reloadEnd = performance.now() + WEAPONS[key].reload;
+  }
+
+  function switchWeapon() {
+    if (gamePhase !== 'playing' && gamePhase !== 'parachute') return;
+    if (inventory.length < 2) {
+      showPickup(inventory.length ? 'Only one weapon' : 'No weapon equipped');
+      updateSwitchWeaponButton();
+      return;
+    }
+    activeSlot = (activeSlot + 1) % inventory.length;
+    reloading = false;
+    const key = inventory[activeSlot];
+    showPickup(`${WEAPONS[key]?.name || 'Weapon'} equipped`);
+    updateSwitchWeaponButton();
+  }
+
+  function updateSwitchWeaponButton() {
+    const btn = document.getElementById('rl-switch-weapon-btn');
+    if (!btn) return;
+    const key = inventory[activeSlot];
+    const disabled = inventory.length < 2;
+    btn.classList.toggle('disabled', disabled);
+    btn.disabled = false;
+    btn.textContent = key ? `↔ ${WEAPONS[key]?.name || 'Weapon'}` : '↔ No Weapon';
+    btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    btn.title = disabled ? 'Pick up a second weapon to switch' : 'Switch weapon';
   }
 
   function pickupLoot(item) {
@@ -3121,6 +3192,7 @@ window.royaleModule = (function () {
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
     bloodSplatters=[]; trailParticles=[];
     hideEndActionButtons();
+    updateSwitchWeaponButton();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();
     running = true;

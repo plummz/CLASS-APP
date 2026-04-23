@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.3';
+const APP_VERSION = '1.3.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.4',
+    date: 'April 23, 2026',
+    title: 'Interactive Coding Lessons',
+    summary: 'CODING LESSONS now includes editable examples, live sandbox previews, before/after visual comparisons, auto-check mini tasks, and deeper explanations.',
+    changes: [
+      'Added live preview boxes for lesson examples with sandboxed iframe rendering.',
+      'Made examples editable so students can change code and see the preview update immediately.',
+      'Added CSS before/after comparisons for visual topics.',
+      'Added guided mini tasks with auto-check feedback.',
+      'Expanded lessons with clearer explanations, why-this-works toggles, unique examples, and output explanations.'
+    ]
+  },
   {
     version: '1.3.3',
     date: 'April 23, 2026',

@@ -95,7 +95,7 @@ const codingEducationalData = (function () {
     const midpoint = Math.ceil(lessons.length / 2);
     return [
       chapter(`${title} Foundations`, `Start with the essential ideas in ${title}.`, lessons.slice(0, midpoint)),
-      chapter(`${title} Practice Book`, `Continue with more ${title} lessons and practical examples.`, lessons.slice(midpoint)),
+      chapter(`${title} Guided Workbook`, `Continue with more ${title} lessons and guided examples.`, lessons.slice(midpoint)),
     ];
   }
 
@@ -406,13 +406,13 @@ const codingEducationalData = (function () {
     if (m.includes('git')) return `git status\ngit add .\ngit commit -m "practice ${safe}"`;
     if (m.includes('linux')) return `pwd\nls\nmkdir ${slug(safe)}`;
     if (m.includes('api')) return `fetch('/api/${slug(safe)}')\n  .then(response => response.json())\n  .then(data => console.log(data));`;
-    return `Practice: ${safe}\nCheck: explain the result`;
+    return `Guided task: ${safe}\nCheck: explain the result`;
   }
 
   function resultFor(moduleTitle, topic) {
     const m = moduleTitle.toLowerCase();
-    if (m.includes('css')) return `The selected element visually changes based on ${topic}.`;
-    if (m.includes('html')) return `The browser renders a visible section for ${topic}.`;
+    if (m.includes('css')) return `The preview shows the element with a specific ${topic} difference, such as changed spacing, color, size, alignment, or layering.`;
+    if (m.includes('html')) return `The browser creates real page content for ${topic}, so the heading, text, media, link, or form control appears in the preview.`;
     if (m.includes('sql') || m.includes('database')) return `A small result table is returned for ${topic}.`;
     if (m.includes('git') || m.includes('linux')) return `The terminal shows status or file information related to ${topic}.`;
     return `${topic}`;
@@ -422,11 +422,79 @@ const codingEducationalData = (function () {
     return { item: name, explanation, syntax: name, example: example || '', output: output || '' };
   }
 
+  function kindFor(moduleTitle) {
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('html')) return 'html';
+    if (m.includes('css')) return 'css';
+    if (m.includes('javascript') || m.includes('typescript')) return 'javascript';
+    if (m.includes('java') && !m.includes('javascript')) return 'java';
+    if (m.includes('python')) return 'python';
+    if (m.includes('sql') || m.includes('database')) return 'sql';
+    return 'terminal';
+  }
+
+  function previewDoc(body) {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>
+      body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:14px}
+      .demo-stage{border:2px dashed #38bdf8;border-radius:14px;padding:14px;min-height:100px;background:white}
+      .demo-box{display:inline-flex;align-items:center;justify-content:center;width:58px;height:48px;margin:6px;border:2px solid #0ea5e9;border-radius:10px;background:#dff6ff;font-weight:800}
+      .console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:0}
+      .lesson,.card,.button,.item,.box{border:2px solid #38bdf8;border-radius:12px;padding:12px;margin:8px;background:#fff}
+    </style></head><body>${body}</body></html>`;
+  }
+
+  function htmlExample(topic, variant) {
+    if (variant === 1) return `<article class="lesson"><h2>${topic}</h2><p>A beginner page section with a clear heading and paragraph.</p></article>`;
+    if (variant === 2) return `<nav class="lesson"><a href="#overview">Overview</a> <a href="#task">Task</a></nav><section id="overview">This link group demonstrates ${topic}.</section>`;
+    return `<form class="lesson"><label>Student name <input placeholder="Type here"></label><button type="button">Save</button></form>`;
+  }
+
+  function cssDemo(topic, variant) {
+    const base = `.container { border: 2px dashed #94a3b8; padding: 12px; background: white; }\n.box { width: 58px; height: 48px; margin: 6px; border: 2px solid #0ea5e9; border-radius: 10px; background: #dff6ff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }`;
+    if (variant === 1) return `${base}\n.container { ${cssValue(topic).replace(/\n/g, ' ')} }`;
+    if (variant === 2) return `${base}\n.box:nth-child(2) { ${cssValue(topic).replace(/\n/g, ' ')} }`;
+    return `${base}\n.container:hover .box { ${cssValue(topic).replace(/\n/g, ' ')} transition: all .2s ease; }`;
+  }
+
+  function jsDemo(topic, variant) {
+    if (variant === 1) return `document.querySelector('.demo-box').textContent = '${topic}';\nconsole.log('Updated first box');`;
+    if (variant === 2) return `document.querySelectorAll('.demo-box').forEach((box, index) => {\n  box.textContent = 'Item ' + (index + 1);\n});\nconsole.log('Renamed all boxes');`;
+    return `const newBox = document.createElement('div');\nnewBox.className = 'demo-box';\nnewBox.textContent = 'New';\ndocument.querySelector('.demo-stage').appendChild(newBox);\nconsole.log('Added one box');`;
+  }
+
+  function beforeAfterFor(moduleTitle, topic, code, kind) {
+    if (kind !== 'css') return {};
+    return {
+      before: previewDoc(`<style>.container{border:2px dashed #94a3b8;padding:12px;background:white}.box{width:58px;height:48px;margin:6px;border:2px solid #94a3b8;border-radius:10px;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-weight:800}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`),
+      after: previewDoc(`<style>${code}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`),
+    };
+  }
+
+  function previewFor(moduleTitle, topic, code, kind) {
+    if (kind === 'html') return previewDoc(code);
+    if (kind === 'css') return previewDoc(`<style>${code}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`);
+    if (kind === 'javascript') return previewDoc(`<main class="demo-stage"><div class="demo-box">Box 1</div><div class="demo-box">Box 2</div></main><script>const logs=[];const original=console.log;console.log=(...args)=>{logs.push(args.join(' '));original(...args)};try{${code}}catch(error){logs.push('Error: '+error.message)}document.body.insertAdjacentHTML('beforeend','<pre class="console">'+logs.join('\\n')+'</pre>');<\/script>`);
+    return previewDoc(`<pre class="console">${resultFor(moduleTitle, topic)}</pre>`);
+  }
+
   function examples(moduleTitle, topic) {
+    const kind = kindFor(moduleTitle);
+    const codes = kind === 'html'
+      ? [htmlExample(topic, 1), htmlExample(topic, 2), htmlExample(topic, 3)]
+      : kind === 'css'
+        ? [cssDemo(topic, 1), cssDemo(topic, 2), cssDemo(topic, 3)]
+        : kind === 'javascript'
+          ? [jsDemo(topic, 1), jsDemo(topic, 2), jsDemo(topic, 3)]
+          : [codeFor(moduleTitle, topic), codeFor(moduleTitle, `${topic} with a second value`), codeFor(moduleTitle, `${topic} classroom check`)];
+    const explanations = [
+      `This example demonstrates the normal use of ${topic}. It gives students one direct result to compare against the code.`,
+      `This example changes the target or value, so the result is different from the first example and easier to compare.`,
+      `This example turns ${topic} into a guided mini scenario, closer to how it appears in a small project.`,
+    ];
     return [
-      { title: `${topic} - Basic`, code: codeFor(moduleTitle, topic), output: resultFor(moduleTitle, topic), explanation: `This is the smallest version of ${topic}. It focuses on the main pattern first.` },
-      { title: `${topic} - Changed Value`, code: codeFor(moduleTitle, `${topic} changed value`), output: resultFor(moduleTitle, `${topic} changed value`), explanation: `This version changes one value so students can compare the result.` },
-      { title: `${topic} - Practice`, code: codeFor(moduleTitle, `${topic} practice`), output: resultFor(moduleTitle, `${topic} practice`), explanation: `This classroom practice version is meant to be copied, edited, and tested.` },
+      { title: `${topic}: direct demonstration`, code: codes[0], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[0], kind), output: resultFor(moduleTitle, topic), explanation: explanations[0], ...beforeAfterFor(moduleTitle, topic, codes[0], kind) },
+      { title: `${topic}: changed target`, code: codes[1], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[1], kind), output: resultFor(moduleTitle, `${topic} changed target`), explanation: explanations[1], ...beforeAfterFor(moduleTitle, topic, codes[1], kind) },
+      { title: `${topic}: mini project use`, code: codes[2], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[2], kind), output: resultFor(moduleTitle, `${topic} mini project`), explanation: explanations[2], ...beforeAfterFor(moduleTitle, topic, codes[2], kind) },
     ];
   }
 
@@ -453,17 +521,17 @@ const codingEducationalData = (function () {
       readingTime: '8 min',
       tags: ['Beginner', moduleTitle, chapterTitle],
       keywords: [moduleTitle, chapterTitle, topic, ...customKeywords, ...breakdown.flatMap((part) => [part.item, part.syntax, part.example, part.output])].filter(Boolean),
-      summary: `${topic} is a beginner lesson in ${moduleTitle}. It belongs to the ${chapterTitle} chapter. The goal is to understand the idea, write the syntax correctly, and explain the result. Practice by changing one small value at a time.`,
-      overview: `${topic} appears often in real student projects and classroom exercises. Beginners should learn what it means, when to use it, and what result to expect. This lesson starts with plain language before moving into syntax. It also includes multiple examples so you compare patterns instead of memorizing one line.`,
+      summary: `${topic} explains a concrete skill in ${moduleTitle}: what it does, why developers use it, and how it changes the final result. It belongs to the ${chapterTitle} chapter, so it connects to nearby lessons instead of standing alone. Think of it like learning one classroom tool: you do not only name it, you learn when to pick it up and how to check if it worked.`,
+      overview: `${topic} appears often in real student projects and classroom exercises. It is used because software needs clear instructions, predictable structure, and results that can be checked. A simple analogy is a school form: each field has a purpose, and if one field is written incorrectly, the whole form becomes harder to use. This lesson explains what ${topic} does, why it matters, and how it affects output or behavior. The examples are different on purpose so you can compare results instead of memorizing one pattern.`,
       termsToKnow: [
         { term: 'Syntax', definition: 'The exact writing pattern that the language, browser, command, or query expects.' },
         { term: 'Value', definition: 'The text, number, setting, command, or data being used.' },
         { term: 'Result', definition: 'What appears after the code, markup, command, or query runs.' },
       ],
       detailedExplanation: [
-        `${topic} should be studied as a small tool with a purpose, a pattern, and a result. If you can name those three parts, you can usually debug beginner mistakes faster. Do not rush into memorizing; read the symbols and words carefully.`,
-        `In ${moduleTitle}, many errors happen because a student copies syntax without checking meaning. A stronger habit is to predict the result before running the example. When the actual result is different, compare spelling, punctuation, order, and values.`,
-        `Use this lesson like a textbook page. Read the breakdown first, run the examples second, and then explain the output in your own words. That explanation is what turns a copied example into real understanding.`,
+        `${topic} should be studied as a small tool with a purpose, a pattern, and a visible or readable result. The purpose tells you why it exists. The pattern tells you how to write it. The result tells you whether the computer, browser, terminal, or database understood your instruction.`,
+        `In ${moduleTitle}, many errors happen because a student copies syntax without checking meaning. A stronger habit is to predict the result before running the example. When the actual result is different, compare spelling, punctuation, order, and values, just like checking each step of a math solution.`,
+        `Use this lesson like a textbook page with a small lab beside it. Read the breakdown first, edit the examples second, and then explain the output in your own words. That explanation is what turns a copied example into real understanding.`,
       ],
       breakdown,
       syntax: syntaxFor(moduleTitle, topic),
@@ -476,9 +544,18 @@ const codingEducationalData = (function () {
       example: { title: `${topic} Example`, code: lessonExamples[0].code },
       examples: lessonExamples,
       outputExplanation: [
-        `The result shows whether ${topic} was written correctly. Text output should match the expected words or values. Visual output should match the described change on screen.`,
-        `If the result is wrong, compare the syntax and values with the examples. Debug one small change at a time so the cause becomes easier to find.`,
+        `The result shows whether ${topic} was written correctly. Text output should match the expected words or values. Visual output should show the exact difference described by the lesson, such as new alignment, spacing, color, content, or a terminal/table result.`,
+        `If the result is wrong, compare the syntax and values with the examples. Debug one small change at a time so the cause becomes easier to find, the same way you would isolate one wrong answer in a worksheet.`,
       ],
+      whyThisWorks: [
+        `${topic} works because ${moduleTitle} follows strict rules: the tool reads the instruction, applies it to the selected data or element, and then produces an output.`,
+        `The preview/check area helps because it turns an abstract rule into something visible. Students can edit the code, watch the result change, and connect cause to effect.`,
+      ],
+      exercise: {
+        prompt: `Guided task: edit one example so it still demonstrates ${topic}, then include the word "${topic.split(' ')[0]}" in your answer. Explain what changed in one sentence.`,
+        starter: `I changed ${topic} by `,
+        expected: [topic.split(' ')[0].toLowerCase()],
+      },
       commonMistakes: [
         `Using ${topic} without knowing what result it should create.`,
         'Forgetting capitalization, quotes, brackets, semicolons, indentation, or the correct order of values.',
@@ -499,7 +576,7 @@ const codingEducationalData = (function () {
 
   function chapter(moduleTitle, spec) {
     const lessons = spec.topics.map((topic) => richLesson(moduleTitle, spec.title, topic));
-    while (lessons.length < 5) lessons.push(richLesson(moduleTitle, spec.title, `${spec.title} Practice ${lessons.length + 1}`));
+    while (lessons.length < 5) lessons.push(richLesson(moduleTitle, spec.title, `${spec.title} Guided Task ${lessons.length + 1}`));
     const chapterId = slug(`${moduleTitle}-${spec.title}`);
     return { id: chapterId, title: spec.title, description: spec.description || `Study ${spec.title} in ${moduleTitle} with textbook-style lessons.`, level: 'Beginner', lessons, quiz: makeQuiz(chapterId, lessons) };
   }
@@ -547,7 +624,7 @@ const codingEducationalData = (function () {
     ['Attributes', ['id Attribute','class Attribute','href Attribute','src Attribute','alt Attribute','title Attribute','target Attribute','style Attribute']],
   ];
 
-  const cssProps = ['color','background-color','background-image','width / height','margin','padding','border','border-radius','font-size','font-family','text-align','display','position','z-index','overflow','opacity','box-shadow','flex properties','grid properties'].map((name) => ({ title: name, keywords: [name], items: [item(name, `${name} controls one visual part of an element. Common values should be tested in the browser.`, `.box {\n  ${cssValue(name)}\n}`, `The selected element changes according to ${name}.`)] }));
+  const cssProps = ['color','background-color','background-image','width / height','margin','padding','border','border-radius','font-size','font-family','text-align','display','position','z-index','overflow','opacity','box-shadow','flex properties','grid properties'].map((name) => ({ title: name, keywords: [name], items: [item(name, `${name} controls a specific part of the rendered element, such as text color, spacing, size, shape, stacking, or layout behavior. The preview compares the plain version with the styled version so the difference is easy to see.`, `.box {\n  ${cssValue(name)}\n}`, `The preview shows exactly how ${name} changes the selected boxes or their container.`)] }));
   const cssPlan = [
     ['Selectors', ['Type Selectors','Class Selectors','ID Selectors','Attribute Selectors','Pseudo-class Selectors']],
     ['Box Model', ['Content Area','width / height','margin','padding','border']],
@@ -588,9 +665,9 @@ const codingEducationalData = (function () {
     ['OOP', ['Classes','Objects','__init__','Methods','Attributes']],
   ];
 
-  const genericNames = ['Foundations','Syntax and Structure','Core Concepts','Common Commands','Project Workflow','Debugging','Security and Safety','Collaboration','Best Practices','Mini Projects'];
+  const genericNames = ['Foundations','Syntax and Structure','Core Concepts','Common Commands','Project Workflow','Debugging','Security and Safety','Collaboration','Best Methods','Mini Projects'];
   function genericPlan(title, extras = []) {
-    return genericNames.map((name, index) => [name, [`${title} ${name} Meaning`, `${title} ${name} Vocabulary`, `${title} ${name} Syntax`, `${title} ${name} Example Reading`, `${title} ${name} Practice Task`, ...(index === 0 ? extras : [])]]);
+    return genericNames.map((name, index) => [name, [`${title} ${name} Meaning`, `${title} ${name} Vocabulary`, `${title} ${name} Syntax`, `${title} ${name} Example Reading`, `${title} ${name} Guided Mini Task`, ...(index === 0 ? extras : [])]]);
   }
 
   function planFor(title) {

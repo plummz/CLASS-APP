@@ -1,11 +1,11 @@
-const CACHE_VERSION = 'v76';
+const CACHE_VERSION = 'v77';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=72',
+  '/index.html?v=73',
   '/style.css?v=26',
   '/assets/css/codelab.css?v=4',
-  '/coding-educational/coding-educational.css?v=3',
+  '/coding-educational/coding-educational.css?v=4',
   '/features/ai/ai.css?v=1',
   '/features/academics/academics.css?v=1',
   '/features/lobby/lobby.css?v=1',
@@ -21,7 +21,7 @@ const ASSETS = [
   '/features/pokemon/pokemon.css?v=3',
   '/features/royale/royale.css?v=7',
   '/features/pacman/pacman.css?v=2',
-  '/script.js?v=41',
+  '/script.js?v=42',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -35,8 +35,8 @@ const ASSETS = [
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
   '/assets/js/codelab.js?v=5',
-  '/coding-educational/coding-educational-data.js?v=3',
-  '/coding-educational/coding-educational.js?v=3',
+  '/coding-educational/coding-educational-data.js?v=4',
+  '/coding-educational/coding-educational.js?v=4',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
   '/features/royale/royale.js?v=7',
@@ -88,7 +88,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html?v=72'))
+        .catch(() => caches.match('/') || caches.match('/index.html?v=73'))
     );
     return;
   }

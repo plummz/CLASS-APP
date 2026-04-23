@@ -22,6 +22,7 @@ window.codingEducationalModule = (function () {
       });
       document.getElementById('coding-edu-back')?.addEventListener('click', goBack);
       root.addEventListener('click', handleClick);
+      root.addEventListener('input', handleInput);
       document.getElementById('coding-edu-breadcrumbs')?.addEventListener('click', handleBreadcrumbClick);
     }
     render();
@@ -146,13 +147,65 @@ window.codingEducationalModule = (function () {
         ${items.map((example, index) => `
           <div class="coding-edu-example" data-example-index="${index}">
             <h4>${escapeHTML(example.title || `Example ${index + 1}`)}</h4>
-            <pre class="coding-edu-code"><code>${escapeHTML(example.code || '')}</code></pre>
+            ${example.before || example.after ? `
+              <div class="coding-edu-before-after">
+                <div>
+                  <span>Before</span>
+                  <iframe sandbox="" loading="lazy" srcdoc="${escapeHTML(example.before || buildPreviewDoc(example.code || '', example))}"></iframe>
+                </div>
+                <div>
+                  <span>After</span>
+                  <iframe sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(example.after || example.preview || buildPreviewDoc(example.code || '', example))}"></iframe>
+                </div>
+              </div>
+            ` : ''}
+            <textarea class="coding-edu-live-code" data-example-index="${index}" spellcheck="false" aria-label="Editable code for ${escapeHTML(example.title || `Example ${index + 1}`)}">${escapeHTML(example.code || '')}</textarea>
+            <div class="coding-edu-preview-shell">
+              <div class="coding-edu-preview-label">Live Preview</div>
+              <iframe class="coding-edu-live-preview" data-example-index="${index}" sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(example.preview || buildPreviewDoc(example.code || '', example))}"></iframe>
+            </div>
             ${example.output ? `<p class="coding-edu-output"><strong>Output/result:</strong> ${escapeHTML(example.output)}</p>` : ''}
             ${example.explanation ? `<p>${escapeHTML(example.explanation)}</p>` : ''}
           </div>
         `).join('')}
       </section>
     `;
+  }
+
+  function buildPreviewDoc(code, example = {}) {
+    if (example.preview) return example.preview;
+    const kind = (example.kind || '').toLowerCase();
+    const safeCode = String(code || '');
+    if (kind === 'html') return previewFrame(safeCode);
+    if (kind === 'css') return previewFrame(`<style>${safeCode}</style>${previewMarkup()}`);
+    if (kind === 'javascript') return previewFrame(`${previewMarkup()}<script>
+      const logs = [];
+      const originalLog = console.log;
+      console.log = (...args) => { logs.push(args.join(' ')); originalLog(...args); };
+      try { ${safeCode} } catch (error) { logs.push('Error: ' + error.message); }
+      document.body.insertAdjacentHTML('beforeend', '<pre class="console">' + logs.join('\\n') + '</pre>');
+    <\/script>`);
+    return previewFrame(`<pre class="console">${escapeHTML(example.output || safeCode || '[No output]')}</pre>`);
+  }
+
+  function previewMarkup() {
+    return `
+      <main class="demo-stage">
+        <div class="demo-box">Box 1</div>
+        <div class="demo-box">Box 2</div>
+        <div class="demo-box">Box 3</div>
+      </main>
+    `;
+  }
+
+  function previewFrame(body) {
+    return `<!doctype html><html><head><meta charset="utf-8"><style>
+      body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:14px}
+      .demo-stage{border:2px dashed #38bdf8;border-radius:14px;padding:14px;min-height:92px;background:white;display:block}
+      .demo-box{display:inline-flex;align-items:center;justify-content:center;width:58px;height:48px;margin:6px;border:2px solid #0ea5e9;border-radius:10px;background:#dff6ff;font-weight:800}
+      .console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:8px 0 0}
+      .lesson,.card,.button,.item,.box{border:2px solid #38bdf8;border-radius:12px;padding:12px;margin:8px;background:#fff}
+    </style></head><body>${body}</body></html>`;
   }
 
   function lessonKey(categoryId, subfolderId, chapterId, lessonId) {
@@ -351,6 +404,21 @@ window.codingEducationalModule = (function () {
           <pre class="coding-edu-code"><code>${escapeHTML(lesson.example?.code || '')}</code></pre>
         </section>`}
         ${renderParagraphSection('Explanation of Output / Result', lesson.outputExplanation)}
+        <details class="coding-edu-why">
+          <summary>Why this works</summary>
+          ${asArray(lesson.whyThisWorks).map((text) => `<p>${escapeHTML(text)}</p>`).join('') || '<p>This works because each line follows the syntax rules and produces a result the browser, language, command, or database can understand.</p>'}
+        </details>
+        ${lesson.exercise ? `
+          <section class="coding-edu-lesson-section coding-edu-exercise">
+            <h3>Guided Mini Task</h3>
+            <p>${escapeHTML(lesson.exercise.prompt)}</p>
+            <textarea class="coding-edu-exercise-input" spellcheck="false" aria-label="Exercise answer">${escapeHTML(lesson.exercise.starter || '')}</textarea>
+            <div class="coding-edu-action-row">
+              <button class="coding-edu-action primary" data-action="check-exercise" type="button">Check Answer</button>
+              <span class="coding-edu-exercise-result" aria-live="polite"></span>
+            </div>
+          </section>
+        ` : ''}
         <section class="coding-edu-lesson-section">
           <h3>Common Mistakes</h3>
           <ul>${(lesson.commonMistakes || []).map((point) => `<li>${escapeHTML(point)}</li>`).join('')}</ul>
@@ -446,7 +514,10 @@ window.codingEducationalModule = (function () {
       ...(item.commonMistakes || []),
       ...(item.termsToKnow || []).flatMap((term) => [term.term, term.definition]),
       ...(item.breakdown || []).flatMap((part) => [part.item, part.explanation, part.syntax, part.example, part.output]),
-      ...(item.examples || []).flatMap((example) => [example.title, example.code, example.output, example.explanation]),
+      ...(item.examples || []).flatMap((example) => [example.title, example.code, example.preview, example.output, example.explanation]),
+      item.exercise?.prompt,
+      item.exercise?.expected,
+      ...asArray(item.whyThisWorks),
     ];
     return chunks.filter(Boolean).join(' ').toLowerCase();
   }
@@ -497,16 +568,44 @@ window.codingEducationalModule = (function () {
     }
     if (action === 'copy-code') {
       const code = event.target.closest('.coding-edu-lesson-section')?.querySelector('.coding-edu-code code')?.textContent
+        || event.target.closest('.coding-edu-lesson-section')?.querySelector('.coding-edu-live-code')?.value
         || getLesson()?.examples?.[0]?.code
         || getLesson()?.example?.code
         || '';
       navigator.clipboard?.writeText(code).catch(() => {});
+    }
+    if (action === 'check-exercise') {
+      checkExercise(event);
+      return;
     }
     if (action === 'submit-quiz') {
       scoreQuiz();
       return;
     }
     render();
+  }
+
+  function handleInput(event) {
+    const editor = event.target.closest('.coding-edu-live-code');
+    if (!editor) return;
+    const lesson = getLesson();
+    const index = Number(editor.dataset.exampleIndex || 0);
+    const example = lesson?.examples?.[index] || {};
+    const frame = editor.closest('.coding-edu-example')?.querySelector('.coding-edu-live-preview');
+    if (frame) frame.srcdoc = buildPreviewDoc(editor.value, { ...example, preview: '' });
+  }
+
+  function checkExercise(event) {
+    const lesson = getLesson();
+    const box = event.target.closest('.coding-edu-exercise');
+    const input = box?.querySelector('.coding-edu-exercise-input');
+    const result = box?.querySelector('.coding-edu-exercise-result');
+    if (!lesson?.exercise || !input || !result) return;
+    const answer = input.value.toLowerCase();
+    const expected = asArray(lesson.exercise.expected).map((value) => String(value).toLowerCase());
+    const ok = expected.every((value) => answer.includes(value));
+    result.textContent = ok ? 'Correct. Your answer includes the required idea.' : `Not yet. Include: ${expected.join(', ')}`;
+    result.classList.toggle('success', ok);
   }
 
   function scoreQuiz() {

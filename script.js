@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.9';
+const APP_VERSION = '1.4.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.0',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Textbook Expansion',
+    summary: 'CODING LESSONS now uses domain-specific chapters and less repetitive teaching sections across every major module.',
+    changes: [
+      'Replaced artificial Meaning, Vocabulary, Syntax, Example Reading, and Guided Mini Task chapter patterns.',
+      'Added specialized chapter plans for Programming Languages, Front End, Back End, Databases, Deployment, Git, Cybersecurity, Networking, Linux, APIs, Mobile, UI/UX, Software Engineering, Cloud, Testing, and DSA.',
+      'Changed repeated lesson labels from Output/result to clearer check-based wording.',
+      'Improved generated lesson summaries, terms, explanations, key points, exercises, and recaps so they match each module type.',
+      'Kept pagination and live examples intact while improving the lesson library structure.'
+    ]
+  },
   {
     version: '1.3.9',
     date: 'April 23, 2026',

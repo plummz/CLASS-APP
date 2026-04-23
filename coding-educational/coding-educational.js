@@ -127,7 +127,7 @@ window.codingEducationalModule = (function () {
               <p>${escapeHTML(item.explanation || '')}</p>
               ${item.syntax ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.syntax)}</code></pre>` : ''}
               ${item.example ? `<pre class="coding-edu-code small"><code>${escapeHTML(item.example)}</code></pre>` : ''}
-              ${item.output ? `<p class="coding-edu-output"><strong>Output/result:</strong> ${escapeHTML(item.output)}</p>` : ''}
+              ${item.output ? `<p class="coding-edu-output"><strong>What to notice:</strong> ${escapeHTML(item.output)}</p>` : ''}
             </div>
           `).join('')}
         </div>
@@ -142,7 +142,7 @@ window.codingEducationalModule = (function () {
       <section class="coding-edu-lesson-section">
         <div class="coding-edu-code-title">
           <h3>Editable Coding Lab</h3>
-          <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy First Example</button>
+          <button class="coding-edu-action compact" data-action="copy-code" type="button">Copy Starter Code</button>
         </div>
         ${items.map((example, index) => `
           <div class="coding-edu-example" data-example-index="${index}">
@@ -621,14 +621,14 @@ window.codingEducationalModule = (function () {
           </div>
           <pre class="coding-edu-code"><code>${escapeHTML(lesson.example?.code || '')}</code></pre>
         </section>`}
-        ${renderParagraphSection('Explanation of Output / Result', lesson.outputExplanation)}
+        ${renderParagraphSection('What Changed / What to Check', lesson.outputExplanation)}
         <details class="coding-edu-why">
           <summary>Why this works</summary>
-          ${asArray(lesson.whyThisWorks).map((text) => `<p>${escapeHTML(text)}</p>`).join('') || '<p>This works because each line follows the syntax rules and produces a result the browser, language, command, or database can understand.</p>'}
+          ${asArray(lesson.whyThisWorks).map((text) => `<p>${escapeHTML(text)}</p>`).join('') || '<p>This works because each line follows the expected rules and gives evidence the browser, language, command, or database can understand.</p>'}
         </details>
         ${lesson.exercise ? `
           <section class="coding-edu-lesson-section coding-edu-exercise">
-            <h3>Guided Mini Task</h3>
+            <h3>Mini Lab</h3>
             <p>${escapeHTML(lesson.exercise.prompt)}</p>
             <textarea class="coding-edu-exercise-input" spellcheck="false" aria-label="Exercise answer">${escapeHTML(lesson.exercise.starter || '')}</textarea>
             <div class="coding-edu-action-row">

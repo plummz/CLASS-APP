@@ -315,7 +315,7 @@ const codingEducationalData = (function () {
       subfolder('Cybersecurity Basics', 'Understand security goals and everyday risks.', img.cyber, cybersecurityBasics),
       ...['Password Safety','Phishing Awareness','Secure Coding Basics','OWASP Basics'].map((name) => subfolder(name, `${name} explained for students.`, img.cyber, simpleLessons(id(name), 'Cybersecurity', ['Risk', 'Safe Habit', 'Example'], [source.owasp], 'Validate input before using it.', name))),
     ]),
-    category('Networking Basics', 'Understand how devices and web apps communicate.', img.network, ['Internet Basics','IP Address','DNS','Routers and Switches','Client and Server'].map((name) => subfolder(name, `${name} in simple networking terms.`, img.network, simpleLessons(id(name), 'Networking', ['Meaning', 'Use', 'Troubleshooting'], [source.mdn, source.linux], 'ping example.com', name)))),
+    category('Networking Basics', 'Understand how devices and web apps communicate.', img.network, ['Internet Basics','IP Address','DNS','Routers and Switches','Client and Server'].map((name) => subfolder(name, `${name} in simple networking terms.`, img.network, simpleLessons(id(name), 'Networking', ['Role', 'Use', 'Troubleshooting'], [source.mdn, source.linux], 'ping example.com', name)))),
     category('Operating Systems / Linux Basics', 'Learn files, processes, permissions, and terminal habits.', img.linux, ['OS Basics','Command Line Basics','Files and Directories','Permissions','Basic Linux Commands'].map((name) => subfolder(name, `${name} for beginner system use.`, img.linux, simpleLessons(id(name), 'Linux', ['Concept', 'Command', 'Safety Tip'], [source.linux], 'pwd\nls\ncd Documents', name)))),
     category('APIs / Web Services', 'Connect apps through structured requests and responses.', img.api, ['What is an API','REST Basics','Request and Response','JSON Basics','API Testing Basics'].map((name) => subfolder(name, `${name} for web service beginners.`, img.api, simpleLessons(id(name), 'API', ['Endpoint', 'Data', 'Status'], [source.mdn], 'fetch("/api/items").then(r => r.json())', name)))),
     category('Mobile Development', 'Design and build apps for small touch screens.', img.mobile, ['Mobile App Basics','Android Basics','Cross-platform Basics'].map((name) => subfolder(name, `${name} for app development starters.`, img.mobile, simpleLessons(id(name), 'Mobile', ['Touch UI', 'Device Limits', 'Testing'], [source.android, source.mdn], 'button { min-height: 44px; }', name)))),
@@ -368,7 +368,7 @@ const codingEducationalData = (function () {
     if (m.includes('sql') || m.includes('database')) return 'SELECT column FROM table WHERE condition;';
     if (m.includes('git')) return 'git status\ngit add .\ngit commit -m "message"';
     if (m.includes('linux')) return 'pwd\nls\ncd folder';
-    return 'concept -> example -> result';
+    return `${moduleTitle} note: ${topic}\nObserve the input, the action taken, and the visible check.`;
   }
 
   function cssValue(topic) {
@@ -415,7 +415,7 @@ const codingEducationalData = (function () {
     if (m.includes('html')) return `The browser creates real page content for ${topic}, so the heading, text, media, link, or form control appears in the preview.`;
     if (m.includes('sql') || m.includes('database')) return `A small result table is returned for ${topic}.`;
     if (m.includes('git') || m.includes('linux')) return `The terminal shows status or file information related to ${topic}.`;
-    return `${topic}`;
+    return `The check confirms how ${topic} affects this ${moduleTitle} task.`;
   }
 
   function item(name, explanation, example, output) {
@@ -431,6 +431,143 @@ const codingEducationalData = (function () {
     if (m.includes('python')) return 'python';
     if (m.includes('sql') || m.includes('database')) return 'sql';
     return 'terminal';
+  }
+
+  function lessonTerms(moduleTitle, chapterTitle, topic) {
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('cyber') || m.includes('password') || m.includes('phishing') || m.includes('owasp') || m.includes('secure')) {
+      return [
+        { term: 'Asset', definition: 'Something worth protecting, such as an account, file, device, database, or private message.' },
+        { term: 'Threat', definition: 'A possible way something can go wrong, such as a fake login page or leaked password.' },
+        { term: 'Control', definition: 'A safety step that lowers risk, such as MFA, validation, permission checks, or user training.' },
+      ];
+    }
+    if (m.includes('network') || m.includes('internet') || m.includes('dns') || m.includes('router') || m.includes('client')) {
+      return [
+        { term: 'Host', definition: 'A device or service that sends, receives, or stores data on a network.' },
+        { term: 'Address', definition: 'A value used to find a device, website, or service, such as an IP address or domain name.' },
+        { term: 'Packet', definition: 'A small piece of data that travels across a network.' },
+      ];
+    }
+    if (m.includes('cloud') || m.includes('hosting') || m.includes('storage') || m.includes('render') || m.includes('firebase') || m.includes('supabase')) {
+      return [
+        { term: 'Service', definition: 'A provider-managed tool your app can use, such as hosting, storage, database, logs, or authentication.' },
+        { term: 'Region', definition: 'The physical area where cloud resources run, which can affect speed and reliability.' },
+        { term: 'Scaling', definition: 'Changing resources so an app can handle more or fewer users.' },
+      ];
+    }
+    if (m.includes('git') || m.includes('github') || m.includes('branch') || m.includes('merge')) {
+      return [
+        { term: 'Snapshot', definition: 'A saved version of project changes, usually created with a commit.' },
+        { term: 'Remote', definition: 'A copy of the repository hosted online, such as on GitHub.' },
+        { term: 'Branch', definition: 'A separate line of work used to build or test changes without disturbing the main line.' },
+      ];
+    }
+    if (m.includes('ui') || m.includes('ux') || m.includes('layout') || m.includes('accessibility')) {
+      return [
+        { term: 'Hierarchy', definition: 'The order that tells users what to notice first, second, and third.' },
+        { term: 'Feedback', definition: 'A visual or text response that confirms what happened after a user action.' },
+        { term: 'Accessibility', definition: 'Designing so more people can understand and use the interface.' },
+      ];
+    }
+    if (m.includes('sql') || m.includes('database')) {
+      return [
+        { term: 'Record', definition: 'One row of related data in a table.' },
+        { term: 'Column', definition: 'A named field that stores one kind of value for each record.' },
+        { term: 'Constraint', definition: 'A rule that protects table data, such as requiring a unique key.' },
+      ];
+    }
+    return [
+      { term: 'Input', definition: 'The value, file, command, user action, or condition the lesson starts with.' },
+      { term: 'Operation', definition: 'The step that changes, checks, stores, displays, or sends the input.' },
+      { term: 'Verification', definition: 'The evidence you use to confirm the code, command, design, or setup behaved correctly.' },
+    ];
+  }
+
+  function learningAngles(moduleTitle, chapterTitle, topic) {
+    const m = moduleTitle.toLowerCase();
+    if (m.includes('cyber') || m.includes('password') || m.includes('phishing') || m.includes('owasp') || m.includes('secure')) {
+      return {
+        labels: ['Risk being reduced', 'Defense habit', 'Evidence to check'],
+        summary: `${topic} teaches a practical security habit inside ${moduleTitle}. It focuses on what can go wrong, what safeguard reduces the risk, and what evidence proves the safeguard is working.`,
+        overview: `${topic} matters because most security problems start from ordinary actions: a link is clicked, a password is reused, input is trusted, or permission is skipped. For students, the goal is not fear; the goal is learning how to slow down and check the path before data or accounts are exposed. Think of it like locking a classroom cabinet: the lock does not make theft impossible, but it lowers the chance and shows who should have access.`,
+        details: [
+          `${topic} should be studied by tracing a realistic scenario from start to finish. Identify the asset first, then name the threat, then decide which control reduces the risk without making the system painful to use.`,
+          `In ${chapterTitle}, a good answer explains both the human side and the technical side. For example, training helps users notice fake messages, while validation and permission checks help the app reject unsafe actions.`,
+          `The strongest practice is to verify the defense. Look for signs such as a blocked request, a stronger password rule, fewer exposed details, a safer error message, or logs that show suspicious activity was handled.`,
+        ],
+      };
+    }
+    if (m.includes('network') || m.includes('internet') || m.includes('dns') || m.includes('router') || m.includes('client')) {
+      return {
+        labels: ['Connection role', 'Data path', 'Troubleshooting signal'],
+        summary: `${topic} explains how information moves between devices and services. The lesson connects the network part, the path data follows, and the clue you can use when something fails.`,
+        overview: `${topic} is easier to understand when you imagine sending a package across a campus. The sender needs an address, the package may pass through several places, and the receiver must be ready to accept it. Networks work in a similar way, except the package is split into data and the addresses are digital.`,
+        details: [
+          `Start by asking which device or service is speaking. A browser, phone, router, DNS server, API server, and database can all be part of the same request, but each has a different job.`,
+          `Next, follow the path. A useful network explanation names the source, destination, lookup step, transport step, and the response that comes back.`,
+          `When troubleshooting, avoid guessing. Check one layer at a time: device connection, address, DNS name, port, protocol, server response, and finally the app logic.`,
+        ],
+      };
+    }
+    if (m.includes('cloud') || m.includes('hosting') || m.includes('storage') || m.includes('render') || m.includes('firebase') || m.includes('supabase')) {
+      return {
+        labels: ['Service responsibility', 'Deployment decision', 'Reliability check'],
+        summary: `${topic} shows how cloud services help apps run outside a student laptop. The focus is what the provider handles, what the developer still controls, and how to confirm the service is healthy.`,
+        overview: `${topic} is like borrowing a prepared computer lab instead of building every computer yourself. The provider gives the room, power, network, and tools, but you still decide what project to upload, what settings to use, and how to monitor it. This makes cloud work powerful, but it also means settings matter.`,
+        details: [
+          `A cloud lesson should separate provider responsibility from developer responsibility. Providers run the infrastructure; developers still manage code, configuration, permissions, data, and release habits.`,
+          `The deployment decision depends on the app shape. A static site, Node server, database-backed app, file storage feature, and background worker may need different services.`,
+          `A healthy setup is proven with logs, uptime checks, version labels, environment variables, and a repeatable deploy process.`,
+        ],
+      };
+    }
+    if (m.includes('ui') || m.includes('ux') || m.includes('layout') || m.includes('accessibility')) {
+      return {
+        labels: ['User need', 'Interface choice', 'Usability check'],
+        summary: `${topic} teaches a design decision that affects how people read, tap, understand, or trust an interface. The focus is the user problem, the design choice, and the test that shows whether it helps.`,
+        overview: `${topic} matters because an interface is a conversation with the user. If labels are unclear, spacing is cramped, or feedback is missing, users feel lost even when the code works. A good UI decision is like a clear sign in a hallway: it reduces hesitation and helps people move confidently.`,
+        details: [
+          `Start with the user task. A button, card, form, color, or layout should exist because it helps someone do something specific.`,
+          `Then choose the interface treatment. Size, spacing, contrast, wording, grouping, and feedback all shape whether the screen feels understandable.`,
+          `Finally, check the experience. A good design can be explained in terms of readability, tap accuracy, visual order, accessibility, and fewer mistakes.`,
+        ],
+      };
+    }
+    if (m.includes('sql') || m.includes('database')) {
+      return {
+        labels: ['Data question', 'Table operation', 'Record check'],
+        summary: `${topic} teaches how stored data is organized, read, changed, or protected. The lesson connects the question being asked to the table operation and the records you should inspect after it runs.`,
+        overview: `${topic} is like working with a class record book. Each student row has fields, and every change should be deliberate because other parts of the app may rely on that information. Databases reward careful questions: what data do I need, where is it stored, and how do I know I changed only the correct rows?`,
+        details: [
+          `Begin with the data question. Are you reading a list, finding one record, adding new information, correcting existing data, or protecting relationships between tables?`,
+          `Then match the SQL or database operation to that question. A SELECT, INSERT, UPDATE, DELETE, JOIN, key, or constraint each solves a different kind of problem.`,
+          `Always verify the affected records. Beginner mistakes often happen when a filter is missing, a relationship is misunderstood, or a query returns more rows than expected.`,
+        ],
+      };
+    }
+    if (m.includes('git') || m.includes('github') || m.includes('branch') || m.includes('merge')) {
+      return {
+        labels: ['Project state', 'Team action', 'History check'],
+        summary: `${topic} explains how developers save work, share changes, and avoid losing progress. The lesson connects the current project state to the command or workflow that changes history safely.`,
+        overview: `${topic} is like keeping checkpoints while building a school project. Instead of saving one final file and hoping nothing breaks, Git lets you save meaningful steps, compare changes, and return to known points. This is especially useful when several people work on the same app.`,
+        details: [
+          `First read the project state. Before using a command, check what changed, what branch you are on, and whether the remote copy is ahead or behind.`,
+          `Next choose the team action. Adding, committing, pulling, pushing, branching, and merging each has a different effect on the project timeline.`,
+          `Finally, check the history. A clean Git habit leaves understandable commits, fewer conflicts, and a clear path for teammates to review.`,
+        ],
+      };
+    }
+    return {
+      labels: ['When to use it', 'How it works', 'How to verify it'],
+      summary: `${topic} teaches a practical part of ${moduleTitle}. The lesson focuses on when the idea is useful, how the step works, and how a beginner can confirm it behaved correctly.`,
+      overview: `${topic} appears in real student projects because software is built from many small decisions. Each decision should answer a clear need instead of being copied blindly. A simple analogy is following a lab procedure: the instruction matters, but the observation after the step matters just as much.`,
+      details: [
+        `Start by naming the situation where ${topic} is useful. This keeps the lesson connected to real work instead of becoming a list of terms.`,
+        `Then study the operation itself. Look at the important words, symbols, settings, files, or interface choices that make the step work.`,
+        `Finally, verify the outcome. Depending on the topic, that may be a console line, a table row, a visible page change, a successful request, or a safer workflow.`,
+      ],
+    };
   }
 
   function previewDoc(body) {
@@ -852,10 +989,11 @@ const codingEducationalData = (function () {
     const customKeywords = typeof topicSpec === 'string' ? [] : (topicSpec.keywords || []);
     const sourceList = sourceFor(moduleTitle);
     const lessonExamples = (typeof topicSpec === 'string' ? null : topicSpec.examples) || examples(moduleTitle, chapterTitle, topic, lessonIndex);
+    const angles = learningAngles(moduleTitle, chapterTitle, topic);
     const breakdown = (customItems && customItems.length ? customItems : [
-      item('Purpose', `${topic} solves a specific beginner problem in ${moduleTitle}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
-      item('Syntax Pattern', `The syntax shows the order of words, symbols, or values used by ${topic}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
-      item('Result Check', `The result tells you whether ${topic} was used correctly.`, codeFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item(angles.labels[0], `${topic} belongs here because ${chapterTitle} needs this skill in a real beginner project. This part explains the situation where the idea is useful before any code or command is copied.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item(angles.labels[1], `This part shows the action behind ${topic}: what is selected, changed, requested, protected, arranged, or checked. It turns the topic into a step a student can actually perform.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
+      item(angles.labels[2], `This part explains what evidence to look for after using ${topic}. The evidence might be a console message, table row, interface change, safer behavior, or cleaner workflow.`, codeFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
     ]).map((part) => ({
       item: part.item,
       explanation: part.explanation,
@@ -869,46 +1007,38 @@ const codingEducationalData = (function () {
       readingTime: '8 min',
       tags: ['Beginner', moduleTitle, chapterTitle],
       keywords: [moduleTitle, chapterTitle, topic, ...customKeywords, ...breakdown.flatMap((part) => [part.item, part.syntax, part.example, part.output])].filter(Boolean),
-      summary: `${topic} explains a concrete skill in ${moduleTitle}: what it does, why developers use it, and how it changes the final result. It belongs to the ${chapterTitle} chapter, so it connects to nearby lessons instead of standing alone. Think of it like learning one classroom tool: you do not only name it, you learn when to pick it up and how to check if it worked.`,
-      overview: `${topic} appears often in real student projects and classroom exercises. It is used because software needs clear instructions, predictable structure, and results that can be checked. A simple analogy is a school form: each field has a purpose, and if one field is written incorrectly, the whole form becomes harder to use. This lesson explains what ${topic} does, why it matters, and how it affects output or behavior. The examples are different on purpose so you can compare results instead of memorizing one pattern.`,
-      termsToKnow: [
-        { term: 'Syntax', definition: 'The exact writing pattern that the language, browser, command, or query expects.' },
-        { term: 'Value', definition: 'The text, number, setting, command, or data being used.' },
-        { term: 'Result', definition: 'What appears after the code, markup, command, or query runs.' },
-      ],
-      detailedExplanation: [
-        `${topic} should be studied as a small tool with a purpose, a pattern, and a visible or readable result. The purpose tells you why it exists. The pattern tells you how to write it. The result tells you whether the computer, browser, terminal, or database understood your instruction.`,
-        `In ${moduleTitle}, many errors happen because a student copies syntax without checking meaning. A stronger habit is to predict the result before running the example. When the actual result is different, compare spelling, punctuation, order, and values, just like checking each step of a math solution.`,
-        `Use this lesson like a textbook page with a small lab beside it. Read the breakdown first, edit the examples second, and then explain the output in your own words. That explanation is what turns a copied example into real understanding.`,
-      ],
+      summary: angles.summary,
+      overview: angles.overview,
+      termsToKnow: lessonTerms(moduleTitle, chapterTitle, topic),
+      detailedExplanation: angles.details,
       breakdown,
       syntax: syntaxFor(moduleTitle, topic),
       keyPoints: [
-        `${topic} has a clear purpose in ${moduleTitle}.`,
-        'Small syntax details matter because one missing symbol can change the result.',
-        'You should run at least three examples before moving on.',
-        'The output or visual result is part of the lesson, not an extra step.',
+        `${topic} is tied to a specific task in ${moduleTitle}, not just a definition to memorize.`,
+        `The ${chapterTitle} chapter shows where this skill fits beside nearby lessons.`,
+        'Examples should be edited and checked so cause and effect become clear.',
+        'A strong student answer explains the action taken and the evidence seen afterward.',
       ],
-      example: { title: `${topic} Example`, code: lessonExamples[0].code },
+      example: { title: `${topic} Starter Code`, code: lessonExamples[0].code },
       examples: lessonExamples,
       outputExplanation: [
-        `The result shows whether ${topic} was written correctly. Text output should match the expected words or values. Visual output should show the exact difference described by the lesson, such as new alignment, spacing, color, content, or a terminal/table result.`,
-        `If the result is wrong, compare the syntax and values with the examples. Debug one small change at a time so the cause becomes easier to find, the same way you would isolate one wrong answer in a worksheet.`,
+        `Use the preview, console, or table area as evidence. For ${topic}, the important question is: did the screen, data, command response, or workflow change in the way the lesson described?`,
+        `If the check does not match, change one detail at a time. This keeps debugging calm and prevents a beginner from guessing through many edits at once.`,
       ],
       whyThisWorks: [
-        `${topic} works because ${moduleTitle} follows strict rules: the tool reads the instruction, applies it to the selected data or element, and then produces an output.`,
-        `The preview/check area helps because it turns an abstract rule into something visible. Students can edit the code, watch the result change, and connect cause to effect.`,
+        `${topic} works because ${moduleTitle} follows a predictable contract: you provide an instruction, the tool applies that instruction to a target, and you inspect the evidence afterward.`,
+        `The workspace helps because it makes the lesson testable. Students can edit the code, command, query, or demo and immediately compare their prediction with what happened.`,
       ],
       exercise: {
-        prompt: `Guided task: edit one example so it still demonstrates ${topic}, then include the word "${topic.split(' ')[0]}" in your answer. Explain what changed in one sentence.`,
+        prompt: `Mini lab: change one meaningful part of a ${topic} example, then write one sentence explaining what evidence proved your change worked.`,
         starter: `I changed ${topic} by `,
         expected: [topic.split(' ')[0].toLowerCase()],
       },
       commonMistakes: [
-        `Using ${topic} without knowing what result it should create.`,
-        'Forgetting capitalization, quotes, brackets, semicolons, indentation, or the correct order of values.',
+        `Copying ${topic} without knowing which target it affects.`,
+        'Changing too many things at once, which makes the real cause harder to identify.',
       ],
-      recap: `${topic} is part of the ${moduleTitle} foundation. You should know the terms, syntax, examples, result, and common mistakes before continuing.`,
+      recap: `${topic} is part of the ${moduleTitle} foundation. Before continuing, make sure you can explain when to use it, what action it performs, and what evidence confirms it worked.`,
       sources: sourceList,
     };
   }
@@ -1013,9 +1143,266 @@ const codingEducationalData = (function () {
     ['OOP', ['Classes','Objects','__init__','Methods','Attributes']],
   ];
 
-  const genericNames = ['Foundations','Syntax and Structure','Core Concepts','Common Commands','Project Workflow','Debugging','Security and Safety','Collaboration','Best Methods','Mini Projects'];
-  function genericPlan(title, extras = []) {
-    return genericNames.map((name, index) => [name, [`${title} ${name} Meaning`, `${title} ${name} Vocabulary`, `${title} ${name} Syntax`, `${title} ${name} Example Reading`, `${title} ${name} Guided Mini Task`, ...(index === 0 ? extras : [])]]);
+  function withFocus(focus, chapters) {
+    return chapters.map(([chapterTitle, topics]) => [
+      chapterTitle,
+      topics.map((topic) => typeof topic === 'string' ? `${focus}: ${topic}` : topic),
+    ]);
+  }
+
+  function languagePlan(title) {
+    return withFocus(title, [
+      ['Getting Started', ['where it is used', 'tooling overview', 'first file', 'running a small program', 'reading beginner errors']],
+      ['Values and Names', ['variables', 'constants', 'text values', 'number values', 'boolean values']],
+      ['Decisions', ['comparison checks', 'if paths', 'else paths', 'multiple choices', 'guard conditions']],
+      ['Repetition', ['counted loops', 'condition loops', 'loop counters', 'stopping a loop', 'nested loops']],
+      ['Reusable Blocks', ['functions or methods', 'parameters', 'return values', 'local scope', 'naming habits']],
+      ['Collections', ['lists or arrays', 'indexes', 'adding items', 'reading many items', 'simple searches']],
+      ['Program Structure', ['files and folders', 'comments', 'imports or libraries', 'entry point', 'small project layout']],
+      ['Error Handling', ['syntax mistakes', 'runtime mistakes', 'debug print checks', 'safe input checks', 'reading error messages']],
+      ['Mini Interfaces', ['simple input screen', 'menu flow', 'validation message', 'formatted output', 'user feedback']],
+      ['Practice Projects', ['calculator task', 'grade checker', 'list tracker', 'quiz task', 'review checklist']],
+    ]);
+  }
+
+  function frontendPlan(title) {
+    return withFocus(title, [
+      ['Browser Foundations', ['requesting a page', 'loading assets', 'document structure', 'developer tools', 'page refresh checks']],
+      ['Page Layouts', ['header layout', 'content sections', 'card groups', 'footer placement', 'mobile stacking']],
+      ['Visual Styling', ['color contrast', 'spacing scale', 'type hierarchy', 'rounded elements', 'hover feedback']],
+      ['Responsive Screens', ['fluid width', 'breakpoints', 'touch spacing', 'image scaling', 'portrait testing']],
+      ['DOM Interaction', ['selecting elements', 'changing text', 'toggling classes', 'adding elements', 'handling empty states']],
+      ['Forms and Input', ['labels', 'required fields', 'validation messages', 'submit flow', 'success feedback']],
+      ['Component Thinking', ['button component', 'card component', 'modal pattern', 'list item pattern', 'stateful component']],
+      ['Accessibility', ['semantic labels', 'keyboard focus', 'alt text', 'contrast checks', 'clear wording']],
+      ['Performance Habits', ['small images', 'deferred scripts', 'minimal reflow', 'cached assets', 'preview testing']],
+      ['Front-End Mini Builds', ['profile page', 'lesson card grid', 'login form mockup', 'announcement banner', 'responsive menu']],
+    ]);
+  }
+
+  function backendPlan(title) {
+    return withFocus(title, [
+      ['Server Responsibilities', ['receiving requests', 'sending responses', 'routing paths', 'serving JSON', 'handling errors']],
+      ['API Design', ['endpoint naming', 'HTTP methods', 'status codes', 'request body', 'response shape']],
+      ['Validation', ['required fields', 'type checks', 'length checks', 'safe defaults', 'friendly errors']],
+      ['Authentication Flow', ['login request', 'session idea', 'token idea', 'logout behavior', 'protected route']],
+      ['Authorization', ['owner checks', 'role checks', 'admin actions', 'viewer access', 'edit access']],
+      ['Database Work', ['connection setup', 'query parameters', 'read operation', 'write operation', 'failed query handling']],
+      ['Files and Uploads', ['upload route', 'file metadata', 'size limits', 'safe names', 'download links']],
+      ['Logging and Monitoring', ['request logs', 'error logs', 'slow route checks', 'health endpoint', 'deploy logs']],
+      ['Security Basics', ['input trust', 'secret handling', 'rate limiting', 'CORS care', 'safe error messages']],
+      ['Backend Mini Builds', ['status API', 'profile API', 'file list API', 'announcement API', 'permission API']],
+    ]);
+  }
+
+  function databasePlan(title) {
+    return withFocus(title, [
+      ['Data Modeling', ['entities', 'attributes', 'records', 'table purpose', 'avoiding duplicate fields']],
+      ['Table Design', ['column names', 'data types', 'required fields', 'default values', 'timestamps']],
+      ['Reading Data', ['SELECT columns', 'WHERE filters', 'ORDER BY sorting', 'LIMIT rows', 'search conditions']],
+      ['Writing Data', ['INSERT rows', 'UPDATE rows', 'DELETE caution', 'soft delete idea', 'transaction idea']],
+      ['Keys', ['primary key', 'foreign key', 'unique key', 'composite key', 'relationship checks']],
+      ['Relationships', ['one-to-one', 'one-to-many', 'many-to-many', 'join table', 'referential integrity']],
+      ['Query Safety', ['parameters', 'SQL injection risk', 'least columns', 'permission filters', 'audit fields']],
+      ['Indexes and Speed', ['why indexes help', 'index tradeoffs', 'search columns', 'sort columns', 'slow query clues']],
+      ['Data Quality', ['constraints', 'validation before save', 'consistent formats', 'nullable fields', 'cleanup checks']],
+      ['Database Mini Builds', ['student table', 'folder table', 'file metadata table', 'announcement table', 'leaderboard table']],
+    ]);
+  }
+
+  function deploymentPlan(title) {
+    return withFocus(title, [
+      ['Release Overview', ['local app vs live app', 'build step', 'start command', 'public URL', 'rollback idea']],
+      ['Project Preparation', ['package scripts', 'root directory', 'environment files', 'ignored files', 'asset paths']],
+      ['Environment Variables', ['public values', 'secret values', 'service keys', 'missing variable errors', 'safe rotation']],
+      ['Build and Runtime', ['install step', 'build command', 'start command', 'runtime logs', 'failed deploy checks']],
+      ['Static Hosting', ['HTML assets', 'cache behavior', 'relative paths', 'custom domain', '404 handling']],
+      ['Server Hosting', ['web service', 'port binding', 'health route', 'background limits', 'restart behavior']],
+      ['Database and Storage', ['connection URL', 'storage bucket', 'migration script', 'backup habit', 'permission check']],
+      ['Monitoring', ['deploy log', 'runtime log', 'uptime ping', 'error alert', 'version banner']],
+      ['Security Before Launch', ['secret scan', 'CORS review', 'admin access', 'file upload limits', 'HTTPS check']],
+      ['Deployment Mini Builds', ['first deploy', 'cache-bust release', 'hotfix deploy', 'environment update', 'release notes']],
+    ]);
+  }
+
+  function gitPlan(title) {
+    return withFocus(title, [
+      ['Repository Basics', ['working tree', 'staging area', 'commit history', 'remote repository', 'default branch']],
+      ['Daily Checks', ['git status', 'git diff', 'reading changed files', 'checking branch', 'checking remote']],
+      ['Saving Work', ['git add', 'focused commits', 'commit messages', 'small changesets', 'undoing before commit']],
+      ['Sharing Work', ['git push', 'git pull', 'upstream branch', 'remote tracking', 'sync before editing']],
+      ['Branching', ['new branch', 'switch branch', 'feature branch', 'stale branch', 'branch cleanup']],
+      ['Merging', ['merge flow', 'conflict markers', 'manual conflict fix', 'merge commit', 'post-merge test']],
+      ['Collaboration', ['pull request', 'review comments', 'requested changes', 'approval', 'merge strategy']],
+      ['Recovery', ['restore one file', 'revert commit', 'stash basics', 'lost change prevention', 'safe history habits']],
+      ['Release Habits', ['version bump', 'changelog entry', 'tag idea', 'deploy trigger', 'rollback checkpoint']],
+      ['Git Mini Workflows', ['solo assignment', 'pair project', 'bugfix branch', 'documentation change', 'team release']],
+    ]);
+  }
+
+  function cyberPlan(title) {
+    return withFocus(title, [
+      ['Threat Awareness', ['asset identification', 'attacker goal', 'common entry point', 'impact estimate', 'warning signs']],
+      ['Account Protection', ['strong passwords', 'password managers', 'multi-factor authentication', 'recovery codes', 'account lockout']],
+      ['Phishing Defense', ['sender checks', 'link inspection', 'urgent wording', 'fake login pages', 'safe reporting']],
+      ['Secure Input', ['validation', 'sanitizing idea', 'escaping output', 'file upload checks', 'unsafe trust']],
+      ['Web App Risks', ['injection', 'XSS', 'broken access control', 'sensitive data exposure', 'unsafe redirects']],
+      ['Permissions', ['least privilege', 'owner access', 'viewer role', 'editor role', 'admin action review']],
+      ['Safe Data Handling', ['private data', 'encryption idea', 'hashing passwords', 'logs without secrets', 'data retention']],
+      ['Incident Response', ['detect issue', 'contain access', 'preserve evidence', 'notify users', 'fix root cause']],
+      ['Security Testing', ['checklist review', 'abuse case', 'permission test', 'invalid input test', 'dependency review']],
+      ['Cyber Mini Scenarios', ['fake email review', 'login form hardening', 'folder permission audit', 'unsafe upload fix', 'error message cleanup']],
+    ]);
+  }
+
+  function networkPlan(title) {
+    return withFocus(title, [
+      ['Network Map', ['client device', 'local network', 'router path', 'server destination', 'response return']],
+      ['Addressing', ['IP address', 'domain name', 'DNS lookup', 'ports', 'private vs public address']],
+      ['Protocols', ['HTTP', 'HTTPS', 'TCP', 'UDP', 'WebSocket idea']],
+      ['Requests', ['browser request', 'API request', 'headers', 'payload', 'status code']],
+      ['Troubleshooting', ['ping check', 'DNS failure', 'timeout', 'connection refused', 'slow response']],
+      ['Local Networks', ['router role', 'switch role', 'Wi-Fi signal', 'LAN devices', 'gateway']],
+      ['Web App Connectivity', ['frontend to backend', 'backend to database', 'CORS clue', 'service URL', 'health endpoint']],
+      ['Security on Networks', ['HTTPS', 'public Wi-Fi risk', 'firewall idea', 'VPN idea', 'safe sharing']],
+      ['Performance', ['latency', 'bandwidth', 'caching', 'CDN idea', 'large file impact']],
+      ['Networking Mini Labs', ['trace a website load', 'read API status', 'identify DNS issue', 'compare HTTP and HTTPS', 'map client-server flow']],
+    ]);
+  }
+
+  function linuxPlan(title) {
+    return withFocus(title, [
+      ['System Orientation', ['kernel idea', 'shell idea', 'terminal prompt', 'current directory', 'home folder']],
+      ['Navigation', ['pwd', 'ls', 'cd', 'relative paths', 'absolute paths']],
+      ['Files and Folders', ['touch', 'mkdir', 'cp', 'mv', 'rm caution']],
+      ['Viewing Content', ['cat', 'less idea', 'head', 'tail', 'grep search']],
+      ['Permissions', ['owner', 'group', 'read write execute', 'chmod', 'permission denied']],
+      ['Processes', ['running program', 'ps idea', 'kill caution', 'background task', 'resource check']],
+      ['Package and Tools', ['package manager idea', 'installing tools', 'version check', 'PATH idea', 'missing command']],
+      ['Shell Safety', ['quotes', 'spaces in paths', 'wildcards', 'destructive commands', 'dry-run habit']],
+      ['Server Habits', ['logs', 'environment variables', 'service restart', 'port check', 'health command']],
+      ['Linux Mini Labs', ['create project folder', 'inspect logs', 'fix permission issue', 'search files', 'prepare deploy folder']],
+    ]);
+  }
+
+  function apiPlan(title) {
+    return withFocus(title, [
+      ['API Purpose', ['client-server contract', 'endpoint role', 'resource naming', 'request timing', 'response promise']],
+      ['HTTP Methods', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']],
+      ['Request Parts', ['URL', 'query string', 'headers', 'body', 'authentication header']],
+      ['Response Parts', ['status code', 'JSON body', 'error shape', 'empty response', 'pagination data']],
+      ['REST Habits', ['resource routes', 'plural names', 'stateless idea', 'consistent responses', 'versioning idea']],
+      ['JSON Basics', ['object shape', 'array shape', 'nested data', 'null values', 'parse errors']],
+      ['Testing APIs', ['browser test', 'Postman idea', 'curl idea', 'network tab', 'mock response']],
+      ['API Security', ['token check', 'rate limit', 'input validation', 'permission filter', 'safe error message']],
+      ['API Debugging', ['404 route', '400 bad input', '401 login needed', '500 server error', 'timeout clue']],
+      ['API Mini Builds', ['profile endpoint', 'file list endpoint', 'announcement endpoint', 'leaderboard endpoint', 'search endpoint']],
+    ]);
+  }
+
+  function mobilePlan(title) {
+    return withFocus(title, [
+      ['Mobile Context', ['small screen', 'touch input', 'device rotation', 'battery limits', 'network changes']],
+      ['Screen Layout', ['safe areas', 'bottom controls', 'scrollable content', 'card density', 'portrait-first design']],
+      ['Touch Controls', ['tap target size', 'hold action', 'drag action', 'gesture conflict', 'press feedback']],
+      ['Android Basics', ['activity idea', 'permissions', 'resources', 'manifest idea', 'emulator testing']],
+      ['Cross-Platform Thinking', ['shared code', 'native feature bridge', 'platform differences', 'build targets', 'store packaging']],
+      ['Performance', ['image size', 'lazy loading', 'animation cost', 'offline cache', 'memory pressure']],
+      ['Mobile Forms', ['keyboard types', 'input focus', 'validation timing', 'save button placement', 'error message visibility']],
+      ['Notifications', ['permission prompt', 'push subscription', 'deep link', 'badge update', 'duplicate prevention']],
+      ['Testing Devices', ['screen sizes', 'slow network', 'dark mode', 'orientation checks', 'install flow']],
+      ['Mobile Mini Builds', ['login screen', 'file picker', 'chat notification', 'lesson reader', 'game control pad']],
+    ]);
+  }
+
+  function uxPlan(title) {
+    return withFocus(title, [
+      ['User Goals', ['task definition', 'user expectation', 'success moment', 'pain point', 'context of use']],
+      ['Information Layout', ['visual hierarchy', 'grouping', 'scannable headings', 'empty states', 'progress indicators']],
+      ['Interaction Design', ['button states', 'hover and press feedback', 'modal behavior', 'navigation path', 'undo possibility']],
+      ['Typography', ['font size', 'line height', 'readable measure', 'label wording', 'contrast']],
+      ['Color', ['accent color', 'status colors', 'contrast checks', 'calm palette', 'dark mode care']],
+      ['Accessibility', ['keyboard focus', 'screen reader label', 'alt text', 'touch target', 'reduced motion']],
+      ['Forms', ['field order', 'helper text', 'validation timing', 'error placement', 'confirmation message']],
+      ['Responsive UX', ['mobile priority', 'desktop density', 'navigation collapse', 'content stacking', 'thumb reach']],
+      ['Usability Testing', ['task script', 'observe hesitation', 'collect feedback', 'fix one issue', 'retest']],
+      ['UI/UX Mini Builds', ['profile card', 'settings panel', 'announcement board', 'lesson search page', 'upload flow']],
+    ]);
+  }
+
+  function engineeringPlan(title) {
+    return withFocus(title, [
+      ['Project Planning', ['problem statement', 'requirements', 'scope boundary', 'priority order', 'acceptance check']],
+      ['Design Before Code', ['data shape', 'route plan', 'component map', 'state plan', 'error flow']],
+      ['Implementation Habits', ['small commits', 'clear names', 'single responsibility', 'helper functions', 'code comments']],
+      ['Debugging Workflow', ['reproduce bug', 'isolate cause', 'inspect state', 'make minimal fix', 'verify regression']],
+      ['Testing Strategy', ['manual test', 'unit test idea', 'integration test idea', 'edge case', 'test data']],
+      ['Documentation', ['README purpose', 'setup steps', 'schema note', 'API note', 'release note']],
+      ['Team Collaboration', ['task split', 'code review', 'merge timing', 'conflict handling', 'handoff note']],
+      ['Maintenance', ['refactor trigger', 'dead code removal', 'dependency update', 'performance check', 'security patch']],
+      ['Quality Review', ['accessibility pass', 'mobile pass', 'error state pass', 'loading state pass', 'permissions pass']],
+      ['Engineering Mini Projects', ['bug report fix', 'feature checklist', 'small refactor', 'release review', 'post-deploy check']],
+    ]);
+  }
+
+  function cloudPlan(title) {
+    return withFocus(title, [
+      ['Cloud Fundamentals', ['provider role', 'shared responsibility', 'regions', 'service types', 'billing awareness']],
+      ['Hosting Models', ['static hosting', 'web service', 'serverless function', 'container idea', 'managed database']],
+      ['Storage', ['object storage', 'file URL', 'bucket permission', 'upload limit', 'backup habit']],
+      ['Backend Services', ['authentication service', 'database service', 'realtime service', 'queue idea', 'scheduled task']],
+      ['Configuration', ['environment variables', 'secrets', 'runtime setting', 'build setting', 'service restart']],
+      ['Scaling', ['traffic spike', 'horizontal scaling idea', 'cold start', 'resource limit', 'cost tradeoff']],
+      ['Reliability', ['health check', 'uptime monitor', 'retry idea', 'fallback message', 'incident note']],
+      ['Security', ['least privilege', 'public vs private data', 'key rotation', 'network access', 'audit log']],
+      ['Observability', ['logs', 'metrics', 'traces idea', 'error grouping', 'version tracking']],
+      ['Cloud Mini Builds', ['deploy static app', 'connect database', 'upload media', 'set env vars', 'monitor uptime']],
+    ]);
+  }
+
+  function testingPlan(title) {
+    return withFocus(title, [
+      ['Bug Discovery', ['symptom', 'reproduction steps', 'expected behavior', 'actual behavior', 'environment note']],
+      ['Debugging Process', ['narrow the area', 'inspect variables', 'check recent changes', 'add temporary logs', 'remove debug logs']],
+      ['Console and Logs', ['console output', 'error stack', 'network log', 'server log', 'timestamp clue']],
+      ['Test Types', ['manual test', 'unit test', 'integration test', 'end-to-end test', 'smoke test']],
+      ['Test Data', ['normal case', 'empty case', 'invalid case', 'large case', 'permission case']],
+      ['Regression Prevention', ['bug reproduction test', 'before and after check', 'edge case checklist', 'release checklist', 'rollback note']],
+      ['Frontend Checks', ['responsive view', 'button click', 'loading state', 'empty state', 'error state']],
+      ['Backend Checks', ['status code', 'validation error', 'database write', 'permission block', 'rate limit idea']],
+      ['Debugging Mindset', ['one change at a time', 'hypothesis', 'evidence', 'root cause', 'clear fix note']],
+      ['Testing Mini Labs', ['fix broken button', 'trace failed upload', 'test API response', 'verify permission', 'check mobile layout']],
+    ]);
+  }
+
+  function dsaPlan(title) {
+    return withFocus(title, [
+      ['Problem Reading', ['input shape', 'expected output', 'constraints', 'examples', 'edge cases']],
+      ['Arrays', ['index access', 'looping array', 'adding values', 'finding max', 'two-pointer idea']],
+      ['Strings', ['character access', 'case handling', 'substring', 'counting characters', 'palindrome idea']],
+      ['Searching', ['linear search', 'binary search idea', 'search condition', 'not found case', 'search cost']],
+      ['Sorting', ['why sort', 'bubble sort idea', 'built-in sort', 'custom compare', 'sorted data use']],
+      ['Stacks and Queues', ['stack push pop', 'queue enqueue dequeue', 'undo pattern', 'task line pattern', 'empty structure check']],
+      ['Maps and Sets', ['key lookup', 'counting frequency', 'unique values', 'duplicate check', 'fast membership']],
+      ['Algorithm Design', ['brute force', 'step improvement', 'helper function', 'trace table', 'complexity intuition']],
+      ['Debugging Algorithms', ['dry run', 'off-by-one', 'wrong condition', 'empty input', 'large input']],
+      ['DSA Mini Challenges', ['find duplicate', 'reverse string', 'count vowels', 'sort scores', 'match brackets']],
+    ]);
+  }
+
+  function defaultPlan(title) {
+    return withFocus(title, [
+      ['Orientation', ['where it fits', 'student use case', 'main parts', 'first safe check', 'common confusion']],
+      ['Core Skills', ['basic action', 'reading feedback', 'small configuration', 'safe edit', 'review habit']],
+      ['Workflow', ['prepare task', 'perform step', 'inspect evidence', 'fix mistake', 'document result']],
+      ['Project Use', ['simple project case', 'team project case', 'mobile case', 'database case', 'release case']],
+      ['Safety', ['permission concern', 'input concern', 'data concern', 'rollback concern', 'user trust concern']],
+      ['Troubleshooting', ['missing setup', 'wrong path', 'failed action', 'unclear message', 'slow response']],
+      ['Quality', ['readability', 'consistency', 'maintainability', 'performance', 'accessibility']],
+      ['Collaboration', ['handoff note', 'review step', 'naming agreement', 'version note', 'shared checklist']],
+      ['Practice Patterns', ['guided edit', 'comparison check', 'small lab', 'reflection question', 'mini review']],
+      ['Mini Projects', ['starter task', 'classroom task', 'debug task', 'improvement task', 'final review']],
+    ]);
   }
 
   function planFor(title) {
@@ -1025,15 +1412,23 @@ const codingEducationalData = (function () {
     if (title === 'CSS') return cssPlan;
     if (title === 'JavaScript') return jsPlan;
     if (title === 'Python') return pythonPlan;
-    if (lower.includes('sql')) return genericPlan(title, ['SELECT','WHERE','INSERT','UPDATE','DELETE','PRIMARY KEY','FOREIGN KEY','JOIN','GROUP BY','ORDER BY']);
-    if (lower.includes('git')) return genericPlan(title, ['git init','git status','git add','git commit','git push','git pull','branch','merge','remote','conflict']);
-    if (lower.includes('cyber') || lower.includes('password') || lower.includes('phishing') || lower.includes('secure') || lower.includes('owasp')) return genericPlan(title, ['password safety','phishing','MFA','OWASP','input validation','XSS','SQL injection','least privilege']);
-    if (lower.includes('network') || lower.includes('internet') || lower.includes('ip address') || lower.includes('dns') || lower.includes('router') || lower.includes('client')) return genericPlan(title, ['IP address','DNS','router','switch','HTTP','HTTPS','TCP','UDP','client','server']);
-    if (lower.includes('api') || lower.includes('rest') || lower.includes('json') || lower.includes('request')) return genericPlan(title, ['API','REST','endpoint','request','response','JSON','status code','GET','POST']);
-    if (lower.includes('database') || lower.includes('table') || lower.includes('crud') || lower.includes('keys')) return genericPlan(title, ['table','record','column','primary key','foreign key','CRUD','relationship','index']);
-    if (lower.includes('linux') || lower.includes('command') || lower.includes('operating') || lower.includes('permissions')) return genericPlan(title, ['pwd','ls','cd','mkdir','chmod','permissions','sudo','path']);
-    if (lower.includes('cloud') || lower.includes('hosting') || lower.includes('storage') || lower.includes('backend services')) return genericPlan(title, ['cloud','hosting','storage','serverless','region','scaling','environment variables','monitoring']);
-    return genericPlan(title);
+    if (['ruby', 'php', 'sql', 'c', 'c++', 'c#', 'typescript'].includes(lower)) return languagePlan(title);
+    if (lower.includes('web basics') || lower.includes('responsive') || lower.includes('dom') || lower.includes('react') || lower.includes('ui components')) return frontendPlan(title);
+    if (lower.includes('server') || lower.includes('authentication') || lower.includes('node') || lower.includes('database connection') || title === 'APIs') return backendPlan(title);
+    if (lower.includes('sql') || lower.includes('database') || lower.includes('table') || lower.includes('crud') || lower.includes('keys')) return databasePlan(title);
+    if (['github','github pages','netlify','vercel','render','firebase','supabase basics'].includes(lower)) return deploymentPlan(title);
+    if (lower.includes('git') || lower.includes('repositories') || lower.includes('commit') || lower.includes('push') || lower.includes('pull') || lower.includes('branch') || lower.includes('merge')) return gitPlan(title);
+    if (lower.includes('cyber') || lower.includes('password') || lower.includes('phishing') || lower.includes('secure') || lower.includes('owasp')) return cyberPlan(title);
+    if (lower.includes('network') || lower.includes('internet') || lower.includes('ip address') || lower.includes('dns') || lower.includes('router') || lower.includes('client')) return networkPlan(title);
+    if (lower.includes('api') || lower.includes('rest') || lower.includes('json') || lower.includes('request')) return apiPlan(title);
+    if (lower.includes('linux') || lower.includes('command') || lower.includes('operating') || lower.includes('os basics') || lower.includes('permissions') || lower.includes('files and directories')) return linuxPlan(title);
+    if (lower.includes('mobile') || lower.includes('android') || lower.includes('cross-platform')) return mobilePlan(title);
+    if (lower.includes('ui') || lower.includes('ux') || lower.includes('layout') || lower.includes('color') || lower.includes('accessibility')) return uxPlan(title);
+    if (lower.includes('sdlc') || lower.includes('software') || lower.includes('documentation') || lower.includes('clean code')) return engineeringPlan(title);
+    if (lower.includes('cloud') || lower.includes('hosting') || lower.includes('storage') || lower.includes('backend services')) return cloudPlan(title);
+    if (lower.includes('testing') || lower.includes('debugging') || lower.includes('errors') || lower.includes('console logging')) return testingPlan(title);
+    if (lower.includes('arrays') || lower.includes('strings') || lower.includes('searching') || lower.includes('sorting') || lower.includes('stack') || lower.includes('queue')) return dsaPlan(title);
+    return defaultPlan(title);
   }
 
   function expandSubfolder(subfolder) {

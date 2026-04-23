@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.7';
+const APP_VERSION = '1.3.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.8',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Library Polish',
+    summary: 'CODING LESSONS now has a stronger anti-repetition pass, more varied console examples, and cleaner lesson outputs across web, SQL, terminal, Java, and Python topics.',
+    changes: [
+      'Added a library polish pass that prevents adjacent web lessons from using the same visual demo set.',
+      'Expanded Java and Python lessons with varied console patterns for text, numbers, booleans, loops, and calculations.',
+      'Expanded SQL lesson examples with row, filtered, count, alias, and ordered result table patterns.',
+      'Improved terminal-style lesson examples for Git, Linux, cloud, API, and other non-visual topics.',
+      'Added deeper search keywords from examples, outputs, demo models, and lesson text.'
+    ]
+  },
   {
     version: '1.3.7',
     date: 'April 23, 2026',

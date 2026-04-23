@@ -563,9 +563,9 @@ const codingEducationalData = (function () {
 
   function modelsFor(moduleTitle, chapterTitle, topic, lessonIndex) {
     const chapterSeed = hashText(`${moduleTitle}-${chapterTitle}`);
-    const topicNudge = hashText(topic) % 2;
-    const start = (chapterSeed + (lessonIndex || 0) * 3 + topicNudge) % demoModels.length;
-    return [0, 1, 2].map((offset) => demoModels[(start + offset) % demoModels.length]);
+    const topicSeed = hashText(topic);
+    const start = (chapterSeed * 7 + topicSeed * 5 + (lessonIndex || 0) * 4) % demoModels.length;
+    return [0, 1, 2].map((offset) => demoModels[(start + offset * 3) % demoModels.length]);
   }
 
   function htmlExample(topic, model, variant) {
@@ -574,8 +574,13 @@ const codingEducationalData = (function () {
     if (model.name === 'gallery') return `<section class="demo-gallery"><figure>${topic} 1</figure><figure>${topic} 2</figure><figure>${topic} 3</figure></section>`;
     if (model.name === 'table') return `<div class="demo-table-wrap"><table class="demo-table"><tr><th>Topic</th><th>Status</th></tr><tr><td>${topic}</td><td>Learning</td></tr></table></div>`;
     if (model.name === 'hero') return `<section class="demo-hero"><h2>${topic}</h2><p>This hero section introduces the lesson clearly.</p><button>Start</button></section>`;
-    if (variant === 2) return `<article class="demo-profile"><div class="avatar">${topic.charAt(0)}</div><h3>${topic}</h3><p>Practice profile layout.</p></article>`;
-    if (variant === 3) return `<section class="demo-banner"><strong>${topic}:</strong> This banner highlights a short message.</section>`;
+    if (model.name === 'alert') return `<div class="demo-alert"><strong>${topic}</strong><p>This alert gives a short classroom reminder.</p></div>`;
+    if (model.name === 'profile') return `<article class="demo-profile"><div class="avatar">${topic.charAt(0)}</div><h3>${topic}</h3><p>Practice profile layout.</p></article>`;
+    if (model.name === 'menu') return `<aside class="demo-menu"><button>${topic}</button><button>Practice</button><button>Review</button></aside>`;
+    if (model.name === 'dashboard') return `<section class="demo-dashboard"><div>${topic}<br><b>3</b></div><div>Done<br><b>2</b></div><div>Score<br><b>95</b></div></section>`;
+    if (model.name === 'banner') return `<section class="demo-banner"><strong>${topic}:</strong> This banner highlights a short message.</section>`;
+    if (model.name === 'product') return `<article class="demo-product"><h3>${topic} Kit</h3><p>Starter resources for this lesson.</p><div class="price">P199</div><button>Add</button></article>`;
+    if (model.name === 'article') return `<article class="demo-article"><h2>${topic}</h2><p>This article preview shows readable lesson content.</p><p class="meta">5 min read</p></article>`;
     return `<article class="demo-card"><h3>${topic}</h3><p>A focused lesson card with readable content.</p><button>Open</button></article>`;
   }
 
@@ -620,16 +625,17 @@ const codingEducationalData = (function () {
     return `This example turns ${topic} into a mini interface behavior. It shows how the same concept can appear in a project screen, such as a dashboard, menu, banner, product card, or profile area.`;
   }
 
-  function consoleExampleSet(moduleTitle, topic) {
+  function consoleExampleSet(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
     const safe = topic.replace(/["`]/g, '').replace(/\s+/g, ' ').trim();
     const m = moduleTitle.toLowerCase();
+    const seed = (hashText(`${moduleTitle}-${chapterTitle}-${topic}`) + lessonIndex) % 6;
     if (m.includes('java') && !m.includes('javascript')) {
-      return [
+      const javaTemplates = [
         {
           title: `${topic}: Java console output`,
-          code: `public class Main {\n  public static void main(String[] args) {\n    int score = 95;\n    System.out.println("${safe}");\n    System.out.println(score);\n  }\n}`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    String topic = "${safe}";\n    int score = ${88 + seed};\n    System.out.println(topic);\n    System.out.println("Score: " + score);\n  }\n}`,
           outputMode: 'console',
-          output: `${safe}\n95`,
+          output: `${safe}\nScore: ${88 + seed}`,
           explanation: `This Java example prints real console lines. If you change the text or the number, the console output changes to match the current code.`,
         },
         {
@@ -640,21 +646,43 @@ const codingEducationalData = (function () {
           explanation: `This uses variables and string joining, the same style beginners use when checking stored values in Java.`,
         },
         {
+          title: `${topic}: Java calculation result`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    int activities = ${2 + (seed % 3)};\n    int pointsEach = ${5 + seed};\n    System.out.println(activities * pointsEach);\n  }\n}`,
+          outputMode: 'console',
+          output: String((2 + (seed % 3)) * (5 + seed)),
+          explanation: `This turns the lesson into a small arithmetic check. The console shows the calculated total, not a decorative preview.`,
+        },
+        {
           title: `${topic}: Java loop result`,
           code: `public class Main {\n  public static void main(String[] args) {\n    for (int count = 1; count <= 3; count++) {\n      System.out.println("${safe} " + count);\n    }\n  }\n}`,
           outputMode: 'console',
           output: `${safe} 1\n${safe} 2\n${safe} 3`,
           explanation: `This loop prints three console lines. It is intentionally console-based because Java fundamentals normally produce terminal output, not webpage previews.`,
         },
+        {
+          title: `${topic}: Java boolean check`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    boolean ready = ${seed % 2 === 0 ? 'true' : 'false'};\n    System.out.println("Ready for ${safe}: " + ready);\n  }\n}`,
+          outputMode: 'console',
+          output: `Ready for ${safe}: ${seed % 2 === 0 ? 'true' : 'false'}`,
+          explanation: `This example uses a boolean so students can see a true/false result in a real console-style output.`,
+        },
+        {
+          title: `${topic}: Java text label`,
+          code: `public class Main {\n  public static void main(String[] args) {\n    char section = '${String.fromCharCode(65 + (seed % 4))}';\n    System.out.println("${safe} section " + section);\n  }\n}`,
+          outputMode: 'console',
+          output: `${safe} section ${String.fromCharCode(65 + (seed % 4))}`,
+          explanation: `This uses a char value with text joining, which keeps the example close to beginner classroom programs.`,
+        },
       ];
+      return [0, 1, 2].map((offset) => javaTemplates[(seed + offset * 2) % javaTemplates.length]);
     }
     if (m.includes('python')) {
-      return [
+      const pythonTemplates = [
         {
           title: `${topic}: Python print output`,
-          code: `topic = "${safe}"\nscore = 95\nprint(topic)\nprint(score)`,
+          code: `topic = "${safe}"\nscore = ${90 + seed}\nprint(topic)\nprint(score)`,
           outputMode: 'console',
-          output: `${safe}\n95`,
+          output: `${safe}\n${90 + seed}`,
           explanation: `This Python example prints the current variable values. Editing the string or number changes the console output.`,
         },
         {
@@ -665,16 +693,38 @@ const codingEducationalData = (function () {
           explanation: `This shows a beginner f-string pattern. The output is text in a console, which matches Python syntax lessons.`,
         },
         {
+          title: `${topic}: Python calculation`,
+          code: `activities = ${2 + (seed % 4)}\npoints_each = ${4 + seed}\nprint(activities * points_each)`,
+          outputMode: 'console',
+          output: String((2 + (seed % 4)) * (4 + seed)),
+          explanation: `This example checks a simple calculation so the output is connected to the current numbers in the code.`,
+        },
+        {
           title: `${topic}: Python loop result`,
           code: `topic = "${safe}"\nfor count in range(1, 4):\n    print(topic + " " + str(count))`,
           outputMode: 'console',
           output: `${safe} 1\n${safe} 2\n${safe} 3`,
           explanation: `This loop example shows repeated console output instead of a webpage preview.`,
         },
+        {
+          title: `${topic}: Python boolean label`,
+          code: `ready = ${seed % 2 === 0 ? 'True' : 'False'}\nprint("Ready for ${safe}: " + str(ready))`,
+          outputMode: 'console',
+          output: `Ready for ${safe}: ${seed % 2 === 0 ? 'true' : 'false'}`,
+          explanation: `This keeps true/false practice in a console panel, where Python fundamentals belong.`,
+        },
+        {
+          title: `${topic}: Python list count`,
+          code: `subjects = ["HTML", "CSS", "${safe}"]\nprint(len(subjects))`,
+          outputMode: 'console',
+          output: '3',
+          explanation: `This introduces list-style thinking without switching to a visual preview.`,
+        },
       ];
+      return [0, 1, 2].map((offset) => pythonTemplates[(seed + offset * 2) % pythonTemplates.length]);
     }
     if (m.includes('sql') || m.includes('database')) {
-      return [
+      const sqlTemplates = [
         {
           title: `${topic}: SQL SELECT rows`,
           code: `SELECT id, name, score\nFROM students;`,
@@ -690,15 +740,30 @@ const codingEducationalData = (function () {
           explanation: `This query filters the mock dataset. Changing the WHERE value changes which table rows appear in supported beginner cases.`,
         },
         {
+          title: `${topic}: SQL count result`,
+          code: `SELECT COUNT(*) AS count\nFROM students;`,
+          outputMode: 'table',
+          output: 'A one-row table showing the number of mock students.',
+          explanation: `This example returns a summary table instead of every row, which is common in database reporting.`,
+        },
+        {
           title: `${topic}: SQL alias result`,
           code: `SELECT '${safe}' AS topic;`,
           outputMode: 'table',
           output: 'A one-row table with an alias column.',
           explanation: `This shows how SQL can return a labeled value. The output is a table because SQL results are normally rows and columns.`,
         },
+        {
+          title: `${topic}: SQL ordered rows`,
+          code: `SELECT name, score\nFROM students\nORDER BY score DESC;`,
+          outputMode: 'table',
+          output: 'Rows are shown as a sorted result table.',
+          explanation: `This example emphasizes that SQL output is a table whose order can be controlled by the query.`,
+        },
       ];
+      return [0, 1, 2].map((offset) => sqlTemplates[(seed + offset) % sqlTemplates.length]);
     }
-    return [
+    const terminalTemplates = [
       {
         title: `${topic}: terminal practice`,
         code: codeFor(moduleTitle, topic),
@@ -720,13 +785,28 @@ const codingEducationalData = (function () {
         output: resultFor(moduleTitle, `${topic} classroom check`),
         explanation: `This keeps non-visual lessons in a console-style workspace instead of forcing a browser preview.`,
       },
+      {
+        title: `${topic}: inspect files`,
+        code: m.includes('git') ? 'git status' : m.includes('linux') ? 'ls' : `echo "${safe}"`,
+        outputMode: 'console',
+        output: m.includes('git') ? 'On branch main\nnothing to commit, working tree clean' : m.includes('linux') ? 'index.html\nscript.js\ncoding-educational/' : safe,
+        explanation: `This uses a short command so the result is readable and directly connected to the current lesson.`,
+      },
+      {
+        title: `${topic}: folder check`,
+        code: m.includes('linux') ? 'pwd\nmkdir practice-folder' : m.includes('git') ? `git commit -m "practice ${safe}"` : `echo "Practice ${safe}"`,
+        outputMode: 'console',
+        output: m.includes('linux') ? '/class-app/practice' : m.includes('git') ? '[main abc123] practice commit' : `Practice ${safe}`,
+        explanation: `This variation shows a different terminal task so nearby lessons do not all feel like the same command.`,
+      },
     ];
+    return [0, 1, 2].map((offset) => terminalTemplates[(seed + offset) % terminalTemplates.length]);
   }
 
   function examples(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
     const kind = kindFor(moduleTitle);
     if (!['html', 'css', 'javascript'].includes(kind)) {
-      return consoleExampleSet(moduleTitle, topic).map((example) => ({
+      return consoleExampleSet(moduleTitle, chapterTitle, topic, lessonIndex).map((example) => ({
         ...example,
         kind,
         editable: true,
@@ -961,7 +1041,57 @@ const codingEducationalData = (function () {
     subfolder.chapters = plan.map(([title, topics]) => chapter(subfolder.title, { title, topics }));
   }
 
+  function exampleSignature(lesson) {
+    return (lesson.examples || []).map((example) => example.demoModel || example.title || example.outputMode || example.kind).join('|');
+  }
+
+  function polishLibrary(library) {
+    library.forEach((category) => {
+      (category.subfolders || []).forEach((subfolder) => {
+        let previousVisualSignature = '';
+        let lessonCounter = 0;
+        (subfolder.chapters || []).forEach((chapter) => {
+          (chapter.lessons || []).forEach((lesson, index) => {
+            if (['HTML', 'CSS', 'JavaScript'].includes(subfolder.title) && lesson.examples?.length) {
+              let signature = exampleSignature(lesson);
+              if (signature === previousVisualSignature) {
+                for (let attempt = 1; attempt <= demoModels.length && signature === previousVisualSignature; attempt++) {
+                  lesson.examples = examples(subfolder.title, chapter.title, lesson.title, index + lessonCounter + attempt);
+                  signature = exampleSignature(lesson);
+                }
+                lesson.example = { title: `${lesson.title} Example`, code: lesson.examples[0]?.code || lesson.example?.code || '' };
+              }
+              previousVisualSignature = signature;
+            }
+
+            const exampleWords = (lesson.examples || []).flatMap((example) => [
+              example.title,
+              example.code,
+              example.output,
+              example.demoModel,
+              example.explanation,
+            ]);
+            lesson.keywords = Array.from(new Set([
+              ...(lesson.keywords || []),
+              subfolder.title,
+              chapter.title,
+              lesson.title,
+              ...(lesson.tags || []),
+              ...exampleWords,
+            ].filter(Boolean)));
+            if (!lesson.examples || lesson.examples.length < 3) {
+              lesson.examples = examples(subfolder.title, chapter.title, lesson.title, index);
+              lesson.example = { title: `${lesson.title} Example`, code: lesson.examples[0]?.code || '' };
+            }
+          });
+          lessonCounter += chapter.lessons?.length || 0;
+        });
+      });
+    });
+  }
+
   codingEducationalData.forEach((category) => (category.subfolders || []).forEach(expandSubfolder));
+  polishLibrary(codingEducationalData);
 })();
 
 window.codingEducationalData = codingEducationalData;

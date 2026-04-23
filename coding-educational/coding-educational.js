@@ -251,7 +251,7 @@ window.codingEducationalModule = (function () {
     if (!hasBalancedDelimiters(code)) return '[ERROR] Check your brackets, braces, parentheses, or quotes.';
     if (kind === 'java') return simulateJava(code);
     if (kind === 'python') return simulatePython(code);
-    if (kind === 'terminal') return simulateTerminal(code);
+    if (kind === 'terminal') return simulateTerminal(code, example);
     return String(example.output || '[No output]');
   }
 
@@ -320,14 +320,18 @@ window.codingEducationalModule = (function () {
     return prints.map((match) => String(evalBeginnerExpression(match[1], vars))).join('\n');
   }
 
-  function simulateTerminal(code) {
+  function simulateTerminal(code, example = {}) {
     const first = code.trim().split('\n')[0] || '';
     if (first.startsWith('git status')) return 'On branch main\nnothing to commit, working tree clean';
     if (first.startsWith('git add')) return '[No output]';
     if (first.startsWith('git commit')) return '[main abc123] practice commit';
+    if (first.startsWith('git push')) return 'Everything up-to-date';
+    if (first.startsWith('git pull')) return 'Already up to date.';
     if (first.startsWith('pwd')) return '/class-app/practice';
     if (first.startsWith('ls')) return 'index.html\nscript.js\ncoding-educational/';
-    return `Simulated command: ${first}`;
+    if (first.startsWith('mkdir')) return '[No output]';
+    if (first.startsWith('echo ')) return first.replace(/^echo\s+/, '').replace(/^["']|["']$/g, '');
+    return String(example.output || `Simulated command: ${first}`);
   }
 
   function evalBeginnerExpression(expression, vars = {}) {
@@ -339,6 +343,15 @@ window.codingEducationalModule = (function () {
     }
     const strCall = expr.match(/^str\((\w+)\)$/);
     if (strCall) return String(vars[strCall[1]] ?? '');
+    const lenCall = expr.match(/^len\((\w+)\)$/);
+    if (lenCall) {
+      const value = vars[lenCall[1]];
+      return Array.isArray(value) || typeof value === 'string' ? value.length : 0;
+    }
+    if (expr.startsWith('[') && expr.endsWith(']')) {
+      const body = expr.slice(1, -1).trim();
+      return body ? splitOutsideQuotes(body, ',').map((part) => evalBeginnerExpression(part, vars)) : [];
+    }
     const parts = splitOutsideQuotes(expr, '+');
     if (parts.length > 1) {
       return parts.map((part) => evalBeginnerExpression(part, vars)).join('');
@@ -402,12 +415,13 @@ window.codingEducationalModule = (function () {
   function previewFrame(body) {
     return `<!doctype html><html><head><meta charset="utf-8"><style>
       body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:14px}
-      *{box-sizing:border-box}.demo-card,.demo-form,.demo-alert,.demo-profile,.demo-banner,.demo-hero{border:2px solid #38bdf8;border-radius:14px;padding:14px;background:white}
+      *{box-sizing:border-box}.demo-card,.demo-form,.demo-alert,.demo-profile,.demo-banner,.demo-hero,.demo-product,.demo-article{border:2px solid #38bdf8;border-radius:14px;padding:14px;background:white}
       .demo-nav,.demo-gallery,.demo-dashboard,.demo-menu{border:2px dashed #38bdf8;border-radius:14px;padding:12px;background:white}
       .demo-nav a,.demo-menu button,.demo-hero button,.demo-card button,.demo-form button{display:inline-flex;margin:4px;padding:8px 10px;border:1px solid #0ea5e9;border-radius:9px;background:#e0f2fe;color:#075985;font-weight:800}
       .demo-gallery figure,.demo-dashboard div{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:58px;margin:6px;border:2px solid #0ea5e9;border-radius:12px;background:#dff6ff;font-weight:800}
       .demo-table{width:100%;border-collapse:collapse;background:white}.demo-table th,.demo-table td{border:1px solid #38bdf8;padding:8px;text-align:left}
       .avatar{display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:#bae6fd;font-weight:900}
+      .demo-product{max-width:280px}.demo-product .price{font-size:1.4rem;font-weight:900;color:#0f766e}.demo-article h2{margin-top:0}.demo-article .meta{color:#64748b;font-weight:800}
       .console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:8px 0 0}
       .lesson,.card,.button,.item,.box{border:2px solid #38bdf8;border-radius:12px;padding:12px;margin:8px;background:#fff}
     </style></head><body>${body}</body></html>`;

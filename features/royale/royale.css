@@ -311,7 +311,7 @@ body.rl-active {
   right: max(20px, env(safe-area-inset-right));
   z-index: 90;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 10px;
   align-items: flex-end;
   pointer-events: auto;

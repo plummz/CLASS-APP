@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.1',
+    date: 'April 23, 2026',
+    title: 'Code Lab Daily Tasks and Game HUD Fixes',
+    summary: 'Daily Code Lab challenges now get unique per-day task IDs, app-open tallies sync through Supabase when available, and game controls were cleaned up.',
+    changes: [
+      'Made Code Lab daily challenge IDs unique per date and environment so old day tasks do not reappear as the same challenge later.',
+      'Fixed Code Lab solved-today checks so Web and Java daily challenges can each award independently.',
+      'Added Supabase-backed app-open tally functions and realtime refresh support with a localStorage fallback.',
+      'Moved Battle Royale action controls into a strict bottom-right cluster with the fire button at thumb level.',
+      'Raised Pac-Man portrait D-pad controls for easier Android tapping.'
+    ]
+  },
   {
     version: '1.4.0',
     date: 'April 23, 2026',
@@ -1853,6 +1866,7 @@ function establishSession() {
   updateChatHeader();
   initSupabaseRealtimeChat();
   initSharedRealtime();
+  initAppOpenRealtime();
   ensureAdminUpdateControl();
   fetchAppUpdates();
   registerPushSubscription(false);
@@ -2521,6 +2535,55 @@ function renderAppOpenStats(data = {}) {
   renderAppOpenUsers(data.users || []);
 }
 
+function getLocalAppOpenTally() {
+  try {
+    return JSON.parse(localStorage.getItem('classAppOpenCounts') || '{}') || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLocalAppOpenTally(tally) {
+  try {
+    localStorage.setItem('classAppOpenCounts', JSON.stringify(tally || {}));
+  } catch (_) {}
+}
+
+function incrementLocalAppOpenTally(username) {
+  const safeUsername = String(username || '').trim();
+  if (!safeUsername) return 0;
+  const tally = getLocalAppOpenTally();
+  tally[safeUsername] = Number(tally[safeUsername] || 0) + 1;
+  saveLocalAppOpenTally(tally);
+  return tally[safeUsername];
+}
+
+function localAppOpenRows() {
+  return Object.entries(getLocalAppOpenTally())
+    .map(([username, count]) => ({ username, count: Number(count || 0) }))
+    .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
+}
+
+function normalizeAppOpenRows(rows = []) {
+  return (rows || [])
+    .map((row) => ({ username: row.username || 'Unknown', count: Number(row.count || 0), last_opened_at: row.last_opened_at }))
+    .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
+}
+
+function renderAppOpenRows(rows = []) {
+  const normalized = normalizeAppOpenRows(rows);
+  renderAppOpenStats({
+    count: normalized.reduce((sum, row) => sum + Number(row.count || 0), 0),
+    users: normalized,
+  });
+}
+
+async function fetchSupabaseAppOpenRows() {
+  const { data, error } = await sb.rpc('class_app_app_open_tally');
+  if (error) throw error;
+  return normalizeAppOpenRows(data || []);
+}
+
 window.openAppOpenTallyModal = async function() {
   removeDynamicModal('app-open-tally-modal');
   document.body.insertAdjacentHTML('beforeend', `
@@ -2631,13 +2694,19 @@ window.refreshAppOpenCount = async function() {
   const btn = document.getElementById('app-open-count-btn');
   if (btn) btn.textContent = 'Loading...';
   try {
-    const res = await fetch('/api/app-open-count');
-    if (!res.ok) throw new Error('Count unavailable');
-    const data = await res.json();
-    renderAppOpenStats(data);
+    const rows = await fetchSupabaseAppOpenRows();
+    renderAppOpenRows(rows);
   } catch (_) {
-    if (btn) btn.textContent = 'App Opens';
-    if (btn) btn.title = 'App open count unavailable';
+    try {
+      const res = await fetch('/api/app-open-count');
+      if (!res.ok) throw new Error('Count unavailable');
+      const data = await res.json();
+      renderAppOpenStats(data);
+    } catch (_) {
+      const localRows = localAppOpenRows();
+      renderAppOpenRows(localRows);
+      if (btn) btn.title = localRows.length ? 'Showing locally saved app-open counts until Supabase schema is updated' : 'App open count unavailable';
+    }
   }
 };
 
@@ -2646,19 +2715,40 @@ async function recordAppOpen() {
   if (!currentUser?.username || recordedAppOpenFor === currentUser.username) {
     return window.refreshAppOpenCount();
   }
+  const localCount = incrementLocalAppOpenTally(currentUser.username);
   try {
-    const res = await fetch('/api/app-open-count', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUser.username }),
-    });
-    if (!res.ok) throw new Error('Count unavailable');
-    const data = await res.json();
+    const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
+    if (error) throw error;
     recordedAppOpenFor = currentUser.username;
-    renderAppOpenStats(data);
+    const rows = await fetchSupabaseAppOpenRows();
+    renderAppOpenRows(rows);
   } catch (_) {
-    window.refreshAppOpenCount();
+    try {
+      const res = await fetch('/api/app-open-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser.username }),
+      });
+      if (!res.ok) throw new Error('Count unavailable');
+      const data = await res.json();
+      recordedAppOpenFor = currentUser.username;
+      renderAppOpenStats(data);
+    } catch (_) {
+      recordedAppOpenFor = currentUser.username;
+      renderAppOpenRows(localAppOpenRows());
+    }
   }
+}
+
+let appOpenRealtimeReady = false;
+function initAppOpenRealtime() {
+  if (appOpenRealtimeReady || typeof sb === 'undefined') return;
+  appOpenRealtimeReady = true;
+  sb.channel('public:app_open_counts')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_open_counts' }, () => {
+      window.refreshAppOpenCount();
+    })
+    .subscribe();
 }
 
 let deferredPrompt = null;
@@ -2672,6 +2762,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
   updateFooterYear();
   ensureAdminUpdateControl();
+  initAppOpenRealtime();
   if (currentUser) recordAppOpen();
   else window.refreshAppOpenCount();
   fetchSharedAnnouncements();

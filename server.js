@@ -1206,25 +1206,30 @@ function validateDailyChallenge(challengeId, files = {}) {
   const css = String(files.css || '');
   const js = String(files.javascript || '');
   const java = String(files.java || '');
-  if (challengeId === 'html-missing-image-alt') {
-    const ok = /<h1[^>]*>Debug Lab<\/h1>/i.test(html) && /<img[^>]+>/i.test(html) && /<button[^>]*>Toggle<\/button>/i.test(html);
-    return ok ? null : 'Fix the h1 closing tag, complete the img tag, and keep the Toggle button valid.';
+  const baseChallengeId = String(challengeId || '').replace(/-day-\d+-(web|java)$/i, '');
+  if (baseChallengeId === 'html-missing-image-alt') {
+    const ok = /<h1[^>]*>[\s\S]*?<\/h1>/i.test(html)
+      && /<img\b(?=[^>]*\bsrc\s*=\s*["'][^"']+["'])(?=[^>]*\balt\s*=\s*["'][^"']+["'])[^>]*>/i.test(html)
+      && /<button[^>]*>[\s\S]*?Toggle[\s\S]*?<\/button>/i.test(html);
+    return ok ? null : 'Fix the h1 closing tag, complete the img tag with src and alt, and keep the Toggle button valid.';
   }
-  if (challengeId === 'js-total-loop') {
+  if (baseChallengeId === 'js-total-loop') {
     const ok = /i\s*=\s*0/.test(js) && /i\s*<\s*prices\.length/.test(js) && /Total:\s*['"]?\s*\+?\s*total/.test(js);
-    return ok ? null : 'The loop should start at 0, stay below prices.length, and print Total: 15.';
+    return ok ? null : 'The loop should start at 0, stay below prices.length, and print the computed total.';
   }
-  if (challengeId === 'css-center-button') {
+  if (baseChallengeId === 'css-center-button') {
     const ok = /display\s*:\s*flex/i.test(css) && /align-items\s*:\s*center/i.test(css) && /border-radius\s*:\s*(?!none\b)[^;]+/i.test(css);
     return ok ? null : 'Use display:flex, align-items:center, and a real border-radius value.';
   }
-  if (challengeId === 'java-hello-total') {
-    return /public\s+static\s+void\s+main\s*\(\s*String\[\]\s+args\s*\)/.test(java) && /int\s+sum\s*=\s*4\s*\+\s*6\s*;/.test(java) && /System\.out\.println\s*\(\s*"Sum:\s*"\s*\+\s*sum\s*\)/.test(java)
+  if (baseChallengeId === 'java-hello-total') {
+    return /public\s+static\s+void\s+main\s*\(\s*String\[\]\s+args\s*\)/.test(java)
+      && /int\s+sum\s*=\s*\d+\s*\+\s*\d+\s*;/.test(java)
+      && /System\.out\.println\s*\(\s*"Sum[^"]*:\s*"\s*\+\s*sum\s*\)/.test(java)
       ? null
       : 'Fix main(String[] args), end the sum line with a semicolon, and print sum.';
   }
-  if (challengeId === 'swing-button-label') {
-    return /import\s+javax\.swing\.JButton\s*;/.test(java) && /new\s+JButton\s*\(/.test(java) && /Swing source compiles/.test(java)
+  if (baseChallengeId === 'swing-button-label') {
+    return /import\s+javax\.swing\.JButton\s*;/.test(java) && /new\s+JButton\s*\(/.test(java) && /Swing source compiles/i.test(java)
       ? null
       : 'Fix the JButton import/class name and keep the Swing compile message.';
   }

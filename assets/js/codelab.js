@@ -159,15 +159,65 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  function codeLabDayIndex(date = new Date()) {
+    const start = new Date(2026, 0, 1);
+    const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return Math.max(1, Math.floor((today - start) / 86400000) + 1);
+  }
+
+  function cloneFiles(files = {}) {
+    return {
+      html: files.html || '',
+      css: files.css || '',
+      javascript: files.javascript || '',
+      java: files.java || '',
+    };
+  }
+
   function challengesForCurrentEnvironment() {
     return CODE_LAB_CHALLENGES.filter((challenge) => challenge.env === codeLabEnvironment);
   }
 
   function getDailyCodeLabChallenge() {
     const list = challengesForCurrentEnvironment();
-    const key = `${codeLabTodayKey()}-${codeLabEnvironment}`;
-    const seed = key.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-    return list[seed % list.length];
+    const day = codeLabDayIndex();
+    const seed = `${codeLabTodayKey()}-${codeLabEnvironment}`.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+    const base = list[seed % list.length];
+    const variant = day + (codeLabEnvironment === 'java' ? 5000 : 0);
+    const files = cloneFiles(base.files);
+    const accent = ['#22c55e', '#06b6d4', '#f59e0b', '#a855f7', '#ef4444'][variant % 5];
+    const label = `Day ${day}`;
+    if (base.env === 'web') {
+      files.html = files.html
+        .replace(/Debug Lab/g, `Debug Lab ${label}`)
+        .replace(/Cart Total/g, `Cart Total ${label}`)
+        .replace(/Launch/g, `Launch ${label}`)
+        .replace(/src=""/g, `src="https://dummyimage.com/320x180/0f172a/ffffff&text=${encodeURIComponent(label)}" alt="${label} practice image"`);
+      files.css = files.css
+        .replace(/#22c55e/g, accent)
+        .replace(/#2563eb/g, accent);
+      files.javascript = files.javascript
+        .replace(/\[2, 4, 9\]/, `[${2 + (variant % 4)}, ${4 + (variant % 5)}, ${9 + (variant % 6)}]`)
+        .replace(/Profile card ready/g, `Profile card ready ${label}`)
+        .replace(/CSS challenge preview loaded/g, `CSS challenge ${label} preview loaded`);
+    } else {
+      const a = 4 + (variant % 6);
+      const b = 6 + (variant % 7);
+      files.java = files.java
+        .replace(/4 \+ 6/g, `${a} + ${b}`)
+        .replace(/Sum: /g, `Sum ${label}: `)
+        .replace(/Swing source compiles/g, `Swing source compiles ${label}`)
+        .replace(/Practice/g, `Practice ${label}`);
+    }
+    return {
+      ...base,
+      id: `${base.id}-day-${day}-${codeLabEnvironment}`,
+      baseId: base.id,
+      title: `${base.title} (${label})`,
+      description: `${base.description} This is a unique ${label} task and will not reuse the same challenge ID on future days.`,
+      files,
+      dayIndex: day,
+    };
   }
 
   function codeLabSetConsole(message, type = 'info', plain = false) {
@@ -379,9 +429,10 @@
       return;
     }
     const rows = data || [];
-    const solvedToday = rows.some((row) => row.challenge_date === codeLabTodayKey());
+    const challenge = getDailyCodeLabChallenge();
+    const solvedToday = rows.some((row) => row.challenge_date === codeLabTodayKey() && row.challenge_id === challenge.id);
     if (badge) {
-      badge.textContent = solvedToday ? 'Solved today - point claimed' : 'Not solved yet';
+      badge.textContent = solvedToday ? `${codeLabEnvironment === 'java' ? 'Java' : 'Web'} solved today - point claimed` : `${codeLabEnvironment === 'java' ? 'Java' : 'Web'} not solved yet`;
       badge.classList.toggle('solved', solvedToday);
     }
     if (submit) submit.disabled = solvedToday;

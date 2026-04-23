@@ -86,6 +86,56 @@ create table if not exists public.code_lab_completions (
   unique (username, challenge_id, challenge_date)
 );
 
+create table if not exists public.app_open_counts (
+  username text primary key,
+  count integer not null default 0,
+  last_opened_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.class_app_record_app_open(p_local_count integer default 1)
+returns table(username text, count integer, total bigint)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor text := public.class_app_username();
+  local_count integer := greatest(1, coalesce(p_local_count, 1));
+begin
+  if actor is null then
+    raise exception 'Missing CLASS APP username';
+  end if;
+
+  insert into public.app_open_counts as a (username, count, last_opened_at, updated_at)
+  values (actor, local_count, now(), now())
+  on conflict (username) do update
+    set count = greatest(a.count + 1, excluded.count),
+        last_opened_at = now(),
+        updated_at = now();
+
+  return query
+  select c.username, c.count, (select coalesce(sum(all_counts.count), 0)::bigint from public.app_open_counts all_counts) as total
+  from public.app_open_counts c
+  where c.username = actor;
+end;
+$$;
+
+create or replace function public.class_app_app_open_tally()
+returns table(username text, count integer, last_opened_at timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.username, a.count, a.last_opened_at
+  from public.app_open_counts a
+  order by a.count desc, a.username asc;
+$$;
+
+grant execute on function public.class_app_record_app_open(integer) to anon, authenticated;
+grant execute on function public.class_app_app_open_tally() to anon, authenticated;
+
 create or replace function public.class_app_contribution_tally()
 returns table(username text, total bigint)
 language sql
@@ -176,6 +226,7 @@ alter table public.shared_ai_outputs enable row level security;
 alter table public.shared_announcements enable row level security;
 alter table public.app_updates enable row level security;
 alter table public.code_lab_completions enable row level security;
+alter table public.app_open_counts enable row level security;
 
 drop policy if exists "class folders select" on public.folders;
 create policy "class folders select" on public.folders
@@ -284,6 +335,19 @@ for insert with check (
   and points = 1
 );
 
+drop policy if exists "app open counts read" on public.app_open_counts;
+create policy "app open counts read" on public.app_open_counts
+for select using (true);
+
+drop policy if exists "app open counts insert self" on public.app_open_counts;
+create policy "app open counts insert self" on public.app_open_counts
+for insert with check (username = public.class_app_username());
+
+drop policy if exists "app open counts update self" on public.app_open_counts;
+create policy "app open counts update self" on public.app_open_counts
+for update using (username = public.class_app_username())
+with check (username = public.class_app_username());
+
 create or replace function public.class_app_claim_code_lab_point(
   p_challenge_id text,
   p_challenge_date date
@@ -348,6 +412,12 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.code_lab_completions;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.app_open_counts;
 exception when duplicate_object then null;
 end $$;
 

@@ -14,7 +14,7 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: 52px minmax(0, 1fr) 168px;
+  grid-template-rows: 52px minmax(0, 1fr) 224px;
   place-items: center;
   gap: 8px;
   padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
@@ -40,7 +40,7 @@
 
 #pacman-canvas {
   width: min(96vw, 430px);
-  height: min(calc(100vh - 250px), 76vw, 600px);
+  height: min(calc(100vh - 306px), 76vw, 600px);
   max-height: 100%;
   image-rendering: pixelated;
   border: 2px solid rgba(255, 230, 0, 0.55);
@@ -81,15 +81,17 @@
 }
 
 .pacman-dpad {
-  width: 192px;
-  height: 192px;
+  width: 184px;
+  height: 184px;
   display: grid;
-  grid-template-columns: repeat(3, 56px);
-  grid-template-rows: repeat(3, 56px);
-  gap: 8px;
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 54px);
+  gap: 10px;
   align-self: start;
   justify-content: center;
   align-content: center;
+  margin-top: 2px;
+  transform: translateY(-18px);
   touch-action: none;
 }
 .pacman-dpad-btn,

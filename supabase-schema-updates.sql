@@ -27,7 +27,8 @@ as $$
 $$;
 
 alter table public.profiles
-  add column if not exists username_last_changed_at timestamptz;
+  add column if not exists username_last_changed_at timestamptz,
+  add column if not exists last_seen_at timestamptz;
 
 alter table public.folders
   add column if not exists permissions jsonb not null default '{"viewers":[],"editors":[],"everyone":"edit"}'::jsonb,
@@ -390,6 +391,12 @@ $$;
 
 grant execute on function public.class_app_claim_code_lab_point(text, date) to anon, authenticated;
 grant execute on function public.class_app_code_lab_leaderboard() to anon, authenticated;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.profiles;
+exception when duplicate_object then null;
+end $$;
 
 do $$
 begin

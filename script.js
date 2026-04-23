@@ -224,8 +224,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.1',
+    date: 'April 23, 2026',
+    title: 'Persistent Presence and Last Seen',
+    summary: 'Online status now combines live Supabase Presence with saved last-seen timestamps, so offline users can show Messenger-style activity text.',
+    changes: [
+      'Added live presence labels such as Online now, Active 5 minutes ago, and Active yesterday.',
+      'Added heartbeat updates while the PWA is open and visibility-aware last-seen updates when the app is backgrounded or closed.',
+      'Added realtime profile refresh so Users and chat status labels stay synced across devices.',
+      'Updated the Supabase schema script with the last_seen_at column needed for persistent activity history.'
+    ]
+  },
   {
     version: '1.5.0',
     date: 'April 23, 2026',
@@ -1907,6 +1919,8 @@ let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
 let isAdmin = currentUser?.username === 'Marquillero';
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();
+let lastSeenHeartbeatId = null;
+let lastSeenWriteAt = 0;
 
 function saveSession() {
   if (currentUser) { localStorage.setItem('classAppUser', JSON.stringify(currentUser)); } 
@@ -1921,6 +1935,66 @@ function isUserLiveOnline(user) {
 function refreshPresenceViews() {
   renderUserDirectory();
   renderChatUsersList();
+}
+
+function getUserLastSeenAt(user) {
+  return user?.last_seen_at || user?.last_opened_at || user?.updated_at || null;
+}
+
+function relativeActiveText(dateValue) {
+  if (!dateValue) return 'Offline';
+  const seen = new Date(dateValue);
+  if (Number.isNaN(seen.getTime())) return 'Offline';
+  const diffMs = Date.now() - seen.getTime();
+  if (diffMs < 0) return 'Active just now';
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return 'Active just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Active ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Active ${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Active yesterday';
+  if (days < 7) return `Active ${days} days ago`;
+  return `Active ${seen.toLocaleDateString()}`;
+}
+
+function getUserActivityLabel(user) {
+  if (isUserLiveOnline(user)) return 'Online now';
+  return relativeActiveText(getUserLastSeenAt(user));
+}
+
+async function persistLastSeen({ online = true, force = false } = {}) {
+  if (!currentUser?.username) return;
+  const now = Date.now();
+  if (!force && now - lastSeenWriteAt < 45000) return;
+  lastSeenWriteAt = now;
+  const timestamp = new Date().toISOString();
+  currentUser.last_seen_at = timestamp;
+  currentUser.online = online;
+  saveSession();
+  try {
+    const { error } = await sb.from('profiles')
+      .update({ online, last_seen_at: timestamp })
+      .eq('username', currentUser.username);
+    if (error && /last_seen_at/i.test(error.message || '')) {
+      await sb.from('profiles').update({ online }).eq('username', currentUser.username);
+    }
+  } catch (_) {}
+}
+
+function startLastSeenHeartbeat() {
+  if (lastSeenHeartbeatId) return;
+  persistLastSeen({ online: true, force: true });
+  lastSeenHeartbeatId = window.setInterval(() => {
+    persistLastSeen({ online: true });
+  }, 60000);
+}
+
+function stopLastSeenHeartbeat() {
+  if (!lastSeenHeartbeatId) return;
+  clearInterval(lastSeenHeartbeatId);
+  lastSeenHeartbeatId = null;
 }
 
 function initAppPresence() {
@@ -1973,7 +2047,7 @@ window.login = async function() {
   currentUser = profile;
   isAdmin = (profile.username === 'Marquillero');
   saveSession();
-  await sb.from('profiles').update({ online: true }).eq('username', currentUser.username);
+  await persistLastSeen({ online: true, force: true });
   establishSession();
   recordAppOpen();
 };
@@ -1987,7 +2061,10 @@ window.register = async function() {
   const errBox = document.getElementById('errorMessage');
   if (errBox) errBox.style.display = 'none';
 
-  const { error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true }]);
+  let { error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true, last_seen_at: new Date().toISOString() }]);
+  if (error && /last_seen_at/i.test(error.message || '')) {
+      ({ error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true }]));
+  }
   if (error) {
       if (errBox) {
           errBox.innerText = "Username taken or Error occurred.";
@@ -1999,9 +2076,14 @@ window.register = async function() {
 };
 
 window.handleLogout = async function() {
+    await persistLastSeen({ online: false, force: true });
+    stopLastSeenHeartbeat();
     destroyAppPresence();
     if(currentUser) {
-        await sb.from('profiles').update({ online: false }).eq('username', currentUser.username);
+        const { error } = await sb.from('profiles').update({ online: false, last_seen_at: new Date().toISOString() }).eq('username', currentUser.username);
+        if (error && /last_seen_at/i.test(error.message || '')) {
+          await sb.from('profiles').update({ online: false }).eq('username', currentUser.username);
+        }
     }
     currentUser = null;
     saveSession();
@@ -2009,7 +2091,30 @@ window.handleLogout = async function() {
 };
 
 window.addEventListener('beforeunload', () => {
+  try {
+    if (currentUser?.username) {
+      const timestamp = new Date().toISOString();
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(currentUser.username)}`, {
+        method: 'PATCH',
+        keepalive: true,
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+          'x-class-username': currentUser.username,
+        },
+        body: JSON.stringify({ online: false, last_seen_at: timestamp }),
+      }).catch(() => {});
+    }
+  } catch (_) {}
   try { appPresenceChannel?.untrack(); } catch (_) {}
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!currentUser?.username) return;
+  if (document.visibilityState === 'hidden') persistLastSeen({ online: true, force: true });
+  else persistLastSeen({ online: true, force: true });
 });
 
 function establishSession() {
@@ -2020,6 +2125,7 @@ function establishSession() {
 
   fetchUsers();
   initAppPresence();
+  startLastSeenHeartbeat();
   updateChatHeader();
   initSupabaseRealtimeChat();
   initSharedRealtime();
@@ -2084,7 +2190,7 @@ function renderUserDirectory() {
         <div class="user-avatar-mini ${liveOnline ? 'online' : ''}">${escapeHTML(initials || '?')}</div>
         <div>
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="user-status ${liveOnline ? 'online' : 'offline'}">${liveOnline ? 'Online now' : 'Offline'}</div>
+          <div class="user-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
       </div>
@@ -2110,7 +2216,7 @@ function renderChatUsersList() {
       item.innerHTML = `
         <div>
           <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${liveOnline ? 'Online now' : 'Offline'}</div>
+          <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
@@ -2338,6 +2444,10 @@ function initSupabaseRealtimeChat() {
         
     sb.channel('public:calendar_notes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, payload => { fetchCalendarNotes(); }).subscribe();
+
+    sb.channel('public:profiles_presence')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsers(); })
+        .subscribe();
 }
 
 async function fetchMessages(chatType, target = null) {
@@ -2687,6 +2797,7 @@ window.goToPage = function(pageName) {
       page: currentPage,
       activeAt: new Date().toISOString(),
     }).catch(() => {});
+    persistLastSeen({ online: true });
   }
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);

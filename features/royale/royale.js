@@ -399,6 +399,7 @@ window.royaleModule = (function () {
   let damageIndicator = { life: 0, angle: 0 };
   let pickupBanner = { text: '', life: 0 };
   let throwAim = { active:false, x:0, y:0, sx:0, sy:0, pointerId:null };
+  let landscapeReady = true;
 
   // ── Keyboard input ────────────────────────────────────────
   const keys = {};
@@ -487,11 +488,8 @@ window.royaleModule = (function () {
         const rect = canvas.getBoundingClientRect();
         const sx = (clientX - rect.left) * (canvas.width / rect.width);
         const sy = (clientY - rect.top) * (canvas.height / rect.height);
-        const port = canvas.height > canvas.width;
-        const gx = port ? sy : sx;
-        const gy = port ? (canvas.width - sx) : sy;
         const focus = gamePhase === 'dead' && spectateTarget ? spectateCam : cam;
-        return { x: focus.x + gx - canvasW / 2, y: focus.y + gy - canvasH / 2 };
+        return { x: focus.x + sx - canvasW / 2, y: focus.y + sy - canvasH / 2 };
       }
 
       function startAim(clientX, clientY) {
@@ -592,17 +590,17 @@ window.royaleModule = (function () {
   }
 
   function checkOrientation() {
-    resize(); // canvas transform handles portrait; no CSS class needed
+    resize();
+    landscapeReady = window.innerWidth >= window.innerHeight;
+    document.body.classList.toggle('rl-portrait-blocked', !landscapeReady);
+    document.getElementById('rl-rotate-prompt')?.classList.toggle('visible', !landscapeReady);
   }
 
   function resize() {
-    // Canvas always matches the physical screen size
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    // Game logic always uses landscape dims (swapped when portrait)
-    const port = canvas.height > canvas.width;
-    canvasW = port ? canvas.height : canvas.width;
-    canvasH = port ? canvas.width  : canvas.height;
+    canvasW = canvas.width;
+    canvasH = canvas.height;
   }
 
   function hideLoading() {
@@ -654,9 +652,7 @@ window.royaleModule = (function () {
       for (const t of e.changedTouches) {
         const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
         const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
-        const port=canvas.height>canvas.width;
-        const gx=port?sy:sx, gy=port?(canvas.width-sx):sy;
-        checkSkinMenuClick(gx, gy);
+        checkSkinMenuClick(sx, sy);
       }
       return;
     }
@@ -704,9 +700,6 @@ window.royaleModule = (function () {
         const rect=canvas.getBoundingClientRect();
         const sx=(t.clientX-rect.left)*(canvas.width/rect.width);
         const sy=(t.clientY-rect.top)*(canvas.height/rect.height);
-        const port = canvas.height > canvas.width;
-        const gx = port ? sy : sx;
-        const gy = port ? (canvas.width - sx) : sy;
         if (gamePhase==='playing') {
           // Gameplay buttons are DOM controls now; the canvas no longer owns weapon UI taps.
         }
@@ -1736,16 +1729,15 @@ window.royaleModule = (function () {
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!landscapeReady) {
+      ctx.fillStyle = '#081109';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      hideEndActionButtons();
+      return;
+    }
 
     if (gamePhase === 'skinSelect') {
-      const port = canvas.height > canvas.width;
-      if (port) {
-        ctx.save();
-        ctx.translate(canvas.width, 0);
-        ctx.rotate(Math.PI / 2);
-      }
       drawSkinMenu();
-      if (port) ctx.restore();
       return;
     }
 
@@ -2959,11 +2951,8 @@ window.royaleModule = (function () {
     const rect=canvas.getBoundingClientRect();
     const sx=(e.clientX-rect.left)*(canvas.width/rect.width);
     const sy=(e.clientY-rect.top)*(canvas.height/rect.height);
-    const port = canvas.height > canvas.width;
-    const gx = port ? sy : sx;
-    const gy = port ? (canvas.width - sx) : sy;
 
-    if (checkSkinMenuClick(gx, gy)) return;
+    if (checkSkinMenuClick(sx, sy)) return;
     if (gamePhase !== 'playing') return;
     const key=inventory[activeSlot];
     if (key) tryFire(player.x,player.y,player.angle,key,localId);

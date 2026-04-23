@@ -216,6 +216,14 @@ body.rl-active {
   max-width: 260px;
 }
 
+body.rl-portrait-blocked .controls-right,
+body.rl-portrait-blocked .rl-joy-base,
+body.rl-portrait-blocked .rl-joy-knob,
+body.rl-portrait-blocked .rl-end-actions {
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 /* ── Loading overlay ─────────────────────────────────────── */
 .rl-loading {
   position: absolute;

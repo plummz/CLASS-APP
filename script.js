@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.4.2',
+    date: 'April 23, 2026',
+    title: 'Battle Royale True Landscape Gate',
+    summary: 'Battle Royale no longer runs as portrait disguised as landscape; portrait now shows a rotate prompt and gameplay uses native landscape coordinates only.',
+    changes: [
+      'Removed portrait canvas width/height swapping from Battle Royale gameplay.',
+      'Removed rotated skin-select rendering in portrait.',
+      'Removed portrait touch-coordinate remapping for Royale controls and throw aiming.',
+      'Blocked combat controls under the rotate prompt until the device is actually landscape.',
+      'Bumped Royale asset cache versions so deployed devices load the corrected landscape behavior.'
+    ]
+  },
   {
     version: '1.4.1',
     date: 'April 23, 2026',

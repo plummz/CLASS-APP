@@ -14,6 +14,10 @@ const ffmpeg   = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const { Server } = require('socket.io');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const helmet   = require('helmet');
 
 let webpush = null;
 try {
@@ -35,8 +39,12 @@ const r2 = new S3Client({
 });
 const R2_BUCKET = process.env.R2_BUCKET || 'class-app-storage';
 
-const ADMIN_USERNAME = 'Marquillero';
-const ADMIN_PASSWORD = '120524';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'Marquillero';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '120524';
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') console.warn('[security] JWT_SECRET not set — using insecure default');
+  return 'dev-secret-change-in-production';
+})();
 const DATA_PATH = path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
@@ -61,8 +69,8 @@ if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-// MULTER CONFIG: memory storage — files go straight to R2, not disk (500 MB max)
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+// MULTER CONFIG: 50 MB for video, 10 MB for everything else (checked per route)
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 function loadData() {
   if (!fs.existsSync(DATA_PATH)) {
@@ -105,9 +113,17 @@ function saveData(data) {
   fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 }
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
+if (ALLOWED_ORIGIN === '*' && process.env.NODE_ENV === 'production') {
+  console.warn('[security] CORS open to all origins — set ALLOWED_ORIGIN in env');
+}
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+const io = new Server(server, { cors: { origin: ALLOWED_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+
+// Security headers — CSP disabled to avoid breaking inline scripts (tighten in later phase)
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 const STATIC_CACHE_OPTIONS = {
   maxAge: '1y',
   immutable: true,
@@ -150,8 +166,41 @@ function formatUptime(seconds) {
   return `${minutes}m`;
 }
 
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json());
+
+// ── Auth helpers ──────────────────────────────────────────
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, try again later.' },
+});
+
+function issueToken(username, isAdminUser) {
+  return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+function requireAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+// Middleware: requireAuth + must be the resource owner or admin
+function requireSelf(paramField) {
+  return [requireAuth, (req, res, next) => {
+    if (req.user.isAdmin || req.user.username === req.params[paramField]) return next();
+    res.status(403).json({ error: 'Forbidden' });
+  }];
+}
 app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_OPTIONS));
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
@@ -198,7 +247,8 @@ app.get('/api/static-check', (req, res) => {
   });
 });
 
-app.get('/api/diagnostics', async (req, res) => {
+app.get('/api/diagnostics', requireAuth, async (req, res) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin only' });
   const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
   let cacheVersion = 'unknown';
   try {
@@ -261,6 +311,14 @@ app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 
 /* ── Wake-up ping (keeps Render free tier warm) ─────────── */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
+/* ── Client config — serves non-secret public keys to frontend ── */
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseKey: process.env.SUPABASE_ANON_KEY || '',
+  });
+});
 
 app.get('/api/app-open-count', (req, res) => {
   const users = Object.entries(state.appOpenCounts || {})
@@ -741,14 +799,19 @@ app.post('/api/folders', (req, res) => {
   res.json(folder);
 });
 
-app.put('/api/folders/:id', (req, res) => {
+app.put('/api/folders/:id', requireAuth, (req, res) => {
   const folder = state.folders.find(f => f.id === req.params.id);
-  if (folder) folder.name = req.body.name;
+  if (!folder) return res.status(404).json({ error: 'Folder not found' });
+  if (!req.user.isAdmin && folder.owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+  folder.name = req.body.name;
   saveData(state);
   res.json(folder);
 });
 
-app.delete('/api/folders/:id', (req, res) => {
+app.delete('/api/folders/:id', requireAuth, (req, res) => {
+  const folder = state.folders.find(f => f.id === req.params.id);
+  if (!folder) return res.status(404).json({ error: 'Folder not found' });
+  if (!req.user.isAdmin && folder.owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.folders = state.folders.filter(f => f.id !== req.params.id);
   state.files = state.files.filter(f => f.folderId !== req.params.id);
   saveData(state);
@@ -766,32 +829,39 @@ app.post('/api/files', (req, res) => {
   res.json(file);
 });
 
-app.delete('/api/files/:id', (req, res) => {
+app.delete('/api/files/:id', requireAuth, (req, res) => {
+  const file = state.files.find(f => f.id === req.params.id);
+  if (!file) return res.status(404).json({ error: 'File not found' });
+  if (!req.user.isAdmin && file.uploadedBy !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.files = state.files.filter(f => f.id !== req.params.id);
   saveData(state);
   res.json({ success: true });
 });
 
 // --- AUTH & USERS API ---
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
   }
-  if (username === ADMIN_USERNAME && password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Invalid admin password' });
+  if (username === ADMIN_USERNAME) {
+    // Support both pre-hashed ($2...) and plain-text ADMIN_PASSWORD for gradual migration
+    const valid = ADMIN_PASSWORD.startsWith('$2')
+      ? await bcrypt.compare(password, ADMIN_PASSWORD)
+      : password === ADMIN_PASSWORD;
+    if (!valid) return res.status(401).json({ error: 'Invalid admin password' });
   }
   let user = findUser(username);
-  if (!user) {
-    user = createUser(username);
-  }
+  if (!user) user = createUser(username);
   user.online = true;
   saveData(state);
   io.emit('users', safeUsers());
-  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: user.username === ADMIN_USERNAME });
+  const isAdminUser = user.username === ADMIN_USERNAME;
+  const token = issueToken(user.username, isAdminUser);
+  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
 });
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
@@ -804,14 +874,15 @@ app.post('/api/register', (req, res) => {
   user.online = true;
   saveData(state);
   io.emit('users', safeUsers());
-  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false });
+  const token = issueToken(user.username, false);
+  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false, token });
 });
 
 app.get('/api/users', (req, res) => {
   res.json(safeUsers());
 });
 
-app.put('/api/users/:username', (req, res) => {
+app.put('/api/users/:username', ...requireSelf('username'), (req, res) => {
   const username = req.params.username;
   const user = findUser(username);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -821,18 +892,13 @@ app.put('/api/users/:username', (req, res) => {
   res.json(user);
 });
 
-// NEW API: DELETE USER
-app.delete('/api/users/:username', (req, res) => {
+app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
   const username = req.params.username;
   const initialLength = state.users.length;
   state.users = state.users.filter(u => u.username !== username);
-  
-  if (state.users.length === initialLength) {
-      return res.status(404).json({ error: 'User not found' });
-  }
-  
+  if (state.users.length === initialLength) return res.status(404).json({ error: 'User not found' });
   saveData(state);
-  io.emit('users', safeUsers()); 
+  io.emit('users', safeUsers());
   res.json({ success: true });
 });
 
@@ -1324,31 +1390,33 @@ app.post('/api/code-lab/validate', async (req, res) => {
   }
 });
 
-app.put('/api/messages/:id', (req, res) => {
+app.put('/api/messages/:id', requireAuth, (req, res) => {
   const { text, pinned } = req.body;
   const id = req.params.id;
   const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
   Object.values(state.chatHistory.private).forEach((room) => room.forEach((message) => allMessages.push(message)));
   const message = allMessages.find((msg) => msg.id === id);
   if (!message) return res.status(404).json({ error: 'Message not found' });
-  if (typeof text === 'string') {
-    message.text = text;
-    message.edited = true;
+  if (!req.user.isAdmin && message.sender !== req.user.username) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
-  if (typeof pinned === 'boolean') {
-    message.pinned = pinned;
-  }
+  if (typeof text === 'string') { message.text = text; message.edited = true; }
+  if (typeof pinned === 'boolean') message.pinned = pinned;
   saveData(state);
   io.emit('messageUpdated', message);
   res.json(message);
 });
 
-app.delete('/api/messages/:id', (req, res) => {
+app.delete('/api/messages/:id', requireAuth, (req, res) => {
   const id = req.params.id;
-  const removeFrom = (array) => {
-    const idx = array.findIndex((msg) => msg.id === id);
-    if (idx !== -1) array.splice(idx, 1);
-  };
+  const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
+  Object.values(state.chatHistory.private).forEach((room) => allMessages.push(...room));
+  const message = allMessages.find((msg) => msg.id === id);
+  if (!message) return res.status(404).json({ error: 'Message not found' });
+  if (!req.user.isAdmin && message.sender !== req.user.username) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const removeFrom = (array) => { const idx = array.findIndex((msg) => msg.id === id); if (idx !== -1) array.splice(idx, 1); };
   removeFrom(state.chatHistory.group);
   removeFrom(state.chatHistory.todo);
   Object.values(state.chatHistory.private).forEach(removeFrom);

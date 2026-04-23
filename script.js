@@ -2,24 +2,31 @@
    SCRIPT.JS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
 
-// 1. SUPABASE CONNECTION INFO
-const SUPABASE_URL = 'https://rxpezjhsnqkjydurtayx.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4cGV6amhzbnFranlkdXJ0YXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTIwODUsImV4cCI6MjA5MTU4ODA4NX0.wAhjVae3O1vFzGwF_JfXeFJJtB7hv3gTD9T5MHsjhRo';
+// 1. SUPABASE CONNECTION INFO — loaded from server to avoid hardcoding in source
+let SUPABASE_URL = '';
+let SUPABASE_KEY = '';
+let sb = null;
 
-// Initialize Supabase Client
-const { createClient } = window.supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  global: {
-    fetch: (url, options = {}) => {
-      const headers = new Headers(options.headers || {});
-      try {
-        const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
-        if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
-      } catch (_) {}
-      return fetch(url, { ...options, headers });
+async function initSupabase() {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    SUPABASE_URL = cfg.supabaseUrl || '';
+    SUPABASE_KEY = cfg.supabaseKey || '';
+  } catch (_) {}
+  const { createClient } = window.supabase;
+  sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: {
+      fetch: (url, options = {}) => {
+        const headers = new Headers(options.headers || {});
+        try {
+          const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+          if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+        } catch (_) {}
+        return fetch(url, { ...options, headers });
+      },
     },
-  },
-});
+  });
+}
 
 // Kept purely so any old files you uploaded to Render can still open without breaking
 const SERVER_BASE = 'https://class-app-y67k.onrender.com';
@@ -3493,7 +3500,9 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
 /* ============================================================
    INITIALIZATION
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initSupabase();
+
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
   updateFooterYear();

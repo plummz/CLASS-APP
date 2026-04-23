@@ -29,7 +29,7 @@ async function initSupabase() {
 }
 
 // Kept purely so any old files you uploaded to Render can still open without breaking
-const SERVER_BASE = 'https://class-app-y67k.onrender.com';
+const SERVER_BASE = 'https://class-app-1.onrender.com';
 
 /* ============================================================
    CUSTOM MODALS (Replaces prompt/alert/confirm for PWA support)

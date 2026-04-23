@@ -321,6 +321,11 @@
   font-size: 0.8rem;
 }
 
+.coding-edu-example-actions {
+  justify-content: flex-start;
+  margin: 10px 0 12px;
+}
+
 .coding-edu-pager {
   margin-top: 18px;
   justify-content: center;

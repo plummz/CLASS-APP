@@ -436,74 +436,225 @@ const codingEducationalData = (function () {
   function previewDoc(body) {
     return `<!doctype html><html><head><meta charset="utf-8"><style>
       body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:14px}
-      .demo-stage{border:2px dashed #38bdf8;border-radius:14px;padding:14px;min-height:100px;background:white}
-      .demo-box{display:inline-flex;align-items:center;justify-content:center;width:58px;height:48px;margin:6px;border:2px solid #0ea5e9;border-radius:10px;background:#dff6ff;font-weight:800}
-      .console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:0}
-      .lesson,.card,.button,.item,.box{border:2px solid #38bdf8;border-radius:12px;padding:12px;margin:8px;background:#fff}
+      *{box-sizing:border-box}.console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:10px 0 0}
+      .demo-nav,.demo-form,.demo-alert,.demo-card,.demo-gallery,.demo-table-wrap,.demo-hero,.demo-profile,.demo-menu,.demo-dashboard,.demo-banner,.demo-product,.demo-article{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.08)}
+      .demo-nav{display:flex;gap:10px;align-items:center}.demo-nav a{padding:8px 10px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:800}
+      .demo-form{display:grid;gap:10px;max-width:320px}.demo-form input{padding:9px;border:1px solid #94a3b8;border-radius:10px}.demo-form button,.demo-button-group button,.demo-hero button{padding:9px 12px;border:0;border-radius:10px;background:#0ea5e9;color:white;font-weight:800}
+      .demo-alert{border-color:#f97316;background:#fff7ed}.demo-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.demo-gallery figure{margin:0;min-height:64px;border-radius:12px;background:#dff6ff;display:grid;place-items:center;font-weight:800}
+      .demo-table{width:100%;border-collapse:collapse}.demo-table th,.demo-table td{border:1px solid #38bdf8;padding:8px;text-align:left}
+      .demo-hero{background:linear-gradient(135deg,#e0f2fe,#fff);min-height:130px}.demo-profile .avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#bae6fd;font-weight:900}
+      .demo-menu{display:grid;gap:8px;max-width:220px}.demo-menu button{padding:9px;border:1px solid #38bdf8;border-radius:10px;background:#f0f9ff;text-align:left;font-weight:800}
+      .demo-dashboard{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.demo-dashboard div{padding:12px;border-radius:12px;background:#ecfeff;text-align:center;font-weight:800}
+      .demo-banner{background:#eef2ff;border-color:#818cf8}.demo-product{max-width:280px}.demo-product .price{font-size:1.4rem;font-weight:900;color:#0f766e}
+      .demo-article h2{margin-top:0}.demo-highlight{outline:3px solid #22c55e;outline-offset:3px}
     </style></head><body>${body}</body></html>`;
   }
 
-  function htmlExample(topic, variant) {
-    if (variant === 1) return `<article class="lesson"><h2>${topic}</h2><p>A beginner page section with a clear heading and paragraph.</p></article>`;
-    if (variant === 2) return `<nav class="lesson"><a href="#overview">Overview</a> <a href="#task">Task</a></nav><section id="overview">This link group demonstrates ${topic}.</section>`;
-    return `<form class="lesson"><label>Student name <input placeholder="Type here"></label><button type="button">Save</button></form>`;
+  const demoModels = [
+    {
+      name: 'navbar',
+      title: 'navigation bar',
+      target: '.demo-nav',
+      child: '.demo-nav a:nth-child(2)',
+      markup: '<nav class="demo-nav"><a>Home</a><a>Lessons</a><a>Profile</a></nav>',
+      baseCss: '.demo-nav{display:flex;gap:10px;align-items:center}.demo-nav a{padding:8px 10px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:800}',
+    },
+    {
+      name: 'form',
+      title: 'student form',
+      target: '.demo-form',
+      child: '.demo-form button',
+      markup: '<form class="demo-form"><label>Student name <input value="Mika"></label><label>Section <input value="BSIT 1A"></label><button type="button">Save</button></form>',
+      baseCss: '.demo-form{display:grid;gap:10px;max-width:320px}.demo-form input{padding:9px;border:1px solid #94a3b8;border-radius:10px}.demo-form button{padding:9px 12px;border:0;border-radius:10px;background:#0ea5e9;color:white;font-weight:800}',
+    },
+    {
+      name: 'alert',
+      title: 'alert message',
+      target: '.demo-alert',
+      child: '.demo-alert strong',
+      markup: '<div class="demo-alert"><strong>Warning</strong><p>Review your requirement before submitting.</p></div>',
+      baseCss: '.demo-alert{border:2px solid #f97316;border-radius:16px;background:#fff7ed;padding:14px}.demo-alert p{margin:.35rem 0 0}',
+    },
+    {
+      name: 'card',
+      title: 'course card',
+      target: '.demo-card',
+      child: '.demo-card button',
+      markup: '<article class="demo-card"><h3>Web Development</h3><p>Build a small responsive page.</p><button>Open lesson</button></article>',
+      baseCss: '.demo-card{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;max-width:300px}.demo-card button{padding:8px 10px;border:0;border-radius:10px;background:#0ea5e9;color:white;font-weight:800}',
+    },
+    {
+      name: 'gallery',
+      title: 'image gallery',
+      target: '.demo-gallery',
+      child: '.demo-gallery figure:nth-child(2)',
+      markup: '<section class="demo-gallery"><figure>Photo A</figure><figure>Photo B</figure><figure>Photo C</figure></section>',
+      baseCss: '.demo-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.demo-gallery figure{margin:0;min-height:64px;border-radius:12px;background:#dff6ff;display:grid;place-items:center;font-weight:800}',
+    },
+    {
+      name: 'table',
+      title: 'grade table',
+      target: '.demo-table-wrap',
+      child: '.demo-table td:nth-child(2)',
+      markup: '<div class="demo-table-wrap"><table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Ana</td><td>95</td></tr><tr><td>Leo</td><td>88</td></tr></table></div>',
+      baseCss: '.demo-table{width:100%;border-collapse:collapse}.demo-table th,.demo-table td{border:1px solid #38bdf8;padding:8px;text-align:left}.demo-table-wrap{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:12px}',
+    },
+    {
+      name: 'hero',
+      title: 'hero section',
+      target: '.demo-hero',
+      child: '.demo-hero button',
+      markup: '<section class="demo-hero"><h2>Start Coding Today</h2><p>Practice a small skill and check the preview.</p><button>Begin</button></section>',
+      baseCss: '.demo-hero{border:2px solid #38bdf8;border-radius:16px;background:linear-gradient(135deg,#e0f2fe,#fff);padding:18px;min-height:130px}.demo-hero button{padding:9px 12px;border:0;border-radius:10px;background:#0ea5e9;color:white;font-weight:800}',
+    },
+    {
+      name: 'profile',
+      title: 'profile card',
+      target: '.demo-profile',
+      child: '.demo-profile .avatar',
+      markup: '<article class="demo-profile"><div class="avatar">A</div><h3>Ana Cruz</h3><p>Frontend student</p></article>',
+      baseCss: '.demo-profile{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;max-width:260px}.demo-profile .avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#bae6fd;font-weight:900}',
+    },
+    {
+      name: 'menu',
+      title: 'side menu',
+      target: '.demo-menu',
+      child: '.demo-menu button:first-child',
+      markup: '<aside class="demo-menu"><button>Dashboard</button><button>Files</button><button>Settings</button></aside>',
+      baseCss: '.demo-menu{display:grid;gap:8px;max-width:220px;border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:12px}.demo-menu button{padding:9px;border:1px solid #38bdf8;border-radius:10px;background:#f0f9ff;text-align:left;font-weight:800}',
+    },
+    {
+      name: 'dashboard',
+      title: 'mini dashboard',
+      target: '.demo-dashboard',
+      child: '.demo-dashboard div:nth-child(3)',
+      markup: '<section class="demo-dashboard"><div>Tasks<br><b>12</b></div><div>Done<br><b>8</b></div><div>Score<br><b>92</b></div></section>',
+      baseCss: '.demo-dashboard{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.demo-dashboard div{padding:12px;border-radius:12px;background:#ecfeff;text-align:center;font-weight:800;border:1px solid #67e8f9}',
+    },
+    {
+      name: 'banner',
+      title: 'announcement banner',
+      target: '.demo-banner',
+      child: '.demo-banner strong',
+      markup: '<section class="demo-banner"><strong>Reminder:</strong> Submit the lab activity this week.</section>',
+      baseCss: '.demo-banner{border:2px solid #818cf8;border-radius:16px;background:#eef2ff;padding:14px;font-weight:700}',
+    },
+    {
+      name: 'product',
+      title: 'product card',
+      target: '.demo-product',
+      child: '.demo-product .price',
+      markup: '<article class="demo-product"><h3>Starter Kit</h3><p>Notebook, pen, and USB drive.</p><div class="price">P199</div><button>Add</button></article>',
+      baseCss: '.demo-product{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;max-width:280px}.demo-product .price{font-size:1.4rem;font-weight:900;color:#0f766e}.demo-product button{padding:8px 10px;border:0;border-radius:10px;background:#0ea5e9;color:white;font-weight:800}',
+    },
+    {
+      name: 'article',
+      title: 'article preview',
+      target: '.demo-article',
+      child: '.demo-article h2',
+      markup: '<article class="demo-article"><h2>Study Notes</h2><p>Readable text helps learners understand the topic faster.</p><p class="meta">5 min read</p></article>',
+      baseCss: '.demo-article{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;max-width:360px}.demo-article h2{margin-top:0}.demo-article .meta{color:#64748b;font-weight:800}',
+    },
+  ];
+
+  function hashText(value) {
+    return String(value || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
   }
 
-  function cssDemo(topic, variant) {
-    const base = `.container { border: 2px dashed #94a3b8; padding: 12px; background: white; }\n.box { width: 58px; height: 48px; margin: 6px; border: 2px solid #0ea5e9; border-radius: 10px; background: #dff6ff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }`;
-    if (variant === 1) return `${base}\n.container { ${cssValue(topic).replace(/\n/g, ' ')} }`;
-    if (variant === 2) return `${base}\n.box:nth-child(2) { ${cssValue(topic).replace(/\n/g, ' ')} }`;
-    return `${base}\n.container:hover .box { ${cssValue(topic).replace(/\n/g, ' ')} transition: all .2s ease; }`;
+  function modelsFor(moduleTitle, chapterTitle, topic, lessonIndex) {
+    const chapterSeed = hashText(`${moduleTitle}-${chapterTitle}`);
+    const topicNudge = hashText(topic) % 2;
+    const start = (chapterSeed + (lessonIndex || 0) * 3 + topicNudge) % demoModels.length;
+    return [0, 1, 2].map((offset) => demoModels[(start + offset) % demoModels.length]);
   }
 
-  function jsDemo(topic, variant) {
-    if (variant === 1) return `document.querySelector('.demo-box').textContent = '${topic}';\nconsole.log('Updated first box');`;
-    if (variant === 2) return `document.querySelectorAll('.demo-box').forEach((box, index) => {\n  box.textContent = 'Item ' + (index + 1);\n});\nconsole.log('Renamed all boxes');`;
-    return `const newBox = document.createElement('div');\nnewBox.className = 'demo-box';\nnewBox.textContent = 'New';\ndocument.querySelector('.demo-stage').appendChild(newBox);\nconsole.log('Added one box');`;
+  function htmlExample(topic, model, variant) {
+    if (model.name === 'navbar') return `<nav class="demo-nav" aria-label="${topic} navigation"><a href="#home">Home</a><a href="#${slug(topic)}">${topic}</a><a href="#help">Help</a></nav>`;
+    if (model.name === 'form') return `<form class="demo-form"><label>${topic} input <input placeholder="Type a value"></label><button type="button">Submit</button></form>`;
+    if (model.name === 'gallery') return `<section class="demo-gallery"><figure>${topic} 1</figure><figure>${topic} 2</figure><figure>${topic} 3</figure></section>`;
+    if (model.name === 'table') return `<div class="demo-table-wrap"><table class="demo-table"><tr><th>Topic</th><th>Status</th></tr><tr><td>${topic}</td><td>Learning</td></tr></table></div>`;
+    if (model.name === 'hero') return `<section class="demo-hero"><h2>${topic}</h2><p>This hero section introduces the lesson clearly.</p><button>Start</button></section>`;
+    if (variant === 2) return `<article class="demo-profile"><div class="avatar">${topic.charAt(0)}</div><h3>${topic}</h3><p>Practice profile layout.</p></article>`;
+    if (variant === 3) return `<section class="demo-banner"><strong>${topic}:</strong> This banner highlights a short message.</section>`;
+    return `<article class="demo-card"><h3>${topic}</h3><p>A focused lesson card with readable content.</p><button>Open</button></article>`;
   }
 
-  function beforeAfterFor(moduleTitle, topic, code, kind) {
+  function cssDemo(topic, model, variant) {
+    const rule = cssValue(topic).replace(/\n/g, ' ');
+    if (variant === 1) return `${model.target} {\n  ${rule}\n}`;
+    if (variant === 2) return `${model.child || model.target} {\n  ${rule}\n}\n${model.target} {\n  outline: 2px dashed #22c55e;\n}`;
+    return `${model.target}:hover {\n  ${rule}\n  transition: all .2s ease;\n}\n${model.child || model.target} {\n  transform: scale(1.02);\n}`;
+  }
+
+  function jsDemo(topic, model, variant) {
+    const safeTopic = String(topic).replace(/'/g, "\\'");
+    if (variant === 1) return `const target = document.querySelector('${model.target}');\ntarget.classList.add('demo-highlight');\nconsole.log('Highlighted ${safeTopic} in the ${model.title}.');`;
+    if (variant === 2) return `const target = document.querySelector('${model.child || model.target}');\ntarget.textContent = '${safeTopic} updated';\nconsole.log('Changed one part of the ${model.title}.');`;
+    return `const note = document.createElement('p');\nnote.textContent = 'New ${safeTopic} note added by JavaScript.';\ndocument.querySelector('${model.target}').appendChild(note);\nconsole.log('Added a new note to the ${model.title}.');`;
+  }
+
+  function beforeAfterFor(moduleTitle, topic, code, kind, model) {
     if (kind !== 'css') return {};
     return {
-      before: previewDoc(`<style>.container{border:2px dashed #94a3b8;padding:12px;background:white}.box{width:58px;height:48px;margin:6px;border:2px solid #94a3b8;border-radius:10px;background:#e2e8f0;display:inline-flex;align-items:center;justify-content:center;font-weight:800}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`),
-      after: previewDoc(`<style>${code}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`),
+      before: previewDoc(`<style>${model.baseCss}</style>${model.markup}`),
+      after: previewFor(moduleTitle, topic, code, kind, model),
     };
   }
 
-  function previewFor(moduleTitle, topic, code, kind) {
+  function previewFor(moduleTitle, topic, code, kind, model) {
     if (kind === 'html') return previewDoc(code);
-    if (kind === 'css') return previewDoc(`<style>${code}</style><div class="container"><div class="box">Box 1</div><div class="box">Box 2</div><div class="box">Box 3</div></div>`);
-    if (kind === 'javascript') return previewDoc(`<main class="demo-stage"><div class="demo-box">Box 1</div><div class="demo-box">Box 2</div></main><script>const logs=[];const original=console.log;console.log=(...args)=>{logs.push(args.join(' '));original(...args)};try{${code}}catch(error){logs.push('Error: '+error.message)}document.body.insertAdjacentHTML('beforeend','<pre class="console">'+logs.join('\\n')+'</pre>');<\/script>`);
+    if (kind === 'css') return previewDoc(`<style>${model.baseCss}\n${code}</style>${model.markup}`);
+    if (kind === 'javascript') return previewDoc(`<style>${model.baseCss}</style>${model.markup}<script>const logs=[];const original=console.log;console.log=(...args)=>{logs.push(args.join(' '));original(...args)};try{${code}}catch(error){logs.push('Error: '+error.message)}document.body.insertAdjacentHTML('beforeend','<pre class="console">'+logs.join('\\n')+'</pre>');<\/script>`);
     return previewDoc(`<pre class="console">${resultFor(moduleTitle, topic)}</pre>`);
   }
 
-  function examples(moduleTitle, topic) {
-    const kind = kindFor(moduleTitle);
-    const codes = kind === 'html'
-      ? [htmlExample(topic, 1), htmlExample(topic, 2), htmlExample(topic, 3)]
-      : kind === 'css'
-        ? [cssDemo(topic, 1), cssDemo(topic, 2), cssDemo(topic, 3)]
-        : kind === 'javascript'
-          ? [jsDemo(topic, 1), jsDemo(topic, 2), jsDemo(topic, 3)]
-          : [codeFor(moduleTitle, topic), codeFor(moduleTitle, `${topic} with a second value`), codeFor(moduleTitle, `${topic} classroom check`)];
-    const explanations = [
-      `This example demonstrates the normal use of ${topic}. It gives students one direct result to compare against the code.`,
-      `This example changes the target or value, so the result is different from the first example and easier to compare.`,
-      `This example turns ${topic} into a guided mini scenario, closer to how it appears in a small project.`,
-    ];
-    return [
-      { title: `${topic}: direct demonstration`, code: codes[0], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[0], kind), output: resultFor(moduleTitle, topic), explanation: explanations[0], ...beforeAfterFor(moduleTitle, topic, codes[0], kind) },
-      { title: `${topic}: changed target`, code: codes[1], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[1], kind), output: resultFor(moduleTitle, `${topic} changed target`), explanation: explanations[1], ...beforeAfterFor(moduleTitle, topic, codes[1], kind) },
-      { title: `${topic}: mini project use`, code: codes[2], kind, editable: true, preview: previewFor(moduleTitle, topic, codes[2], kind), output: resultFor(moduleTitle, `${topic} mini project`), explanation: explanations[2], ...beforeAfterFor(moduleTitle, topic, codes[2], kind) },
-    ];
+  function outputForModel(topic, model, variant) {
+    if (variant === 1) return `The ${model.title} changes directly, so ${topic} is visible on the main interface piece.`;
+    if (variant === 2) return `Only one focused part of the ${model.title} changes, making the target easier to compare.`;
+    return `The ${model.title} becomes interactive or project-like, showing how ${topic} can support a real page section.`;
   }
 
-  function richLesson(moduleTitle, chapterTitle, topicSpec) {
+  function explanationForModel(topic, model, variant) {
+    if (variant === 1) return `This example applies ${topic} to a ${model.title}. The preview changes the main element, so students can connect the code to a real interface instead of a generic sample.`;
+    if (variant === 2) return `This example targets a smaller part of the ${model.title}. That matters in real projects because developers often style or update one button, label, table cell, or card section without changing the whole page.`;
+    return `This example turns ${topic} into a mini interface behavior. It shows how the same concept can appear in a project screen, such as a dashboard, menu, banner, product card, or profile area.`;
+  }
+
+  function examples(moduleTitle, chapterTitle, topic, lessonIndex = 0) {
+    const kind = kindFor(moduleTitle);
+    const chosenModels = modelsFor(moduleTitle, chapterTitle, topic, lessonIndex);
+    const codes = chosenModels.map((model, index) => {
+      const variant = index + 1;
+      if (kind === 'html') return htmlExample(topic, model, variant);
+      if (kind === 'css') return cssDemo(topic, model, variant);
+      if (kind === 'javascript') return jsDemo(topic, model, variant);
+      return codeFor(moduleTitle, index === 0 ? topic : index === 1 ? `${topic} with a second value` : `${topic} classroom check`);
+    });
+    return chosenModels.map((model, index) => {
+      const variant = index + 1;
+      const code = codes[index];
+      return {
+        title: `${topic}: ${model.title} demo`,
+        code,
+        kind,
+        editable: true,
+        demoModel: model.name,
+        markup: model.markup,
+        baseCss: model.baseCss,
+        preview: previewFor(moduleTitle, topic, code, kind, model),
+        output: outputForModel(topic, model, variant),
+        explanation: explanationForModel(topic, model, variant),
+        ...beforeAfterFor(moduleTitle, topic, code, kind, model),
+      };
+    });
+  }
+
+  function richLesson(moduleTitle, chapterTitle, topicSpec, lessonIndex = 0) {
     const topic = typeof topicSpec === 'string' ? topicSpec : topicSpec.title;
     const customItems = typeof topicSpec === 'string' ? null : topicSpec.items;
     const customKeywords = typeof topicSpec === 'string' ? [] : (topicSpec.keywords || []);
     const sourceList = sourceFor(moduleTitle);
-    const lessonExamples = (typeof topicSpec === 'string' ? null : topicSpec.examples) || examples(moduleTitle, topic);
+    const lessonExamples = (typeof topicSpec === 'string' ? null : topicSpec.examples) || examples(moduleTitle, chapterTitle, topic, lessonIndex);
     const breakdown = (customItems && customItems.length ? customItems : [
       item('Purpose', `${topic} solves a specific beginner problem in ${moduleTitle}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
       item('Syntax Pattern', `The syntax shows the order of words, symbols, or values used by ${topic}.`, syntaxFor(moduleTitle, topic), resultFor(moduleTitle, topic)),
@@ -575,8 +726,8 @@ const codingEducationalData = (function () {
   }
 
   function chapter(moduleTitle, spec) {
-    const lessons = spec.topics.map((topic) => richLesson(moduleTitle, spec.title, topic));
-    while (lessons.length < 5) lessons.push(richLesson(moduleTitle, spec.title, `${spec.title} Guided Task ${lessons.length + 1}`));
+    const lessons = spec.topics.map((topic, index) => richLesson(moduleTitle, spec.title, topic, index));
+    while (lessons.length < 5) lessons.push(richLesson(moduleTitle, spec.title, `${spec.title} Guided Task ${lessons.length + 1}`, lessons.length));
     const chapterId = slug(`${moduleTitle}-${spec.title}`);
     return { id: chapterId, title: spec.title, description: spec.description || `Study ${spec.title} in ${moduleTitle} with textbook-style lessons.`, level: 'Beginner', lessons, quiz: makeQuiz(chapterId, lessons) };
   }

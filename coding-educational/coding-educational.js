@@ -160,6 +160,11 @@ window.codingEducationalModule = (function () {
               </div>
             ` : ''}
             <textarea class="coding-edu-live-code" data-example-index="${index}" spellcheck="false" aria-label="Editable code for ${escapeHTML(example.title || `Example ${index + 1}`)}">${escapeHTML(example.code || '')}</textarea>
+            <div class="coding-edu-action-row coding-edu-example-actions">
+              <button class="coding-edu-action compact" data-action="copy-example" type="button">Copy Example</button>
+              <button class="coding-edu-action compact" data-action="reset-example" type="button">Reset Code</button>
+              <button class="coding-edu-action compact" data-action="run-example" type="button">Run Again</button>
+            </div>
             <div class="coding-edu-preview-shell">
               <div class="coding-edu-preview-label">Live Preview</div>
               <iframe class="coding-edu-live-preview" data-example-index="${index}" sandbox="allow-scripts" loading="lazy" srcdoc="${escapeHTML(example.preview || buildPreviewDoc(example.code || '', example))}"></iframe>
@@ -173,12 +178,18 @@ window.codingEducationalModule = (function () {
   }
 
   function buildPreviewDoc(code, example = {}) {
-    if (example.preview) return example.preview;
+    if (example.preview && !example.forceLive) return example.preview;
+    return renderLivePreview(code, example);
+  }
+
+  function renderLivePreview(code, example = {}) {
     const kind = (example.kind || '').toLowerCase();
     const safeCode = String(code || '');
+    const markup = example.markup || defaultPreviewMarkup(example.demoModel);
+    const baseCss = example.baseCss || '';
     if (kind === 'html') return previewFrame(safeCode);
-    if (kind === 'css') return previewFrame(`<style>${safeCode}</style>${previewMarkup()}`);
-    if (kind === 'javascript') return previewFrame(`${previewMarkup()}<script>
+    if (kind === 'css') return previewFrame(`<style>${baseCss}\n${safeCode}</style>${markup}`);
+    if (kind === 'javascript') return previewFrame(`<style>${baseCss}</style>${markup}<script>
       const logs = [];
       const originalLog = console.log;
       console.log = (...args) => { logs.push(args.join(' ')); originalLog(...args); };
@@ -188,26 +199,33 @@ window.codingEducationalModule = (function () {
     return previewFrame(`<pre class="console">${escapeHTML(example.output || safeCode || '[No output]')}</pre>`);
   }
 
-  function previewMarkup() {
-    return `
-      <main class="demo-stage">
-        <div class="demo-box">Box 1</div>
-        <div class="demo-box">Box 2</div>
-        <div class="demo-box">Box 3</div>
-      </main>
-    `;
+  function defaultPreviewMarkup(model = 'card') {
+    if (model === 'navbar') return '<nav class="demo-nav"><a>Home</a><a>Lessons</a><a>Profile</a></nav>';
+    if (model === 'form') return '<form class="demo-form"><label>Name <input value="Mika"></label><button type="button">Save</button></form>';
+    if (model === 'alert') return '<div class="demo-alert"><strong>Notice</strong><span> Review your entry before sending.</span></div>';
+    if (model === 'gallery') return '<section class="demo-gallery"><figure>Image 1</figure><figure>Image 2</figure><figure>Image 3</figure></section>';
+    if (model === 'table') return '<table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Ana</td><td>95</td></tr></table>';
+    if (model === 'hero') return '<section class="demo-hero"><h2>Build Better Pages</h2><p>Practice one change at a time.</p><button>Start</button></section>';
+    if (model === 'profile') return '<article class="demo-profile"><div class="avatar">A</div><h3>Ana Cruz</h3><p>Frontend student</p></article>';
+    if (model === 'menu') return '<aside class="demo-menu"><button>Dashboard</button><button>Files</button><button>Settings</button></aside>';
+    if (model === 'dashboard') return '<section class="demo-dashboard"><div>Tasks<br><b>12</b></div><div>Done<br><b>8</b></div><div>Score<br><b>92</b></div></section>';
+    if (model === 'banner') return '<section class="demo-banner">Enrollment reminder: submit requirements this week.</section>';
+    return '<article class="demo-card"><h3>Lesson Card</h3><p>This card shows the current code result.</p><button>Open</button></article>';
   }
 
   function previewFrame(body) {
     return `<!doctype html><html><head><meta charset="utf-8"><style>
       body{margin:0;font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;padding:14px}
-      .demo-stage{border:2px dashed #38bdf8;border-radius:14px;padding:14px;min-height:92px;background:white;display:block}
-      .demo-box{display:inline-flex;align-items:center;justify-content:center;width:58px;height:48px;margin:6px;border:2px solid #0ea5e9;border-radius:10px;background:#dff6ff;font-weight:800}
+      *{box-sizing:border-box}.demo-card,.demo-form,.demo-alert,.demo-profile,.demo-banner,.demo-hero{border:2px solid #38bdf8;border-radius:14px;padding:14px;background:white}
+      .demo-nav,.demo-gallery,.demo-dashboard,.demo-menu{border:2px dashed #38bdf8;border-radius:14px;padding:12px;background:white}
+      .demo-nav a,.demo-menu button,.demo-hero button,.demo-card button,.demo-form button{display:inline-flex;margin:4px;padding:8px 10px;border:1px solid #0ea5e9;border-radius:9px;background:#e0f2fe;color:#075985;font-weight:800}
+      .demo-gallery figure,.demo-dashboard div{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:58px;margin:6px;border:2px solid #0ea5e9;border-radius:12px;background:#dff6ff;font-weight:800}
+      .demo-table{width:100%;border-collapse:collapse;background:white}.demo-table th,.demo-table td{border:1px solid #38bdf8;padding:8px;text-align:left}
+      .avatar{display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:#bae6fd;font-weight:900}
       .console{white-space:pre-wrap;background:#0f172a;color:#bbf7d0;border-radius:12px;padding:12px;margin:8px 0 0}
       .lesson,.card,.button,.item,.box{border:2px solid #38bdf8;border-radius:12px;padding:12px;margin:8px;background:#fff}
     </style></head><body>${body}</body></html>`;
   }
-
   function lessonKey(categoryId, subfolderId, chapterId, lessonId) {
     return `${categoryId}/${subfolderId}/${chapterId}/${lessonId}`;
   }
@@ -574,6 +592,29 @@ window.codingEducationalModule = (function () {
         || '';
       navigator.clipboard?.writeText(code).catch(() => {});
     }
+    if (action === 'copy-example') {
+      const code = event.target.closest('.coding-edu-example')?.querySelector('.coding-edu-live-code')?.value || '';
+      navigator.clipboard?.writeText(code).catch(() => {});
+      return;
+    }
+    if (action === 'reset-example') {
+      const exampleEl = event.target.closest('.coding-edu-example');
+      const editor = exampleEl?.querySelector('.coding-edu-live-code');
+      const lesson = getLesson();
+      const index = Number(exampleEl?.dataset.exampleIndex || 0);
+      const example = lesson?.examples?.[index] || {};
+      if (editor) editor.value = example.code || '';
+      updateExamplePreview(exampleEl, editor, example);
+      return;
+    }
+    if (action === 'run-example') {
+      const exampleEl = event.target.closest('.coding-edu-example');
+      const editor = exampleEl?.querySelector('.coding-edu-live-code');
+      const lesson = getLesson();
+      const index = Number(exampleEl?.dataset.exampleIndex || 0);
+      updateExamplePreview(exampleEl, editor, lesson?.examples?.[index] || {});
+      return;
+    }
     if (action === 'check-exercise') {
       checkExercise(event);
       return;
@@ -591,8 +632,12 @@ window.codingEducationalModule = (function () {
     const lesson = getLesson();
     const index = Number(editor.dataset.exampleIndex || 0);
     const example = lesson?.examples?.[index] || {};
-    const frame = editor.closest('.coding-edu-example')?.querySelector('.coding-edu-live-preview');
-    if (frame) frame.srcdoc = buildPreviewDoc(editor.value, { ...example, preview: '' });
+    updateExamplePreview(editor.closest('.coding-edu-example'), editor, example);
+  }
+
+  function updateExamplePreview(exampleEl, editor, example = {}) {
+    const frame = exampleEl?.querySelector('.coding-edu-live-preview');
+    if (frame && editor) frame.srcdoc = renderLivePreview(editor.value, { ...example, preview: '', forceLive: true });
   }
 
   function checkExercise(event) {

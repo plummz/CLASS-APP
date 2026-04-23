@@ -224,8 +224,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.3.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.3.5',
+    date: 'April 23, 2026',
+    title: 'Coding Lessons Live Preview Fix',
+    summary: 'CODING LESSONS examples now use varied real interface demos and the editable preview re-renders from the current code instead of stale template markup.',
+    changes: [
+      'Replaced repeated Box 1/Box 2/Box 3 previews with varied navbar, form, alert, card, gallery, table, hero, profile, menu, dashboard, banner, product, and article demos.',
+      'Made live previews rebuild from the current textarea content on every edit, so CSS, HTML, and JavaScript changes appear immediately.',
+      'Added Reset Code, Run Again, and Copy Example controls for each editable lesson example.',
+      'Kept original examples as lesson references while separating the editable workspace preview state.',
+      'Added chapter-level demo rotation so adjacent lessons do not reuse the same preview model.'
+    ]
+  },
   {
     version: '1.3.4',
     date: 'April 23, 2026',

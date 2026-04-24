@@ -2,26 +2,43 @@
 window.candyModule = (() => {
   'use strict';
 
-  const ROWS = 8, COLS = 8, TYPES = 8, MAX_MOVES = 30;
+  const ROWS = 8, COLS = 8, MAX_LEVEL = 1500;
+
+  // ── Level generator ────────────────────────────────────────────────────
+  function genLevel(n) {
+    const t = (n - 1) / (MAX_LEVEL - 1);
+    return {
+      n,
+      target:   Math.round(200 + t * t * 35000 + t * 5000),
+      moves:    Math.max(10, Math.round(30 - t * 20 + Math.sin(n * 0.1) * 1.5)),
+      types:    Math.min(8, 3 + Math.floor(t * 5.5)),
+      blockers: Math.min(14, Math.floor(t * 16)),
+    };
+  }
 
   // ── State ─────────────────────────────────────────────────────────────
-  let board     = [];          // flat[64], 0-7 (-1 = empty)
-  let score     = 0;
-  let moves     = MAX_MOVES;
-  let selected  = null;        // {r,c} or null
-  let busy      = false;       // blocks input during animations
-  let active    = false;       // true while page is open
-  let gameSaved = false;       // prevent double-save per session
+  let board        = [];
+  let score        = 0;
+  let moves        = 0;
+  let selected     = null;
+  let busy         = false;
+  let active       = false;
+  let gameSaved    = false;
+  let currentLevel = 1;
+  let highestUnlocked = 1;
+  let levelCfg     = genLevel(1);
+  let blockerSet   = new Set();
+  let coins        = 0;
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const idx   = (r, c) => r * COLS + c;
-  const rand  = ()     => Math.floor(Math.random() * TYPES);
+  const rand  = n      => Math.floor(Math.random() * n);
   const delay = ms     => new Promise(res => setTimeout(res, ms));
   const $id   = id     => document.getElementById(id);
 
   // ── Board generation — no initial matches ─────────────────────────────
-  function generateBoard() {
-    const b = Array(ROWS * COLS).fill(0).map(rand);
+  function generateBoard(types) {
+    const b = Array(ROWS * COLS).fill(0).map(() => rand(types));
     let changed = true, guard = 0;
     while (changed && guard++ < 200) {
       changed = false;
@@ -29,17 +46,31 @@ window.candyModule = (() => {
         for (let c = 0; c < COLS; c++) {
           const t = b[idx(r, c)];
           if (c >= 2 && b[idx(r,c-1)] === t && b[idx(r,c-2)] === t) {
-            b[idx(r,c)] = (t + 1 + Math.floor(Math.random() * (TYPES - 1))) % TYPES;
+            b[idx(r,c)] = (t + 1 + rand(types - 1)) % types;
             changed = true;
           }
           if (r >= 2 && b[idx(r-1,c)] === t && b[idx(r-2,c)] === t) {
-            b[idx(r,c)] = (t + 1 + Math.floor(Math.random() * (TYPES - 1))) % TYPES;
+            b[idx(r,c)] = (t + 1 + rand(types - 1)) % types;
             changed = true;
           }
         }
       }
     }
     return b;
+  }
+
+  // ── Blocker helpers ───────────────────────────────────────────────────
+  function placeBlockers(count) {
+    const pos = Array.from({ length: ROWS * COLS }, (_, i) => i);
+    for (let i = pos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pos[i], pos[j]] = [pos[j], pos[i]];
+    }
+    return new Set(pos.slice(0, count));
+  }
+
+  function clearMatchedBlockers(matchSet) {
+    matchSet.forEach(i => blockerSet.delete(i));
   }
 
   // ── Match finding ─────────────────────────────────────────────────────
@@ -79,16 +110,15 @@ window.candyModule = (() => {
     }
   }
 
-  function fillNewGems(b) {
+  function fillNewGems(b, types) {
     const newSet = new Set();
     for (let i = 0; i < b.length; i++) {
-      if (b[i] < 0) { b[i] = rand(); newSet.add(i); }
+      if (b[i] < 0) { b[i] = rand(types); newSet.add(i); }
     }
     return newSet;
   }
 
   // ── DOM rendering ─────────────────────────────────────────────────────
-  // dropSet: Set of flat indices that should play drop animation
   function render(dropSet) {
     const boardEl = $id('candy-board');
     if (!boardEl) return;
@@ -96,8 +126,8 @@ window.candyModule = (() => {
 
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
-        const i   = idx(r, c);
-        const t   = board[i];
+        const i     = idx(r, c);
+        const t     = board[i];
         const isNew = dropSet ? dropSet.has(i) : false;
 
         const cell = document.createElement('div');
@@ -110,11 +140,16 @@ window.candyModule = (() => {
         gem.className = 'candy-gem t' + t + (isNew ? ' anim-drop' : '');
         cell.appendChild(gem);
 
-        // Lollipop stick for type 1
         if (t === 1) {
           const stick = document.createElement('div');
           stick.className = 'candy-lolly-stick' + (isNew ? ' anim-drop' : '');
           cell.appendChild(stick);
+        }
+
+        if (blockerSet.has(i)) {
+          const blocker = document.createElement('div');
+          blocker.className = 'candy-blocker';
+          cell.appendChild(blocker);
         }
 
         boardEl.appendChild(cell);
@@ -126,12 +161,29 @@ window.candyModule = (() => {
   // ── DOM helpers ───────────────────────────────────────────────────────
   const cellEl = (r, c) =>
     $id('candy-board')?.querySelector(`.candy-cell[data-r="${r}"][data-c="${c}"]`);
-  const gemEl  = (r, c) => cellEl(r, c)?.querySelector('.candy-gem');
+  const gemEl = (r, c) => cellEl(r, c)?.querySelector('.candy-gem');
 
   function updateHUD() {
-    const s = $id('candy-score'); if (s) s.textContent = score;
-    const m = $id('candy-moves'); if (m) m.textContent = moves;
+    const s = $id('candy-score');       if (s)  s.textContent  = score.toLocaleString();
+    const m = $id('candy-moves');       if (m)  m.textContent  = moves;
+    const ln = $id('candy-level-num');  if (ln) ln.textContent = currentLevel;
+    const tg = $id('candy-target');     if (tg) tg.textContent = levelCfg.target.toLocaleString();
+    const bl = $id('candy-blockers');   if (bl) bl.textContent = blockerSet.size;
+    const blPill = $id('candy-blockers-pill');
+    if (blPill) blPill.style.display = levelCfg.blockers > 0 ? '' : 'none';
+    updateScoreBar();
   }
+
+  function updateScoreBar() {
+    const bar = $id('candy-score-bar-fill');
+    if (!bar) return;
+    const pct = Math.min(100, Math.round((score / levelCfg.target) * 100));
+    bar.style.width = pct + '%';
+    bar.style.background = pct >= 100
+      ? 'linear-gradient(90deg,#66ff88,#00cc44)'
+      : 'linear-gradient(90deg,#ff6b9d,#c44dff)';
+  }
+
   function setStatus(msg) {
     const el = $id('candy-status'); if (el) el.textContent = msg;
   }
@@ -148,7 +200,6 @@ window.candyModule = (() => {
   }
 
   // ── Animations ────────────────────────────────────────────────────────
-  // Visually slide two cells' gems toward each other (no data change)
   async function animSwap(r1, c1, r2, c2) {
     const el1 = cellEl(r1, c1), el2 = cellEl(r2, c2);
     if (!el1 || !el2) return;
@@ -159,18 +210,16 @@ window.candyModule = (() => {
     if (g1) g1.style.transform = `translate(${dx}px,${dy}px)`;
     if (g2) g2.style.transform = `translate(${-dx}px,${-dy}px)`;
     await delay(190);
-    // Clean up before render() rebuilds
     [g1, g2].forEach(g => { if (g) { g.style.transition = ''; g.style.transform = ''; } });
   }
 
-  // Pop-clear matched gems (with timeout fallback so we never hang)
   async function animPop(matchSet) {
     const promises = [];
     matchSet.forEach(i => {
       const r = Math.floor(i / COLS), c = i % COLS;
       const cell = cellEl(r, c);
       if (!cell) return;
-      // Pop the gem
+
       const g = cell.querySelector('.candy-gem');
       if (g) {
         g.classList.add('anim-pop');
@@ -179,9 +228,12 @@ window.candyModule = (() => {
           g.addEventListener('animationend', () => { clearTimeout(t); res(); }, { once: true });
         }));
       }
-      // Also pop lollipop stick if present
       const s = cell.querySelector('.candy-lolly-stick');
       if (s) s.classList.add('anim-pop');
+
+      // Pop blocker overlay if present (data cleared after this by clearMatchedBlockers)
+      const bl = cell.querySelector('.candy-blocker');
+      if (bl) bl.classList.add('anim-blocker-pop');
     });
     await Promise.all(promises);
   }
@@ -226,7 +278,6 @@ window.candyModule = (() => {
     if (!selected) { selectCell(r, c); return; }
     const { r: sr, c: sc } = selected;
     if (sr === r && sc === c) { clearSelection(); return; }
-    // Non-adjacent: just reselect
     if (Math.abs(sr - r) + Math.abs(sc - c) !== 1) { selectCell(r, c); return; }
     clearSelection();
     doSwap(sr, sc, r, c);
@@ -236,44 +287,35 @@ window.candyModule = (() => {
     busy = true;
     setStatus('');
     try {
-      // ① Visual forward swap
       await animSwap(r1, c1, r2, c2);
 
-      // ② Swap board data
       const tmp = board[idx(r1, c1)];
       board[idx(r1, c1)] = board[idx(r2, c2)];
       board[idx(r2, c2)] = tmp;
-
-      // ③ Rebuild DOM from updated data (clean state, no stale transforms)
       render();
 
-      // ④ Check for matches
       const matches = findMatches(board);
 
       if (matches.size === 0) {
-        // No match → visual swap back, no move deducted
         await animSwap(r1, c1, r2, c2);
-        // Restore data
         const t2 = board[idx(r1, c1)];
         board[idx(r1, c1)] = board[idx(r2, c2)];
         board[idx(r2, c2)] = t2;
         render();
-        // Shake both cells
         [gemEl(r1, c1), gemEl(r2, c2)].forEach(g => {
           if (!g) return;
           g.classList.add('anim-shake');
           g.addEventListener('animationend', () => g.classList.remove('anim-shake'), { once: true });
         });
         setStatus('No match — try again!');
-        return; // busy reset in finally
+        return;
       }
 
-      // ⑤ Valid match — consume a move and cascade
       moves--;
       updateHUD();
       await cascade(matches);
       await maybeSaveScore();
-      checkGameOver();
+      if (!checkLevelComplete()) checkGameOver();
     } finally {
       busy = false;
     }
@@ -291,48 +333,197 @@ window.candyModule = (() => {
       updateHUD();
       triggerChainFX(chain);
 
-      // Pop matched gems (waits for CSS animation with timeout fallback)
       await animPop(matchSet);
 
-      // Update data: clear matched, drop, fill
+      // Clear data after animation so blocker divs were still visible during pop
       matchSet.forEach(i => { board[i] = -1; });
+      clearMatchedBlockers(matchSet);
       dropBoard(board);
-      const newCells = fillNewGems(board);
+      const newCells = fillNewGems(board, levelCfg.types);
 
-      // Rebuild DOM — new cells play anim-drop
       render(newCells);
       await delay(430);
 
-      // Check for auto-matches from the new state
       matchSet = findMatches(board);
     }
   }
 
-  // ── Game over ─────────────────────────────────────────────────────────
+  // ── Win / lose conditions ─────────────────────────────────────────────
+  function checkLevelComplete() {
+    if (score >= levelCfg.target && blockerSet.size === 0) {
+      const coinsEarned = Math.round(score / 50) + levelCfg.n;
+      coins += coinsEarned;
+      if (currentLevel >= highestUnlocked && currentLevel < MAX_LEVEL) {
+        highestUnlocked = currentLevel + 1;
+      }
+      saveProgress().catch(() => {});
+      setStatus('');
+      showLevelComplete(coinsEarned);
+      return true;
+    }
+    if (score >= levelCfg.target && blockerSet.size > 0) {
+      setStatus(`Clear ${blockerSet.size} more block${blockerSet.size > 1 ? 's' : ''}!`);
+    }
+    return false;
+  }
+
   function checkGameOver() {
     if (moves <= 0) {
       setStatus('');
-      showOverlay('Game Over 🍬', score);
+      showOverlay('Out of Moves 🍬', score);
     }
   }
 
+  function showLevelComplete(coinsEarned) {
+    const boardEl = $id('candy-board'); if (!boardEl) return;
+    document.querySelector('.candy-overlay')?.remove();
+    const ov = document.createElement('div');
+    ov.className = 'candy-overlay candy-lc-overlay';
+    ov.innerHTML = `
+      <div class="candy-overlay-title">Level ${currentLevel} Clear! 🍭</div>
+      <div class="candy-overlay-score">Score: ${score.toLocaleString()} · +${coinsEarned} 🪙</div>
+      <div class="candy-overlay-btns">
+        <button class="candy-restart-btn" id="candy-ov-next" ${currentLevel >= MAX_LEVEL ? 'disabled' : ''}>
+          ${currentLevel >= MAX_LEVEL ? '🏆 Max!' : 'Next →'}
+        </button>
+        <button class="candy-restart-btn" id="candy-ov-map">🗺️ Levels</button>
+      </div>`;
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(ov);
+    $id('candy-ov-next')?.addEventListener('click', () => {
+      if (currentLevel < MAX_LEVEL) startLevel(currentLevel + 1);
+    });
+    $id('candy-ov-map')?.addEventListener('click', openLevelSelect);
+  }
+
   function showOverlay(title, finalScore) {
-    const boardEl = $id('candy-board');
-    if (!boardEl) return;
+    const boardEl = $id('candy-board'); if (!boardEl) return;
     document.querySelector('.candy-overlay')?.remove();
     const ov = document.createElement('div');
     ov.className = 'candy-overlay';
     ov.innerHTML = `
       <div class="candy-overlay-title">${title}</div>
-      <div class="candy-overlay-score">Score: ${finalScore}</div>
+      <div class="candy-overlay-score">Score: ${finalScore.toLocaleString()} · Level ${currentLevel}</div>
       <div class="candy-overlay-btns">
-        <button class="candy-restart-btn" id="candy-ov-restart">↺ Play Again</button>
-        <button class="candy-restart-btn candy-lb-btn"  id="candy-ov-lb">🏆 Scores</button>
+        <button class="candy-restart-btn" id="candy-ov-restart">↺ Retry</button>
+        <button class="candy-restart-btn candy-lb-btn" id="candy-ov-lb">🏆 Scores</button>
       </div>`;
     boardEl.style.position = 'relative';
     boardEl.appendChild(ov);
     $id('candy-ov-restart')?.addEventListener('click', restart);
     $id('candy-ov-lb')?.addEventListener('click', openLeaderboard);
+  }
+
+  // ── Level start ───────────────────────────────────────────────────────
+  function startLevel(n) {
+    if (n > highestUnlocked) return;
+    if (typeof removeDynamicModal === 'function') {
+      removeDynamicModal('candy-level-modal');
+    }
+    currentLevel  = n;
+    levelCfg      = genLevel(n);
+    board         = generateBoard(levelCfg.types);
+    score         = 0;
+    moves         = levelCfg.moves;
+    busy          = false;
+    selected      = null;
+    gameSaved     = false;
+    blockerSet    = placeBlockers(levelCfg.blockers);
+    setStatus('');
+    document.querySelector('.candy-overlay')?.remove();
+    render();
+  }
+
+  // ── Level select modal ────────────────────────────────────────────────
+  const PAGE_SIZE   = 50;
+  const TOTAL_PAGES = Math.ceil(MAX_LEVEL / PAGE_SIZE);
+
+  function openLevelSelectPage(p) {
+    p = Math.max(0, Math.min(TOTAL_PAGES - 1, p));
+    if (typeof removeDynamicModal === 'function') removeDynamicModal('candy-level-modal');
+
+    const start = p * PAGE_SIZE + 1;
+    const end   = Math.min(MAX_LEVEL, (p + 1) * PAGE_SIZE);
+
+    let cells = '';
+    for (let n = start; n <= end; n++) {
+      const unlocked  = n <= highestUnlocked;
+      const isCurrent = n === currentLevel;
+      const cfg       = genLevel(n);
+      const title     = `Level ${n}&#10;Target: ${cfg.target.toLocaleString()}&#10;Moves: ${cfg.moves}&#10;Types: ${cfg.types}${cfg.blockers ? '&#10;Blocks: ' + cfg.blockers : ''}`;
+      cells += `<button
+        class="candy-level-btn ${unlocked ? 'unlocked' : 'locked'} ${isCurrent ? 'current' : ''}"
+        ${unlocked ? `onclick="window.candyModule._startLevel(${n})"` : ''}
+        title="${title}">
+        <span class="clb-num">${n}</span>
+        ${unlocked ? '' : '🔒'}
+      </button>`;
+    }
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="candy-level-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal candy-level-modal-body" style="max-width:480px;width:95vw;">
+          <button class="modal-close-btn"
+            onclick="(typeof removeDynamicModal==='function'?removeDynamicModal:d=>document.getElementById(d)?.remove())('candy-level-modal')">&times;</button>
+          <div class="modal-title">🗺️ Level Select</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 8px;gap:8px;">
+            <button class="candy-modal-nav-btn"
+              ${p === 0 ? 'disabled' : ''}
+              onclick="window.candyModule._levelPage(${p - 1})">‹ Prev</button>
+            <span style="font-size:12px;opacity:.55">
+              Lvl ${start}–${end} / ${MAX_LEVEL} · Unlocked: ${highestUnlocked}
+            </span>
+            <button class="candy-modal-nav-btn"
+              ${p >= TOTAL_PAGES - 1 ? 'disabled' : ''}
+              onclick="window.candyModule._levelPage(${p + 1})">Next ›</button>
+          </div>
+          <div class="candy-level-grid">${cells}</div>
+        </div>
+      </div>`);
+  }
+
+  function openLevelSelect() {
+    openLevelSelectPage(Math.floor((currentLevel - 1) / PAGE_SIZE));
+  }
+
+  // ── Progress save / load ──────────────────────────────────────────────
+  async function loadProgress() {
+    if (typeof sb === 'undefined' || !sb) return;
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    try {
+      const { data } = await sb
+        .from('candy_progress')
+        .select('highest_level, coins')
+        .eq('username', currentUser.username)
+        .maybeSingle();
+      if (data) {
+        highestUnlocked = Math.max(1, data.highest_level || 1);
+        coins           = data.coins || 0;
+        // Clamp currentLevel to what's unlocked
+        if (currentLevel > highestUnlocked) currentLevel = highestUnlocked;
+      }
+    } catch (_) {}
+  }
+
+  async function saveProgress() {
+    if (typeof sb === 'undefined' || !sb) return;
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    try {
+      const u = currentUser.username;
+      const { data: ex } = await sb
+        .from('candy_progress')
+        .select('id')
+        .eq('username', u)
+        .maybeSingle();
+      if (ex) {
+        await sb.from('candy_progress')
+          .update({ highest_level: highestUnlocked, coins, updated_at: new Date().toISOString() })
+          .eq('id', ex.id);
+      } else {
+        await sb.from('candy_progress')
+          .insert([{ username: u, highest_level: highestUnlocked, coins }]);
+      }
+    } catch (_) {}
   }
 
   // ── Leaderboard ───────────────────────────────────────────────────────
@@ -341,7 +532,7 @@ window.candyModule = (() => {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     if (typeof sb === 'undefined' || !sb) return;
     try {
-      const movesUsed = MAX_MOVES - moves;
+      const movesUsed = levelCfg.moves - moves;
       const { data: existing } = await sb
         .from('candy_scores')
         .select('id,score,moves_used')
@@ -367,7 +558,7 @@ window.candyModule = (() => {
         }]);
       }
       gameSaved = true;
-    } catch (_) { /* silently ignore if table not yet created */ }
+    } catch (_) {}
   }
 
   async function openLeaderboard() {
@@ -377,7 +568,8 @@ window.candyModule = (() => {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="candy-lb-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal" style="max-width:400px;width:92vw;">
-          <button class="modal-close-btn" onclick="(typeof removeDynamicModal==='function'?removeDynamicModal:d=>document.getElementById(d)?.remove())('candy-lb-modal')">&times;</button>
+          <button class="modal-close-btn"
+            onclick="(typeof removeDynamicModal==='function'?removeDynamicModal:d=>document.getElementById(d)?.remove())('candy-lb-modal')">&times;</button>
           <div class="modal-title">🏆 Candy Match — Top Scores</div>
           <div id="candy-lb-rows" style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">
             <div style="opacity:.5;font-size:13px;text-align:center;padding:14px;">Loading…</div>
@@ -432,27 +624,19 @@ window.candyModule = (() => {
     }).join('');
   }
 
-  // Expose so the trophy button in HTML can call it
   window.openCandyLeaderboard = openLeaderboard;
 
   // ── Public API ────────────────────────────────────────────────────────
   function init() {
     active = true;
-    restart();
+    loadProgress()
+      .then(() => startLevel(currentLevel))
+      .catch(() => startLevel(currentLevel));
   }
 
   function restart() {
-    // Save current game before wiping state
     if (score > 0 && !gameSaved) maybeSaveScore().catch(() => {});
-    board     = generateBoard();
-    score     = 0;
-    moves     = MAX_MOVES;
-    busy      = false;
-    selected  = null;
-    gameSaved = false;
-    setStatus('');
-    document.querySelector('.candy-overlay')?.remove();
-    render();
+    startLevel(currentLevel);
   }
 
   function destroy() {
@@ -461,5 +645,10 @@ window.candyModule = (() => {
     selected = null;
   }
 
-  return { init, destroy, restart };
+  return {
+    init, destroy, restart,
+    openLevelSelect,
+    _startLevel: startLevel,
+    _levelPage:  openLevelSelectPage,
+  };
 })();

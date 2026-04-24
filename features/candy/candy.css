@@ -441,3 +441,178 @@
 .candy-play-btn:hover:not(:disabled) {
   background: linear-gradient(90deg, #ff88b5, #d877ff);
 }
+
+/* ── Info bar ─────────────────────────────────────────────────────────── */
+.candy-infobar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.candy-level-badge {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.candy-score-bar-wrap {
+  flex: 1;
+  height: 7px;
+  background: rgba(255,255,255,.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.candy-score-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ff6b9d, #c44dff);
+  transition: width .35s ease, background .35s;
+}
+.candy-target-pill {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Blockers pill is always in DOM but JS hides it for no-blocker levels */
+#candy-blockers-pill { display: none; }
+
+/* ── Action bar ───────────────────────────────────────────────────────── */
+.candy-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.candy-action-btn {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #fff;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.candy-action-btn:hover { background: rgba(255,255,255,.14); }
+
+/* ── Blocker overlay ──────────────────────────────────────────────────── */
+.candy-blocker {
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(60,40,20,.7) 0px,
+    rgba(60,40,20,.7) 4px,
+    rgba(100,70,30,.4) 4px,
+    rgba(100,70,30,.4) 8px
+  );
+  border: 2px solid rgba(160,110,50,.65);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes blocker-pop {
+  0%   { transform: scale(1);    opacity: 1; }
+  40%  { transform: scale(1.2);  opacity: 1; }
+  100% { transform: scale(0);    opacity: 0; }
+}
+.candy-blocker.anim-blocker-pop {
+  animation: blocker-pop .25s ease-in forwards;
+}
+
+/* ── Level complete overlay ───────────────────────────────────────────── */
+.candy-lc-overlay {
+  background: rgba(0,0,0,.7);
+}
+.candy-lc-overlay .candy-overlay-title {
+  background: linear-gradient(90deg, #ff6b9d, #ffdd44, #c44dff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Level select modal ───────────────────────────────────────────────── */
+.candy-level-modal-body {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.candy-level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 55vh;
+  padding: 4px 2px;
+  margin-top: 4px;
+}
+.candy-level-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.4);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px;
+  transition: background .12s;
+  line-height: 1.1;
+}
+.candy-level-btn.unlocked {
+  cursor: pointer;
+  background: rgba(255,107,157,.08);
+  border-color: rgba(255,107,157,.25);
+  color: #fff;
+}
+.candy-level-btn.unlocked:hover {
+  background: rgba(255,107,157,.2);
+}
+.candy-level-btn.current {
+  border-color: #ffdd44;
+  background: rgba(255,221,68,.15);
+  color: #ffdd44;
+}
+.clb-num {
+  font-size: 13px;
+  font-weight: 900;
+}
+.candy-modal-nav-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s;
+  flex-shrink: 0;
+}
+.candy-modal-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.candy-modal-nav-btn:disabled { opacity: .35; cursor: default; }

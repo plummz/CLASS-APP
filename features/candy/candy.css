@@ -1,0 +1,225 @@
+/* ── Candy Match — all selectors scoped under .candy-game-wrap ────────── */
+
+.candy-game-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 10px 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+  gap: 12px;
+  user-select: none;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.candy-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 440px;
+  gap: 8px;
+}
+
+.candy-back-btn,
+.candy-restart-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.candy-back-btn:hover,
+.candy-restart-btn:hover { background: rgba(255,255,255,.16); }
+
+.candy-hud {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+}
+.candy-hud-pill {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  padding: 5px 14px;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  min-width: 72px;
+}
+.candy-hud-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  opacity: .55;
+}
+.candy-hud-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+/* ── Board ────────────────────────────────────────────────────────────── */
+.candy-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06) inset;
+  backdrop-filter: blur(12px);
+  width: min(96vw, 440px);
+  box-sizing: border-box;
+}
+
+/* ── Cell ─────────────────────────────────────────────────────────────── */
+.candy-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: transform .1s;
+}
+.candy-cell:active { transform: scale(.9); }
+.candy-cell.selected { outline: 2px solid rgba(255,255,255,.85); outline-offset: -2px; }
+
+/* ── Gem base ─────────────────────────────────────────────────────────── */
+.candy-gem {
+  width: 82%;
+  height: 82%;
+  border-radius: 50%;
+  position: relative;
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .18s;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.35) inset;
+}
+.candy-gem::after {          /* shine */
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 16%;
+  width: 35%;
+  height: 28%;
+  background: rgba(255,255,255,.55);
+  border-radius: 50%;
+  filter: blur(2px);
+}
+
+/* ── Gem types ────────────────────────────────────────────────────────── */
+.candy-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff7799, #cc1133); }   /* cherry */
+.candy-gem.t1 { background: radial-gradient(circle at 35% 35%, #66aaff, #1144cc); }   /* blueberry */
+.candy-gem.t2 { background: radial-gradient(circle at 35% 35%, #ffe566, #dd9900); }   /* lemon */
+.candy-gem.t3 { background: radial-gradient(circle at 35% 35%, #66ee88, #118833); }   /* lime */
+.candy-gem.t4 { background: radial-gradient(circle at 35% 35%, #dd77ff, #881acc); }   /* grape */
+.candy-gem.t5 { background: radial-gradient(circle at 35% 35%, #ffb055, #cc5500); }   /* orange */
+
+/* shape variants so types look distinct */
+.candy-gem.t1 { border-radius: 22% 78% 22% 78% / 78% 22% 78% 22%; }   /* diamond-ish */
+.candy-gem.t3 { border-radius: 20%; }                                     /* rounded square */
+.candy-gem.t5 { border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }    /* oval */
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+@keyframes candy-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); }
+  100% { transform: scale(0); opacity: 0; }
+}
+@keyframes candy-drop {
+  0%   { transform: translateY(-100%) scale(.8); opacity: 0; }
+  70%  { transform: translateY(8%) scale(1.05); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes candy-shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+
+.candy-gem.anim-pop  { animation: candy-pop  .28s ease-in forwards; }
+.candy-gem.anim-drop { animation: candy-drop .32s cubic-bezier(.22,1,.36,1) forwards; }
+.candy-gem.anim-shake { animation: candy-shake .25s ease-in-out; }
+
+/* ── Status banner ────────────────────────────────────────────────────── */
+.candy-status {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  min-height: 22px;
+  opacity: .8;
+  text-align: center;
+}
+
+/* ── Game-over / win overlay ──────────────────────────────────────────── */
+.candy-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.65);
+  border-radius: 18px;
+  gap: 14px;
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.candy-overlay-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+.candy-overlay-score {
+  font-size: 16px;
+  opacity: .75;
+  color: #fff;
+}
+
+/* ── Hub card candy theme ─────────────────────────────────────────────── */
+.candy-thumb {
+  background: linear-gradient(135deg, #ff6b9d 0%, #c44dff 40%, #4d79ff 100%);
+  overflow: visible;
+}
+.candy-card-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 14px;
+  box-sizing: border-box;
+}
+.candy-card-gem {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  flex-shrink: 0;
+}
+.candy-card-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff7799, #cc1133); }
+.candy-card-gem.t1 { background: radial-gradient(circle at 35% 35%, #66aaff, #1144cc); border-radius: 22% 78% 22% 78% / 78% 22% 78% 22%; }
+.candy-card-gem.t2 { background: radial-gradient(circle at 35% 35%, #ffe566, #dd9900); }
+.candy-card-gem.t3 { background: radial-gradient(circle at 35% 35%, #66ee88, #118833); border-radius: 20%; }
+.candy-card-gem.t4 { background: radial-gradient(circle at 35% 35%, #dd77ff, #881acc); }
+.candy-card-gem.t5 { background: radial-gradient(circle at 35% 35%, #ffb055, #cc5500); border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
+.candy-play-btn {
+  background: linear-gradient(90deg, #ff6b9d, #c44dff);
+  border: none;
+}
+.candy-play-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, #ff88b5, #d877ff);
+}

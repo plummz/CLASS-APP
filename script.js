@@ -2748,6 +2748,7 @@ pageConfig['coding-educational'] = { bg: 'bg-galaxy', particles: 'particles-gala
 pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'PAC-MAN' };
 pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
 pageConfig.admin      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🛠️ Admin' };
+pageConfig.candy      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🍬 Candy Match' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2908,6 +2909,7 @@ window.goToPage = function(pageName) {
   // Royale: tear down when leaving
   if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
   if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
+  if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -2921,7 +2923,7 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
@@ -2967,6 +2969,7 @@ window.goToPage = function(pageName) {
   // Royale: start after page is visible
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
+  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') candyModule.init();
   if (pageName === 'diagnostics') loadDiagnostics();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();

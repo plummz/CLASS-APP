@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
   <link rel="stylesheet" href="features/royale/royale.css?v=14">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
+  <link rel="stylesheet" href="features/candy/candy.css?v=1">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -577,18 +578,23 @@
           <div class="game-card-shine"></div>
         </div>
 
-        <!-- Placeholder slot 2 -->
-        <div class="game-card game-card-soon">
-          <div class="game-thumb soon-thumb">
-            <div class="soon-question">?</div>
-            <div class="game-thumb-badge soon-badge">SOON</div>
+        <!-- Candy Match -->
+        <div class="game-card" onclick="goToPage('candy')">
+          <div class="game-thumb candy-thumb">
+            <div class="candy-card-art">
+              <div class="candy-card-gem t0"></div><div class="candy-card-gem t1"></div><div class="candy-card-gem t2"></div>
+              <div class="candy-card-gem t3"></div><div class="candy-card-gem t4"></div><div class="candy-card-gem t5"></div>
+              <div class="candy-card-gem t2"></div><div class="candy-card-gem t0"></div><div class="candy-card-gem t3"></div>
+            </div>
+            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ff6b9d,#c44dff)">MATCH-3</div>
           </div>
           <div class="game-info">
-            <div class="game-tags"><span class="game-tag">COMING SOON</span></div>
-            <h3 class="game-name">???</h3>
-            <p class="game-desc">More games are on the way. Check back soon!</p>
-            <button class="game-play-btn" disabled>🔒  LOCKED</button>
+            <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">CASUAL</span></div>
+            <h3 class="game-name">Candy Match</h3>
+            <p class="game-desc">Swap candies, match 3, and score high!</p>
+            <button class="game-play-btn candy-play-btn">▶  PLAY NOW</button>
           </div>
+          <div class="game-card-shine"></div>
         </div>
 
       </div>
@@ -612,6 +618,28 @@
         <button class="pacman-dpad-btn pacman-right" data-dir="right" type="button">▶</button>
         <button class="pacman-dpad-btn pacman-down" data-dir="down" type="button">▼</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── CANDY MATCH ───────────────────────────────────────── -->
+  <div class="page" id="page-candy">
+    <div class="candy-game-wrap">
+      <div class="candy-topbar">
+        <button class="candy-back-btn" onclick="goToPage('games')">← Games</button>
+        <div class="candy-hud">
+          <div class="candy-hud-pill">
+            <div class="candy-hud-label">Score</div>
+            <div class="candy-hud-value" id="candy-score">0</div>
+          </div>
+          <div class="candy-hud-pill">
+            <div class="candy-hud-label">Moves</div>
+            <div class="candy-hud-value" id="candy-moves">30</div>
+          </div>
+        </div>
+        <button class="candy-restart-btn" onclick="window.candyModule.restart()">↺</button>
+      </div>
+      <div id="candy-board" class="candy-board"></div>
+      <div id="candy-status" class="candy-status"></div>
     </div>
   </div>
 
@@ -1321,6 +1349,7 @@
   <script src="features/pokemon/pokemon.js?v=3"></script>
   <script src="features/royale/royale.js?v=14"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
+  <script src="features/candy/candy.js?v=1"></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

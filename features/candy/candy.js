@@ -31,6 +31,9 @@ window.candyModule = (() => {
   let coins           = 0;
   let equippedSkin    = 'default';
   let ownedSkins      = new Set(['default']);
+  let equippedEffect  = 'none';
+  let ownedEffects    = new Set(['none']);
+  let lowEndMode      = false;
 
   // ── Skin data (35 skins) ──────────────────────────────────────────────
   // [id, name, rarity_idx, price, hues[8] | null]
@@ -84,6 +87,38 @@ window.candyModule = (() => {
       [id, { id, name, rarity: RARITY_NAMES[ri], price, hues }]
     )
   );
+
+  // ── Effect data (15 buyable effects + 'none') ─────────────────────────
+  // [id, name, rarity_idx, price]
+  const EFFECT_DATA = [
+    ['none',       'No Effects',    0,    0],
+    // Epic (5)
+    ['sparkle',    'Sparkle Burst', 2,  500],
+    ['glowtrail',  'Glow Trail',    2,  550],
+    ['softpulse',  'Soft Pulse',    2,  600],
+    ['colorwave',  'Color Wave',    2,  650],
+    ['shimmer',    'Shimmer',       2,  700],
+    // Legendary (5)
+    ['rainbowfx',  'Rainbow Wave',  3, 1500],
+    ['aura',       'Aura Ring',     3, 1600],
+    ['screenglow', 'Screen Glow',   3, 1800],
+    ['prismsplit', 'Prism Split',   3, 1900],
+    ['startrail',  'Star Trail',    3, 2000],
+    // Premium (5)
+    ['confetti',   'Neon Confetti', 4, 3000],
+    ['candyaura',  'Candy Aura',    4, 3500],
+    ['glowborder', 'Glow Border',   4, 3500],
+    ['celebrate',  'Celebration',   4, 4000],
+    ['megablast',  'Mega Blast',    4, 5000],
+  ];
+  const EFFECTS = Object.fromEntries(
+    EFFECT_DATA.map(([id, name, ri, price]) =>
+      [id, { id, name, rarity: RARITY_NAMES[ri], price }]
+    )
+  );
+
+  // Board effects use the board element; wrap effects use the game-wrap
+  const WRAP_EFFECTS = new Set(['aura','screenglow','confetti','candyaura','celebrate','megablast']);
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const idx   = (r, c) => r * COLS + c;
@@ -326,6 +361,7 @@ window.candyModule = (() => {
     if (n >= 4) cls.push('candy-fx-pulse');
     boardEl.classList.add(...cls);
     setTimeout(() => boardEl.classList.remove(...cls), 700);
+    triggerEffect('combo');
   }
 
   // ── Core interaction ──────────────────────────────────────────────────
@@ -388,6 +424,7 @@ window.candyModule = (() => {
       score += Math.round(matchSet.size * 10 * mult);
       updateHUD();
       triggerChainFX(chain);
+      if (matchSet.size >= 5) triggerEffect('bigMatch');
 
       await animPop(matchSet);
 
@@ -415,6 +452,7 @@ window.candyModule = (() => {
       saveProgress().catch(() => {});
       setStatus('');
       showLevelComplete(coinsEarned);
+      triggerEffect('levelComplete');
       return true;
     }
     if (score >= levelCfg.target && blockerSet.size > 0) {
@@ -490,6 +528,28 @@ window.candyModule = (() => {
     render();
   }
 
+  // ── Effect system ─────────────────────────────────────────────────────
+  function triggerEffect(type) {
+    if (lowEndMode || equippedEffect === 'none') return;
+    const boardEl = $id('candy-board');
+    const wrapEl  = $id('candy-game-wrap') || document.querySelector('.candy-game-wrap');
+    const target  = WRAP_EFFECTS.has(equippedEffect) ? wrapEl : boardEl;
+    if (!target) return;
+    const cls      = 'candy-eff-' + equippedEffect;
+    const duration = type === 'levelComplete' ? 2200 : 900;
+    target.classList.add(cls);
+    setTimeout(() => target.classList.remove(cls), duration);
+  }
+
+  function toggleLowEnd() {
+    lowEndMode = !lowEndMode;
+    const boardEl = $id('candy-board');
+    if (boardEl) boardEl.classList.toggle('candy-low-end', lowEndMode);
+    const btn = $id('candy-lowend-btn');
+    if (btn) btn.textContent = lowEndMode ? '🐢 FX Off' : '⚡ FX';
+  }
+  window.toggleCandyLowEnd = toggleLowEnd;
+
   // ── Skin system ───────────────────────────────────────────────────────
   function skinGrad(h, typeIdx) {
     if (typeIdx === 5) return `linear-gradient(145deg,hsl(${h},80%,72%),hsl(${h},78%,42%),hsl(${h},74%,28%))`;
@@ -529,9 +589,9 @@ window.candyModule = (() => {
   }
 
   // ── Shop ──────────────────────────────────────────────────────────────
-  function openShop() { buildShopModal(); }
+  function openShop() { buildShopModal('skins'); }
 
-  function buildShopModal() {
+  function buildShopModal(tab = 'skins') {
     if (typeof removeDynamicModal === 'function') removeDynamicModal('candy-shop-modal');
 
     const rows = RARITY_NAMES.map(rarity => {
@@ -571,14 +631,57 @@ window.candyModule = (() => {
       </div>`;
     }).join('');
 
+    // Build effects tab content
+    const effRows = ['epic','legendary','premium'].map(rarity => {
+      const group = EFFECT_DATA
+        .map(([id, name, ri, price]) => ({ id, name, rarity: RARITY_NAMES[ri], price }))
+        .filter(e => e.rarity === rarity);
+      if (!group.length) return '';
+      const items = group.map(({ id, name, price }) => {
+        const owned    = ownedEffects.has(id);
+        const equipped = equippedEffect === id;
+        const canBuy   = coins >= price;
+        const ICONS = { sparkle:'✨',glowtrail:'💫',softpulse:'🌟',colorwave:'🌈',shimmer:'🔆',
+          rainbowfx:'🌈',aura:'💎',screenglow:'🌠',prismsplit:'🔮',startrail:'⭐',
+          confetti:'🎉',candyaura:'🍭',glowborder:'🔴',celebrate:'🎊',megablast:'💥' };
+        const icon = ICONS[id] || '✨';
+        let action;
+        if (equipped) {
+          action = `<div class="candy-shop-badge equipped-badge">✓ On</div>`;
+        } else if (owned) {
+          action = `<button class="candy-shop-action-btn" onclick="window.candyModule._equipEffect('${id}')">Equip</button>`;
+        } else {
+          action = `<button class="candy-shop-action-btn${canBuy ? '' : ' cant-afford'}"
+            ${canBuy ? `onclick="window.candyModule._buyEffect('${id}',${price})"` : 'disabled'}>
+            🪙 ${price}
+          </button>`;
+        }
+        return `<div class="candy-shop-item${equipped ? ' equipped' : ''}">
+          <div class="candy-effect-icon">${icon}</div>
+          <div class="candy-shop-item-name">${name}</div>
+          ${action}
+        </div>`;
+      }).join('');
+      return `<div class="candy-shop-section">
+        <div class="candy-shop-rarity-label candy-rarity-${rarity}">${rarity.toUpperCase()}</div>
+        <div class="candy-shop-items">${items}</div>
+      </div>`;
+    }).join('');
+
+    const isSkinsTab   = tab === 'skins';
+    const activeContent = isSkinsTab ? rows : effRows;
+
     document.body.insertAdjacentHTML('beforeend', `
       <div id="candy-shop-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal candy-shop-modal-inner" style="max-width:500px;width:95vw;">
           <button class="modal-close-btn"
             onclick="(typeof removeDynamicModal==='function'?removeDynamicModal:d=>document.getElementById(d)?.remove())('candy-shop-modal')">&times;</button>
           <div class="modal-title">🛍️ Candy Shop &nbsp;<span style="font-size:14px;font-weight:700;color:#ffdd44;">🪙 ${coins}</span></div>
-          <div style="font-size:11px;opacity:.5;margin-bottom:10px;">Earn coins by completing levels</div>
-          <div style="overflow-y:auto;max-height:60vh;">${rows}</div>
+          <div class="candy-shop-tabs">
+            <button class="candy-shop-tab${isSkinsTab ? ' active' : ''}" onclick="window.candyModule._shopTab('skins')">🍬 Skins</button>
+            <button class="candy-shop-tab${!isSkinsTab ? ' active' : ''}" onclick="window.candyModule._shopTab('effects')">✨ Effects</button>
+          </div>
+          <div style="overflow-y:auto;max-height:55vh;margin-top:10px;">${activeContent}</div>
         </div>
       </div>`);
   }
@@ -596,7 +699,23 @@ window.candyModule = (() => {
     if (!ownedSkins.has(id)) return;
     applySkin(id);
     saveProgress().catch(() => {});
-    buildShopModal();
+    buildShopModal('skins');
+  }
+
+  function _buyEffect(id, price) {
+    if (coins < price || ownedEffects.has(id)) return;
+    coins -= price;
+    ownedEffects.add(id);
+    saveInventoryItem(id, 'effect').catch(() => {});
+    saveProgress().catch(() => {});
+    buildShopModal('effects');
+  }
+
+  function _equipEffect(id) {
+    if (!ownedEffects.has(id)) return;
+    equippedEffect = id;
+    saveProgress().catch(() => {});
+    buildShopModal('effects');
   }
 
   async function saveInventoryItem(itemId, itemType) {
@@ -667,7 +786,7 @@ window.candyModule = (() => {
     try {
       const u = currentUser.username;
       const [{ data: prog }, { data: inv }] = await Promise.all([
-        sb.from('candy_progress').select('highest_level,coins,equipped_skin').eq('username', u).maybeSingle(),
+        sb.from('candy_progress').select('highest_level,coins,equipped_skin,equipped_effect').eq('username', u).maybeSingle(),
         sb.from('candy_inventory').select('item_id,item_type').eq('username', u),
       ]);
       if (prog) {
@@ -676,9 +795,11 @@ window.candyModule = (() => {
         if (prog.equipped_skin) equippedSkin = prog.equipped_skin;
         if (currentLevel > highestUnlocked) currentLevel = highestUnlocked;
       }
+      if (prog && prog.equipped_effect) equippedEffect = prog.equipped_effect;
       if (inv) {
         inv.forEach(({ item_id, item_type }) => {
-          if (item_type === 'skin') ownedSkins.add(item_id);
+          if (item_type === 'skin')   ownedSkins.add(item_id);
+          if (item_type === 'effect') ownedEffects.add(item_id);
         });
       }
     } catch (_) {}
@@ -696,11 +817,11 @@ window.candyModule = (() => {
         .maybeSingle();
       if (ex) {
         await sb.from('candy_progress')
-          .update({ highest_level: highestUnlocked, coins, equipped_skin: equippedSkin, updated_at: new Date().toISOString() })
+          .update({ highest_level: highestUnlocked, coins, equipped_skin: equippedSkin, equipped_effect: equippedEffect, updated_at: new Date().toISOString() })
           .eq('id', ex.id);
       } else {
         await sb.from('candy_progress')
-          .insert([{ username: u, highest_level: highestUnlocked, coins, equipped_skin: equippedSkin }]);
+          .insert([{ username: u, highest_level: highestUnlocked, coins, equipped_skin: equippedSkin, equipped_effect: equippedEffect }]);
       }
     } catch (_) {}
   }
@@ -833,6 +954,9 @@ window.candyModule = (() => {
     openLevelSelect, openShop,
     _startLevel: startLevel,
     _levelPage:  openLevelSelectPage,
+    _shopTab:    buildShopModal,
     _buySkin, _equipSkin,
+    _buyEffect, _equipEffect,
+    toggleLowEnd,
   };
 })();

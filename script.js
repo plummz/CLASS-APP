@@ -4025,19 +4025,29 @@ function revealAdminNav() {
 async function loadAdminDashboard() {
   if (!isAdmin || !sb) return;
 
-  // Stats
+  // Stats — computed directly from Supabase, no custom RPC needed
   const statsGrid = document.getElementById('admin-stats');
   if (statsGrid) {
     statsGrid.innerHTML = '<div class="admin-stat-card"><div class="admin-stat-value">…</div><div class="admin-stat-label">Loading</div></div>';
-    const { data, error } = await sb.rpc('class_app_admin_stats');
-    if (!error && data) {
-      const labels = { total_users:'Users', online_users:'Online', total_messages:'Messages', total_files:'Files', total_opens:'App Opens' };
-      statsGrid.innerHTML = Object.entries(labels).map(([k, label]) =>
-        `<div class="admin-stat-card"><div class="admin-stat-value">${data[k] ?? 0}</div><div class="admin-stat-label">${label}</div></div>`
-      ).join('');
-    } else {
-      statsGrid.innerHTML = '<div class="admin-stat-card"><div class="admin-stat-value">—</div><div class="admin-stat-label">Unavailable</div></div>';
-    }
+    const [
+      { count: totalUsers  },
+      { count: totalMsgs   },
+      { count: totalFiles  },
+    ] = await Promise.all([
+      sb.from('profiles').select('*', { count: 'exact', head: true }),
+      sb.from('messages').select('*', { count: 'exact', head: true }),
+      sb.from('files').select('*',    { count: 'exact', head: true }),
+    ]);
+    const onlineUsers = users.filter(u => u.online).length;
+    const stats = [
+      { label: 'Users',    value: totalUsers  ?? users.length },
+      { label: 'Online',   value: onlineUsers },
+      { label: 'Messages', value: totalMsgs   ?? '—' },
+      { label: 'Files',    value: totalFiles  ?? '—' },
+    ];
+    statsGrid.innerHTML = stats.map(s =>
+      `<div class="admin-stat-card"><div class="admin-stat-value">${s.value}</div><div class="admin-stat-label">${s.label}</div></div>`
+    ).join('');
   }
 
   if (adminActiveTab === 'log') { loadActivityLog(); return; }
@@ -4109,8 +4119,13 @@ async function loadActivityLog() {
   const container = document.getElementById('admin-activity-log');
   if (!container || !isAdmin || !sb) return;
   container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">Loading…</div>';
-  const { data, error } = await sb.rpc('class_app_admin_activity_log', { p_limit: 100 });
-  if (error || !data) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">Failed to load log.</div>'; return; }
+  // Try RPC first; fall back to direct table query if RPC not deployed yet
+  let data, error;
+  ({ data, error } = await sb.rpc('class_app_admin_activity_log', { p_limit: 100 }));
+  if (error) {
+    ({ data, error } = await sb.from('activity_log').select('*').order('created_at', { ascending: false }).limit(100));
+  }
+  if (error || !data) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">No activity recorded yet.</div>'; return; }
   if (!data.length) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">No activity yet.</div>'; return; }
   container.innerHTML = data.map(row => {
     const t = new Date(row.created_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });

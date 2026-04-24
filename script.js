@@ -2747,6 +2747,7 @@ pageConfig.codelab = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: fal
 pageConfig['coding-educational'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📚 CODING LESSONS' };
 pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'PAC-MAN' };
 pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
+pageConfig.admin      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🛠️ Admin' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2929,11 +2930,13 @@ window.goToPage = function(pageName) {
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
   if(oldPage) oldPage.classList.remove('active');
-  document.getElementById(old.bg).classList.remove('active');
-  document.getElementById(old.particles).classList.remove('active');
-  if (old.wave && document.getElementById('wave-container')) document.getElementById('wave-container').classList.remove('active');
-  if (old.mountain) document.getElementById('mountain-svg').classList.remove('active');
-  if (old.aurora) document.getElementById('aurora').classList.remove('active');
+  if (old) {
+    document.getElementById(old.bg)?.classList.remove('active');
+    document.getElementById(old.particles)?.classList.remove('active');
+    if (old.wave) document.getElementById('wave-container')?.classList.remove('active');
+    if (old.mountain) document.getElementById('mountain-svg')?.classList.remove('active');
+    if (old.aurora) document.getElementById('aurora')?.classList.remove('active');
+  }
 
   currentPage = pageName;
   if (appPresenceChannel && currentUser?.username) {
@@ -2952,7 +2955,7 @@ window.goToPage = function(pageName) {
   applyPageBackground(pageName);
 
   const indicator = document.getElementById('page-indicator');
-  if (indicator) indicator.textContent = cfg.label;
+  if (indicator && cfg) indicator.textContent = cfg.label;
   if(newPage) newPage.scrollTop = 0;
   document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
   closeMenu();

@@ -11,7 +11,7 @@ window.candyModule = (() => {
       n,
       target:   Math.round(200 + t * t * 35000 + t * 5000),
       moves:    Math.max(10, Math.round(30 - t * 20 + Math.sin(n * 0.1) * 1.5)),
-      types:    Math.min(8, 3 + Math.floor(t * 5.5)),
+      types:    Math.min(8, 6 + Math.floor(t * 2)),
       blockers: Math.min(14, Math.floor(t * 16)),
     };
   }
@@ -425,8 +425,12 @@ window.candyModule = (() => {
 
     while (matchSet.size > 0) {
       chain++;
-      const mult = chainMultiplier(chain);
-      score += Math.round(matchSet.size * 10 * mult);
+      const mult     = chainMultiplier(chain);
+      // Size multiplier: bigger match = bigger reward
+      const sizeMult = matchSet.size >= 7 ? 2.0 : matchSet.size >= 5 ? 1.5 : matchSet.size >= 4 ? 1.2 : 1.0;
+      score += Math.round(matchSet.size * 15 * mult * sizeMult);
+      // Combo coin bonus: small coin award for chain 3+ so players feel rewarded mid-game
+      if (chain >= 3) { coins += Math.min(4, chain - 2); }
       updateHUD();
       triggerChainFX(chain);
       if (matchSet.size >= 5) triggerEffect('bigMatch');
@@ -449,7 +453,7 @@ window.candyModule = (() => {
   // ── Win / lose conditions ─────────────────────────────────────────────
   function checkLevelComplete() {
     if (score >= levelCfg.target && blockerSet.size === 0) {
-      const coinsEarned = Math.round(score / 50) + levelCfg.n;
+      const coinsEarned = Math.round(score / 38) + levelCfg.n;
       coins += coinsEarned;
       updateHUD();
       if (currentLevel >= highestUnlocked && currentLevel < MAX_LEVEL) {
@@ -585,8 +589,12 @@ window.candyModule = (() => {
     const lava1 = isLava ? l1 + 12 : l1; // molten bright center
     const lava2 = isLava ? l2 - 6  : l2; // dark crust edges
 
-    if (typeIdx === 5) return `linear-gradient(145deg,hsl(${h},${s1}%,${lava1+4}%),hsl(${hv},${s2}%,${lava2}%),hsl(${h},${s3}%,${l3}%))`;
-    if (typeIdx === 6) return `linear-gradient(165deg,hsl(${h},${s1}%,${lava1+3}%),hsl(${hv},${s2}%,${lava2+3}%),hsl(${h},${s3}%,${l3+2}%))`;
+    // t4=Candy Corn triangle → vertical linear (top=light tip, bottom=base)
+    // t6=Chocolate Bar square → angled linear for depth
+    // t7=Star → diagonal linear for sparkle depth
+    // All others (drop, lollipop, gummy bear, wrapped candy, jawbreaker) → radial
+    if (typeIdx === 4) return `linear-gradient(180deg,hsl(${h},${s1}%,${lava1+10}%),hsl(${h},${s1}%,${lava1}%),hsl(${hv},${s2}%,${lava2}%))`;
+    if (typeIdx === 6) return `linear-gradient(145deg,hsl(${h},${s1}%,${lava1+4}%),hsl(${hv},${s2}%,${lava2}%),hsl(${h},${s3}%,${l3}%))`;
     if (typeIdx === 7) return `linear-gradient(135deg,hsl(${h},${s1+5}%,${lava1}%),hsl(${hv},${s2+5}%,${lava2+3}%),hsl(${h},${s3+4}%,${l3}%))`;
     return `radial-gradient(circle at 35% 30%,hsl(${h},${s1+5}%,${lava1}%),hsl(${hv},${s1}%,${lava2}%))`;
   }

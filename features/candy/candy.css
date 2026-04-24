@@ -150,24 +150,29 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   8 CANDY PIECE TYPES — each has unique shape + colour
-   t0  Hard Candy   (cherry red, oval)
-   t1  Lollipop     (blueberry blue, circle + stick)
-   t2  Gumdrop      (lemon yellow, teardrop)
-   t3  Jelly Bean   (lime green, asymmetric bean)
-   t4  Wrapped      (grape purple, pinched ends)
-   t5  Chocolate Sq (orange-brown, rounded square)
-   t6  Pyramid      (teal, triangle via clip-path)
-   t7  3D Cube      (hot pink, cuboid illusion)
+   8 CANDY PIECE TYPES — based on real candy references
+   t0  Hard Candy Drop  (cherry red, teardrop shape — like Jolly Rancher drops)
+   t1  Lollipop         (blueberry blue, circle + stick)
+   t2  Gummy Bear       (lime green, bear silhouette via clip-path)
+   t3  Wrapped Candy    (mint teal, horizontal capsule with diagonal stripes)
+   t4  Candy Corn       (orange/yellow/white, triangle with 3 color bands)
+   t5  Jawbreaker       (indigo, sphere with concentric inner ring)
+   t6  Chocolate Bar    (orange-brown, rounded square with cross break lines)
+   t7  Star Candy       (hot pink, 5-point star via clip-path)
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* t0 — Hard Candy: cherry red, classic oval */
+/* t0 — Hard Candy Drop: cherry red, teardrop — narrow top, wide base */
 .candy-gem.t0 {
-  background: radial-gradient(circle at 35% 30%, #ff99aa, #cc1133);
-  border-radius: 50%;
+  background: radial-gradient(ellipse at 38% 32%, #ff99aa, #cc1133);
+  clip-path: polygon(50% 0%, 76% 14%, 94% 38%, 97% 62%, 85% 83%, 65% 96%, 50% 100%, 35% 96%, 15% 83%, 3% 62%, 6% 38%, 24% 14%);
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.45));
+  width: 80%;
+  height: 92%;
 }
 
-/* t1 — Lollipop head: blueberry blue, perfect circle (smaller to leave room for stick) */
+/* t1 — Lollipop head: blueberry blue, circle (smaller to leave room for stick) */
 .candy-gem.t1 {
   background: radial-gradient(circle at 35% 30%, #88ccff, #1144cc);
   border-radius: 50%;
@@ -175,106 +180,146 @@
   height: 70%;
 }
 
-/* t2 — Gumdrop: lemon yellow, teardrop (wide bottom, rounded top bump) */
+/* t2 — Gummy Bear: lime green, bear body+head+ears via clip-path */
 .candy-gem.t2 {
-  background: radial-gradient(ellipse at 40% 60%, #fff176, #e6ac00);
-  border-radius: 50% 50% 45% 45% / 40% 40% 60% 60%;
-  width: 80%;
-  height: 86%;
+  background: radial-gradient(ellipse at 42% 42%, #aaffaa, #119933);
+  clip-path: polygon(29% 9%, 34% 1%, 41% 7%, 59% 7%, 66% 1%, 71% 9%, 84% 23%, 90% 42%, 87% 62%, 77% 80%, 63% 94%, 50% 100%, 37% 94%, 23% 80%, 13% 62%, 10% 42%, 16% 23%);
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
+  width: 82%;
+  height: 92%;
 }
 .candy-gem.t2::before {
+  /* Face highlight — lighter dome on upper half of bear */
   content: '';
   position: absolute;
-  top: -16%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 42%;
-  height: 28%;
-  background: radial-gradient(ellipse, #fff176, #e6ac00);
-  border-radius: 50%;
-}
-
-/* t3 — Jelly Bean: lime green, asymmetric oval */
-.candy-gem.t3 {
-  background: radial-gradient(ellipse at 30% 40%, #99ff99, #118833);
-  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
-  width: 88%;
-  height: 76%;
-}
-
-/* t4 — Wrapped Candy: grape purple, pinched waist shape */
-.candy-gem.t4 {
-  background: radial-gradient(ellipse at 35% 35%, #ee88ff, #7711bb);
-  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
-  width: 90%;
-  height: 72%;
-}
-.candy-gem.t4::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  border: 3px solid rgba(255,255,255,.22);
+  top: 14%;
+  left: 24%;
+  width: 52%;
+  height: 36%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.3), transparent 70%);
   pointer-events: none;
 }
 
-/* t5 — Chocolate Square: orange-brown, rounded square with score lines */
+/* t3 — Wrapped Candy: mint teal, horizontal capsule with diagonal wrapper stripes */
+.candy-gem.t3 {
+  background: radial-gradient(ellipse at 40% 32%, #88ffdd, #008866);
+  border-radius: 50%;
+  width: 94%;
+  height: 56%;
+  box-shadow: 0 3px 8px rgba(0,0,0,.35);
+}
+.candy-gem.t3::before {
+  /* Diagonal stripe pattern over the wrapper body */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent 0px, transparent 5px,
+    rgba(255,255,255,.18) 5px, rgba(255,255,255,.18) 7px
+  );
+  pointer-events: none;
+}
+.candy-gem.t3::after {
+  /* Reposition shine to fit wide capsule */
+  top: 6%;
+  left: 20%;
+  width: 42%;
+  height: 42%;
+}
+
+/* t4 — Candy Corn: classic 3-band triangle (white tip / orange middle / yellow base) */
+.candy-gem.t4 {
+  background: linear-gradient(180deg,
+    #ffffff 0%, #ffffff 22%,
+    #ff8c00 22%, #ff8c00 64%,
+    #ffd700 64%, #ffd700 100%
+  );
+  clip-path: polygon(50% 2%, 97% 98%, 3% 98%);
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.35));
+  width: 84%;
+  height: 90%;
+}
+.candy-gem.t4::after { display: none; }
+.candy-gem.t4::before {
+  /* Inner triangle highlight */
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 40%;
+  width: 18%;
+  height: 26%;
+  background: rgba(255,255,255,.4);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  pointer-events: none;
+}
+
+/* t5 — Jawbreaker: indigo sphere with a visible inner concentric ring */
 .candy-gem.t5 {
+  background: radial-gradient(circle at 35% 30%, #9999ff, #2222cc);
+  border-radius: 50%;
+  width: 84%;
+  height: 84%;
+  box-shadow: 0 3px 10px rgba(0,0,0,.45), 0 0 0 3px rgba(255,255,255,.12);
+}
+.candy-gem.t5::before {
+  /* Inner concentric ring showing the layered jawbreaker interior */
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.2), transparent 65%);
+  pointer-events: none;
+}
+
+/* t6 — Chocolate Bar: dark brown, rounded square with cross break lines */
+.candy-gem.t6 {
   background: linear-gradient(145deg, #ffb866 0%, #cc5500 55%, #882200 100%);
   border-radius: 22%;
   width: 80%;
   height: 80%;
   box-shadow: 0 3px 8px rgba(0,0,0,.45), 2px 2px 0 rgba(255,255,255,.12) inset, -1px -1px 0 rgba(0,0,0,.25) inset;
 }
-.candy-gem.t5::before {
-  content: '';
-  position: absolute;
-  top: 30%;
-  left: 12%;
-  right: 12%;
-  height: 2px;
-  background: rgba(0,0,0,.2);
-  border-radius: 2px;
-}
-
-/* t6 — Pyramid: teal/cyan, triangle via clip-path */
-.candy-gem.t6 {
-  background: linear-gradient(165deg, #88ffee 0%, #009988 45%, #006655 100%);
-  clip-path: polygon(50% 4%, 96% 94%, 4% 94%);
-  border-radius: 0;
-  box-shadow: none;
-  width: 85%;
-  height: 85%;
-}
-.candy-gem.t6::after { display: none; }
 .candy-gem.t6::before {
+  /* Cross break lines (horizontal + vertical) like a real chocolate bar */
   content: '';
   position: absolute;
-  top: 28%;
-  left: 38%;
-  width: 20%;
-  height: 34%;
-  background: rgba(255,255,255,.35);
-  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  inset: 10%;
+  background:
+    linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.18)) center / 2px 100% no-repeat,
+    linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.18)) center / 100% 2px no-repeat;
   pointer-events: none;
 }
 
-/* t7 — 3D Cube: hot pink/magenta, cuboid illusion */
+/* t7 — Star Candy: hot pink/magenta, 5-point star */
 .candy-gem.t7 {
-  background: linear-gradient(135deg, #ff88cc 0%, #dd1177 55%, #880044 100%);
-  border-radius: 12%;
-  width: 80%;
-  height: 80%;
-  box-shadow: 0 3px 8px rgba(0,0,0,.45), 4px 4px 0 rgba(0,0,0,.28), -1px -1px 0 rgba(255,255,255,.22) inset;
+  background: linear-gradient(135deg, #ffaadd 0%, #ee0088 55%, #990044 100%);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  border-radius: 0;
+  width: 88%;
+  height: 88%;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
 }
+.candy-gem.t7::after { display: none; }
 .candy-gem.t7::before {
+  /* Radial glow in the star center */
   content: '';
   position: absolute;
-  top: 0; right: -5px;
-  width: 5px;
-  height: 58%;
-  background: linear-gradient(180deg, #cc0055 0%, #770033 100%);
-  border-radius: 0 3px 3px 0;
+  top: 22%;
+  left: 28%;
+  width: 44%;
+  height: 38%;
+  background: rgba(255,255,255,.38);
+  border-radius: 50%;
+  filter: blur(4px);
+  pointer-events: none;
 }
 
 /* ── Lollipop stick (only rendered for t1) ────────────────────────────── */

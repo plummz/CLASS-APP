@@ -869,6 +869,7 @@
 .candy-game-wrap.candy-eff-megablast  { animation: eff-megablast    2.2s ease-in-out; }
 
 /* ── Low-end mode — disable non-essential animations ─────────────────── */
+.candy-board.candy-low-end,
 .candy-board.candy-low-end::before,
 .candy-board.candy-low-end .candy-gem,
 .candy-board.candy-low-end .candy-lolly-stick {

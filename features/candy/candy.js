@@ -446,6 +446,7 @@ window.candyModule = (() => {
     if (score >= levelCfg.target && blockerSet.size === 0) {
       const coinsEarned = Math.round(score / 50) + levelCfg.n;
       coins += coinsEarned;
+      updateHUD();
       if (currentLevel >= highestUnlocked && currentLevel < MAX_LEVEL) {
         highestUnlocked = currentLevel + 1;
       }
@@ -632,6 +633,20 @@ window.candyModule = (() => {
     }).join('');
 
     // Build effects tab content
+    const noFxEquipped = equippedEffect === 'none';
+    const noFxRow = `<div class="candy-shop-section">
+      <div class="candy-shop-rarity-label candy-rarity-common">UNEQUIP</div>
+      <div class="candy-shop-items">
+        <div class="candy-shop-item${noFxEquipped ? ' equipped' : ''}">
+          <div class="candy-effect-icon">🚫</div>
+          <div class="candy-shop-item-name">No Effects</div>
+          ${noFxEquipped
+            ? `<div class="candy-shop-badge equipped-badge">✓ On</div>`
+            : `<button class="candy-shop-action-btn" onclick="window.candyModule._equipEffect('none')">Equip</button>`
+          }
+        </div>
+      </div>
+    </div>`;
     const effRows = ['epic','legendary','premium'].map(rarity => {
       const group = EFFECT_DATA
         .map(([id, name, ri, price]) => ({ id, name, rarity: RARITY_NAMES[ri], price }))
@@ -669,7 +684,7 @@ window.candyModule = (() => {
     }).join('');
 
     const isSkinsTab   = tab === 'skins';
-    const activeContent = isSkinsTab ? rows : effRows;
+    const activeContent = isSkinsTab ? rows : (noFxRow + effRows);
 
     document.body.insertAdjacentHTML('beforeend', `
       <div id="candy-shop-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
@@ -792,10 +807,10 @@ window.candyModule = (() => {
       if (prog) {
         highestUnlocked = Math.max(1, prog.highest_level || 1);
         coins           = prog.coins || 0;
-        if (prog.equipped_skin) equippedSkin = prog.equipped_skin;
+        if (prog.equipped_skin)   equippedSkin   = prog.equipped_skin;
+        if (prog.equipped_effect) equippedEffect = prog.equipped_effect;
         if (currentLevel > highestUnlocked) currentLevel = highestUnlocked;
       }
-      if (prog && prog.equipped_effect) equippedEffect = prog.equipped_effect;
       if (inv) {
         inv.forEach(({ item_id, item_type }) => {
           if (item_type === 'skin')   ownedSkins.add(item_id);
@@ -931,7 +946,7 @@ window.candyModule = (() => {
     active = true;
     loadProgress()
       .then(() => { applySkin(equippedSkin); startLevel(currentLevel); })
-      .catch(() => startLevel(currentLevel));
+      .catch(() => { applySkin(equippedSkin); startLevel(currentLevel); });
   }
 
   function restart() {

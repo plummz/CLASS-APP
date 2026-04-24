@@ -2066,6 +2066,7 @@ window.login = async function() {
   
   currentUser = profile;
   isAdmin = (profile.username === 'Marquillero');
+  if (isAdmin) revealAdminNav();
   saveSession();
   await persistLastSeen({ online: true, force: true });
   establishSession();
@@ -2155,6 +2156,7 @@ function establishSession() {
   registerPushSubscription(false);
   fetchMessages(currentChat.type, currentChat.target);
   handleNotificationDeepLink();
+  initReactionsRealtime();
 }
 
 function getInitials(user) {
@@ -2534,9 +2536,12 @@ function initSupabaseRealtimeChat() {
                     time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                 };
                 if (m.sender !== currentUser.username) {
-                    const sound = document.getElementById('notif-sound');
-                    if (sound) sound.play().catch(e => console.log('Audio blocked'));
-                    if (currentPage !== 'chat' || (currentChat.type === 'private' && m.chat_type === 'private' && currentChat.target !== m.sender)) {
+                    if (notifPrefs.sound) {
+                      const sound = document.getElementById('notif-sound');
+                      if (sound) sound.play().catch(() => {});
+                    }
+                    if (notifPrefs.group && m.chat_type !== 'private' &&
+                        (currentPage !== 'chat' || currentChat.type !== m.chat_type)) {
                         const dot = document.getElementById('chat-notif-dot');
                         if (dot) dot.classList.remove('hidden');
                     }
@@ -2548,7 +2553,7 @@ function initSupabaseRealtimeChat() {
                     chatHistory.private[key].push(formattedMsg);
                     if (currentChat.type === 'private' && currentChat.target === otherUser) {
                       renderMessages();
-                    } else if (m.sender !== currentUser.username) {
+                    } else if (m.sender !== currentUser.username && notifPrefs.dm) {
                       unreadDMs[m.sender] = (unreadDMs[m.sender] || 0) + 1;
                       renderChatUsersList();
                     }
@@ -2592,6 +2597,7 @@ async function fetchMessages(chatType, target = null) {
 
   if (chatType === 'private') { const key = getPrivateKey(currentUser.username, target); chatHistory.private[key] = formattedMessages; }
   else chatHistory[chatType] = formattedMessages;
+  await fetchReactions(formattedMessages.map(m => String(m.id)));
   renderMessages();
 }
 
@@ -2642,7 +2648,9 @@ function renderMessages() {
         const editBtn = document.createElement('button'); editBtn.className = 'chat-action-button'; editBtn.textContent = 'Edit'; editBtn.onclick = () => editChatMessage(message.id); actions.appendChild(editBtn);
         const delAllBtn = document.createElement('button'); delAllBtn.className = 'chat-action-button'; delAllBtn.textContent = 'Delete All'; delAllBtn.onclick = () => deleteMessageForEveryone(message.id); actions.appendChild(delAllBtn);
     }
-    msgDiv.appendChild(actions); container.appendChild(msgDiv);
+    msgDiv.appendChild(actions);
+    if (message.id) msgDiv.appendChild(buildReactionBar(String(message.id)));
+    container.appendChild(msgDiv);
   });
   container.scrollTop = container.scrollHeight;
 }
@@ -2958,6 +2966,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'coding-educational') window.initCodingEducational?.();
   // AI Assistants hub
   if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
+  if (pageName === 'admin') loadAdminDashboard();
 };
 
 let backgroundPickerTab = 'coded';
@@ -3574,7 +3583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  if (currentUser) establishSession();
+  if (currentUser) { if (isAdmin) revealAdminNav(); establishSession(); }
   else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
 
   // Push chat input above the soft keyboard on mobile
@@ -3865,6 +3874,202 @@ window.postAdminUpdate = async function() {
   removeDynamicModal('admin-update-modal');
   showToast('App update posted.');
   fetchAppUpdates();
+};
+
+/* ============================================================
+   NOTIFICATION PREFERENCES (#27)
+   ============================================================ */
+const notifPrefs = (() => {
+  try { return JSON.parse(localStorage.getItem('notifPrefs')) || {}; } catch { return {}; }
+})();
+if (notifPrefs.sound   === undefined) notifPrefs.sound = true;
+if (notifPrefs.group   === undefined) notifPrefs.group = true;
+if (notifPrefs.dm      === undefined) notifPrefs.dm    = true;
+
+function applyNotifPrefsUI() {
+  const s = document.getElementById('pref-sound');
+  const g = document.getElementById('pref-group');
+  const d = document.getElementById('pref-dm');
+  if (s) s.checked = notifPrefs.sound;
+  if (g) g.checked = notifPrefs.group;
+  if (d) d.checked = notifPrefs.dm;
+}
+
+window.saveNotifPrefs = function() {
+  notifPrefs.sound = document.getElementById('pref-sound')?.checked ?? true;
+  notifPrefs.group = document.getElementById('pref-group')?.checked ?? true;
+  notifPrefs.dm    = document.getElementById('pref-dm')?.checked    ?? true;
+  localStorage.setItem('notifPrefs', JSON.stringify(notifPrefs));
+};
+
+window.toggleNotifPrefsPanel = function() {
+  const panel = document.getElementById('notif-prefs-panel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) applyNotifPrefsUI();
+};
+
+/* ============================================================
+   EMOJI REACTIONS (#28)
+   ============================================================ */
+const REACTION_EMOJIS = ['👍','❤️','😂','😮','😢','😡'];
+let messageReactions = {}; // messageId → { emoji → [usernames] }
+
+async function fetchReactions(messageIds) {
+  if (!messageIds.length || !sb) return;
+  const { data, error } = await sb.from('message_reactions').select('*').in('message_id', messageIds.map(String));
+  if (error) return;
+  messageReactions = {};
+  for (const r of data) {
+    if (!messageReactions[r.message_id]) messageReactions[r.message_id] = {};
+    if (!messageReactions[r.message_id][r.emoji]) messageReactions[r.message_id][r.emoji] = [];
+    messageReactions[r.message_id][r.emoji].push(r.username);
+  }
+}
+
+function buildReactionBar(messageId) {
+  const bar = document.createElement('div');
+  bar.className = 'reaction-bar';
+  bar.dataset.msgId = messageId;
+  const rxns = messageReactions[messageId] || {};
+
+  Object.entries(rxns).forEach(([emoji, users]) => {
+    if (!users.length) return;
+    const pill = document.createElement('button');
+    pill.className = 'reaction-pill' + (users.includes(currentUser?.username) ? ' mine' : '');
+    pill.innerHTML = `${emoji}<span class="r-count">${users.length}</span>`;
+    pill.title = users.join(', ');
+    pill.onclick = () => toggleReaction(messageId, emoji, pill);
+    bar.appendChild(pill);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'reaction-add-btn';
+  addBtn.textContent = '+';
+  addBtn.onclick = (e) => showReactionPicker(e, messageId);
+  bar.appendChild(addBtn);
+  return bar;
+}
+
+function showReactionPicker(e, messageId) {
+  document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  REACTION_EMOJIS.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.textContent = emoji;
+    btn.onclick = () => { toggleReaction(messageId, emoji); picker.remove(); };
+    picker.appendChild(btn);
+  });
+  e.target.parentNode.appendChild(picker);
+  // close on outside click
+  setTimeout(() => document.addEventListener('click', function handler() {
+    picker.remove(); document.removeEventListener('click', handler);
+  }), 0);
+}
+
+async function toggleReaction(messageId, emoji) {
+  if (!currentUser) return;
+  const existing = messageReactions[messageId]?.[emoji] || [];
+  if (existing.includes(currentUser.username)) {
+    await sb.from('message_reactions').delete()
+      .eq('message_id', String(messageId))
+      .eq('username', currentUser.username)
+      .eq('emoji', emoji);
+  } else {
+    await sb.from('message_reactions').insert([{
+      message_id: String(messageId),
+      username: currentUser.username,
+      emoji,
+    }]);
+  }
+  // Optimistic refresh
+  const ids = Object.keys({ ...messageReactions, [messageId]: {} });
+  await fetchReactions(ids);
+  renderMessages();
+}
+
+function initReactionsRealtime() {
+  if (!sb) return;
+  sb.channel('public:message_reactions')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, async () => {
+      const history = getCurrentHistory();
+      if (history.length) {
+        await fetchReactions(history.map(m => String(m.id)));
+        renderMessages();
+      }
+    }).subscribe();
+}
+
+/* ============================================================
+   ADMIN DASHBOARD (#29)
+   ============================================================ */
+function revealAdminNav() {
+  document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+}
+
+async function loadAdminDashboard() {
+  if (!isAdmin || !sb) return;
+
+  // Stats
+  const statsGrid = document.getElementById('admin-stats');
+  if (statsGrid) {
+    statsGrid.innerHTML = '<div class="admin-stat-card"><div class="admin-stat-value">…</div><div class="admin-stat-label">Loading</div></div>';
+    const { data, error } = await sb.rpc('class_app_admin_stats');
+    if (!error && data) {
+      const labels = { total_users:'Users', online_users:'Online', total_messages:'Messages', total_files:'Files', total_opens:'App Opens' };
+      statsGrid.innerHTML = Object.entries(labels).map(([k, label]) =>
+        `<div class="admin-stat-card"><div class="admin-stat-value">${data[k] ?? 0}</div><div class="admin-stat-label">${label}</div></div>`
+      ).join('');
+    } else {
+      statsGrid.innerHTML = '<div class="admin-stat-card"><div class="admin-stat-value">—</div><div class="admin-stat-label">Unavailable</div></div>';
+    }
+  }
+
+  // User table
+  const userTable = document.getElementById('admin-user-table');
+  if (!userTable) return;
+  userTable.innerHTML = '<div style="opacity:.5;font-size:13px;">Loading users…</div>';
+  const { data: profiles, error: uerr } = await sb.from('profiles').select('username,display_name,online,created_at').order('created_at', { ascending: false });
+  if (uerr || !profiles) { userTable.innerHTML = '<div style="opacity:.5;font-size:13px;">Failed to load users.</div>'; return; }
+
+  userTable.innerHTML = profiles.map(p => {
+    const name = escapeHTML(p.display_name || p.username);
+    const uname = escapeHTML(p.username);
+    const joined = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
+    return `<div class="admin-user-row">
+      <div class="admin-online-dot${p.online ? ' online' : ''}"></div>
+      <div class="admin-user-name">${name} <span style="opacity:.45;font-weight:400">@${uname}</span></div>
+      <div class="admin-user-meta">Joined ${joined}</div>
+      ${p.username !== currentUser?.username
+        ? `<button class="btn-outline-red" onclick="adminDeleteUser('${uname}')">Delete</button>`
+        : '<span style="opacity:.35;font-size:12px">You</span>'}
+    </div>`;
+  }).join('');
+}
+
+window.adminDeleteUser = async function(username) {
+  if (!isAdmin) return;
+  const confirmed = await new Promise(resolve => {
+    removeDynamicModal('admin-del-confirm');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="admin-del-confirm" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal">
+          <div class="modal-title">Delete user <b>@${escapeHTML(username)}</b>?</div>
+          <p style="opacity:.65;font-size:13px;margin:10px 0 18px;">This will permanently remove their profile and all associated data.</p>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-primary flex-1" id="adm-del-yes">Delete</button>
+            <button class="btn-outline flex-1" onclick="removeDynamicModal('admin-del-confirm')">Cancel</button>
+          </div>
+        </div>
+      </div>`);
+    document.getElementById('adm-del-yes').onclick = () => { removeDynamicModal('admin-del-confirm'); resolve(true); };
+  });
+  if (!confirmed) return;
+  const { error } = await sb.rpc('class_app_admin_delete_user', { p_username: username });
+  if (error) return customAlert(error.message);
+  showToast(`Deleted @${username}.`);
+  loadAdminDashboard();
 };
 
 /* ============================================================

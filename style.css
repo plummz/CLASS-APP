@@ -4339,6 +4339,136 @@ body.light-mode .chat-skeleton {
   animation: skeleton-shimmer 1.4s ease infinite;
 }
 
+/* ── Notification prefs panel ────────────────────────────── */
+.notif-prefs-panel {
+  margin: 0 14px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.notif-prefs-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.notif-pref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,.8);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.notif-pref-row input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+/* ── Emoji reactions ─────────────────────────────────────── */
+.reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--glass-border);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.reaction-pill:hover { background: rgba(255,255,255,0.15); }
+.reaction-pill.mine  { background: rgba(0,212,255,0.18); border-color: var(--accent); }
+.reaction-pill .r-count { font-size: 11px; opacity: .8; }
+.reaction-add-btn {
+  background: none;
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 14px;
+  cursor: pointer;
+  color: rgba(255,255,255,.5);
+  transition: border-color .15s, color .15s;
+}
+.reaction-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+.reaction-picker {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  background: rgba(10,10,30,.95);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 6px;
+  position: absolute;
+  z-index: 100;
+}
+.reaction-picker button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: background .15s;
+}
+.reaction-picker button:hover { background: rgba(255,255,255,.15); }
+
+/* ── Admin dashboard ─────────────────────────────────────── */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.admin-stat-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+.admin-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.admin-stat-label { font-size: 12px; opacity: .6; margin-top: 4px; }
+.admin-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 20px 0 10px;
+}
+.admin-user-table { display: flex; flex-direction: column; gap: 8px; }
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+.admin-user-row .admin-user-name { flex: 1; font-weight: 600; }
+.admin-user-row .admin-user-meta { font-size: 12px; opacity: .55; }
+.admin-online-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  flex-shrink: 0;
+}
+.admin-online-dot.online { background: #00ff88; }
+
 /* ── Unread DM badge ──────────────────────────────────────── */
 .unread-badge {
   background: var(--accent);

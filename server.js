@@ -45,7 +45,7 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
   if (process.env.NODE_ENV === 'production') console.warn('[security] JWT_SECRET not set — using insecure default');
   return 'dev-secret-change-in-production';
 })();
-const DATA_PATH = path.join(__dirname, 'data.json');
+const DATA_PATH = process.env.DATA_PATH_OVERRIDE || path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
@@ -261,7 +261,7 @@ app.get('/api/diagnostics', requireAuth, async (req, res) => {
   try {
     const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
     cacheVersion = sw.match(/CACHE_VERSION\s*=\s*['"`]([^'"`]+)/)?.[1] || cacheVersion;
-  } catch (_) {}
+  } catch (_e) { /* sw.js unreadable — use default */ }
 
   let java = { available: false, message: 'Java status not checked.' };
   try {
@@ -495,7 +495,7 @@ function pipedSearchRequest(host, q, resolve) {
           })).filter(v => v.videoId);
           if (items.length) return resolve({ items });
         }
-      } catch (_) {}
+      } catch (_e) { /* unparseable response — try next host */ }
       resolve(null);
     });
   });
@@ -970,21 +970,6 @@ async function compressImage(buffer, ext) {
   }
 }
 
-function compressVideo(inputPath, outputPath, ext) {
-  return new Promise((resolve, reject) => {
-    const isWebm = ext === '.webm';
-    ffmpeg(inputPath)
-      .videoCodec(isWebm ? 'libvpx-vp9' : 'libx264')
-      .audioCodec(isWebm ? 'libopus' : 'aac')
-      .addOutputOptions(isWebm
-        ? ['-crf 33', '-b:v 0', '-row-mt 1']
-        : ['-crf 26', '-preset fast', '-movflags +faststart']
-      )
-      .save(outputPath)
-      .on('end', resolve)
-      .on('error', reject);
-  });
-}
 
 // ── Upload endpoint (compress → R2) ───────────────────────
 app.post('/api/upload', upload.single('file'), async (req, res) => {
@@ -1064,6 +1049,7 @@ const JAVA_COMPILE_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_COMPILE_TIMEOUT
 const JAVA_RUN_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_RUN_TIMEOUT_MS || process.env.CODE_LAB_JAVA_TIMEOUT_MS || 8000);
 const JAVAC_BIN = process.env.JAVAC_BIN || 'javac';
 const JAVA_BIN = process.env.JAVA_BIN || 'java';
+/* eslint-disable security/detect-unsafe-regex */
 const JAVA_BLOCKLIST = [
   /Runtime\.getRuntime/i,
   /ProcessBuilder/i,
@@ -1093,8 +1079,10 @@ function firstJavaClassName(source) {
 function hasRunnableMethod(source) {
   return /\b(?:public|private|protected)?\s*(?:static\s+)?void\s+run\s*\(\s*\)/.test(source);
 }
+/* eslint-enable security/detect-unsafe-regex */
 
 function looksLikeMemberSource(source) {
+  // eslint-disable-next-line security/detect-unsafe-regex
   return /\b(?:public|private|protected)?\s*(?:static\s+)?(?:void|int|double|float|boolean|char|byte|short|long|String|[A-Z]\w*)\s+\w+\s*\([^;{}]*\)\s*\{/.test(source);
 }
 
@@ -1656,6 +1644,10 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
-server.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { app, server };

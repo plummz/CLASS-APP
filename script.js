@@ -765,13 +765,22 @@ window.openFolderModalObj = function(modalId) {
     if(modal) modal.style.display = 'flex';
 };
 
-window.openFolderExplorer = function(parentName) {
+window.openFolderExplorer = async function(parentName) {
     currentParentContext = parentName;
     folderStack = []; // reset navigation stack
     const title = document.getElementById('folder-explorer-title');
     if (title) title.innerText = `${parentName} Folders`;
     fetchAndRenderFolders();
     openFolderModalObj('folder-explorer-modal');
+    // Subject-scoped announcements — only for recognised academic subjects
+    const annContainer = document.getElementById('subject-ann-container');
+    if (annContainer && ACADEMIC_FOLDER_ROOTS.has(parentName)) {
+      annContainer.innerHTML = '<div style="opacity:.4;font-size:12px;padding:10px 0;">Loading announcements…</div>';
+      await fetchSubjectAnnouncements(parentName);
+      annContainer.innerHTML = buildSubjectAnnouncementsHTML(parentName);
+    } else if (annContainer) {
+      annContainer.innerHTML = '';
+    }
 };
 
 function fetchAndRenderFolders() {
@@ -2070,6 +2079,7 @@ window.login = async function() {
   saveSession();
   await persistLastSeen({ online: true, force: true });
   establishSession();
+  logActivity('login');
   recordAppOpen();
 };
 
@@ -2676,6 +2686,7 @@ window.sendMessage = async function() {
     .select('*')
     .single();
   if (sendError) return customAlert(sendError.message);
+  logActivity('send_message', currentChat.type === 'private' ? `dm:${currentChat.target}` : currentChat.type);
   if (currentChat.type === 'private' && currentChat.target && savedMessage?.id) {
     notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
   }
@@ -4026,6 +4037,8 @@ async function loadAdminDashboard() {
     }
   }
 
+  if (adminActiveTab === 'log') { loadActivityLog(); return; }
+
   // User table
   const userTable = document.getElementById('admin-user-table');
   if (!userTable) return;
@@ -4070,6 +4083,124 @@ window.adminDeleteUser = async function(username) {
   if (error) return customAlert(error.message);
   showToast(`Deleted @${username}.`);
   loadAdminDashboard();
+};
+
+/* ============================================================
+   ACTIVITY LOG (#30)
+   ============================================================ */
+async function logActivity(action, details = '') {
+  if (!currentUser || !sb) return;
+  sb.from('activity_log').insert([{ username: currentUser.username, action, details }]).then(() => {});
+}
+
+let adminActiveTab = 'users';
+
+window.switchAdminTab = function(tab, btn) {
+  adminActiveTab = tab;
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('admin-tab-users').style.display = tab === 'users' ? '' : 'none';
+  document.getElementById('admin-tab-log').style.display   = tab === 'log'   ? '' : 'none';
+  if (tab === 'log') loadActivityLog();
+};
+
+async function loadActivityLog() {
+  const container = document.getElementById('admin-activity-log');
+  if (!container || !isAdmin || !sb) return;
+  container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">Loading…</div>';
+  const { data, error } = await sb.rpc('class_app_admin_activity_log', { p_limit: 100 });
+  if (error || !data) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">Failed to load log.</div>'; return; }
+  if (!data.length) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">No activity yet.</div>'; return; }
+  container.innerHTML = data.map(row => {
+    const t = new Date(row.created_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return `<div class="activity-log-row">
+      <span class="al-time">${t}</span>
+      <span class="al-user">@${escapeHTML(row.username)}</span>
+      <span class="al-action">${escapeHTML(row.action)}</span>
+      ${row.details ? `<span class="al-detail">${escapeHTML(row.details)}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   SUBJECT-SCOPED ANNOUNCEMENTS (#31)
+   ============================================================ */
+let subjectAnnouncements = {}; // subject_code → [rows]
+
+async function fetchSubjectAnnouncements(subjectCode) {
+  if (!sb) return [];
+  const { data, error } = await sb.from('subject_announcements')
+    .select('*').eq('subject_code', subjectCode)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  subjectAnnouncements[subjectCode] = data || [];
+  return subjectAnnouncements[subjectCode];
+}
+
+function buildSubjectAnnouncementsHTML(subjectCode) {
+  const anns = subjectAnnouncements[subjectCode] || [];
+  const postBtn = isAdmin
+    ? `<button class="btn-primary" style="font-size:12px;padding:5px 12px;" onclick="openPostSubjectAnnouncement('${escapeJS(subjectCode)}')">+ Post</button>`
+    : '';
+  const list = anns.length
+    ? anns.map(a => `
+        <div class="subj-ann-card">
+          <div class="subj-ann-card-title">${escapeHTML(a.title)}</div>
+          <div class="subj-ann-card-body">${escapeHTML(a.body)}</div>
+          <div class="subj-ann-card-meta">by @${escapeHTML(a.posted_by)} · ${new Date(a.created_at).toLocaleDateString()}
+            ${isAdmin ? `<button class="chat-action-button" style="margin-left:8px;" onclick="deleteSubjectAnnouncement(${a.id},'${escapeJS(subjectCode)}')">Delete</button>` : ''}
+          </div>
+        </div>`).join('')
+    : `<div class="subj-ann-empty">No announcements for this subject yet.</div>`;
+
+  return `<div class="subj-ann-section">
+    <div class="subj-ann-header">
+      <span class="subj-ann-title">Announcements</span>
+      ${postBtn}
+    </div>
+    <div class="subj-ann-list">${list}</div>
+  </div>`;
+}
+
+window.openPostSubjectAnnouncement = function(subjectCode) {
+  removeDynamicModal('subj-ann-modal');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="subj-ann-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+      <div class="custom-modal">
+        <button class="modal-close-btn" onclick="removeDynamicModal('subj-ann-modal')">&times;</button>
+        <div class="modal-title">Post Announcement · ${escapeHTML(subjectCode)}</div>
+        <input id="sann-title" class="modal-input" placeholder="Title" maxlength="100" style="margin-top:14px;">
+        <textarea id="sann-body" class="modal-input" placeholder="Details (optional)" style="height:90px;resize:none;margin-top:10px;"></textarea>
+        <button class="btn-primary full-width mt-10" onclick="submitSubjectAnnouncement('${escapeJS(subjectCode)}')">Post</button>
+      </div>
+    </div>`);
+  setTimeout(() => document.getElementById('sann-title')?.focus(), 80);
+};
+
+window.submitSubjectAnnouncement = async function(subjectCode) {
+  const title = document.getElementById('sann-title')?.value.trim();
+  const body  = document.getElementById('sann-body')?.value.trim() || '';
+  if (!title) return customAlert('Title is required.');
+  const { error } = await sb.from('subject_announcements').insert([{
+    subject_code: subjectCode,
+    posted_by: currentUser.username,
+    title,
+    body,
+  }]);
+  if (error) return customAlert(error.message);
+  removeDynamicModal('subj-ann-modal');
+  showToast('Announcement posted.');
+  logActivity('post_subject_announcement', subjectCode);
+  // Refresh the folder explorer if it's open for this subject
+  window.openFolderExplorer?.(subjectCode);
+};
+
+window.deleteSubjectAnnouncement = async function(id, subjectCode) {
+  if (!isAdmin) return;
+  const { error } = await sb.from('subject_announcements').delete().eq('id', id);
+  if (error) return customAlert(error.message);
+  showToast('Announcement deleted.');
+  window.openFolderExplorer?.(subjectCode);
 };
 
 /* ============================================================

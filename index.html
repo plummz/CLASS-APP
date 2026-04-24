@@ -385,8 +385,16 @@
     <div class="page-header"><h1 class="page-title">Admin Dashboard</h1></div>
     <div class="section-label">User management and app statistics — admin only</div>
     <div id="admin-stats" class="admin-stats-grid"></div>
-    <div class="admin-section-title">User Management</div>
-    <div id="admin-user-table" class="admin-user-table"></div>
+    <div class="admin-section-tabs">
+      <button class="admin-tab-btn active" onclick="switchAdminTab('users',this)">Users</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('log',this)">Activity Log</button>
+    </div>
+    <div id="admin-tab-users">
+      <div id="admin-user-table" class="admin-user-table"></div>
+    </div>
+    <div id="admin-tab-log" style="display:none">
+      <div id="admin-activity-log" class="activity-log-list"></div>
+    </div>
   </div>
 
   <div class="page" id="page-calendar">
@@ -1170,6 +1178,7 @@
       <h2 id="folder-explorer-title" class="modal-title text-green">Subject Folders</h2>
       <button class="btn-primary btn-create-folder" onclick="createFolderAPI()">+ New Folder</button>
       <div id="folder-grid-modal" class="folder-modal-grid"></div>
+      <div id="subject-ann-container"></div>
     </div>
   </div>
 

@@ -4042,21 +4042,19 @@ async function loadAdminDashboard() {
 
   if (adminActiveTab === 'log') { loadActivityLog(); return; }
 
-  // User table
+  // User table — reuse already-fetched users array (same source as User Directory)
   const userTable = document.getElementById('admin-user-table');
   if (!userTable) return;
-  userTable.innerHTML = '<div style="opacity:.5;font-size:13px;">Loading users…</div>';
-  const { data: profiles, error: uerr } = await sb.from('profiles').select('username,display_name,online,created_at').order('created_at', { ascending: false });
-  if (uerr || !profiles) { userTable.innerHTML = '<div style="opacity:.5;font-size:13px;">Failed to load users.</div>'; return; }
+  const list = users.length ? users : [];
+  if (!list.length) { userTable.innerHTML = '<div style="opacity:.5;font-size:13px;">No users found.</div>'; return; }
 
-  userTable.innerHTML = profiles.map(p => {
+  userTable.innerHTML = list.map(p => {
     const name = escapeHTML(p.display_name || p.username);
     const uname = escapeHTML(p.username);
-    const joined = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
     return `<div class="admin-user-row">
       <div class="admin-online-dot${p.online ? ' online' : ''}"></div>
       <div class="admin-user-name">${name} <span style="opacity:.45;font-weight:400">@${uname}</span></div>
-      <div class="admin-user-meta">Joined ${joined}</div>
+      <div class="admin-user-meta">${p.online ? 'Online' : 'Offline'}</div>
       ${p.username !== currentUser?.username
         ? `<button class="btn-outline-red" onclick="adminDeleteUser('${uname}')">Delete</button>`
         : '<span style="opacity:.35;font-size:12px">You</span>'}

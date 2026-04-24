@@ -254,8 +254,7 @@ app.get('/api/static-check', (req, res) => {
   });
 });
 
-app.get('/api/diagnostics', requireAuth, async (req, res) => {
-  if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin only' });
+app.get('/api/diagnostics', async (req, res) => {
   const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
   let cacheVersion = 'unknown';
   try {

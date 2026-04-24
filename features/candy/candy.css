@@ -22,7 +22,8 @@
 }
 
 .candy-back-btn,
-.candy-restart-btn {
+.candy-restart-btn,
+.candy-lb-open-btn {
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.18);
   color: #fff;
@@ -36,7 +37,8 @@
   flex-shrink: 0;
 }
 .candy-back-btn:hover,
-.candy-restart-btn:hover { background: rgba(255,255,255,.16); }
+.candy-restart-btn:hover,
+.candy-lb-open-btn:hover { background: rgba(255,255,255,.16); }
 
 .candy-hud {
   display: flex;
@@ -79,6 +81,32 @@
   backdrop-filter: blur(12px);
   width: min(96vw, 440px);
   box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Candy-themed background overlay — radial candy swirl pattern */
+.candy-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 10% 15%, rgba(255,107,157,.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 20%, rgba(196,77,255,.16) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 60%, rgba(77,121,255,.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(255,184,77,.15) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 85%, rgba(77,220,130,.13) 0%, transparent 40%),
+    repeating-conic-gradient(rgba(255,255,255,.025) 0deg 30deg, transparent 30deg 60deg);
+  pointer-events: none;
+  z-index: 0;
+  animation: candy-bg-drift 12s ease-in-out infinite alternate;
+}
+.candy-board > * { position: relative; z-index: 1; }
+
+@keyframes candy-bg-drift {
+  0%   { opacity: .7; transform: scale(1); }
+  100% { opacity: 1;  transform: scale(1.03); }
 }
 
 /* ── Cell ─────────────────────────────────────────────────────────────── */
@@ -87,6 +115,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   border-radius: 10px;
   cursor: pointer;
   position: relative;
@@ -103,8 +132,11 @@
   position: relative;
   transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .18s;
   box-shadow: 0 3px 8px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.35) inset;
+  flex-shrink: 0;
 }
-.candy-gem::after {          /* shine */
+
+/* Shine highlight on all gems */
+.candy-gem::after {
   content: '';
   position: absolute;
   top: 12%;
@@ -114,20 +146,148 @@
   background: rgba(255,255,255,.55);
   border-radius: 50%;
   filter: blur(2px);
+  pointer-events: none;
 }
 
-/* ── Gem types ────────────────────────────────────────────────────────── */
-.candy-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff7799, #cc1133); }   /* cherry */
-.candy-gem.t1 { background: radial-gradient(circle at 35% 35%, #66aaff, #1144cc); }   /* blueberry */
-.candy-gem.t2 { background: radial-gradient(circle at 35% 35%, #ffe566, #dd9900); }   /* lemon */
-.candy-gem.t3 { background: radial-gradient(circle at 35% 35%, #66ee88, #118833); }   /* lime */
-.candy-gem.t4 { background: radial-gradient(circle at 35% 35%, #dd77ff, #881acc); }   /* grape */
-.candy-gem.t5 { background: radial-gradient(circle at 35% 35%, #ffb055, #cc5500); }   /* orange */
+/* ══════════════════════════════════════════════════════════════════════════
+   8 CANDY PIECE TYPES — each has unique shape + colour
+   t0  Hard Candy   (cherry red, oval)
+   t1  Lollipop     (blueberry blue, circle + stick)
+   t2  Gumdrop      (lemon yellow, teardrop)
+   t3  Jelly Bean   (lime green, asymmetric bean)
+   t4  Wrapped      (grape purple, pinched ends)
+   t5  Chocolate Sq (orange-brown, rounded square)
+   t6  Pyramid      (teal, triangle via clip-path)
+   t7  3D Cube      (hot pink, cuboid illusion)
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* shape variants so types look distinct */
-.candy-gem.t1 { border-radius: 22% 78% 22% 78% / 78% 22% 78% 22%; }   /* diamond-ish */
-.candy-gem.t3 { border-radius: 20%; }                                     /* rounded square */
-.candy-gem.t5 { border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }    /* oval */
+/* t0 — Hard Candy: cherry red, classic oval */
+.candy-gem.t0 {
+  background: radial-gradient(circle at 35% 30%, #ff99aa, #cc1133);
+  border-radius: 50%;
+}
+
+/* t1 — Lollipop head: blueberry blue, perfect circle (smaller to leave room for stick) */
+.candy-gem.t1 {
+  background: radial-gradient(circle at 35% 30%, #88ccff, #1144cc);
+  border-radius: 50%;
+  width: 70%;
+  height: 70%;
+}
+
+/* t2 — Gumdrop: lemon yellow, teardrop (wide bottom, rounded top bump) */
+.candy-gem.t2 {
+  background: radial-gradient(ellipse at 40% 60%, #fff176, #e6ac00);
+  border-radius: 50% 50% 45% 45% / 40% 40% 60% 60%;
+  width: 80%;
+  height: 86%;
+}
+.candy-gem.t2::before {
+  content: '';
+  position: absolute;
+  top: -16%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42%;
+  height: 28%;
+  background: radial-gradient(ellipse, #fff176, #e6ac00);
+  border-radius: 50%;
+}
+
+/* t3 — Jelly Bean: lime green, asymmetric oval */
+.candy-gem.t3 {
+  background: radial-gradient(ellipse at 30% 40%, #99ff99, #118833);
+  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
+  width: 88%;
+  height: 76%;
+}
+
+/* t4 — Wrapped Candy: grape purple, pinched waist shape */
+.candy-gem.t4 {
+  background: radial-gradient(ellipse at 35% 35%, #ee88ff, #7711bb);
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  width: 90%;
+  height: 72%;
+}
+.candy-gem.t4::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 3px solid rgba(255,255,255,.22);
+  pointer-events: none;
+}
+
+/* t5 — Chocolate Square: orange-brown, rounded square with score lines */
+.candy-gem.t5 {
+  background: linear-gradient(145deg, #ffb866 0%, #cc5500 55%, #882200 100%);
+  border-radius: 22%;
+  width: 80%;
+  height: 80%;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45), 2px 2px 0 rgba(255,255,255,.12) inset, -1px -1px 0 rgba(0,0,0,.25) inset;
+}
+.candy-gem.t5::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: rgba(0,0,0,.2);
+  border-radius: 2px;
+}
+
+/* t6 — Pyramid: teal/cyan, triangle via clip-path */
+.candy-gem.t6 {
+  background: linear-gradient(165deg, #88ffee 0%, #009988 45%, #006655 100%);
+  clip-path: polygon(50% 4%, 96% 94%, 4% 94%);
+  border-radius: 0;
+  box-shadow: none;
+  width: 85%;
+  height: 85%;
+}
+.candy-gem.t6::after { display: none; }
+.candy-gem.t6::before {
+  content: '';
+  position: absolute;
+  top: 28%;
+  left: 38%;
+  width: 20%;
+  height: 34%;
+  background: rgba(255,255,255,.35);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  pointer-events: none;
+}
+
+/* t7 — 3D Cube: hot pink/magenta, cuboid illusion */
+.candy-gem.t7 {
+  background: linear-gradient(135deg, #ff88cc 0%, #dd1177 55%, #880044 100%);
+  border-radius: 12%;
+  width: 80%;
+  height: 80%;
+  box-shadow: 0 3px 8px rgba(0,0,0,.45), 4px 4px 0 rgba(0,0,0,.28), -1px -1px 0 rgba(255,255,255,.22) inset;
+}
+.candy-gem.t7::before {
+  content: '';
+  position: absolute;
+  top: 0; right: -5px;
+  width: 5px;
+  height: 58%;
+  background: linear-gradient(180deg, #cc0055 0%, #770033 100%);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ── Lollipop stick (only rendered for t1) ────────────────────────────── */
+.candy-lolly-stick {
+  width: 14%;
+  height: 28%;
+  background: linear-gradient(180deg, #e8d4b0 0%, #b89060 100%);
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-shadow: 1px 1px 2px rgba(0,0,0,.3);
+  margin-top: -1%;
+  transition: opacity .18s;
+}
 
 /* ── Animations ───────────────────────────────────────────────────────── */
 @keyframes candy-pop {
@@ -146,9 +306,54 @@
   75%      { transform: translateX(6px); }
 }
 
-.candy-gem.anim-pop  { animation: candy-pop  .28s ease-in forwards; }
-.candy-gem.anim-drop { animation: candy-drop .32s cubic-bezier(.22,1,.36,1) forwards; }
-.candy-gem.anim-shake { animation: candy-shake .25s ease-in-out; }
+/* Triangles need clip-path–safe pop (no scale overflow artefacts) */
+@keyframes candy-pop-clip {
+  0%   { opacity: 1; transform: scale(1); }
+  40%  { opacity: 1; transform: scale(1.22); }
+  100% { opacity: 0; transform: scale(0); }
+}
+
+.candy-gem.anim-pop              { animation: candy-pop       .28s ease-in forwards; }
+.candy-gem.t6.anim-pop           { animation: candy-pop-clip  .28s ease-in forwards; }
+.candy-gem.anim-drop             { animation: candy-drop      .32s cubic-bezier(.22,1,.36,1) forwards; }
+.candy-gem.anim-shake            { animation: candy-shake     .25s ease-in-out; }
+.candy-lolly-stick.anim-pop      { animation: candy-pop       .28s ease-in forwards; }
+.candy-lolly-stick.anim-drop     { animation: candy-drop      .32s cubic-bezier(.22,1,.36,1) forwards; }
+
+/* ── Chain / combo board FX ───────────────────────────────────────────── */
+@keyframes candy-board-glow {
+  0%,100% { box-shadow: 0 8px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06) inset; }
+  50%     { box-shadow: 0 8px 60px rgba(255,107,157,.6), 0 0 30px rgba(196,77,255,.5), 0 0 0 2px rgba(255,200,100,.5) inset; }
+}
+@keyframes candy-board-pulse {
+  0%,100% { transform: scale(1); }
+  40%     { transform: scale(1.025); }
+}
+@keyframes candy-board-sparkle {
+  0%,100% { filter: brightness(1) saturate(1); }
+  50%     { filter: brightness(1.35) saturate(1.8); }
+}
+@keyframes candy-board-rainbow {
+  0%   { border-color: rgba(255,107,157,.7); }
+  20%  { border-color: rgba(255,200,77,.7); }
+  40%  { border-color: rgba(77,220,130,.7); }
+  60%  { border-color: rgba(77,157,255,.7); }
+  80%  { border-color: rgba(196,77,255,.7); }
+  100% { border-color: rgba(255,107,157,.7); }
+}
+@keyframes candy-board-shake {
+  0%,100% { transform: translateX(0); }
+  15%      { transform: translateX(-8px); }
+  35%      { transform: translateX(8px); }
+  55%      { transform: translateX(-5px); }
+  75%      { transform: translateX(5px); }
+}
+
+.candy-board.candy-fx-glow    { animation: candy-board-glow    .7s ease-in-out; }
+.candy-board.candy-fx-pulse   { animation: candy-board-pulse   .7s ease-in-out; }
+.candy-board.candy-fx-sparkle { animation: candy-board-sparkle .7s ease-in-out; }
+.candy-board.candy-fx-rainbow { animation: candy-board-rainbow .7s linear; }
+.candy-board.candy-fx-shake   { animation: candy-board-shake   .45s ease-in-out; }
 
 /* ── Status banner ────────────────────────────────────────────────────── */
 .candy-status {
@@ -160,7 +365,7 @@
   text-align: center;
 }
 
-/* ── Game-over / win overlay ──────────────────────────────────────────── */
+/* ── Game-over overlay ────────────────────────────────────────────────── */
 .candy-overlay {
   position: absolute;
   inset: 0;
@@ -185,6 +390,14 @@
   opacity: .75;
   color: #fff;
 }
+.candy-overlay-btns {
+  display: flex;
+  gap: 10px;
+}
+.candy-lb-btn {
+  background: linear-gradient(90deg, rgba(255,107,157,.3), rgba(196,77,255,.3));
+  border-color: rgba(255,107,157,.5);
+}
 
 /* ── Hub card candy theme ─────────────────────────────────────────────── */
 .candy-thumb {
@@ -204,18 +417,23 @@
   box-sizing: border-box;
 }
 .candy-card-gem {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   box-shadow: 0 2px 6px rgba(0,0,0,.4);
   flex-shrink: 0;
 }
-.candy-card-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff7799, #cc1133); }
-.candy-card-gem.t1 { background: radial-gradient(circle at 35% 35%, #66aaff, #1144cc); border-radius: 22% 78% 22% 78% / 78% 22% 78% 22%; }
-.candy-card-gem.t2 { background: radial-gradient(circle at 35% 35%, #ffe566, #dd9900); }
-.candy-card-gem.t3 { background: radial-gradient(circle at 35% 35%, #66ee88, #118833); border-radius: 20%; }
-.candy-card-gem.t4 { background: radial-gradient(circle at 35% 35%, #dd77ff, #881acc); }
-.candy-card-gem.t5 { background: radial-gradient(circle at 35% 35%, #ffb055, #cc5500); border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
+
+/* Card art gem previews (simplified versions of the 8 types) */
+.candy-card-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff99aa, #cc1133); border-radius: 50%; }
+.candy-card-gem.t1 { background: radial-gradient(circle at 35% 35%, #88ccff, #1144cc); border-radius: 50%; }
+.candy-card-gem.t2 { background: radial-gradient(ellipse at 40% 60%, #fff176, #e6ac00); border-radius: 50% 50% 45% 45% / 40% 40% 60% 60%; }
+.candy-card-gem.t3 { background: radial-gradient(ellipse at 30% 40%, #99ff99, #118833); border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%; }
+.candy-card-gem.t4 { background: radial-gradient(ellipse at 35% 35%, #ee88ff, #7711bb); border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; }
+.candy-card-gem.t5 { background: linear-gradient(145deg, #ffb866, #cc5500); border-radius: 22%; }
+.candy-card-gem.t6 { background: linear-gradient(165deg, #88ffee, #009988); clip-path: polygon(50% 4%, 96% 94%, 4% 94%); border-radius: 0; }
+.candy-card-gem.t7 { background: linear-gradient(135deg, #ff88cc, #dd1177); border-radius: 12%; }
+
 .candy-play-btn {
   background: linear-gradient(90deg, #ff6b9d, #c44dff);
   border: none;

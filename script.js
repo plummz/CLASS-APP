@@ -2252,12 +2252,14 @@ function renderChatUsersList() {
       item.className = 'chat-user-item';
       const safeUsername = escapeJS(user.username);
       const liveOnline = isUserLiveOnline(user);
+      const unread = unreadDMs[user.username] || 0;
       item.innerHTML = `
         ${makeAvatarHTML(user, 'chat-user-avatar', liveOnline)}
         <div style="flex:1;min-width:0;">
           <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
+        ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
         <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
       list.appendChild(item);
@@ -2485,6 +2487,7 @@ window.saveProfileEdits = async function(username) {
    SUPABASE SERVERLESS CHAT ENGINE
    ============================================================ */
 let chatHistory = { group: [], todo: [], private: {} };
+const unreadDMs = {}; // username → unread count
 let currentChat = { type: 'group', target: null };
 let realtimeSubscription = null;
 
@@ -2508,6 +2511,14 @@ function updateChatHeader() {
 window.openChat = function(type, target = null) {
   currentChat = { type, target };
   updateChatHeader();
+  // Clear unread badge for this DM
+  if (type === 'private' && target && unreadDMs[target]) {
+    delete unreadDMs[target];
+    renderChatUsersList();
+  }
+  // Restore any saved draft for this chat
+  const input = document.getElementById('message-input');
+  if (input) input.value = localStorage.getItem(`msg-draft-${type}-${target || ''}`) || '';
   fetchMessages(type, target);
   if (currentPage !== 'chat') window.goToPage('chat');
 };
@@ -2535,7 +2546,12 @@ function initSupabaseRealtimeChat() {
                     const key = getPrivateKey(currentUser.username, otherUser);
                     if(!chatHistory.private[key]) chatHistory.private[key] = [];
                     chatHistory.private[key].push(formattedMsg);
-                    if (currentChat.type === 'private' && currentChat.target === otherUser) renderMessages();
+                    if (currentChat.type === 'private' && currentChat.target === otherUser) {
+                      renderMessages();
+                    } else if (m.sender !== currentUser.username) {
+                      unreadDMs[m.sender] = (unreadDMs[m.sender] || 0) + 1;
+                      renderChatUsersList();
+                    }
                 } else {
                     if(!chatHistory[m.chat_type]) chatHistory[m.chat_type] = [];
                     chatHistory[m.chat_type].push(formattedMsg);
@@ -2553,8 +2569,15 @@ function initSupabaseRealtimeChat() {
         .subscribe();
 }
 
+function showChatSkeleton() {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.innerHTML = Array.from({ length: 5 }, () => '<div class="chat-skeleton"></div>').join('');
+}
+
 async function fetchMessages(chatType, target = null) {
   if (!chatType) return;
+  showChatSkeleton();
   let query = sb.from('messages').select('*');
   if (chatType === 'private') query = query.eq('chat_type', 'private').or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
   else query = query.eq('chat_type', chatType);
@@ -2649,6 +2672,7 @@ window.sendMessage = async function() {
     notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
   }
   input.value = ''; attachmentInput.value = '';
+  localStorage.removeItem(`msg-draft-${currentChat.type}-${currentChat.target || ''}`);
   const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = 'No file chosen';
 };
 
@@ -3525,6 +3549,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const attachmentInput = document.getElementById('attachment-input');
   if (attachmentInput) attachmentInput.addEventListener('change', () => { const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = attachmentInput.files[0]?.name || 'No file chosen'; });
 
+  // Save message draft to localStorage as user types
+  const msgInput = document.getElementById('message-input');
+  if (msgInput) {
+    msgInput.addEventListener('input', () => {
+      const key = `msg-draft-${currentChat.type || 'group'}-${currentChat.target || ''}`;
+      if (msgInput.value) localStorage.setItem(key, msgInput.value);
+      else localStorage.removeItem(key);
+    });
+  }
+
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
@@ -3542,6 +3576,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (currentUser) establishSession();
   else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
+
+  // Push chat input above the soft keyboard on mobile
+  if ('visualViewport' in window) {
+    window.visualViewport.addEventListener('resize', () => {
+      const chatMain = document.querySelector('.chat-main');
+      if (!chatMain) return;
+      const keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.offsetTop - window.visualViewport.height);
+      chatMain.style.marginBottom = keyboardHeight > 80 ? `${keyboardHeight}px` : '';
+    });
+  }
 
   buildSubjectCards('grid-first',   firstSem);
   buildSubjectCards('grid-second',  secondSem);

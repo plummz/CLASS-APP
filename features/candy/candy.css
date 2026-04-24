@@ -868,6 +868,117 @@
 .candy-game-wrap.candy-eff-celebrate  { animation: eff-celebrate    2.2s ease-in-out; }
 .candy-game-wrap.candy-eff-megablast  { animation: eff-megablast    2.2s ease-in-out; }
 
+/* ── Skin-specific visual overrides ──────────────────────────────────── */
+
+/* Holographic: rainbow shimmer cycling on every gem */
+@keyframes holo-shimmer {
+  0%   { filter: hue-rotate(0deg)   brightness(1.1) saturate(1.6); }
+  33%  { filter: hue-rotate(120deg) brightness(1.25) saturate(2); }
+  66%  { filter: hue-rotate(240deg) brightness(1.15) saturate(1.8); }
+  100% { filter: hue-rotate(360deg) brightness(1.1) saturate(1.6); }
+}
+.candy-board.skin-holo .candy-gem {
+  animation: holo-shimmer 3s linear infinite;
+}
+.candy-board.skin-holo .candy-gem::after {
+  background: linear-gradient(135deg, rgba(255,255,255,.8), rgba(180,200,255,.5), rgba(255,180,255,.4));
+  width: 50%;
+  height: 40%;
+}
+.candy-board.candy-low-end.skin-holo .candy-gem { animation: none; filter: none; }
+
+/* Dark Matter / Midnight / Obsidian: deep dark shadow, minimal shine */
+.candy-board.skin-darkmatt .candy-gem,
+.candy-board.skin-midnight .candy-gem,
+.candy-board.skin-obsidian .candy-gem {
+  box-shadow: 0 4px 12px rgba(0,0,0,.7), 0 0 6px rgba(100,80,180,.35) inset, 0 1px 0 rgba(255,255,255,.12) inset;
+}
+.candy-board.skin-darkmatt .candy-gem::after,
+.candy-board.skin-midnight .candy-gem::after,
+.candy-board.skin-obsidian .candy-gem::after {
+  background: rgba(255,255,255,.3);
+  width: 25%;
+  height: 20%;
+}
+
+/* Lava Flow: glowing molten core, dark crust shadow */
+.candy-board.skin-lava .candy-gem {
+  box-shadow: 0 3px 10px rgba(0,0,0,.55), 0 0 8px rgba(255,80,0,.5);
+}
+.candy-board.skin-lava .candy-gem::after {
+  background: rgba(255,220,100,.65);
+  filter: blur(3px);
+  width: 38%;
+  height: 30%;
+}
+
+/* Vintage: desaturated, faded look — warm cream tint over the shine */
+.candy-board.skin-vintage .candy-gem {
+  box-shadow: 0 3px 8px rgba(60,40,0,.5), 0 1px 0 rgba(255,240,200,.3) inset;
+}
+.candy-board.skin-vintage .candy-gem::after {
+  background: rgba(255,240,200,.45);
+  filter: blur(2px);
+}
+
+/* Crystal Clear / Diamond / Crystal Dragon: icy transparent look */
+.candy-board.skin-crystal .candy-gem,
+.candy-board.skin-diamond .candy-gem,
+.candy-board.skin-dragon .candy-gem {
+  box-shadow: 0 3px 12px rgba(100,180,255,.35), 0 1px 0 rgba(255,255,255,.65) inset;
+}
+.candy-board.skin-crystal .candy-gem::after,
+.candy-board.skin-diamond .candy-gem::after,
+.candy-board.skin-dragon .candy-gem::after {
+  background: rgba(255,255,255,.85);
+  width: 42%;
+  height: 35%;
+}
+
+/* Neon Brights: brighter shine, pulsing glow animation */
+@keyframes neon-pulse {
+  0%,100% { filter: drop-shadow(0 0 5px rgba(255,255,255,.5)) drop-shadow(0 0 12px rgba(180,100,255,.4)); }
+  50%     { filter: drop-shadow(0 0 9px rgba(255,255,255,.75)) drop-shadow(0 0 22px rgba(100,200,255,.6)); }
+}
+.candy-board.skin-neon .candy-gem {
+  animation: neon-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.6) inset;
+}
+/* Neon shine = brighter white flare */
+.candy-board.skin-neon .candy-gem::after {
+  background: rgba(255,255,255,.75);
+  width: 40%;
+  height: 32%;
+}
+/* Disable neon pulse in low-end mode */
+.candy-board.candy-low-end.skin-neon .candy-gem {
+  animation: none;
+  filter: none;
+}
+
+/* Earthy Tones: matte/stone look — reduced shine, rougher shadow */
+.candy-board.skin-earthy .candy-gem {
+  box-shadow: 0 3px 6px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.15) inset;
+}
+.candy-board.skin-earthy .candy-gem::after {
+  background: rgba(255,255,255,.18);
+  filter: blur(3px);
+}
+
+/* Forest Fresh: leaf gems have a subtle vein line via ::before on t0 */
+.candy-board.skin-forest .candy-gem.t0::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 65%;
+  background: rgba(0,0,0,.18);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
 /* ── Low-end mode — disable non-essential animations ─────────────────── */
 .candy-board.candy-low-end,
 .candy-board.candy-low-end::before,

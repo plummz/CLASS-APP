@@ -44,7 +44,7 @@ window.candyModule = (() => {
     ['default',  'Classic',        0,    0, null],
     ['pastel',   'Pastel Pop',     0,   60, [350,210, 58,135,285, 28,178,322]],
     ['neon',     'Neon Brights',   0,   60, [355,200, 65,145,270, 20,183,318]],
-    ['earthy',   'Earthy Tones',   0,   80, [ 18,200, 48,100, 32, 38,168,340]],
+    ['earthy',   'Earthy Tones',   0,   80, [ 18, 28, 48, 95, 32, 38,110, 22]],
     ['ocean',    'Ocean Vibes',    0,   80, [195,220,188,162,242,208,177,202]],
     ['sunset',   'Sunset Glow',    0,  100, [ 12, 38, 55, 22,348, 20, 42,358]],
     ['forest',   'Forest Fresh',   0,  100, [122,162, 82,142,102,112,172, 88]],
@@ -354,13 +354,18 @@ window.candyModule = (() => {
     setStatus(CHAIN_LABELS[Math.min(n, CHAIN_LABELS.length - 1)] || `🎉 Chain ×${n}!`);
     const boardEl = $id('candy-board');
     if (!boardEl) return;
-    const cls = ['candy-fx-glow'];
-    if (n >= 9) cls.push('candy-fx-shake');
-    if (n >= 8) cls.push('candy-fx-rainbow');
-    if (n >= 5) cls.push('candy-fx-sparkle');
-    if (n >= 4) cls.push('candy-fx-pulse');
-    boardEl.classList.add(...cls);
-    setTimeout(() => boardEl.classList.remove(...cls), 700);
+    // Build comma-separated animation list so all effects play simultaneously.
+    // (Stacking CSS classes would cause later animation rules to override earlier ones.)
+    const anims = ['candy-board-glow .7s ease-in-out'];
+    if (n >= 4) anims.push('candy-board-pulse .7s ease-in-out');
+    if (n >= 5) anims.push('candy-board-sparkle .7s ease-in-out');
+    if (n >= 8) anims.push('candy-board-rainbow .7s linear');
+    if (n >= 9) anims.push('candy-board-shake .45s ease-in-out');
+    boardEl.style.animation = 'none';
+    void boardEl.offsetWidth; // force reflow so the reset registers
+    boardEl.style.animation = anims.join(', ');
+    clearTimeout(boardEl._chainFXTimer);
+    boardEl._chainFXTimer = setTimeout(() => { boardEl.style.animation = ''; }, 750);
     triggerEffect('combo');
   }
 
@@ -538,8 +543,12 @@ window.candyModule = (() => {
     if (!target) return;
     const cls      = 'candy-eff-' + equippedEffect;
     const duration = type === 'levelComplete' ? 2200 : 900;
+    // Force animation restart if already running (rapid combos would otherwise silently skip)
+    target.classList.remove(cls);
+    void target.offsetWidth; // trigger reflow so CSS sees the class removal
     target.classList.add(cls);
-    setTimeout(() => target.classList.remove(cls), duration);
+    clearTimeout(target._candyEffTimer);
+    target._candyEffTimer = setTimeout(() => target.classList.remove(cls), duration);
   }
 
   function toggleLowEnd() {
@@ -552,17 +561,40 @@ window.candyModule = (() => {
   window.toggleCandyLowEnd = toggleLowEnd;
 
   // ── Skin system ───────────────────────────────────────────────────────
-  function skinGrad(h, typeIdx) {
-    if (typeIdx === 5) return `linear-gradient(145deg,hsl(${h},80%,72%),hsl(${h},78%,42%),hsl(${h},74%,28%))`;
-    if (typeIdx === 6) return `linear-gradient(165deg,hsl(${h},80%,75%),hsl(${h},75%,45%),hsl(${h},70%,30%))`;
-    if (typeIdx === 7) return `linear-gradient(135deg,hsl(${h},85%,75%),hsl(${h},83%,45%),hsl(${h},78%,28%))`;
-    return `radial-gradient(circle at 35% 30%,hsl(${h},85%,75%),hsl(${h},80%,42%))`;
+  // skinId drives visual variant — each variant overrides sat/lightness to match theme
+  function skinGrad(h, typeIdx, skinId) {
+    const isNeon     = skinId === 'neon';
+    const isEarthy   = skinId === 'earthy';
+    const isVintage  = skinId === 'vintage';
+    const isDark     = skinId === 'darkmatt' || skinId === 'midnight' || skinId === 'obsidian';
+    const isLava     = skinId === 'lava';
+    const isCrystal  = skinId === 'crystal' || skinId === 'diamond' || skinId === 'dragon';
+
+    // sat levels per theme
+    const s1 = isNeon ? 100 : isEarthy ? 42 : isVintage ? 40 : isDark ? 72 : 85;
+    const s2 = isNeon ?  98 : isEarthy ? 38 : isVintage ? 36 : isDark ? 68 : 80;
+    const s3 = isNeon ?  95 : isEarthy ? 33 : isVintage ? 30 : isDark ? 62 : 74;
+
+    // lightness per theme — dark skins really are dark; crystal is light/icy
+    const l1 = isEarthy ? 58 : isDark ? 48 : isCrystal ? 85 : isVintage ? 70 : 75;
+    const l2 = isEarthy ? 38 : isDark ? 22 : isCrystal ? 60 : isVintage ? 45 : 42;
+    const l3 = isEarthy ? 24 : isDark ? 10 : isCrystal ? 38 : isVintage ? 28 : 28;
+
+    // Earthy: slight hue noise for stone grain; Lava: bright hot-core effect
+    const hv   = isEarthy ? h + 6 : h;
+    const lava1 = isLava ? l1 + 12 : l1; // molten bright center
+    const lava2 = isLava ? l2 - 6  : l2; // dark crust edges
+
+    if (typeIdx === 5) return `linear-gradient(145deg,hsl(${h},${s1}%,${lava1+4}%),hsl(${hv},${s2}%,${lava2}%),hsl(${h},${s3}%,${l3}%))`;
+    if (typeIdx === 6) return `linear-gradient(165deg,hsl(${h},${s1}%,${lava1+3}%),hsl(${hv},${s2}%,${lava2+3}%),hsl(${h},${s3}%,${l3+2}%))`;
+    if (typeIdx === 7) return `linear-gradient(135deg,hsl(${h},${s1+5}%,${lava1}%),hsl(${hv},${s2+5}%,${lava2+3}%),hsl(${h},${s3+4}%,${l3}%))`;
+    return `radial-gradient(circle at 35% 30%,hsl(${h},${s1+5}%,${lava1}%),hsl(${hv},${s1}%,${lava2}%))`;
   }
 
   function skinPreviewGrad(skinId, ti) {
     const DEFAULT_HUES = [350,215,55,130,280,25,175,320];
     const hues = SKINS[skinId]?.hues || DEFAULT_HUES;
-    return skinGrad(hues[ti], ti);
+    return skinGrad(hues[ti], ti, skinId);
   }
 
   function injectSkinStyle(skinId) {
@@ -574,9 +606,27 @@ window.candyModule = (() => {
     }
     const skin = SKINS[skinId];
     if (!skin || !skin.hues) { el.textContent = ''; return; }
-    el.textContent = skin.hues.map((h, i) =>
-      `.candy-board.skin-${skinId} .candy-gem.t${i}{background:${skinGrad(h, i)}}`
+    let css = skin.hues.map((h, i) =>
+      `.candy-board.skin-${skinId} .candy-gem.t${i}{background:${skinGrad(h, i, skinId)}}`
     ).join('\n');
+
+    // Neon Brights: add electric glow via drop-shadow (GPU-composited, no lag)
+    if (skinId === 'neon') {
+      css += `
+.candy-board.skin-neon .candy-gem{filter:drop-shadow(0 0 6px rgba(255,255,255,.55)) drop-shadow(0 0 14px rgba(180,100,255,.45));}
+.candy-board.skin-neon .candy-gem.t6{filter:drop-shadow(0 0 5px rgba(255,255,255,.5)) drop-shadow(0 0 10px rgba(100,220,255,.4));}`;
+    }
+
+    // Forest Fresh: leaf-shaped clip-path for organic gem types (t0, t2, t3)
+    if (skinId === 'forest') {
+      css += `
+.candy-board.skin-forest .candy-gem.t0{clip-path:polygon(50% 0%,85% 15%,100% 50%,85% 85%,50% 100%,15% 85%,0% 50%,15% 15%);border-radius:0;}
+.candy-board.skin-forest .candy-gem.t2{clip-path:polygon(50% 0%,90% 25%,100% 60%,75% 100%,25% 100%,0% 60%,10% 25%);border-radius:0;width:82%;height:88%;}
+.candy-board.skin-forest .candy-gem.t3{clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);border-radius:0;width:85%;height:80%;}
+.candy-board.skin-forest .candy-gem.t0::after,.candy-board.skin-forest .candy-gem.t2::after,.candy-board.skin-forest .candy-gem.t3::after{display:none;}`;
+    }
+
+    el.textContent = css;
   }
 
   function applySkin(skinId) {

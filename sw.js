@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v94';
+const CACHE_VERSION = 'v1.5.1-20260424-0013';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

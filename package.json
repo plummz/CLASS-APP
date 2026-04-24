@@ -4,8 +4,10 @@
   "description": "School portfolio app with real-time chat, profiles, and file uploads.",
   "main": "server.js",
   "scripts": {
+    "prestart": "node scripts/cache-bust.js",
     "start": "node server.js",
     "dev": "npx nodemon server.js",
+    "cache-bust": "node scripts/cache-bust.js",
     "lint": "npx eslint .",
     "check": "node --check server.js && node --check script.js && node --check assets/js/codelab.js && node --check coding-educational/coding-educational.js && node --check features/pokemon/pokemon.js && node --check features/royale/royale.js && node --check features/pacman/pacman.js"
   },

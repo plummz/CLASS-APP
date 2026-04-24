@@ -110,7 +110,11 @@ function loadData() {
 }
 
 function saveData(data) {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('[saveData] Failed to write data.json:', err.message);
+  }
 }
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
@@ -168,6 +172,9 @@ function formatUptime(seconds) {
 
 app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json());
+
+// Wraps sync/async route handlers so any thrown error reaches the global error handler
+const wrap = fn => (req, res, next) => { try { const r = fn(req, res, next); if (r && typeof r.catch === 'function') r.catch(next); } catch (e) { next(e); } };
 
 // ── Auth helpers ──────────────────────────────────────────
 const loginLimiter = rateLimit({
@@ -327,7 +334,7 @@ app.get('/api/app-open-count', (req, res) => {
   res.json({ count: state.appOpenCount || 0, users });
 });
 
-app.post('/api/app-open-count', (req, res) => {
+app.post('/api/app-open-count', wrap((req, res) => {
   state.appOpenCount = (state.appOpenCount || 0) + 1;
   const username = String(req.body?.username || '').trim().slice(0, 40);
   if (username) {
@@ -341,7 +348,7 @@ app.post('/api/app-open-count', (req, res) => {
   const payload = { count: state.appOpenCount, users };
   io.emit('appOpenCount', payload);
   res.json(payload);
-});
+}));
 
 /* ── Search diagnostics — visit /api/search-test?q=test to debug ─────── */
 app.get('/api/search-test', (req, res) => {
@@ -787,17 +794,17 @@ app.post('/api/push/private-message', async (req, res) => {
 });
 
 // --- FOLDERS & FILES API ---
-app.get('/api/folders', (req, res) => {
+app.get('/api/folders', wrap((req, res) => {
   const parent = req.query.parent;
   res.json(state.folders.filter(f => f.parent === parent));
-});
+}));
 
-app.post('/api/folders', (req, res) => {
+app.post('/api/folders', wrap((req, res) => {
   const folder = { id: Date.now().toString(), parent: req.body.parent, name: req.body.name, owner: req.body.owner };
   state.folders.push(folder);
   saveData(state);
   res.json(folder);
-});
+}));
 
 app.put('/api/folders/:id', requireAuth, (req, res) => {
   const folder = state.folders.find(f => f.id === req.params.id);
@@ -818,16 +825,16 @@ app.delete('/api/folders/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/files', (req, res) => {
+app.get('/api/files', wrap((req, res) => {
   res.json(state.files.filter(f => f.folderId === req.query.folderId));
-});
+}));
 
-app.post('/api/files', (req, res) => {
+app.post('/api/files', wrap((req, res) => {
   const file = { id: Date.now().toString(), ...req.body };
   state.files.push(file);
   saveData(state);
   res.json(file);
-});
+}));
 
 app.delete('/api/files/:id', requireAuth, (req, res) => {
   const file = state.files.find(f => f.id === req.params.id);
@@ -878,9 +885,9 @@ app.post('/api/register', loginLimiter, (req, res) => {
   res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false, token });
 });
 
-app.get('/api/users', (req, res) => {
+app.get('/api/users', wrap((req, res) => {
   res.json(safeUsers());
-});
+}));
 
 app.put('/api/users/:username', ...requireSelf('username'), (req, res) => {
   const username = req.params.username;
@@ -903,7 +910,7 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
 });
 
 // --- CHAT & FILE UPLOAD API ---
-app.get('/api/messages', (req, res) => {
+app.get('/api/messages', wrap((req, res) => {
   const { chat, target } = req.query;
   if (!chat) return res.status(400).json({ error: 'chat query required' });
   if (chat === 'private') {
@@ -912,9 +919,9 @@ app.get('/api/messages', (req, res) => {
     return res.json(getHistory('private', { userA, userB }));
   }
   return res.json(getHistory(chat));
-});
+}));
 
-app.post('/api/messages', (req, res) => {
+app.post('/api/messages', wrap((req, res) => {
   const { chat, sender, text, target, attachment } = req.body;
   if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });
   const message = {
@@ -946,7 +953,7 @@ app.post('/api/messages', (req, res) => {
   saveData(state);
   emitMessage(chat, null, message);
   res.json(message);
-});
+}));
 
 // ── Compression helpers ───────────────────────────────────
 const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
@@ -1448,6 +1455,7 @@ app.post('/api/groq', express.json(), async (req, res) => {
 
 /* ── In-memory lobby player map ─────────────────────────── */
 const lobbyPlayers = new Map(); // socketId → { username, x, y, dir, color, bodyColor, score }
+const lobbyMoveThrottle = new Map(); // socketId → last broadcast timestamp (50ms / 20fps)
 
 /* ── Star Collector mini-game ────────────────────────────── */
 const lobbyScores = {}; // username → score
@@ -1547,6 +1555,9 @@ io.on('connection', (socket) => {
   socket.on('lobby:move', ({ x, y, dir }) => {
     const player = lobbyPlayers.get(socket.id);
     if (!player) return;
+    const now = Date.now();
+    if (now - (lobbyMoveThrottle.get(socket.id) || 0) < 50) return; // 20fps cap
+    lobbyMoveThrottle.set(socket.id, now);
     player.x = Math.max(22, Math.min(780, x || player.x));
     player.y = Math.max(22, Math.min(470, y || player.y));
     player.dir = dir || player.dir;
@@ -1612,8 +1623,38 @@ io.on('connection', (socket) => {
       lobbyPlayers.delete(socket.id);
       io.to('lobby').emit('lobby:player_left', { username: lobbyPlayer.username });
     }
+    lobbyMoveThrottle.delete(socket.id);
   });
 });
+
+// ── Global Express error handler ─────────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('[express error]', err.message || err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ── Process-level safety nets ─────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
+// ── Graceful shutdown ─────────────────────────────────────
+function shutdown(signal) {
+  console.log(`[shutdown] ${signal} received — closing server`);
+  server.close(() => {
+    console.log('[shutdown] HTTP server closed');
+    process.exit(0);
+  });
+  // Force-exit if server takes too long
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
 
 server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);

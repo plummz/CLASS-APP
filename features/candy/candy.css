@@ -616,3 +616,114 @@
 }
 .candy-modal-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); }
 .candy-modal-nav-btn:disabled { opacity: .35; cursor: default; }
+
+/* ── Coins display ────────────────────────────────────────────────────── */
+.candy-coins-display {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffdd44;
+  padding: 6px 10px;
+  background: rgba(255,221,68,.08);
+  border: 1px solid rgba(255,221,68,.22);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Shop modal ───────────────────────────────────────────────────────── */
+.candy-shop-modal-inner { max-height: 90vh; display: flex; flex-direction: column; }
+
+.candy-shop-section { margin-bottom: 18px; }
+
+.candy-shop-rarity-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.candy-rarity-common    { color: #b0b8c8; background: rgba(176,184,200,.12); }
+.candy-rarity-rare      { color: #66aaff; background: rgba(102,170,255,.12); }
+.candy-rarity-epic      { color: #cc77ff; background: rgba(204,119,255,.12); }
+.candy-rarity-legendary { color: #ffbb33; background: rgba(255,187,51,.12); }
+.candy-rarity-premium   { color: #ff6699; background: rgba(255,102,153,.12); }
+
+.candy-shop-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.candy-shop-item {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: background .12s, border-color .12s;
+}
+.candy-shop-item.equipped {
+  background: rgba(255,107,157,.1);
+  border-color: rgba(255,107,157,.4);
+}
+
+.candy-skin-preview {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+}
+.cskin-gem {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  flex-shrink: 0;
+}
+
+.candy-shop-item-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.candy-shop-action-btn {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,107,157,.5);
+  background: rgba(255,107,157,.15);
+  color: #fff;
+  cursor: pointer;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.candy-shop-action-btn:hover { background: rgba(255,107,157,.3); }
+.candy-shop-action-btn.cant-afford,
+.candy-shop-action-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.06);
+}
+
+.candy-shop-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+.equipped-badge {
+  background: rgba(255,107,157,.2);
+  border: 1px solid rgba(255,107,157,.5);
+  color: #ff6b9d;
+}

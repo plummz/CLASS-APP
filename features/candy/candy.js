@@ -28,7 +28,62 @@ window.candyModule = (() => {
   let highestUnlocked = 1;
   let levelCfg     = genLevel(1);
   let blockerSet   = new Set();
-  let coins        = 0;
+  let coins           = 0;
+  let equippedSkin    = 'default';
+  let ownedSkins      = new Set(['default']);
+
+  // ── Skin data (35 skins) ──────────────────────────────────────────────
+  // [id, name, rarity_idx, price, hues[8] | null]
+  // hues: HSL hue values for gem types t0–t7; null = use default CSS
+  const RARITY_NAMES = ['common', 'rare', 'epic', 'legendary', 'premium'];
+  const SKIN_DATA = [
+    // ── Common (10) ───────────────────────────────────────────────────
+    ['default',  'Classic',        0,    0, null],
+    ['pastel',   'Pastel Pop',     0,   60, [350,210, 58,135,285, 28,178,322]],
+    ['neon',     'Neon Brights',   0,   60, [355,200, 65,145,270, 20,183,318]],
+    ['earthy',   'Earthy Tones',   0,   80, [ 18,200, 48,100, 32, 38,168,340]],
+    ['ocean',    'Ocean Vibes',    0,   80, [195,220,188,162,242,208,177,202]],
+    ['sunset',   'Sunset Glow',    0,  100, [ 12, 38, 55, 22,348, 20, 42,358]],
+    ['forest',   'Forest Fresh',   0,  100, [122,162, 82,142,102,112,172, 88]],
+    ['berry',    'Berry Mix',      0,  100, [322,272,352,292,312,288,332,302]],
+    ['coolblue', 'Cool Blues',     0,  100, [210,220,202,198,218,208,232,226]],
+    ['fire',     'Fire Squad',     0,  100, [  5, 20, 48, 15,355, 30, 52, 10]],
+    // ── Rare (8) ──────────────────────────────────────────────────────
+    ['galaxy',   'Galaxy Swirl',   1,  200, [262,238,278,252,298,242,272,312]],
+    ['aurora',   'Aurora',         1,  200, [178,302,162,188,312,172,188,298]],
+    ['rosegold', 'Rose Gold',      1,  250, [345, 25,340,358,335, 20,352,330]],
+    ['stripe',   'Candy Stripe',   1,  250, [  0, 40, 80,140,200,260,300,340]],
+    ['midnight', 'Midnight',       1,  300, [232,248,222,238,252,228,242,262]],
+    ['tropical', 'Tropical',       1,  300, [148, 55,178,128,298, 48,198, 88]],
+    ['vintage',  'Vintage',        1,  350, [ 22,198, 52,118,278, 38,172,318]],
+    ['crystal',  'Crystal Clear',  1,  350, [202,218,198,208,222,212,198,218]],
+    // ── Epic (8) ──────────────────────────────────────────────────────
+    ['prism',    'Prism Burst',    2,  550, [  0, 45, 90,135,180,225,270,315]],
+    ['lava',     'Lava Flow',      2,  600, [  5, 15, 28, 12,358, 22, 32,  8]],
+    ['deepsea',  'Deep Sea',       2,  650, [202,218,192,208,222,198,212,228]],
+    ['holo',     'Holographic',    2,  700, [182,222,262,302,342, 22, 62,102]],
+    ['darkmatt', 'Dark Matter',    2,  750, [258,242,262,248,272,238,252,282]],
+    ['cotton',   'Cotton Candy',   2,  800, [322,202,342,312,208,318,198,338]],
+    ['cosmic',   'Cosmic Dust',    2,  850, [288,252,302,272,312,268,292,322]],
+    ['pixel',    'Pixel Perfect',  2,  900, [ 10,220, 62,135,285, 25,178,328]],
+    // ── Legendary (5) ────────────────────────────────────────────────
+    ['golden',   'Golden Hour',    3, 1200, [ 42, 38, 52, 45, 35, 55, 40, 48]],
+    ['flame',    'Mystic Flame',   3, 1500, [ 12, 22, 38, 18,358, 32,  8, 28]],
+    ['starfall', 'Starfall',       3, 1800, [242,262,222,248,282,238,252,272]],
+    ['rainbow',  'Rainbow Wave',   3, 2000, [  0, 40, 80,140,200,260,300,340]],
+    ['dragon',   'Crystal Dragon', 3, 2200, [178,192,185,182,198,172,190,185]],
+    // ── Premium (4) ──────────────────────────────────────────────────
+    ['diamond',  'Diamond',        4, 3000, [202,212,198,208,218,200,210,205]],
+    ['obsidian', 'Obsidian',       4, 3000, [252,242,258,248,262,250,255,245]],
+    ['solar',    'Solar Flare',    4, 3500, [ 32, 48, 22, 42, 12, 52, 38, 18]],
+    ['candygod', 'Candy God',      4, 5000, [350,215, 55,130,280, 25,175,320]],
+  ];
+  // Build lookup: id → {id, name, rarity, price, hues}
+  const SKINS = Object.fromEntries(
+    SKIN_DATA.map(([id, name, ri, price, hues]) =>
+      [id, { id, name, rarity: RARITY_NAMES[ri], price, hues }]
+    )
+  );
 
   // ── Helpers ───────────────────────────────────────────────────────────
   const idx   = (r, c) => r * COLS + c;
@@ -166,6 +221,7 @@ window.candyModule = (() => {
   function updateHUD() {
     const s = $id('candy-score');       if (s)  s.textContent  = score.toLocaleString();
     const m = $id('candy-moves');       if (m)  m.textContent  = moves;
+    const co = $id('candy-coins-hud'); if (co) co.textContent = coins;
     const ln = $id('candy-level-num');  if (ln) ln.textContent = currentLevel;
     const tg = $id('candy-target');     if (tg) tg.textContent = levelCfg.target.toLocaleString();
     const bl = $id('candy-blockers');   if (bl) bl.textContent = blockerSet.size;
@@ -434,6 +490,124 @@ window.candyModule = (() => {
     render();
   }
 
+  // ── Skin system ───────────────────────────────────────────────────────
+  function skinGrad(h, typeIdx) {
+    if (typeIdx === 5) return `linear-gradient(145deg,hsl(${h},80%,72%),hsl(${h},78%,42%),hsl(${h},74%,28%))`;
+    if (typeIdx === 6) return `linear-gradient(165deg,hsl(${h},80%,75%),hsl(${h},75%,45%),hsl(${h},70%,30%))`;
+    if (typeIdx === 7) return `linear-gradient(135deg,hsl(${h},85%,75%),hsl(${h},83%,45%),hsl(${h},78%,28%))`;
+    return `radial-gradient(circle at 35% 30%,hsl(${h},85%,75%),hsl(${h},80%,42%))`;
+  }
+
+  function skinPreviewGrad(skinId, ti) {
+    const DEFAULT_HUES = [350,215,55,130,280,25,175,320];
+    const hues = SKINS[skinId]?.hues || DEFAULT_HUES;
+    return skinGrad(hues[ti], ti);
+  }
+
+  function injectSkinStyle(skinId) {
+    let el = document.getElementById('candy-skin-style');
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'candy-skin-style';
+      document.head.appendChild(el);
+    }
+    const skin = SKINS[skinId];
+    if (!skin || !skin.hues) { el.textContent = ''; return; }
+    el.textContent = skin.hues.map((h, i) =>
+      `.candy-board.skin-${skinId} .candy-gem.t${i}{background:${skinGrad(h, i)}}`
+    ).join('\n');
+  }
+
+  function applySkin(skinId) {
+    equippedSkin = skinId;
+    const boardEl = $id('candy-board');
+    if (boardEl) {
+      boardEl.className = boardEl.className.replace(/\bskin-\S+/g, '').trim();
+      if (skinId !== 'default') boardEl.classList.add('skin-' + skinId);
+    }
+    injectSkinStyle(skinId);
+  }
+
+  // ── Shop ──────────────────────────────────────────────────────────────
+  function openShop() { buildShopModal(); }
+
+  function buildShopModal() {
+    if (typeof removeDynamicModal === 'function') removeDynamicModal('candy-shop-modal');
+
+    const rows = RARITY_NAMES.map(rarity => {
+      const group = SKIN_DATA
+        .map(([id, name, ri, price]) => ({ id, name, rarity: RARITY_NAMES[ri], price }))
+        .filter(s => s.rarity === rarity);
+      if (!group.length) return '';
+
+      const items = group.map(({ id, name, price }) => {
+        const owned    = ownedSkins.has(id);
+        const equipped = equippedSkin === id;
+        const canBuy   = coins >= price;
+        const prev     = [0, 3, 6].map(ti =>
+          `<div class="cskin-gem" style="background:${skinPreviewGrad(id, ti)}"></div>`
+        ).join('');
+        let action;
+        if (equipped) {
+          action = `<div class="candy-shop-badge equipped-badge">✓ On</div>`;
+        } else if (owned) {
+          action = `<button class="candy-shop-action-btn" onclick="window.candyModule._equipSkin('${id}')">Equip</button>`;
+        } else {
+          action = `<button class="candy-shop-action-btn${canBuy ? '' : ' cant-afford'}"
+            ${canBuy ? `onclick="window.candyModule._buySkin('${id}',${price})"` : 'disabled'}>
+            🪙 ${price}
+          </button>`;
+        }
+        return `<div class="candy-shop-item${equipped ? ' equipped' : ''}">
+          <div class="candy-skin-preview">${prev}</div>
+          <div class="candy-shop-item-name">${name}</div>
+          ${action}
+        </div>`;
+      }).join('');
+
+      return `<div class="candy-shop-section">
+        <div class="candy-shop-rarity-label candy-rarity-${rarity}">${rarity.toUpperCase()}</div>
+        <div class="candy-shop-items">${items}</div>
+      </div>`;
+    }).join('');
+
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="candy-shop-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
+        <div class="custom-modal candy-shop-modal-inner" style="max-width:500px;width:95vw;">
+          <button class="modal-close-btn"
+            onclick="(typeof removeDynamicModal==='function'?removeDynamicModal:d=>document.getElementById(d)?.remove())('candy-shop-modal')">&times;</button>
+          <div class="modal-title">🛍️ Candy Shop &nbsp;<span style="font-size:14px;font-weight:700;color:#ffdd44;">🪙 ${coins}</span></div>
+          <div style="font-size:11px;opacity:.5;margin-bottom:10px;">Earn coins by completing levels</div>
+          <div style="overflow-y:auto;max-height:60vh;">${rows}</div>
+        </div>
+      </div>`);
+  }
+
+  function _buySkin(id, price) {
+    if (coins < price || ownedSkins.has(id)) return;
+    coins -= price;
+    ownedSkins.add(id);
+    saveInventoryItem(id, 'skin').catch(() => {});
+    saveProgress().catch(() => {});
+    buildShopModal();
+  }
+
+  function _equipSkin(id) {
+    if (!ownedSkins.has(id)) return;
+    applySkin(id);
+    saveProgress().catch(() => {});
+    buildShopModal();
+  }
+
+  async function saveInventoryItem(itemId, itemType) {
+    if (typeof sb === 'undefined' || !sb) return;
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    try {
+      await sb.from('candy_inventory')
+        .insert([{ username: currentUser.username, item_id: itemId, item_type: itemType }]);
+    } catch (_) {}
+  }
+
   // ── Level select modal ────────────────────────────────────────────────
   const PAGE_SIZE   = 50;
   const TOTAL_PAGES = Math.ceil(MAX_LEVEL / PAGE_SIZE);
@@ -491,16 +665,21 @@ window.candyModule = (() => {
     if (typeof sb === 'undefined' || !sb) return;
     if (typeof currentUser === 'undefined' || !currentUser) return;
     try {
-      const { data } = await sb
-        .from('candy_progress')
-        .select('highest_level, coins')
-        .eq('username', currentUser.username)
-        .maybeSingle();
-      if (data) {
-        highestUnlocked = Math.max(1, data.highest_level || 1);
-        coins           = data.coins || 0;
-        // Clamp currentLevel to what's unlocked
+      const u = currentUser.username;
+      const [{ data: prog }, { data: inv }] = await Promise.all([
+        sb.from('candy_progress').select('highest_level,coins,equipped_skin').eq('username', u).maybeSingle(),
+        sb.from('candy_inventory').select('item_id,item_type').eq('username', u),
+      ]);
+      if (prog) {
+        highestUnlocked = Math.max(1, prog.highest_level || 1);
+        coins           = prog.coins || 0;
+        if (prog.equipped_skin) equippedSkin = prog.equipped_skin;
         if (currentLevel > highestUnlocked) currentLevel = highestUnlocked;
+      }
+      if (inv) {
+        inv.forEach(({ item_id, item_type }) => {
+          if (item_type === 'skin') ownedSkins.add(item_id);
+        });
       }
     } catch (_) {}
   }
@@ -517,11 +696,11 @@ window.candyModule = (() => {
         .maybeSingle();
       if (ex) {
         await sb.from('candy_progress')
-          .update({ highest_level: highestUnlocked, coins, updated_at: new Date().toISOString() })
+          .update({ highest_level: highestUnlocked, coins, equipped_skin: equippedSkin, updated_at: new Date().toISOString() })
           .eq('id', ex.id);
       } else {
         await sb.from('candy_progress')
-          .insert([{ username: u, highest_level: highestUnlocked, coins }]);
+          .insert([{ username: u, highest_level: highestUnlocked, coins, equipped_skin: equippedSkin }]);
       }
     } catch (_) {}
   }
@@ -630,7 +809,7 @@ window.candyModule = (() => {
   function init() {
     active = true;
     loadProgress()
-      .then(() => startLevel(currentLevel))
+      .then(() => { applySkin(equippedSkin); startLevel(currentLevel); })
       .catch(() => startLevel(currentLevel));
   }
 
@@ -643,12 +822,17 @@ window.candyModule = (() => {
     active   = false;
     busy     = false;
     selected = null;
+    const styleEl = document.getElementById('candy-skin-style');
+    if (styleEl) styleEl.textContent = '';
+    const boardEl = $id('candy-board');
+    if (boardEl) boardEl.className = boardEl.className.replace(/\bskin-\S+/g, '').trim();
   }
 
   return {
     init, destroy, restart,
-    openLevelSelect,
+    openLevelSelect, openShop,
     _startLevel: startLevel,
     _levelPage:  openLevelSelectPage,
+    _buySkin, _equipSkin,
   };
 })();

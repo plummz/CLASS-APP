@@ -32,7 +32,7 @@ create table if not exists public.candy_inventory (
 
 alter table public.candy_inventory enable row level security;
 
-drop policy if exists "candy_inventory_all" on public.candy_progress;
+drop policy if exists "candy_inventory_all" on public.candy_inventory;
 create policy "candy_inventory_all"
   on public.candy_inventory for all
   using (true) with check (true);

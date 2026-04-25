@@ -2757,6 +2757,7 @@ pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', w
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
+window.customPageBgs = customPageBgs; // expose for personalizationModule
 let calendarNotes = {};
 
 const CODED_BACKGROUND_PRESETS = [

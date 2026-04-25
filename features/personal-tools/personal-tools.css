@@ -37,15 +37,15 @@
 
 .personal-tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
   margin-bottom: 30px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .personal-tools-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 14px;
   }
 }
 
@@ -55,16 +55,19 @@
 
 .tool-card {
   position: relative;
-  height: 380px;
-  border-radius: 20px;
+  height: 260px;
+  border-radius: 18px;
   overflow: hidden;
   cursor: pointer;
   transform-style: preserve-3d;
   transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
-  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .tool-card::before {
@@ -74,7 +77,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 255, 136, 0.05));
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(0, 255, 136, 0.04));
   pointer-events: none;
   z-index: 1;
 }
@@ -120,8 +123,8 @@
 }
 
 .tool-card-icon {
-  font-size: 3.5em;
-  margin-bottom: 15px;
+  font-size: 2.6em;
+  margin-bottom: 10px;
   display: inline-block;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   animation: float 3s ease-in-out infinite;
@@ -178,10 +181,13 @@
    ───────────────────────────────────────────────────────── */
 
 .tool-card:hover {
-  transform: translateY(-15px) scale(1.02);
-  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  border-color: rgba(0, 212, 255, 0.3);
+  transform: translateY(-10px) scale(1.02);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 212, 255, 0.3),
+    0 0 40px rgba(0, 212, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 212, 255, 0.35);
 }
 
 .tool-card:hover .tool-card-bg {
@@ -287,23 +293,24 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .personal-tools-title {
-    font-size: 2em;
+    font-size: 1.8em;
   }
 
   .tool-card {
-    height: 320px;
-    min-height: 280px;
+    height: 220px;
   }
 
   .tool-card-icon {
-    font-size: 2.5em;
+    font-size: 2em;
   }
 
   .tool-card-title {
-    font-size: 1.3em;
+    font-size: 1.2em;
   }
+}
 
-  .personal-tools-grid {
-    gap: 15px;
+@media (max-width: 600px) {
+  .tool-card {
+    height: 200px;
   }
 }

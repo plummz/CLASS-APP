@@ -18,6 +18,7 @@ window.calculatorModule = {
     if (!page) return;
 
     const basicButtons = [
+      ['AC', 'del', '(', ')'],
       ['7', '8', '9', '/'],
       ['4', '5', '6', '*'],
       ['1', '2', '3', '-'],
@@ -37,9 +38,12 @@ window.calculatorModule = {
         if (btn === '=') btnClass += ' equals';
         else if (['+', '-', '*', '/'].includes(btn)) btnClass += ' operator';
         else if (btn === 'AC') btnClass += ' clear';
+        else if (btn === 'del') btnClass += ' number';
+        else if (btn === '(' || btn === ')') btnClass += ' number';
         else btnClass += ' number';
-        
-        return `<button class="${btnClass}" onclick="calculatorModule.buttonPress('${btn}')">${btn}</button>`;
+
+        const label = btn === 'del' ? 'DEL' : btn;
+        return `<button class="${btnClass}" onclick="calculatorModule.buttonPress('${btn}')">${label}</button>`;
       }).join('')
     ).join('');
 

@@ -1,100 +1,111 @@
 // ═══════════════════════════════════════════════════════════
-// SCIENTIFIC CALCULATOR - Module
+// SCIENTIFIC CALCULATOR - Module (Casio-style upgrade)
 // ═══════════════════════════════════════════════════════════
 
 window.calculatorModule = {
-  display: '0',
-  previousValue: null,
-  operation: null,
-  shouldResetDisplay: false,
-  mode: 'basic', // 'basic' or 'scientific'
+  expr: '',        // current expression string
+  ans: 0,          // previous answer
+  memory: 0,       // M register
+  degMode: true,   // true = degrees, false = radians
+  justCalc: false, // true after = pressed — next digit starts fresh
 
-  init: function() {
-    this.render();
-  },
+  init: function() { this.render(); },
 
   render: function() {
     const page = document.getElementById('page-calculator');
     if (!page) return;
-
-    const basicButtons = [
-      ['AC', 'del', '(', ')'],
-      ['7', '8', '9', '/'],
-      ['4', '5', '6', '*'],
-      ['1', '2', '3', '-'],
-      ['0', '.', '=', '+'],
-    ];
-
-    const scientificExtras = [
-      ['sin', 'cos', 'tan', 'deg'],
-      ['log', 'ln', '^', '√'],
-      ['(', ')', 'π', 'e'],
-      ['%', 'del', 'AC', '=']
-    ];
-
-    const basicButtonsHTML = basicButtons.map(row =>
-      row.map(btn => {
-        let btnClass = 'calc-btn';
-        if (btn === '=') btnClass += ' equals';
-        else if (['+', '-', '*', '/'].includes(btn)) btnClass += ' operator';
-        else if (btn === 'AC') btnClass += ' clear';
-        else if (btn === 'del') btnClass += ' number';
-        else if (btn === '(' || btn === ')') btnClass += ' number';
-        else btnClass += ' number';
-
-        const label = btn === 'del' ? 'DEL' : btn;
-        return `<button class="${btnClass}" onclick="calculatorModule.buttonPress('${btn}')">${label}</button>`;
-      }).join('')
-    ).join('');
-
-    const scientificButtonsHTML = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('sin')">sin</button>
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('cos')">cos</button>
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('tan')">tan</button>
-        <button class="calc-btn constant" onclick="calculatorModule.buttonPress('π')">π</button>
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('log')">log</button>
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('ln')">ln</button>
-        <button class="calc-btn operator" onclick="calculatorModule.buttonPress('^')">x^y</button>
-        <button class="calc-btn function" onclick="calculatorModule.buttonPress('√')">√</button>
-        <button class="calc-btn number" onclick="calculatorModule.buttonPress('(')">(</button>
-        <button class="calc-btn number" onclick="calculatorModule.buttonPress(')')">)</button>
-        <button class="calc-btn operator" onclick="calculatorModule.buttonPress('%')">%</button>
-        <button class="calc-btn constant" onclick="calculatorModule.buttonPress('e')">e</button>
-      </div>
-    `;
-
-    const basicModeButtons = `
-      <div class="calculator-buttons basic-mode">
-        ${basicButtonsHTML}
-      </div>
-    `;
-
-    const scientificModeButtons = `
-      ${scientificButtonsHTML}
-      <div class="calculator-buttons" style="margin-top: 10px;">
-        <button class="calc-btn clear" style="grid-column: span 2;" onclick="calculatorModule.buttonPress('AC')">AC</button>
-        <button class="calc-btn number" onclick="calculatorModule.buttonPress('del')">DEL</button>
-        <button class="calc-btn equals" style="grid-column: span 1;" onclick="calculatorModule.buttonPress('=')">=</button>
-      </div>
-    `;
 
     page.innerHTML = `
       <div class="tool-page-header">
         <button class="tool-back-btn" onclick="window.goToPage('personal-tools')">← Back</button>
         <h1 class="tool-page-title">Scientific Calculator</h1>
       </div>
-      <div class="calculator-wrapper">
-        <div class="calculator-container">
-          <div class="calculator-display" id="calc-display">0</div>
-          
-          <div class="calculator-mode-toggle">
-            <button class="calc-mode-btn active" id="basic-mode-btn" onclick="calculatorModule.switchMode('basic')">Basic</button>
-            <button class="calc-mode-btn" id="scientific-mode-btn" onclick="calculatorModule.switchMode('scientific')">Scientific</button>
+      <div class="casio-wrapper">
+        <div class="casio-body">
+
+          <!-- Display -->
+          <div class="casio-display">
+            <div class="casio-expr" id="casio-expr">0</div>
+            <div class="casio-result" id="casio-result"></div>
+            <div class="casio-indicators">
+              <span id="casio-deg-ind" class="casio-ind active">DEG</span>
+              <span id="casio-rad-ind" class="casio-ind">RAD</span>
+              <span id="casio-mem-ind" class="casio-ind" id="casio-mem-ind">M</span>
+            </div>
           </div>
 
-          <div id="basic-buttons">${basicModeButtons}</div>
-          <div id="scientific-buttons" style="display: none;">${scientificModeButtons}</div>
+          <!-- Mode bar -->
+          <div class="casio-mode-bar">
+            <button class="casio-mode-btn active" id="btn-deg" onclick="calculatorModule.setDeg()">DEG</button>
+            <button class="casio-mode-btn" id="btn-rad" onclick="calculatorModule.setRad()">RAD</button>
+          </div>
+
+          <!-- Keypad -->
+          <div class="casio-keys">
+
+            <!-- Row 1: shift functions -->
+            <button class="ckey fn2" onclick="calculatorModule.p('asin(')">sin⁻¹</button>
+            <button class="ckey fn2" onclick="calculatorModule.p('acos(')">cos⁻¹</button>
+            <button class="ckey fn2" onclick="calculatorModule.p('atan(')">tan⁻¹</button>
+            <button class="ckey fn2" onclick="calculatorModule.p('nthrt(')">ⁿ√x</button>
+            <button class="ckey fn2" onclick="calculatorModule.p('log2(')">log₂</button>
+
+            <!-- Row 2: trig -->
+            <button class="ckey fn" onclick="calculatorModule.p('sin(')">sin</button>
+            <button class="ckey fn" onclick="calculatorModule.p('cos(')">cos</button>
+            <button class="ckey fn" onclick="calculatorModule.p('tan(')">tan</button>
+            <button class="ckey fn" onclick="calculatorModule.p('sqrt(')">√x</button>
+            <button class="ckey fn" onclick="calculatorModule.p('cbrt(')">∛x</button>
+
+            <!-- Row 3: log / exp -->
+            <button class="ckey fn" onclick="calculatorModule.p('log(')">log</button>
+            <button class="ckey fn" onclick="calculatorModule.p('ln(')">ln</button>
+            <button class="ckey fn" onclick="calculatorModule.p('^2')">x²</button>
+            <button class="ckey fn" onclick="calculatorModule.p('^')">xʸ</button>
+            <button class="ckey fn" onclick="calculatorModule.p('fact(')">n!</button>
+
+            <!-- Row 4: constants / memory -->
+            <button class="ckey const" onclick="calculatorModule.p('π')">π</button>
+            <button class="ckey const" onclick="calculatorModule.p('e')">e</button>
+            <button class="ckey const" onclick="calculatorModule.p('Ans')">Ans</button>
+            <button class="ckey mem" onclick="calculatorModule.mplus()">M+</button>
+            <button class="ckey mem" onclick="calculatorModule.mr()">MR</button>
+
+            <!-- Row 5: parens / percent / EXP / MC -->
+            <button class="ckey num" onclick="calculatorModule.p('(')">(</button>
+            <button class="ckey num" onclick="calculatorModule.p(')')">)</button>
+            <button class="ckey fn" onclick="calculatorModule.p('%')">%</button>
+            <button class="ckey fn" onclick="calculatorModule.p('E')">EXP</button>
+            <button class="ckey mem" onclick="calculatorModule.mc()">MC</button>
+
+            <!-- Row 6: 7 8 9 DEL AC -->
+            <button class="ckey num" onclick="calculatorModule.p('7')">7</button>
+            <button class="ckey num" onclick="calculatorModule.p('8')">8</button>
+            <button class="ckey num" onclick="calculatorModule.p('9')">9</button>
+            <button class="ckey del" onclick="calculatorModule.del()">DEL</button>
+            <button class="ckey ac"  onclick="calculatorModule.ac()">AC</button>
+
+            <!-- Row 7: 4 5 6 × ÷ -->
+            <button class="ckey num" onclick="calculatorModule.p('4')">4</button>
+            <button class="ckey num" onclick="calculatorModule.p('5')">5</button>
+            <button class="ckey num" onclick="calculatorModule.p('6')">6</button>
+            <button class="ckey op"  onclick="calculatorModule.p('×')">×</button>
+            <button class="ckey op"  onclick="calculatorModule.p('÷')">÷</button>
+
+            <!-- Row 8: 1 2 3 + - -->
+            <button class="ckey num" onclick="calculatorModule.p('1')">1</button>
+            <button class="ckey num" onclick="calculatorModule.p('2')">2</button>
+            <button class="ckey num" onclick="calculatorModule.p('3')">3</button>
+            <button class="ckey op"  onclick="calculatorModule.p('+')">+</button>
+            <button class="ckey op"  onclick="calculatorModule.p('−')">−</button>
+
+            <!-- Row 9: 0 . frac = -->
+            <button class="ckey num" onclick="calculatorModule.p('0')">0</button>
+            <button class="ckey num" onclick="calculatorModule.p('.')">.</button>
+            <button class="ckey fn"  onclick="calculatorModule.frac()">a/b</button>
+            <button class="ckey eq span2" onclick="calculatorModule.calc()">=</button>
+
+          </div>
         </div>
       </div>
     `;
@@ -102,247 +113,258 @@ window.calculatorModule = {
     this.updateDisplay();
   },
 
-  switchMode: function(newMode) {
-    this.mode = newMode;
-    const basicBtn = document.getElementById('basic-mode-btn');
-    const scientificBtn = document.getElementById('scientific-mode-btn');
-    const basicBtns = document.getElementById('basic-buttons');
-    const scientificBtns = document.getElementById('scientific-buttons');
+  // ── Input ────────────────────────────────────────────────
 
-    if (newMode === 'basic') {
-      basicBtn.classList.add('active');
-      scientificBtn.classList.remove('active');
-      basicBtns.style.display = 'block';
-      scientificBtns.style.display = 'none';
-    } else {
-      basicBtn.classList.remove('active');
-      scientificBtn.classList.add('active');
-      basicBtns.style.display = 'none';
-      scientificBtns.style.display = 'block';
+  p: function(ch) {
+    // After = pressed, a digit/const starts a new expression;
+    // an operator continues with Ans prepended
+    if (this.justCalc) {
+      const isDigit = /^[0-9.]$/.test(ch);
+      const isConst = ch === 'π' || ch === 'e' || ch === 'Ans';
+      const isFn    = /^[a-z]/.test(ch);
+      if (isDigit || isConst || isFn) {
+        this.expr = '';
+      } else {
+        // operator — chain on previous result via Ans
+        if (this.expr === '' || this.expr === String(this.ans)) {
+          this.expr = 'Ans';
+        }
+      }
+      this.justCalc = false;
+    }
+
+    // Auto-close: inserting digit after ) needs implied ×
+    const last = this.expr.slice(-1);
+    if (/[0-9π)]/.test(last) && /^[a-z(]/.test(ch)) {
+      this.expr += '×';
+    }
+
+    this.expr += ch;
+    this.updateDisplay();
+    this.livePreview();
+  },
+
+  del: function() {
+    this.justCalc = false;
+    this.expr = this.expr.slice(0, -1);
+    this.updateDisplay();
+    this.livePreview();
+  },
+
+  ac: function() {
+    this.expr = '';
+    this.justCalc = false;
+    this.updateDisplay();
+    document.getElementById('casio-result').textContent = '';
+  },
+
+  // fraction helper: inserts (a)/(b) shell
+  frac: function() {
+    this.p('(');
+  },
+
+  // memory
+  mplus: function() {
+    const v = this.evaluate(this.expr);
+    if (v !== null) {
+      this.memory += v;
+      this.flashMem();
     }
   },
 
-  buttonPress: function(value) {
-    const display = document.getElementById('calc-display');
-    if (!display) return;
+  mr: function() {
+    this.p(String(this.memory));
+  },
 
-    // Handle equals
-    if (value === '=') {
-      this.calculate();
+  mc: function() {
+    this.memory = 0;
+    this.flashMem();
+  },
+
+  flashMem: function() {
+    const ind = document.getElementById('casio-mem-ind');
+    if (!ind) return;
+    ind.classList.toggle('active', this.memory !== 0);
+  },
+
+  setDeg: function() {
+    this.degMode = true;
+    document.getElementById('btn-deg').classList.add('active');
+    document.getElementById('btn-rad').classList.remove('active');
+    document.getElementById('casio-deg-ind').classList.add('active');
+    document.getElementById('casio-rad-ind').classList.remove('active');
+  },
+
+  setRad: function() {
+    this.degMode = false;
+    document.getElementById('btn-rad').classList.add('active');
+    document.getElementById('btn-deg').classList.remove('active');
+    document.getElementById('casio-rad-ind').classList.add('active');
+    document.getElementById('casio-deg-ind').classList.remove('active');
+  },
+
+  // ── Calculate ────────────────────────────────────────────
+
+  calc: function() {
+    if (!this.expr) return;
+    const result = this.evaluate(this.expr);
+
+    const resultEl = document.getElementById('casio-result');
+    if (result === null) {
+      if (resultEl) { resultEl.textContent = 'Error'; resultEl.className = 'casio-result error'; }
       return;
     }
 
-    // Handle clear
-    if (value === 'AC') {
-      this.display = '0';
-      this.previousValue = null;
-      this.operation = null;
-      this.shouldResetDisplay = false;
-      this.updateDisplay();
-      return;
+    this.ans = result;
+    const formatted = this.fmt(result);
+
+    if (resultEl) {
+      resultEl.textContent = '= ' + formatted;
+      resultEl.className = 'casio-result';
     }
 
-    // Handle delete
-    if (value === 'del') {
-      if (this.display !== '0' && this.display.length > 1) {
-        this.display = this.display.slice(0, -1);
-      } else {
-        this.display = '0';
-      }
-      this.updateDisplay();
-      return;
-    }
-
-    // Handle operators
-    if (['+', '-', '*', '/', '%', '^'].includes(value)) {
-      if (this.previousValue === null) {
-        this.previousValue = this.parseExpression(this.display);
-      } else if (!this.shouldResetDisplay) {
-        this.previousValue = this.parseExpression(this.display);
-      }
-      this.operation = value;
-      this.shouldResetDisplay = true;
-      return;
-    }
-
-    // Handle functions
-    if (['sin', 'cos', 'tan', 'log', 'ln', '√'].includes(value)) {
-      const result = this.applyFunction(value, this.parseExpression(this.display));
-      this.display = this.formatResult(result);
-      this.shouldResetDisplay = true;
-      this.updateDisplay();
-      return;
-    }
-
-    // Handle constants
-    if (value === 'π') {
-      this.display = this.formatResult(Math.PI);
-      this.shouldResetDisplay = true;
-      this.updateDisplay();
-      return;
-    }
-
-    if (value === 'e') {
-      this.display = this.formatResult(Math.E);
-      this.shouldResetDisplay = true;
-      this.updateDisplay();
-      return;
-    }
-
-    // Handle parentheses
-    if (value === '(' || value === ')') {
-      if (this.shouldResetDisplay) {
-        this.display = value;
-        this.shouldResetDisplay = false;
-      } else {
-        this.display += value;
-      }
-      this.updateDisplay();
-      return;
-    }
-
-    // Handle decimal point
-    if (value === '.') {
-      if (this.shouldResetDisplay) {
-        this.display = '0.';
-        this.shouldResetDisplay = false;
-      } else if (!this.display.includes('.')) {
-        this.display += '.';
-      }
-      this.updateDisplay();
-      return;
-    }
-
-    // Handle numbers
-    if (this.shouldResetDisplay) {
-      this.display = value;
-      this.shouldResetDisplay = false;
-    } else {
-      if (this.display === '0') {
-        this.display = value;
-      } else {
-        this.display += value;
-      }
-    }
-
+    // Move result to expr line for chaining
+    this.expr = formatted;
+    this.justCalc = true;
     this.updateDisplay();
   },
 
-  calculate: function() {
-    if (this.operation === null || this.previousValue === null) return;
+  // Live preview while typing
+  livePreview: function() {
+    const resultEl = document.getElementById('casio-result');
+    if (!resultEl || !this.expr) { if (resultEl) resultEl.textContent = ''; return; }
+    const v = this.evaluate(this.expr);
+    if (v !== null && !this.justCalc) {
+      resultEl.textContent = '= ' + this.fmt(v);
+      resultEl.className = 'casio-result preview';
+    } else if (v === null) {
+      resultEl.textContent = '';
+    }
+  },
 
-    const currentValue = this.parseExpression(this.display);
-    let result;
+  // ── Safe Evaluator ────────────────────────────────────────
 
+  evaluate: function(raw) {
+    if (!raw || raw.trim() === '') return null;
     try {
-      switch (this.operation) {
-        case '+':
-          result = this.previousValue + currentValue;
-          break;
-        case '-':
-          result = this.previousValue - currentValue;
-          break;
-        case '*':
-          result = this.previousValue * currentValue;
-          break;
-        case '/':
-          result = currentValue !== 0 ? this.previousValue / currentValue : null;
-          if (result === null) {
-            this.display = 'Error: Div by 0';
-            this.previousValue = null;
-            this.operation = null;
-            this.updateDisplay();
-            return;
-          }
-          break;
-        case '%':
-          result = this.previousValue % currentValue;
-          break;
-        case '^':
-          result = Math.pow(this.previousValue, currentValue);
-          break;
-        default:
-          result = currentValue;
+      let expr = raw
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/π/g, '(' + Math.PI + ')')
+        .replace(/\be\b/g, '(' + Math.E + ')')
+        .replace(/Ans/g, '(' + this.ans + ')')
+        .replace(/\^2\b/g, '**2')
+        .replace(/\^/g, '**');
+
+      const self = this;
+      const toRad = (x) => self.degMode ? x * Math.PI / 180 : x;
+      const toDeg = (x) => self.degMode ? x * 180 / Math.PI : x;
+
+      // Replace function calls — order: longest names first to avoid partial matches
+      expr = expr
+        .replace(/asin\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(toDeg(Math.asin(v))) : 'NaN';
+        })
+        .replace(/acos\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(toDeg(Math.acos(v))) : 'NaN';
+        })
+        .replace(/atan\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(toDeg(Math.atan(v))) : 'NaN';
+        })
+        .replace(/nthrt\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(Math.pow(v, 1/3)) : 'NaN'; // simplified: cube as default
+        })
+        .replace(/log2\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null && v > 0 ? String(Math.log2(v)) : 'NaN';
+        })
+        .replace(/cbrt\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(Math.cbrt(v)) : 'NaN';
+        })
+        .replace(/sqrt\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null && v >= 0 ? String(Math.sqrt(v)) : 'NaN';
+        })
+        .replace(/fact\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(self.factorial(Math.round(v))) : 'NaN';
+        })
+        .replace(/sin\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(Math.sin(toRad(v))) : 'NaN';
+        })
+        .replace(/cos\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(Math.cos(toRad(v))) : 'NaN';
+        })
+        .replace(/tan\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null ? String(Math.tan(toRad(v))) : 'NaN';
+        })
+        .replace(/log\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null && v > 0 ? String(Math.log10(v)) : 'NaN';
+        })
+        .replace(/ln\(([^)]*)\)/g, (_, a) => {
+          const v = self.safeEval(a);
+          return v !== null && v > 0 ? String(Math.log(v)) : 'NaN';
+        });
+
+      // Handle E notation (scientific): 2E3 = 2×10³
+      expr = expr.replace(/([0-9.]+)E([+-]?[0-9]+)/g, (_, m, e) => String(parseFloat(m) * Math.pow(10, parseFloat(e))));
+
+      // Handle % as /100
+      expr = expr.replace(/([0-9.]+)%/g, (_, n) => '(' + n + '/100)');
+
+      // Validate: only allow safe characters
+      if (/[^0-9+\-*/.() \t\nNaInfty]/.test(expr.replace(/\*\*/g, '').replace(/Infinity/g, '').replace(/NaN/g, ''))) {
+        return null;
       }
 
-      this.display = this.formatResult(result);
-      this.previousValue = null;
-      this.operation = null;
-      this.shouldResetDisplay = true;
-    } catch (e) {
-      this.display = 'Error';
-      this.previousValue = null;
-      this.operation = null;
-    }
+      if (expr.includes('NaN')) return null;
 
-    this.updateDisplay();
-  },
-
-  applyFunction: function(func, value) {
-    // Convert degrees to radians if needed
-    const toRad = (val) => (val * Math.PI) / 180;
-    const toDeg = (val) => (val * 180) / Math.PI;
-
-    switch (func) {
-      case 'sin':
-        return Math.sin(toRad(value));
-      case 'cos':
-        return Math.cos(toRad(value));
-      case 'tan':
-        return Math.tan(toRad(value));
-      case 'log':
-        return value > 0 ? Math.log10(value) : null;
-      case 'ln':
-        return value > 0 ? Math.log(value) : null;
-      case '√':
-        return value >= 0 ? Math.sqrt(value) : null;
-      default:
-        return value;
+      const result = Function('"use strict"; return (' + expr + ')')();
+      if (!isFinite(result)) return null;
+      return result;
+    } catch(e) {
+      return null;
     }
   },
 
-  parseExpression: function(expr) {
-    try {
-      // Safe expression parsing - only allow numbers and specific operators
-      const sanitized = expr.replace(/[^\d.+\-*/()√π%^]/g, '');
-      
-      // Replace constants
-      let result = sanitized
-        .replace(/π/g, Math.PI.toString())
-        .replace(/e/g, Math.E.toString());
-
-      // Replace exponentiation with Math.pow
-      result = result.replace(/\^/g, '**');
-
-      // Use Function constructor for safe evaluation (more controlled than eval)
-      const func = new Function('return ' + result);
-      const value = func();
-
-      return isFinite(value) ? value : 0;
-    } catch (e) {
-      return 0;
-    }
+  safeEval: function(expr) {
+    return this.evaluate(expr);
   },
 
-  formatResult: function(num) {
-    if (!isFinite(num)) return '0';
-    
-    // Round to reasonable precision
-    const rounded = Math.round(num * 100000000) / 100000000;
-    
-    // Use exponential notation for very large/small numbers
-    if (Math.abs(rounded) > 1e10 || (Math.abs(rounded) < 1e-6 && rounded !== 0)) {
-      return rounded.toExponential(6);
+  factorial: function(n) {
+    if (n < 0 || n > 170) return NaN;
+    if (n === 0 || n === 1) return 1;
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  },
+
+  fmt: function(num) {
+    if (!isFinite(num)) return 'Error';
+    const abs = Math.abs(num);
+    if (abs !== 0 && (abs >= 1e12 || abs < 1e-9)) {
+      return num.toExponential(8).replace(/\.?0+e/, 'e');
     }
-    
-    return rounded.toString();
+    // Round to 10 significant digits
+    const str = parseFloat(num.toPrecision(10)).toString();
+    return str;
   },
 
   updateDisplay: function() {
-    const display = document.getElementById('calc-display');
-    if (display) {
-      display.textContent = this.display;
-      display.classList.toggle('error', this.display.includes('Error'));
+    const exprEl = document.getElementById('casio-expr');
+    if (exprEl) {
+      exprEl.textContent = this.expr || '0';
+      exprEl.classList.toggle('long', (this.expr || '').length > 16);
     }
   }
 };

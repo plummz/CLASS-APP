@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.1-20260424-0013';
+const CACHE_VERSION = 'v1.5.3-20260425-alarm';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -105,6 +105,26 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(event.request))
   );
+});
+
+// Alarm notifications from the client (alarmModule.showNotification calls reg.showNotification directly)
+// This message handler lets the page post a show-alarm message as a fallback path.
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'SHOW_ALARM_NOTIFICATION') {
+    const { label, time } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(`🔔 Alarm: ${label || 'Alarm'}`, {
+        body: `Set for ${time || ''}`,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-192.png',
+        vibrate: [300, 100, 300, 100, 300],
+        tag: `alarm-${time}`,
+        renotify: true,
+        data: { url: '/' }
+      })
+    );
+  }
 });
 
 self.addEventListener('push', (event) => {

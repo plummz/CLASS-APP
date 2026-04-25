@@ -234,6 +234,32 @@ let isRepeat = false;
 const APP_VERSION = '1.5.2';
 const APP_CHANGELOG = [
   {
+    version: '1.5.3',
+    date: 'April 25, 2026',
+    title: 'Alarm Sounds, Calculator Upgrade & Personalization Revamp',
+    summary: 'Major upgrade to Personal Tools: 20 selectable alarm sounds generated via Web Audio API, vibration support, system notifications, a full Casio-style scientific calculator, and a new page-by-page personalization UI replacing the endless scroll.',
+    changes: [
+      'Alarm Clock: Added 20 unique sounds generated with Web Audio API (Classic Beep, Rising Tone, Siren, Chime, School Bell, Fanfare, Cuckoo, Melody, and more).',
+      'Alarm Clock: Added sound preview button per alarm and per sound selector.',
+      'Alarm Clock: Added Vibration API support — alarm triggers phone vibration pattern if supported.',
+      'Alarm Clock: Added Notification API integration — system notification shown when alarm fires; uses Service Worker showNotification for better PWA reliability.',
+      'Alarm Clock: Added notification permission banner with status (granted/denied/blocked) and Request button.',
+      'Alarm Clock: Alarm sound persists with each alarm and shows the selected sound name on the alarm list.',
+      'Personalization: Replaced endless single-page scroll with a page-selection grid — choose a page first, then see only its backgrounds.',
+      'Personalization: Added back button to return from page editor to page selector.',
+      'Personalization: Green dot indicator on page cards that already have a custom background assigned.',
+      'Personalization: Upgraded all 10 coded backgrounds with richer neon gradients, aurora, glass/futuristic, and calm study themes.',
+      'Scientific Calculator: Full Casio-inspired layout with 9-row keypad (5 columns each).',
+      'Scientific Calculator: Multi-line display — expression line (green) and live result line (cyan) update simultaneously.',
+      'Scientific Calculator: Added sin⁻¹, cos⁻¹, tan⁻¹ (inverse trig), cbrt (cube root), nthrt (nth root), log₂.',
+      'Scientific Calculator: Added factorial n!, EXP (scientific notation input), % (percent), a/b (parenthesis helper for fractions).',
+      'Scientific Calculator: Added Ans (previous answer), M+ / MR / MC memory registers.',
+      'Scientific Calculator: Added DEG/RAD mode toggle with live indicator on display.',
+      'Scientific Calculator: Live result preview updates as you type; chained operations continue from Ans.',
+      'Notes: Notepad confirmed persisting correctly with localStorage — no data loss on refresh/close.'
+    ]
+  },
+  {
     version: '1.5.2',
     date: 'April 24, 2026',
     title: 'Profile Pictures',

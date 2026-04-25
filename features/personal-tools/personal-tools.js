@@ -9,36 +9,32 @@ window.personalToolsModule = {
       icon: '⏰',
       title: 'Alarm Clock',
       description: 'Set reminders and alarms',
-      bgImage: 'https://images.unsplash.com/photo-1519915212116-7cfef71f1d3e?w=600&h=400&fit=crop',
-      fallbackBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      module: window.alarmModule
+      bgImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&q=80',
+      fallbackBg: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%)',
     },
     {
       id: 'notepad',
       icon: '📝',
       title: 'Notepad',
       description: 'Store your notes and reminders',
-      bgImage: 'https://images.unsplash.com/photo-1507842217343-583f20270319?w=600&h=400&fit=crop',
-      fallbackBg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-      module: window.notepadModule
+      bgImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&h=400&fit=crop&q=80',
+      fallbackBg: 'linear-gradient(135deg, #0d1b2a 0%, #1b2838 40%, #2a475e 100%)',
     },
     {
       id: 'calculator',
       icon: '🧮',
       title: 'Scientific Calculator',
       description: 'Advanced math and calculations',
-      bgImage: 'https://images.unsplash.com/photo-1516321318423-f06b0073ecde?w=600&h=400&fit=crop',
-      fallbackBg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-      module: window.calculatorModule
+      bgImage: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&h=400&fit=crop&q=80',
+      fallbackBg: 'linear-gradient(135deg, #0a0e27 0%, #1a1a3e 40%, #2d1b69 100%)',
     },
     {
       id: 'personalization',
       icon: '🎨',
       title: 'Personalization',
       description: 'Customize your app appearance',
-      bgImage: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&h=400&fit=crop',
-      fallbackBg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-      module: window.personalizationModule
+      bgImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&h=400&fit=crop&q=80',
+      fallbackBg: 'linear-gradient(135deg, #1a0033 0%, #330066 40%, #4a0080 100%)',
     }
   ],
 
@@ -52,7 +48,7 @@ window.personalToolsModule = {
 
     const cardsHTML = this.tools.map(tool => `
       <div class="tool-card" onclick="personalToolsModule.openTool('${tool.id}')">
-        <div class="tool-card-bg" style="background-image: url('${tool.bgImage}'); background-color: ${tool.fallbackBg};"></div>
+        <div class="tool-card-bg" style="background-image: url('${tool.bgImage}'), ${tool.fallbackBg}; background-size: cover; background-position: center;"></div>
         <div class="tool-card-overlay"></div>
         <div class="tool-card-content">
           <div class="tool-card-icon">${tool.icon}</div>

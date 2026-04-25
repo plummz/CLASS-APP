@@ -631,7 +631,8 @@ window.candyModule = (() => {
 .candy-board.skin-forest .candy-gem.t0{clip-path:polygon(50% 0%,85% 15%,100% 50%,85% 85%,50% 100%,15% 85%,0% 50%,15% 15%);border-radius:0;}
 .candy-board.skin-forest .candy-gem.t2{clip-path:polygon(50% 0%,90% 25%,100% 60%,75% 100%,25% 100%,0% 60%,10% 25%);border-radius:0;width:82%;height:88%;}
 .candy-board.skin-forest .candy-gem.t3{clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);border-radius:0;width:85%;height:80%;}
-.candy-board.skin-forest .candy-gem.t0::after,.candy-board.skin-forest .candy-gem.t2::after,.candy-board.skin-forest .candy-gem.t3::after{display:none;}`;
+.candy-board.skin-forest .candy-gem.t0::after,.candy-board.skin-forest .candy-gem.t2::after,.candy-board.skin-forest .candy-gem.t3::after{display:none;}
+.candy-board.skin-forest .candy-gem.t3.anim-pop{animation:candy-pop-clip .28s ease-in forwards !important;}`;
     }
 
     el.textContent = css;

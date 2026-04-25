@@ -351,15 +351,20 @@
   75%      { transform: translateX(6px); }
 }
 
-/* Triangles need clip-path–safe pop (no scale overflow artefacts) */
+/* clip-path types need a safe pop: opacity fade prevents scale-overflow artefacts
+   t0=Drop, t2=Gummy Bear, t4=Candy Corn, t7=Star all use clip-path */
 @keyframes candy-pop-clip {
   0%   { opacity: 1; transform: scale(1); }
-  40%  { opacity: 1; transform: scale(1.22); }
+  40%  { opacity: 1; transform: scale(1.18); }
   100% { opacity: 0; transform: scale(0); }
 }
 
-.candy-gem.anim-pop              { animation: candy-pop       .28s ease-in forwards; }
-.candy-gem.t6.anim-pop           { animation: candy-pop-clip  .28s ease-in forwards; }
+/* !important ensures pop overrides any persistent skin animation (neon-pulse, holo-shimmer, etc.) */
+.candy-gem.anim-pop              { animation: candy-pop       .28s ease-in forwards !important; }
+.candy-gem.t0.anim-pop,
+.candy-gem.t2.anim-pop,
+.candy-gem.t4.anim-pop,
+.candy-gem.t7.anim-pop           { animation: candy-pop-clip  .28s ease-in forwards !important; }
 .candy-gem.anim-drop             { animation: candy-drop      .32s cubic-bezier(.22,1,.36,1) forwards; }
 .candy-gem.anim-shake            { animation: candy-shake     .25s ease-in-out; }
 .candy-lolly-stick.anim-pop      { animation: candy-pop       .28s ease-in forwards; }

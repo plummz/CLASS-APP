@@ -7,4 +7,14 @@ do $$ begin alter publication supabase_realtime add table public.app_updates;   
 do $$ begin alter publication supabase_realtime add table public.code_lab_completions; exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.app_open_counts;    exception when duplicate_object then null; end $$;
 do $$ begin alter publication supabase_realtime add table public.files;              exception when duplicate_object then null; end $$;
-do $$ begin alter publication supabase_realtime add table public.message_reactions;  exception when duplicate_object then null; end $$;
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public'
+    and table_name = 'message_reactions'
+  ) then
+    alter publication supabase_realtime add table public.message_reactions;
+  end if;
+exception when duplicate_object then null;
+end $$;

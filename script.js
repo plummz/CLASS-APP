@@ -231,8 +231,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.5.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.4',
+    date: 'April 25, 2026',
+    title: 'Background Push Notifications for Alarms',
+    summary: 'Alarms can now fire Web Push notifications even when the app is closed. A new Supabase Edge Function (check-alarms) handles server-side push delivery using RFC 8291/8292 encryption built entirely on the Web Crypto API.',
+    changes: [
+      'New Edge Function check-alarms: sends Web Push notifications for alarms that are due, callable from an external scheduler.',
+      'Push payloads include alarm title, body, alarmId, and soundId so the service worker can play the right sound.',
+      'Subscriptions that return HTTP 410/404 (expired or removed) are automatically cleaned up via delete_alarm_subscription.',
+      'Each processed alarm is marked triggered via alarm_mark_triggered after pushes are sent.',
+      'Auth protected with ALARM_CHECK_SECRET bearer token — only authorised schedulers can trigger the function.',
+      'No external Web Push library used — encryption (aes128gcm) and VAPID JWT (ES256) implemented natively with Web Crypto API to avoid Deno compatibility issues.',
+      'Detailed console logs added throughout the function for easy debugging in Supabase Edge Function logs.',
+      'Returns JSON summary { processed, sent, failed } on every run.'
+    ]
+  },
   {
     version: '1.5.3',
     date: 'April 25, 2026',

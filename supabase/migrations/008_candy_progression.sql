@@ -15,6 +15,7 @@ create table if not exists public.candy_progress (
 
 alter table public.candy_progress enable row level security;
 
+drop policy if exists "candy_progress_all" on public.candy_progress;
 create policy "candy_progress_all"
   on public.candy_progress for all
   using (true) with check (true);

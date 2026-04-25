@@ -15,16 +15,19 @@ create table if not exists public.candy_scores (
 alter table public.candy_scores enable row level security;
 
 -- Anyone can read the leaderboard
+drop policy if exists "candy_scores_read_all" on public.candy_scores;
 create policy "candy_scores_read_all"
   on public.candy_scores for select
   using (true);
 
 -- Anyone (including anon) can insert their own row
+drop policy if exists "candy_scores_read_all" on public.candy_scores;
 create policy "candy_scores_insert_all"
   on public.candy_scores for insert
   with check (true);
 
 -- Anyone can update any row (frontend guards against overwriting a better score)
+drop policy if exists "candy_scores_read_all" on public.candy_scores;
 create policy "candy_scores_update_all"
   on public.candy_scores for update
   using (true);

@@ -2749,6 +2749,9 @@ pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: fals
 pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
 pageConfig.admin      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🛠️ Admin' };
 pageConfig.candy      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🍬 Candy Match' };
+pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🧮 Calculator' };
+pageConfig.notepad    = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 Notepad' };
+pageConfig.alarm      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '⏰ Alarm Clock' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2910,6 +2913,8 @@ window.goToPage = function(pageName) {
   if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
   if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
   if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
+  // Alarm: tear down clock when leaving
+  if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');
@@ -2970,6 +2975,9 @@ window.goToPage = function(pageName) {
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
   if (pageName === 'candy'  && typeof candyModule  !== 'undefined') candyModule.init();
+  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') calculatorModule.init();
+  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') notepadModule.init();
+  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.init();
   if (pageName === 'diagnostics') loadDiagnostics();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();

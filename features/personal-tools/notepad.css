@@ -1,0 +1,250 @@
+/* ═══════════════════════════════════════════════════════════
+   NOTEPAD - Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.notepad-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.notepad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.notepad-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.notepad-btn {
+  padding: 10px 18px;
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notepad-btn:hover {
+  background: rgba(0, 212, 255, 0.2);
+  border-color: rgba(0, 212, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.notepad-btn.delete {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.notepad-btn.delete:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.notepad-list {
+  margin-bottom: 25px;
+  display: grid;
+  gap: 12px;
+}
+
+.notepad-item {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 18px;
+  border-left: 4px solid #00d4ff;
+  transition: all 0.3s;
+}
+
+.notepad-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
+}
+
+.notepad-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.notepad-item-title {
+  font-weight: 700;
+  color: #00d4ff;
+  font-size: 1.1em;
+  flex: 1;
+  word-break: break-word;
+}
+
+.notepad-item-date {
+  color: #888;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.notepad-item-content {
+  color: #ccc;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  font-size: 0.95em;
+}
+
+.notepad-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.notepad-item-actions button {
+  padding: 6px 12px;
+  font-size: 0.8em;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notepad-item-actions button:hover {
+  background: rgba(0, 212, 255, 0.2);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
+.notepad-item-actions button.delete {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.notepad-item-actions button.delete:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.notepad-form {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.15);
+}
+
+.notepad-form input,
+.notepad-form textarea {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1em;
+}
+
+.notepad-form input:focus,
+.notepad-form textarea:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(0, 212, 255, 0.6);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+.notepad-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.notepad-form-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.notepad-form button {
+  padding: 12px;
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notepad-form button:hover {
+  background: rgba(0, 255, 136, 0.3);
+  border-color: rgba(0, 255, 136, 0.6);
+  transform: translateY(-2px);
+}
+
+.notepad-form button.cancel {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff4444;
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.notepad-form button.cancel:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.5);
+}
+
+.notepad-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #888;
+}
+
+.notepad-empty p {
+  font-size: 1em;
+  margin-bottom: 20px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .notepad-item {
+    padding: 15px;
+  }
+
+  .notepad-item-header {
+    flex-direction: column;
+  }
+
+  .notepad-item-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .notepad-item-actions button {
+    flex: 1;
+    min-width: 70px;
+  }
+
+  .notepad-form-buttons {
+    grid-template-columns: 1fr;
+  }
+}

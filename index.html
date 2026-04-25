@@ -26,9 +26,11 @@
   <link rel="stylesheet" href="features/royale/royale.css?v=14">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=8">
-  <link rel="stylesheet" href="features/calculator/calculator.css?v=1">
-  <link rel="stylesheet" href="features/notepad/notepad.css?v=1">
-  <link rel="stylesheet" href="features/alarm/alarm.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/calculator.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/personalization.css?v=1">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -49,7 +51,7 @@
   <div id="custom-animated-bg" class="custom-animated-bg" aria-hidden="true"></div>
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
-  <button type="button" class="custom-bg-btn" onclick="openBackgroundPicker()">Backgrounds</button>
+  <button type="button" class="custom-bg-btn" onclick="window.goToPage('personalization')">🎨 Personalize</button>
  
   <div class="aurora" id="aurora"></div>
  
@@ -224,6 +226,11 @@
     </div>
 
     <div class="nav-section-title">Media & Tools</div>
+    <div class="nav-item" data-page="personal-tools" onclick="goToPage('personal-tools')">
+      <span class="nav-icon">🔧</span>
+      <div class="nav-text"><span class="nav-label">Personal Tools</span></div>
+    </div>
+
     <div class="nav-item" data-page="events" onclick="goToPage('events')">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
@@ -247,21 +254,6 @@
     <div class="nav-item" data-page="diagnostics" onclick="goToPage('diagnostics')">
       <span class="nav-icon">🩺</span>
       <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
-    </div>
-
-    <div class="nav-item" data-page="calculator" onclick="goToPage('calculator')">
-      <span class="nav-icon">🧮</span>
-      <div class="nav-text"><span class="nav-label">Calculator</span></div>
-    </div>
-
-    <div class="nav-item" data-page="notepad" onclick="goToPage('notepad')">
-      <span class="nav-icon">📝</span>
-      <div class="nav-text"><span class="nav-label">Notepad</span></div>
-    </div>
-
-    <div class="nav-item" data-page="alarm" onclick="goToPage('alarm')">
-      <span class="nav-icon">⏰</span>
-      <div class="nav-text"><span class="nav-label">Alarm Clock</span></div>
     </div>
 
     <div class="nav-item admin-only hidden" data-page="admin" onclick="goToPage('admin')">
@@ -434,9 +426,14 @@
     </div>
   </div>
   
-  <!-- ── CALCULATOR ────────────────────────────────────── -->
-  <div class="page" id="page-calculator">
-    <!-- Content will be rendered by calculatorModule -->
+  <!-- ── PERSONAL TOOLS ─────────────────────────────────── -->
+  <div class="page" id="page-personal-tools">
+    <!-- Content will be rendered by personalToolsModule -->
+  </div>
+
+  <!-- ── ALARM CLOCK ─────────────────────────────────────── -->
+  <div class="page" id="page-alarm">
+    <!-- Content will be rendered by alarmModule -->
   </div>
 
   <!-- ── NOTEPAD ───────────────────────────────────────── -->
@@ -444,9 +441,14 @@
     <!-- Content will be rendered by notepadModule -->
   </div>
 
-  <!-- ── ALARM ─────────────────────────────────────────── -->
-  <div class="page" id="page-alarm">
-    <!-- Content will be rendered by alarmModule -->
+  <!-- ── CALCULATOR ────────────────────────────────────── -->
+  <div class="page" id="page-calculator">
+    <!-- Content will be rendered by calculatorModule -->
+  </div>
+
+  <!-- ── PERSONALIZATION ────────────────────────────────── -->
+  <div class="page" id="page-personalization">
+    <!-- Content will be rendered by personalizationModule -->
   </div>
   
   <!-- ── 2ND YEAR ──────────────────────────────────────── -->
@@ -1401,9 +1403,11 @@
   <script src="features/royale/royale.js?v=14"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
   <script src="features/candy/candy.js?v=8"></script>
-  <script src="features/calculator/calculator.js?v=1" defer></script>
-  <script src="features/notepad/notepad.js?v=1" defer></script>
-  <script src="features/alarm/alarm.js?v=1" defer></script>
+  <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
+  <script src="features/personal-tools/alarm-clock.js?v=1" defer></script>
+  <script src="features/personal-tools/notepad.js?v=1" defer></script>
+  <script src="features/personal-tools/calculator.js?v=1" defer></script>
+  <script src="features/personal-tools/personalization.js?v=1" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

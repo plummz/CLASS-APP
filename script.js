@@ -2749,9 +2749,11 @@ pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: fals
 pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
 pageConfig.admin      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🛠️ Admin' };
 pageConfig.candy      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🍬 Candy Match' };
-pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🧮 Calculator' };
-pageConfig.notepad    = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 Notepad' };
+pageConfig['personal-tools'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🔧 Personal Tools' };
 pageConfig.alarm      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '⏰ Alarm Clock' };
+pageConfig.notepad    = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 Notepad' };
+pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🧮 Calculator' };
+pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🎨 Personalization' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
@@ -2975,9 +2977,11 @@ window.goToPage = function(pageName) {
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
   if (pageName === 'candy'  && typeof candyModule  !== 'undefined') candyModule.init();
-  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') calculatorModule.init();
-  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') notepadModule.init();
+  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') personalToolsModule.init();
   if (pageName === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.init();
+  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') notepadModule.init();
+  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') calculatorModule.init();
+  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') personalizationModule.init();
   if (pageName === 'diagnostics') loadDiagnostics();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();

@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════════
+   PERSONAL TOOLS - Main Container & Grid
+   ═══════════════════════════════════════════════════════════ */
+
+.personal-tools-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.personal-tools-header {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.personal-tools-title {
+  font-size: 2.5em;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #00ff88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.personal-tools-subtitle {
+  color: #aaa;
+  font-size: 1.1em;
+  font-weight: 300;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Cards Grid Layout
+   ───────────────────────────────────────────────────────── */
+
+.personal-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+  .personal-tools-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3D Glassmorphism Card Design
+   ═══════════════════════════════════════════════════════════ */
+
+.tool-card {
+  position: relative;
+  height: 380px;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 255, 136, 0.05));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tool-card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.7) saturate(0.8);
+  z-index: 0;
+}
+
+.tool-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.7) 100%);
+  z-index: 2;
+}
+
+.tool-card-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 25px;
+  z-index: 3;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.tool-card-icon {
+  font-size: 3.5em;
+  margin-bottom: 15px;
+  display: inline-block;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.tool-card-title {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.tool-card-description {
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 15px;
+  line-height: 1.4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.tool-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(0, 212, 255, 0.2);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 8px;
+  color: #00d4ff;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: fit-content;
+  backdrop-filter: blur(10px);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-card-action::after {
+  content: '→';
+  transition: transform 0.3s;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Card Hover States
+   ───────────────────────────────────────────────────────── */
+
+.tool-card:hover {
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 212, 255, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.tool-card:hover .tool-card-bg {
+  filter: brightness(0.8) saturate(1);
+}
+
+.tool-card:hover .tool-card-action {
+  background: rgba(0, 212, 255, 0.4);
+  border-color: rgba(0, 212, 255, 0.6);
+  transform: translateX(4px);
+}
+
+.tool-card:hover .tool-card-action::after {
+  transform: translateX(4px);
+}
+
+.tool-card:hover .tool-card-icon {
+  animation: float 1.5s ease-in-out infinite, glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 4px 8px rgba(0, 212, 255, 0.3)); }
+  50% { filter: drop-shadow(0 8px 16px rgba(0, 212, 255, 0.6)); }
+}
+
+/* Mobile touch feedback */
+@media (hover: none) {
+  .tool-card:active {
+    transform: translateY(-12px) scale(0.99);
+  }
+
+  .tool-card:active .tool-card-action {
+    background: rgba(0, 212, 255, 0.3);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Page Layout with Back Button
+   ═══════════════════════════════════════════════════════════ */
+
+.tool-page-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  border-left: 4px solid #00d4ff;
+}
+
+.tool-back-btn {
+  padding: 10px 20px;
+  background: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.tool-back-btn:hover {
+  background: rgba(0, 212, 255, 0.3);
+  border-color: rgba(0, 212, 255, 0.6);
+  transform: translateX(-4px);
+}
+
+.tool-page-title {
+  flex: 1;
+  font-size: 1.8em;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00d4ff, #00ff88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Premium Glass Panel Effect
+   ═══════════════════════════════════════════════════════════ */
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+}
+
+.glass-panel:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .personal-tools-title {
+    font-size: 2em;
+  }
+
+  .tool-card {
+    height: 320px;
+    min-height: 280px;
+  }
+
+  .tool-card-icon {
+    font-size: 2.5em;
+  }
+
+  .tool-card-title {
+    font-size: 1.3em;
+  }
+
+  .personal-tools-grid {
+    gap: 15px;
+  }
+}

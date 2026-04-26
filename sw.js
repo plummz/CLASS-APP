@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.12-20260426-users-fix';
+const CACHE_VERSION = 'v1.5.13-20260427-candy-overlap-royale-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -21,7 +21,7 @@ const ASSETS = [
   '/features/pokemon/pokemon.css?v=3',
   '/features/royale/royale.css?v=14',
   '/features/pacman/pacman.css?v=3',
-  '/features/candy/candy.css?v=9',
+  '/features/candy/candy.css?v=10',
   '/script.js?v=60',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
@@ -40,7 +40,7 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=15',
+  '/features/royale/royale.js?v=16',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=9',
   '/assets/images/code-web-card.svg',

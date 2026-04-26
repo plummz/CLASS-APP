@@ -231,8 +231,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.6';
+const APP_VERSION = '1.5.7';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.7',
+    date: 'April 26, 2026',
+    title: 'Announcement Cleanup + Admin Delete',
+    summary: 'Alarms no longer post to the shared Announcement feed (they are personal). Admins can now delete any announcement with a Delete button on each card.',
+    changes: [
+      'Alarm Clock: Removed addToAnnouncements() call — alarm triggers are private and should not appear in the shared feed.',
+      'Announcements: Admin-only Delete button now appears on each announcement card.',
+      'Announcements: deleteSharedAnnouncement() removes the entry from shared_announcements with a confirm prompt.'
+    ]
+  },
   {
     version: '1.5.6',
     date: 'April 26, 2026',
@@ -5249,9 +5260,19 @@ function renderSharedAnnouncements() {
       <div class="board-card-meta">
         <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
+        ${isAdmin ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
       </div>
     </article>`).join('');
 }
+
+window.deleteSharedAnnouncement = async function(id) {
+  if (!isAdmin) return;
+  if (!confirm('Delete this announcement?')) return;
+  const { error } = await sb.from('shared_announcements').delete().eq('id', id);
+  if (error) return customAlert(error.message);
+  showToast('Announcement deleted.');
+  fetchSharedAnnouncements();
+};
 
 async function shareAnnouncementPayload(payload) {
   if (!currentUser) return customAlert('Please log in to share announcements.');

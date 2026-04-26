@@ -583,12 +583,15 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: 14px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 212, 255, 0.15);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 5px;
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   transition: all 0.3s ease;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
@@ -652,9 +655,11 @@ body {
   left: -320px;
   width: 300px;
   height: 100vh;
+  height: 100dvh;
   z-index: 1999;
   background: rgba(4, 4, 20, 0.97);
   backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border-right: 1px solid var(--glass-border);
   transition: left 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -662,6 +667,8 @@ body {
   padding-top: 90px;
   box-shadow: 4px 0 40px rgba(0, 0, 0, 0.6);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 #sidebar.open {
   left: 0;
@@ -695,12 +702,23 @@ body {
   gap: 16px;
   padding: 16px 28px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 212, 255, 0.15);
+  user-select: none;
+  -webkit-user-select: none;
   transition: transform 0.18s ease, background 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   border-left: 3px solid transparent;
   position: relative;
   overflow: hidden;
   border-radius: 0 18px 18px 0;
   isolation: isolate;
+}
+
+.nav-item:focus-visible,
+.nav-dropdown-header:focus-visible {
+  outline: 2px solid var(--accent, #00d4ff);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .nav-item:hover,
@@ -796,8 +814,8 @@ body {
   background: color-mix(in srgb, var(--accent) 48%, #fff);
   opacity: 0;
   transform: translate(-50%, -50%) scale(1);
-  pointer-events: none;
-  z-index: 0;
+  pointer-events: none !important;
+  z-index: -1;
 }
 
 .nav-item.nav-click-flash::after,
@@ -1056,6 +1074,8 @@ body {
 #overlay.active {
   opacity: 1;
   pointer-events: all;
+  cursor: pointer;
+  touch-action: manipulation;
 }
  
 /* ============================================================

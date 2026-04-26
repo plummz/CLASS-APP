@@ -231,8 +231,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.8';
+const APP_VERSION = '1.5.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.9',
+    date: 'April 26, 2026',
+    title: 'iOS Safari Sidebar Menu Fix',
+    summary: 'Fixed sidebar menu buttons not responding to taps on iPhone/iOS Safari. All nav items now work reliably with touch, mouse, and keyboard.',
+    changes: [
+      'Sidebar: Replaced inline onclick attributes with event delegation for iOS Safari compatibility.',
+      'Sidebar: Added role="button" and tabindex="0" to all nav items for proper interactive semantics.',
+      'Sidebar: Added touch-action: manipulation to eliminate 300ms iOS tap delay on all menu items.',
+      'Sidebar: Fixed ::after pseudo-element z-index that could intercept taps on some iOS versions.',
+      'Sidebar: Added -webkit-backdrop-filter, -webkit-overflow-scrolling, and 100dvh for Safari support.',
+      'Sidebar: Added keyboard navigation (Enter/Space) for accessibility.',
+      'Sidebar: Added focus-visible outline styles for keyboard users.',
+      'Overlay: Moved close handler from inline onclick to addEventListener for iOS reliability.'
+    ]
+  },
   {
     version: '1.5.8',
     date: 'April 26, 2026',

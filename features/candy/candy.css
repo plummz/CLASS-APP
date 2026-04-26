@@ -114,18 +114,19 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: 12px;
   cursor: pointer;
   position: relative;
+  overflow: hidden;
   transition: transform .14s ease, background .14s ease, box-shadow .14s ease;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.14);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px rgba(0,0,0,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,0,0,.18);
 }
 .candy-cell:hover { background: rgba(255,255,255,.10); }
 .candy-cell:active { transform: scale(.96); }
-.candy-cell.selected { transform: scale(1.03); outline: none; background: rgba(255,255,255,.16); box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 10px 22px rgba(0,0,0,.22); }
-.candy-cell.candy-has-stick .candy-gem { margin-bottom: 6px; }
+.candy-cell.selected { transform: scale(1.04); outline: none; background: rgba(255,255,255,.16); box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.22); }
+.candy-cell.candy-has-stick .candy-gem { margin-bottom: 3px; }
 
 /* ── Gem base ─────────────────────────────────────────────────────────── */
 .candy-gem {
@@ -164,9 +165,9 @@
 .candy-gem.t0 {
   background: radial-gradient(circle at 34% 34%, #ffc1d3 0%, #e5284d 48%, #92091d 100%);
   clip-path: polygon(50% 0%, 74% 20%, 88% 44%, 84% 70%, 64% 94%, 50% 100%, 36% 94%, 16% 70%, 12% 44%, 26% 20%);
-  width: 78%;
-  height: 94%;
-  box-shadow: 0 14px 28px rgba(0,0,0,.26), inset 0 4px 10px rgba(255,255,255,.28);
+  width: 70%;
+  height: 80%;
+  box-shadow: 0 8px 18px rgba(0,0,0,.26), inset 0 4px 10px rgba(255,255,255,.28);
 }
 
 .candy-gem.t1 {
@@ -198,9 +199,9 @@
 .candy-gem.t2 {
   background: radial-gradient(circle at 40% 38%, #dcff9a 0%, #6ecb27 48%, #1d600e 100%);
   clip-path: polygon(50% 8%, 70% 22%, 86% 40%, 92% 62%, 72% 84%, 50% 94%, 28% 84%, 8% 62%, 14% 40%, 30% 22%);
-  width: 82%;
-  height: 88%;
-  box-shadow: 0 14px 28px rgba(0,0,0,.24), inset 0 4px 10px rgba(255,255,255,.22);
+  width: 76%;
+  height: 78%;
+  box-shadow: 0 8px 18px rgba(0,0,0,.24), inset 0 4px 10px rgba(255,255,255,.22);
 }
 .candy-gem.t2::before {
   content: '';
@@ -242,9 +243,9 @@
 .candy-gem.t4 {
   background: radial-gradient(circle at 30% 30%, #ffd8ff 0%, #c43bff 48%, #740088 100%);
   clip-path: polygon(50% 0%, 62% 34%, 98% 35%, 70% 57%, 80% 92%, 50% 74%, 20% 92%, 30% 57%, 2% 35%, 38% 35%);
-  width: 88%;
-  height: 88%;
-  box-shadow: 0 14px 30px rgba(0,0,0,.26), inset 0 4px 12px rgba(255,255,255,.25);
+  width: 80%;
+  height: 80%;
+  box-shadow: 0 8px 20px rgba(0,0,0,.26), inset 0 4px 12px rgba(255,255,255,.25);
 }
 .candy-gem.t4::before {
   content: '';
@@ -257,13 +258,13 @@
 
 /* ── Lollipop stick (only rendered for t1) ────────────────────────────── */
 .candy-lolly-stick {
-  width: 12%;
-  height: 28%;
+  width: 10%;
+  height: 22%;
   background: linear-gradient(180deg, #f7e0c4 0%, #ca9d67 100%);
   border-radius: 4px;
   flex-shrink: 0;
-  box-shadow: 0 4px 8px rgba(0,0,0,.2);
-  margin-top: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,.2);
+  margin-top: 2px;
   transition: opacity .18s;
 }
 

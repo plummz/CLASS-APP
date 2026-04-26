@@ -253,6 +253,17 @@
   grid-column: span 2;
 }
 
+/* ── KaTeX overrides ─────────────────────────────────────── */
+
+.casio-expr .katex {
+  color: #00ff88;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.45));
+}
+
+.casio-expr .katex * {
+  color: inherit;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .casio-body {

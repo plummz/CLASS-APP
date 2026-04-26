@@ -969,3 +969,139 @@
   animation-duration: 0.01ms !important;
   transition-duration: 0.05ms !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPECIAL CANDY SYSTEM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cell glow ring for special candies */
+.candy-cell.candy-has-special {
+  border-color: var(--special-color, #fff);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    0 0 10px rgba(255,255,255,.25),
+    0 0 18px color-mix(in srgb, var(--special-color, #fff) 50%, transparent);
+}
+
+/* Base special gem — adds outer ring + pulse */
+@keyframes candy-special-pulse {
+  0%,100% { box-shadow: 0 12px 24px rgba(0,0,0,.24), 0 0 8px var(--special-color, #fff), inset 0 2px 10px rgba(255,255,255,.24); }
+  50%     { box-shadow: 0 14px 30px rgba(0,0,0,.30), 0 0 22px var(--special-color, #fff), 0 0 36px color-mix(in srgb, var(--special-color, #fff) 60%, transparent), inset 0 2px 10px rgba(255,255,255,.28); }
+}
+.candy-gem.candy-special {
+  animation: candy-special-pulse 1.4s ease-in-out infinite;
+}
+/* Low-end: keep special visible but stop animation */
+.candy-board.candy-low-end .candy-gem.candy-special {
+  animation: none !important;
+  box-shadow: 0 12px 24px rgba(0,0,0,.24), 0 0 6px var(--special-color, #fff), inset 0 2px 10px rgba(255,255,255,.24);
+}
+
+/* Per-type color tokens */
+.candy-gem.candy-special-row   { --special-color: #ff6b35; }
+.candy-gem.candy-special-col   { --special-color: #35b5ff; }
+.candy-gem.candy-special-color { --special-color: #cc44ff; }
+.candy-gem.candy-special-board { --special-color: #ffdd00; }
+
+/* Badge label */
+.candy-special-badge {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 0 4px rgba(0,0,0,.8), 0 1px 2px rgba(0,0,0,.6);
+  filter: drop-shadow(0 0 3px currentColor);
+  letter-spacing: 0;
+}
+
+/* ── Beam animations ──────────────────────────────────────────────────── */
+@keyframes candy-beam-h-anim {
+  0%   { opacity: 0; transform: scaleX(0); }
+  15%  { opacity: 1; transform: scaleX(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleX(1.04); }
+}
+@keyframes candy-beam-v-anim {
+  0%   { opacity: 0; transform: scaleY(0); }
+  15%  { opacity: 1; transform: scaleY(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleY(1.04); }
+}
+
+.candy-beam-h {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,107,53,.8) 10%,
+    #ff9955 30%,
+    #fff9e6 50%,
+    #ff9955 70%,
+    rgba(255,107,53,.8) 90%,
+    transparent 100%
+  );
+  border-radius: 6px;
+  box-shadow: 0 0 18px rgba(255,107,53,.8), 0 0 36px rgba(255,150,80,.5);
+  animation: candy-beam-h-anim .45s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+.candy-beam-v {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(53,181,255,.8) 10%,
+    #55ccff 30%,
+    #eafaff 50%,
+    #55ccff 70%,
+    rgba(53,181,255,.8) 90%,
+    transparent 100%
+  );
+  border-radius: 6px;
+  box-shadow: 0 0 18px rgba(53,181,255,.8), 0 0 36px rgba(80,160,255,.5);
+  animation: candy-beam-v-anim .45s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+/* ── Color clear chain glow ───────────────────────────────────────────── */
+@keyframes candy-chain-glow-anim {
+  0%   { filter: brightness(1)    drop-shadow(0 0 0px transparent); }
+  30%  { filter: brightness(1.8)  drop-shadow(0 0 12px #cc44ff) drop-shadow(0 0 24px rgba(204,68,255,.7)); }
+  60%  { filter: brightness(1.5)  drop-shadow(0 0 8px #cc44ff); }
+  100% { filter: brightness(1)    drop-shadow(0 0 0px transparent); }
+}
+.candy-gem.candy-chain-glow {
+  animation: candy-chain-glow-anim .55s ease-out forwards !important;
+}
+
+/* ── Board wipe ripple ────────────────────────────────────────────────── */
+@keyframes candy-wipe-ripple {
+  0%   { transform: scale(0);    opacity: 1; }
+  80%  { transform: scale(1.5);  opacity: .7; }
+  100% { transform: scale(2);    opacity: 0; }
+}
+.candy-board-wipe-ripple {
+  position: absolute;
+  inset: 50%;
+  width: 80px;
+  height: 80px;
+  margin: -40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,221,68,.9) 0%, rgba(255,107,157,.6) 50%, transparent 70%);
+  box-shadow: 0 0 40px rgba(255,221,68,.8), 0 0 80px rgba(255,107,157,.5);
+  animation: candy-wipe-ripple .55s ease-out forwards;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Board blast flash */
+@keyframes candy-board-blast-anim {
+  0%   { filter: brightness(1)    saturate(1); }
+  20%  { filter: brightness(2.5)  saturate(2.5); }
+  60%  { filter: brightness(1.4)  saturate(1.6); }
+  100% { filter: brightness(1)    saturate(1); }
+}
+.candy-board.candy-board-blast {
+  animation: candy-board-blast-anim .5s ease-out forwards !important;
+}

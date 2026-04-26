@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.9-20260426-ios-menu-fix';
+const CACHE_VERSION = 'v1.5.10-20260426-candy-refactor';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

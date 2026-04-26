@@ -231,8 +231,35 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.10';
+const APP_VERSION = '1.5.11';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.11',
+    date: 'April 26, 2026',
+    title: 'Special Candies, Audio Manager & Royale AI Overhaul',
+    summary: 'Candy Match gains four special candy types with procedural audio and animations. Battle Royale bots now have a three-tier difficulty system with improved visual clarity.',
+    changes: [
+      'Candy Match: Added Row Clear candy — clears entire row with horizontal beam animation and whoosh audio.',
+      'Candy Match: Added Column Clear candy — clears entire column with vertical beam animation and strike audio.',
+      'Candy Match: Added Color Clear candy — clears all matching candy types with electric chain glow effect.',
+      'Candy Match: Added Board Wipe candy — clears the entire board with ripple blast animation and explosion audio.',
+      'Candy Match: Special candies spawn at ~7% probability per new gem, with weighted rarity (row/col most common, board rarest).',
+      'Candy Match: Special candies display a glowing pulsing badge icon and colored border ring on the cell.',
+      'Candy Match: Centralized Web Audio API manager — unique procedurally generated sounds for swap, pop (x4 combo tiers), drop, row clear, column clear, color clear, board wipe, level complete, and level fail.',
+      'Candy Match: Audio manager uses polyphony limits, per-key cooldowns, and priority queuing to prevent audio clutter.',
+      'Candy Match: Audio context auto-unlocked on first user gesture for iOS Safari compatibility.',
+      'Battle Royale: Bots now roll into one of three tiers: Rookie (55%), Veteran (33%), Elite (12%).',
+      'Battle Royale: Each tier has unique HP, detect range, accuracy, reaction delay, and fire rate multiplier.',
+      'Battle Royale: Elite bots have 115 HP, tighter accuracy (0.14 spread), fast 550ms reaction, and 380px detect range.',
+      'Battle Royale: Rookie bots are more forgiving — 85 HP, wider 0.34 accuracy spread, 1100ms reaction delay.',
+      'Battle Royale: Bot weapon pool expanded to include battle rifle and sniper for weapon variety.',
+      'Battle Royale: Bot name labels now appear above HP bars, color-coded by tier (orange=rookie, yellow=veteran, lime=elite).',
+      'Battle Royale: Elite bots have a subtle canvas shadow glow for immediate visual threat identification.',
+      'Battle Royale: HP bars now use color (green/yellow/red) based on remaining health percentage.',
+      'Battle Royale: Building outer walls enhanced with double-stroke 3D depth, corner accents, and gradient door portals.',
+      'Service Worker: Cache bumped to v1.5.11 to propagate all updates to PWA/iOS clients.',
+    ]
+  },
   {
     version: '1.5.10',
     date: 'April 26, 2026',

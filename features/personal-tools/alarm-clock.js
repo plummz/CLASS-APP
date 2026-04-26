@@ -306,7 +306,6 @@ window.alarmModule = {
     this.showNotification(alarm);
     this.showAlarmOverlay(alarm, soundId);
 
-    this.addToAnnouncements(alarm);
     this.addToCalendar(alarm);
 
     if (index >= 0) {

@@ -1643,6 +1643,31 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
+// ── Alarm check scheduler ─────────────────────────────────
+const ALARM_FUNCTION_URL = process.env.ALARM_FUNCTION_URL ||
+  'https://rxpezjhsnqkjydurtayx.supabase.co/functions/v1/check-alarms';
+const ALARM_CHECK_SECRET = process.env.ALARM_CHECK_SECRET || '';
+
+if (ALARM_CHECK_SECRET) {
+  setInterval(async () => {
+    try {
+      const res = await fetch(ALARM_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${ALARM_CHECK_SECRET}` },
+      });
+      const data = await res.json();
+      if (data.processed > 0) {
+        console.log('[alarm-check]', data);
+      }
+    } catch (err) {
+      console.warn('[alarm-check] failed:', err.message);
+    }
+  }, 60_000);
+  console.log('[alarm-check] Scheduler started — checking every 60s');
+} else {
+  console.warn('[alarm-check] ALARM_CHECK_SECRET not set — scheduler disabled');
+}
+
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);

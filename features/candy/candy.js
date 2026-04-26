@@ -190,6 +190,234 @@ window.candyModule = (() => {
     return matched;
   }
 
+  // ── Special candy config (adjust weights here) ────────────────────────
+  const SPECIAL_CONFIG = {
+    row:    { weight: 14, label: '↔',  color: '#ff6b35' },
+    col:    { weight: 14, label: '↕',  color: '#35b5ff' },
+    color:  { weight:  6, label: '★',  color: '#cc44ff' },
+    board:  { weight:  1, label: '💥', color: '#ffdd00' },
+    // sentinel total; DO NOT hardcode — computed below
+  };
+  const SPECIAL_TOTAL = Object.values(SPECIAL_CONFIG).reduce((s,v)=>s+v.weight,0);
+  const SPECIAL_TYPES = Object.keys(SPECIAL_CONFIG);
+  // Encode specials as values 100+: 100=row, 101=col, 102=color, 103=board
+  const SPECIAL_BASE  = 100;
+  const SPECIAL_IDX   = Object.fromEntries(SPECIAL_TYPES.map((k,i)=>[k,SPECIAL_BASE+i]));
+  const SPECIAL_FROM  = Object.fromEntries(SPECIAL_TYPES.map((k,i)=>[SPECIAL_BASE+i,k]));
+
+  function isSpecial(v) { return v >= SPECIAL_BASE; }
+  function specialKey(v){ return SPECIAL_FROM[v] || null; }
+  function specialVal(k){ return SPECIAL_IDX[k]; }
+
+  // Spawn chance per new gem: ~7% overall by default (driven by weights)
+  const SPECIAL_SPAWN_CHANCE = 0.07;
+
+  function rollSpecial() {
+    let r = Math.random() * SPECIAL_TOTAL;
+    for (const [k,cfg] of Object.entries(SPECIAL_CONFIG)) {
+      r -= cfg.weight;
+      if (r <= 0) return specialVal(k);
+    }
+    return specialVal('row');
+  }
+
+  // ── Centralized audio manager ─────────────────────────────────────────
+  // Uses Web Audio API for procedurally generated sounds — no file deps.
+  const candyAudio = (() => {
+    let ctx = null;
+    function ctx_() {
+      if (!ctx) {
+        try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
+      }
+      // Resume on user gesture (iOS Safari)
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+
+    // Priority queue to avoid > N simultaneous sounds
+    let activeCount = 0;
+    const MAX_SIMULTANEOUS = 6;
+    const PRIORITY = { board:5, color:4, row:3, col:3, levelComplete:5, combo4:4, combo3:3, combo2:2, combo1:1, swap:1, pop:1, drop:0 };
+    const cooldowns = {};
+
+    function canPlay(key, minGap = 80) {
+      const now = performance.now();
+      if ((now - (cooldowns[key]||0)) < minGap) return false;
+      cooldowns[key] = now;
+      return true;
+    }
+
+    function tone(freq, type, attack, sustain, release, vol=0.22, dest=null) {
+      const ac = ctx_(); if (!ac) return;
+      if (activeCount >= MAX_SIMULTANEOUS) return;
+      activeCount++;
+      const osc  = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ac.currentTime);
+      gain.gain.setValueAtTime(0, ac.currentTime);
+      gain.gain.linearRampToValueAtTime(vol, ac.currentTime + attack);
+      gain.gain.setValueAtTime(vol, ac.currentTime + attack + sustain);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + attack + sustain + release);
+      osc.connect(gain);
+      gain.connect(dest || ac.destination);
+      osc.start(ac.currentTime);
+      osc.stop(ac.currentTime + attack + sustain + release + 0.05);
+      osc.onended = () => { activeCount = Math.max(0, activeCount-1); };
+    }
+
+    function noise(duration, vol=0.12, filterFreq=800) {
+      const ac = ctx_(); if (!ac) return;
+      if (activeCount >= MAX_SIMULTANEOUS) return;
+      activeCount++;
+      const buf  = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1);
+      const src    = ac.createBufferSource();
+      const filter = ac.createBiquadFilter();
+      const gain   = ac.createGain();
+      src.buffer    = buf;
+      filter.type   = 'bandpass';
+      filter.frequency.value = filterFreq;
+      gain.gain.setValueAtTime(vol, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      src.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+      src.start(); src.stop(ac.currentTime + duration + 0.05);
+      setTimeout(() => { activeCount = Math.max(0, activeCount-1); }, (duration+0.1)*1000);
+    }
+
+    const sounds = {
+      swap() {
+        if (!canPlay('swap', 100)) return;
+        tone(320, 'sine', 0.01, 0.04, 0.12, 0.14);
+        tone(480, 'sine', 0.01, 0.04, 0.10, 0.08);
+      },
+      pop(combo=1) {
+        if (!canPlay('pop', 40)) return;
+        const key = combo >= 4 ? 'combo4' : combo >= 3 ? 'combo3' : combo >= 2 ? 'combo2' : 'combo1';
+        const p = PRIORITY[key]||1;
+        if (p < (PRIORITY['pop']||1) && activeCount >= MAX_SIMULTANEOUS-2) return;
+        if (combo === 1) {
+          tone(440 + Math.random()*80, 'triangle', 0.005, 0.03, 0.10, 0.16);
+        } else if (combo === 2) {
+          tone(520, 'triangle', 0.005, 0.04, 0.12, 0.18);
+          tone(660, 'sine',     0.02,  0.03, 0.10, 0.10);
+        } else if (combo === 3) {
+          tone(580, 'triangle', 0.005, 0.04, 0.14, 0.18);
+          tone(730, 'sine',     0.015, 0.04, 0.12, 0.12);
+          tone(900, 'sine',     0.03,  0.03, 0.10, 0.08);
+        } else {
+          // Combo 4+: premium rising chord
+          [440,550,660,880].forEach((f,i) => tone(f, 'triangle', 0.005+i*0.02, 0.04, 0.18, 0.15));
+          tone(1100, 'sine', 0.08, 0.06, 0.22, 0.10);
+        }
+      },
+      drop() {
+        if (!canPlay('drop', 60)) return;
+        tone(200, 'sine', 0.01, 0.02, 0.08, 0.08);
+        tone(160, 'sine', 0.02, 0.02, 0.06, 0.06);
+      },
+      rowClear() {
+        if (!canPlay('row', 200)) return;
+        // Horizontal whoosh: fast sweep
+        const ac = ctx_(); if (!ac) return;
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.type  = 'sawtooth';
+        osc.frequency.setValueAtTime(120, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1800, ac.currentTime + 0.28);
+        g.gain.setValueAtTime(0.22, ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.35);
+        osc.connect(g); g.connect(ac.destination);
+        osc.start(); osc.stop(ac.currentTime + 0.4);
+        noise(0.3, 0.10, 600);
+      },
+      colClear() {
+        if (!canPlay('col', 200)) return;
+        // Vertical strike: downward whoosh
+        const ac = ctx_(); if (!ac) return;
+        const osc = ac.createOscillator();
+        const g   = ac.createGain();
+        osc.type  = 'square';
+        osc.frequency.setValueAtTime(1400, ac.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 0.32);
+        g.gain.setValueAtTime(0.20, ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.38);
+        osc.connect(g); g.connect(ac.destination);
+        osc.start(); osc.stop(ac.currentTime + 0.42);
+        noise(0.25, 0.10, 400);
+      },
+      colorClear() {
+        if (!canPlay('color', 300)) return;
+        // Electric chain: rapid arpeggios
+        const ac = ctx_(); if (!ac) return;
+        [0, 0.06, 0.12, 0.18, 0.24, 0.30].forEach((t, i) => {
+          const osc = ac.createOscillator();
+          const g   = ac.createGain();
+          osc.type  = 'square';
+          osc.frequency.setValueAtTime([300,450,600,750,900,1100][i], ac.currentTime+t);
+          g.gain.setValueAtTime(0.14, ac.currentTime+t);
+          g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+t+0.08);
+          osc.connect(g); g.connect(ac.destination);
+          osc.start(ac.currentTime+t); osc.stop(ac.currentTime+t+0.1);
+        });
+        noise(0.4, 0.08, 1200);
+      },
+      boardWipe() {
+        if (!canPlay('board', 400)) return;
+        // Explosion + bass drop
+        const ac = ctx_(); if (!ac) return;
+        // Bass boom
+        const bass = ac.createOscillator();
+        const bg   = ac.createGain();
+        bass.type  = 'sine';
+        bass.frequency.setValueAtTime(80, ac.currentTime);
+        bass.frequency.exponentialRampToValueAtTime(30, ac.currentTime + 0.5);
+        bg.gain.setValueAtTime(0.35, ac.currentTime);
+        bg.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.6);
+        bass.connect(bg); bg.connect(ac.destination);
+        bass.start(); bass.stop(ac.currentTime + 0.65);
+        // Explosion burst
+        noise(0.5, 0.28, 200);
+        noise(0.3, 0.18, 800);
+        // Rising sparkle
+        [0.1,0.2,0.3,0.4].forEach((t,i)=>tone(400+i*300,'triangle',0.01,0.05,0.15,0.12));
+      },
+      levelComplete() {
+        if (!canPlay('levelComplete', 500)) return;
+        [0,0.1,0.2,0.3,0.5,0.7].forEach((t,i)=>{
+          const f=[440,550,660,770,880,1100][i];
+          const ac=ctx_(); if(!ac)return;
+          const osc=ac.createOscillator(); const g=ac.createGain();
+          osc.type='triangle'; osc.frequency.value=f;
+          g.gain.setValueAtTime(0.2,ac.currentTime+t);
+          g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+t+0.35);
+          osc.connect(g); g.connect(ac.destination);
+          osc.start(ac.currentTime+t); osc.stop(ac.currentTime+t+0.4);
+        });
+        noise(0.6, 0.08, 1000);
+      },
+      levelFail() {
+        if (!canPlay('levelFail', 500)) return;
+        const ac=ctx_(); if(!ac)return;
+        [0,0.18,0.38].forEach((t,i)=>{
+          const osc=ac.createOscillator(); const g=ac.createGain();
+          osc.type='sawtooth';
+          osc.frequency.setValueAtTime([340,280,200][i],ac.currentTime+t);
+          g.gain.setValueAtTime(0.18,ac.currentTime+t);
+          g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+t+0.22);
+          osc.connect(g); g.connect(ac.destination);
+          osc.start(ac.currentTime+t); osc.stop(ac.currentTime+t+0.26);
+        });
+      },
+    };
+    // Unlock audio context on first user tap
+    ['click','touchstart','keydown'].forEach(ev =>
+      document.addEventListener(ev, () => ctx_(), { once:true, capture:true })
+    );
+    return sounds;
+  })();
+
   // ── Gravity ───────────────────────────────────────────────────────────
   function dropBoard(b) {
     for (let c = 0; c < COLS; c++) {
@@ -204,10 +432,100 @@ window.candyModule = (() => {
   function fillNewGems(b, types) {
     const newSet = new Set();
     for (let i = 0; i < b.length; i++) {
-      if (b[i] < 0) { b[i] = rand(types); newSet.add(i); }
+      if (b[i] < 0) {
+        // Small chance to spawn a special candy
+        b[i] = Math.random() < SPECIAL_SPAWN_CHANCE ? rollSpecial() : rand(types);
+        newSet.add(i);
+      }
     }
     return newSet;
   }
+
+  // ── Special candy activation ──────────────────────────────────────────
+  async function activateSpecial(specialV, trigR, trigC, matchedType, b) {
+    const key = specialKey(specialV);
+    if (!key) return new Set();
+    const cleared = new Set();
+
+    if (key === 'row') {
+      // Beam animation first
+      showBeamAnim(trigR, trigC, 'row');
+      await delay(120);
+      for (let c = 0; c < COLS; c++) cleared.add(idx(trigR, c));
+      candyAudio.rowClear();
+    } else if (key === 'col') {
+      showBeamAnim(trigR, trigC, 'col');
+      await delay(120);
+      for (let r = 0; r < ROWS; r++) cleared.add(idx(r, trigC));
+      candyAudio.colClear();
+    } else if (key === 'color') {
+      const targetType = (matchedType >= 0 && matchedType < 100) ? matchedType : rand(5);
+      showChainGlow(targetType, b);
+      await delay(180);
+      for (let i = 0; i < b.length; i++) {
+        if (b[i] === targetType) cleared.add(i);
+      }
+      candyAudio.colorClear();
+    } else if (key === 'board') {
+      showBoardWipe();
+      await delay(250);
+      for (let i = 0; i < b.length; i++) {
+        if (!blockerSet.has(i)) cleared.add(i);
+      }
+      candyAudio.boardWipe();
+    }
+    return cleared;
+  }
+
+  // ── Special animation helpers ─────────────────────────────────────────
+  function showBeamAnim(r, c, dir) {
+    const boardEl = document.getElementById('candy-board');
+    if (!boardEl) return;
+    const beam = document.createElement('div');
+    beam.className = dir === 'row' ? 'candy-beam-h' : 'candy-beam-v';
+    const cell = cellEl(r, c);
+    if (!cell) return;
+    const rect  = cell.getBoundingClientRect();
+    const bRect = boardEl.getBoundingClientRect();
+    if (dir === 'row') {
+      beam.style.cssText = `position:absolute;left:0;right:0;top:${rect.top-bRect.top+rect.height/2-6}px;height:12px;z-index:20;pointer-events:none;`;
+    } else {
+      beam.style.cssText = `position:absolute;top:0;bottom:0;left:${rect.left-bRect.left+rect.width/2-6}px;width:12px;z-index:20;pointer-events:none;`;
+    }
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(beam);
+    setTimeout(() => beam.remove(), 500);
+  }
+
+  function showChainGlow(targetType, b) {
+    for (let i = 0; i < b.length; i++) {
+      if (b[i] !== targetType) continue;
+      const r = Math.floor(i / COLS), c = i % COLS;
+      const cell = cellEl(r, c);
+      if (!cell) continue;
+      const g = cell.querySelector('.candy-gem');
+      if (g) {
+        g.classList.add('candy-chain-glow');
+        setTimeout(() => g?.classList.remove('candy-chain-glow'), 600);
+      }
+    }
+  }
+
+  function showBoardWipe() {
+    const boardEl = document.getElementById('candy-board');
+    if (!boardEl) return;
+    const ripple = document.createElement('div');
+    ripple.className = 'candy-board-wipe-ripple';
+    boardEl.style.position = 'relative';
+    boardEl.appendChild(ripple);
+    boardEl.classList.add('candy-board-blast');
+    setTimeout(() => {
+      ripple.remove();
+      boardEl.classList.remove('candy-board-blast');
+    }, 600);
+  }
+
+
 
   // ── DOM rendering ─────────────────────────────────────────────────────
   function render(dropSet) {
@@ -220,18 +538,33 @@ window.candyModule = (() => {
         const i     = idx(r, c);
         const t     = board[i];
         const isNew = dropSet ? dropSet.has(i) : false;
+        const isSpc = isSpecial(t);
+        const sKey  = isSpc ? specialKey(t) : null;
+        const sCfg  = sKey ? SPECIAL_CONFIG[sKey] : null;
 
         const cell = document.createElement('div');
-        cell.className = 'candy-cell' + (t === 1 ? ' candy-has-stick' : '');
+        cell.className = 'candy-cell' + (t === 1 ? ' candy-has-stick' : '') + (isSpc ? ' candy-has-special' : '');
         cell.dataset.r = r;
         cell.dataset.c = c;
         cell.addEventListener('click', () => handleClick(r, c));
 
         const gem = document.createElement('div');
-        gem.className = 'candy-gem t' + t + (isNew ? ' anim-drop' : '');
+        // Special candies render as their underlying type for shape, plus a glow class
+        const displayType = isSpc ? (Math.abs(t - SPECIAL_BASE) % 5) : t;
+        gem.className = 'candy-gem t' + displayType + (isNew ? ' anim-drop' : '') + (isSpc ? ' candy-special candy-special-' + sKey : '');
+        if (sCfg) gem.style.setProperty('--special-color', sCfg.color);
         cell.appendChild(gem);
 
-        if (t === 1) {
+        if (sCfg) {
+          // Badge label overlay
+          const badge = document.createElement('span');
+          badge.className = 'candy-special-badge';
+          badge.textContent = sCfg.label;
+          badge.style.color = sCfg.color;
+          cell.appendChild(badge);
+        }
+
+        if (t === 1 && !isSpc) {
           const stick = document.createElement('div');
           stick.className = 'candy-lolly-stick' + (isNew ? ' anim-drop' : '');
           cell.appendChild(stick);
@@ -355,15 +688,13 @@ window.candyModule = (() => {
     setStatus(CHAIN_LABELS[Math.min(n, CHAIN_LABELS.length - 1)] || `🎉 Chain ×${n}!`);
     const boardEl = $id('candy-board');
     if (!boardEl) return;
-    // Build comma-separated animation list so all effects play simultaneously.
-    // (Stacking CSS classes would cause later animation rules to override earlier ones.)
     const anims = ['candy-board-glow .7s ease-in-out'];
     if (n >= 4) anims.push('candy-board-pulse .7s ease-in-out');
     if (n >= 5) anims.push('candy-board-sparkle .7s ease-in-out');
     if (n >= 8) anims.push('candy-board-rainbow .7s linear');
     if (n >= 9) anims.push('candy-board-shake .45s ease-in-out');
     boardEl.style.animation = 'none';
-    void boardEl.offsetWidth; // force reflow so the reset registers
+    void boardEl.offsetWidth;
     boardEl.style.animation = anims.join(', ');
     clearTimeout(boardEl._chainFXTimer);
     boardEl._chainFXTimer = setTimeout(() => { boardEl.style.animation = ''; }, 750);
@@ -384,6 +715,7 @@ window.candyModule = (() => {
   async function doSwap(r1, c1, r2, c2) {
     busy = true;
     setStatus('');
+    candyAudio.swap();
     try {
       await animSwap(r1, c1, r2, c2);
 
@@ -411,7 +743,7 @@ window.candyModule = (() => {
 
       moves--;
       updateHUD();
-      await cascade(matches);
+      await cascade(matches, r1, c1, r2, c2);
       await maybeSaveScore();
       if (!checkLevelComplete()) checkGameOver();
     } finally {
@@ -419,30 +751,54 @@ window.candyModule = (() => {
     }
   }
 
+
   // ── Cascade resolver ──────────────────────────────────────────────────
-  async function cascade(initialMatches) {
+  async function cascade(initialMatches, swapR1=0, swapC1=0, swapR2=0, swapC2=0) {
     let matchSet = initialMatches;
     let chain    = 0;
 
     while (matchSet.size > 0) {
       chain++;
       const mult     = chainMultiplier(chain);
-      // Size multiplier: bigger match = bigger reward
       const sizeMult = matchSet.size >= 7 ? 2.0 : matchSet.size >= 5 ? 1.5 : matchSet.size >= 4 ? 1.2 : 1.0;
       score += Math.round(matchSet.size * 15 * mult * sizeMult);
-      // Combo coin bonus: small coin award for chain 3+ so players feel rewarded mid-game
       if (chain >= 3) { coins += Math.min(4, chain - 2); }
       updateHUD();
       triggerChainFX(chain);
+      candyAudio.pop(chain);
       if (matchSet.size >= 5) triggerEffect('bigMatch');
+
+      // Detect specials inside this match set and collect extra cleared cells
+      const specialClear = new Set();
+      const specials = [];
+      matchSet.forEach(i => {
+        if (isSpecial(board[i])) {
+          const r = Math.floor(i / COLS), c = i % COLS;
+          // Determine the adjacent non-special candy type that triggered the match
+          const adjI = matchSet.values().next().value;
+          const adjT = board[adjI] < 100 ? board[adjI] : rand(5);
+          specials.push({ v: board[i], r, c, adjT });
+        }
+      });
 
       await animPop(matchSet);
 
-      // Clear data after animation so blocker divs were still visible during pop
-      matchSet.forEach(i => { board[i] = -1; });
+      // Activate each special (serially to avoid overlap)
+      for (const sp of specials) {
+        const cleared = await activateSpecial(sp.v, sp.r, sp.c, sp.adjT, board);
+        cleared.forEach(i => specialClear.add(i));
+      }
+
+      // Clear data
+      matchSet.forEach(i  => { board[i] = -1; });
+      specialClear.forEach(i => {
+        if (!blockerSet.has(i)) board[i] = -1;
+        else blockerSet.delete(i);
+      });
       clearMatchedBlockers(matchSet);
       dropBoard(board);
       const newCells = fillNewGems(board, levelCfg.types);
+      candyAudio.drop();
 
       render(newCells);
       await delay(430);
@@ -464,6 +820,7 @@ window.candyModule = (() => {
       setStatus('');
       showLevelComplete(coinsEarned);
       triggerEffect('levelComplete');
+      candyAudio.levelComplete();
       return true;
     }
     if (score >= levelCfg.target && blockerSet.size > 0) {
@@ -476,6 +833,7 @@ window.candyModule = (() => {
     if (moves <= 0) {
       setStatus('');
       showOverlay('Out of Moves 🍬', score);
+      candyAudio.levelFail();
     }
   }
 

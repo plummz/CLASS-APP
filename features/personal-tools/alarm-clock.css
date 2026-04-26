@@ -304,6 +304,124 @@
   margin-top: 3px;
 }
 
+/* ── Alarm Overlay ────────────────────────────────────────── */
+.alarm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.93);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: alarmFadeIn 0.3s ease;
+}
+
+@keyframes alarmFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.alarm-overlay-inner {
+  text-align: center;
+  padding: 44px 32px 36px;
+  background: rgba(10, 10, 20, 0.85);
+  border: 1px solid rgba(255, 170, 0, 0.45);
+  border-radius: 28px;
+  max-width: 340px;
+  width: 90%;
+  animation: alarmGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes alarmGlow {
+  0%, 100% { box-shadow: 0 0 40px rgba(255, 170, 0, 0.25); }
+  50%       { box-shadow: 0 0 80px rgba(255, 170, 0, 0.55), 0 0 120px rgba(255, 100, 0, 0.2); }
+}
+
+.alarm-overlay-icon {
+  font-size: 4.5em;
+  margin-bottom: 8px;
+  display: block;
+  animation: alarmRing 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes alarmRing {
+  from { transform: rotate(-18deg); }
+  to   { transform: rotate(18deg); }
+}
+
+.alarm-overlay-time {
+  font-size: 3.2em;
+  color: #ffaa00;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  text-shadow: 0 0 24px rgba(255, 170, 0, 0.7);
+  margin-bottom: 6px;
+  line-height: 1;
+}
+
+.alarm-overlay-label {
+  color: #fff;
+  font-size: 1.15em;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.alarm-overlay-countdown {
+  color: rgba(255, 170, 0, 0.6);
+  font-size: 0.82em;
+  margin-bottom: 28px;
+}
+
+.alarm-overlay-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.alarm-overlay-btn {
+  flex: 1;
+  padding: 15px 10px;
+  border-radius: 14px;
+  font-size: 0.95em;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.alarm-overlay-btn.snooze {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+}
+
+.alarm-overlay-btn.snooze:hover,
+.alarm-overlay-btn.snooze:active {
+  background: rgba(0, 212, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.alarm-overlay-btn.dismiss {
+  background: rgba(255, 50, 80, 0.15);
+  color: #ff4466;
+  border: 1px solid rgba(255, 50, 80, 0.35);
+}
+
+.alarm-overlay-btn.dismiss:hover,
+.alarm-overlay-btn.dismiss:active {
+  background: rgba(255, 50, 80, 0.3);
+  transform: translateY(-2px);
+}
+
+.alarm-overlay-hint {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 0.72em;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 600px) {
   .alarm-time {

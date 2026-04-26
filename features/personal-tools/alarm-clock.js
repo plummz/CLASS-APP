@@ -7,6 +7,9 @@ window.alarmModule = {
   clockInterval: null,
   audioCtx: null,
   notifPermission: 'default',
+  _alarmSoundInterval: null,
+  _alarmCountdownInterval: null,
+  _currentAlarm: null,
 
   // 20 license-safe sounds generated via Web Audio API
   sounds: [
@@ -293,24 +296,121 @@ window.alarmModule = {
   },
 
   triggerAlarm: function(alarm, index) {
-    this.alarms[index].triggered = true;
-    this.saveAlarms();
+    if (index >= 0 && this.alarms[index]) {
+      this.alarms[index].triggered = true;
+      this.saveAlarms();
+    }
 
     const soundId = alarm.sound || 'beep';
-    this.playSound(soundId);
     this.vibrate();
     this.showNotification(alarm);
-
-    // Fallback alert (also fires so user sees it if app is open)
-    customAlert(`🔔 Alarm: ${alarm.label}\n⏰ Time: ${alarm.time}`);
+    this.showAlarmOverlay(alarm, soundId);
 
     this.addToAnnouncements(alarm);
     this.addToCalendar(alarm);
 
+    if (index >= 0) {
+      setTimeout(() => {
+        const a = this.alarms[index];
+        if (a) { a.triggered = false; this.saveAlarms(); }
+      }, 60000);
+    }
+  },
+
+  // ── Persistent alarm overlay ──────────────────────────────
+  showAlarmOverlay: function(alarm, soundId) {
+    this.stopAlarmSound();
+
+    const existing = document.getElementById('alarm-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'alarm-overlay';
+    overlay.className = 'alarm-overlay';
+    overlay.innerHTML = `
+      <div class="alarm-overlay-inner">
+        <div class="alarm-overlay-icon">⏰</div>
+        <div class="alarm-overlay-time">${alarm.time || ''}</div>
+        <div class="alarm-overlay-label">${this.escapeHtml(alarm.label || 'Alarm')}</div>
+        <div class="alarm-overlay-countdown"><span id="alarm-countdown">30</span>s auto-dismiss</div>
+        <div class="alarm-overlay-actions">
+          <button class="alarm-overlay-btn snooze" onclick="alarmModule.snoozeAlarm()">💤 Snooze 5m</button>
+          <button class="alarm-overlay-btn dismiss" onclick="alarmModule.dismissAlarm()">✕ Dismiss</button>
+        </div>
+        <div class="alarm-overlay-hint">Tap to unmute if silent</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Play sound immediately, then repeat every 2s
+    this.playSound(soundId);
+    this._alarmSoundInterval = setInterval(() => this.playSound(soundId), 2000);
+
+    // Countdown to auto-dismiss at 30s
+    let secondsLeft = 30;
+    this._alarmCountdownInterval = setInterval(() => {
+      secondsLeft--;
+      const el = document.getElementById('alarm-countdown');
+      if (el) el.textContent = secondsLeft;
+      if (secondsLeft <= 0) this.dismissAlarm();
+    }, 1000);
+
+    this._currentAlarm = { ...alarm, soundId };
+
+    // Tapping overlay resumes audio context (helps after notification click)
+    overlay.addEventListener('click', () => {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
+    }, { once: true });
+  },
+
+  stopAlarmSound: function() {
+    if (this._alarmSoundInterval)   { clearInterval(this._alarmSoundInterval);   this._alarmSoundInterval = null; }
+    if (this._alarmCountdownInterval) { clearInterval(this._alarmCountdownInterval); this._alarmCountdownInterval = null; }
+  },
+
+  dismissAlarm: function() {
+    this.stopAlarmSound();
+    const overlay = document.getElementById('alarm-overlay');
+    if (overlay) overlay.remove();
+    this._currentAlarm = null;
+  },
+
+  snoozeAlarm: function() {
+    const alarm = this._currentAlarm;
+    this.dismissAlarm();
+    if (!alarm) return;
+
+    // Re-trigger after 5 minutes
     setTimeout(() => {
-      const a = this.alarms[index];
-      if (a) { a.triggered = false; this.saveAlarms(); }
-    }, 60000);
+      this.triggerAlarm(alarm, -1);
+    }, 5 * 60 * 1000);
+
+    customAlert('💤 Snoozed for 5 minutes');
+  },
+
+  // ── Listen for push alarm messages from service worker ────
+  listenForPushAlarms: function() {
+    if (!navigator.serviceWorker) return;
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (!event.data) return;
+      const { type, soundId, label, body } = event.data;
+
+      if (type === 'ALARM_TRIGGERED') {
+        const alarm = {
+          label: label || 'Alarm',
+          body: body || '',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sound: soundId || 'beep',
+        };
+        this.vibrate();
+        this.showAlarmOverlay(alarm, alarm.sound);
+      }
+
+      if (type === 'ALARM_SNOOZED') {
+        // Relay snooze to dismissAlarm + re-trigger if overlay is open
+        if (this._currentAlarm) this.snoozeAlarm();
+      }
+    });
   },
 
   addToAnnouncements: function(alarm) {
@@ -343,8 +443,8 @@ window.alarmModule = {
     this.startClock();
     this.render();
     this.requestNotifPermission();
-    // If permission was already granted before, subscribe immediately
     if (Notification.permission === 'granted') this.subscribePush();
+    this.listenForPushAlarms();
   },
 
   destroy: function() {

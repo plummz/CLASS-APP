@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.4-20260426-push-sub';
+const CACHE_VERSION = 'v1.5.5-20260426-alarm-overlay';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -135,8 +135,29 @@ self.addEventListener('push', (event) => {
     data = { title: 'New message', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'New message';
-  const options = {
+  const isAlarm = Boolean(data.alarmId);
+  const title = data.title || (isAlarm ? '⏰ Alarm' : 'New message');
+
+  const options = isAlarm ? {
+    body: data.body || 'Your alarm is ringing!',
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    tag: `alarm-${data.alarmId}`,
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [500, 200, 500, 200, 500, 200, 500, 200, 500],
+    actions: [
+      { action: 'dismiss', title: '✕ Dismiss' },
+      { action: 'snooze',  title: '💤 Snooze 5m' },
+    ],
+    data: {
+      url: '/',
+      alarmId: data.alarmId,
+      soundId: data.soundId || 'beep',
+      notifTitle: title,
+      notifBody: data.body || '',
+    },
+  } : {
     body: data.body || 'Open CLASS APP to view it.',
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
@@ -154,16 +175,41 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href;
-  const sender = event.notification.data?.sender || '';
+  const notifData = event.notification.data || {};
+  const action = event.action;
+
+  // Dismiss action — just close the notification
+  if (notifData.alarmId && action === 'dismiss') return;
+
+  // Snooze action — relay to any open app window
+  if (notifData.alarmId && action === 'snooze') {
+    event.waitUntil((async () => {
+      const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of list) {
+        client.postMessage({ type: 'ALARM_SNOOZED', alarmId: notifData.alarmId, soundId: notifData.soundId });
+      }
+    })());
+    return;
+  }
+
+  const targetUrl = new URL(notifData.url || '/', self.location.origin).href;
 
   event.waitUntil((async () => {
-    const clientsList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of clientsList) {
+    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of list) {
       if ('focus' in client) {
         await client.focus();
         if ('navigate' in client) await client.navigate(targetUrl);
-        if (sender) client.postMessage({ type: 'OPEN_PRIVATE_CHAT', sender });
+        if (notifData.sender) client.postMessage({ type: 'OPEN_PRIVATE_CHAT', sender: notifData.sender });
+        if (notifData.alarmId) {
+          client.postMessage({
+            type: 'ALARM_TRIGGERED',
+            alarmId: notifData.alarmId,
+            soundId: notifData.soundId || 'beep',
+            label: notifData.notifTitle || 'Alarm',
+            body: notifData.notifBody || '',
+          });
+        }
         return;
       }
     }

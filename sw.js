@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.10-20260426-candy-refactor';
+const CACHE_VERSION = 'v1.5.11-20260426-special-candies-royale-ai';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -39,7 +39,7 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=14',
+  '/features/royale/royale.js?v=15',
   '/features/pacman/pacman.js?v=3',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',

@@ -3,6 +3,7 @@ window.candyModule = (() => {
   'use strict';
 
   const ROWS = 8, COLS = 8, MAX_LEVEL = 1500;
+  const BASE_TYPES = 5;
 
   // ── Level generator ────────────────────────────────────────────────────
   function genLevel(n) {
@@ -11,7 +12,7 @@ window.candyModule = (() => {
       n,
       target:   Math.round(200 + t * t * 35000 + t * 5000),
       moves:    Math.max(10, Math.round(30 - t * 20 + Math.sin(n * 0.1) * 1.5)),
-      types:    Math.min(8, 6 + Math.floor(t * 2)),
+      types:    BASE_TYPES,
       blockers: Math.min(14, Math.floor(t * 16)),
     };
   }

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.5-20260426-alarm-overlay';
+const CACHE_VERSION = 'v1.5.9-20260426-ios-menu-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

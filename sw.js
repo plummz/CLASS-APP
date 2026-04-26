@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.11-20260426-special-candies-royale-ai';
+const CACHE_VERSION = 'v1.5.12-20260426-users-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -21,7 +21,8 @@ const ASSETS = [
   '/features/pokemon/pokemon.css?v=3',
   '/features/royale/royale.css?v=14',
   '/features/pacman/pacman.css?v=3',
-  '/script.js?v=59',
+  '/features/candy/candy.css?v=2',
+  '/script.js?v=60',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -41,6 +42,7 @@ const ASSETS = [
   '/features/pokemon/pokemon.js?v=3',
   '/features/royale/royale.js?v=15',
   '/features/pacman/pacman.js?v=3',
+  '/features/candy/candy.js?v=2',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

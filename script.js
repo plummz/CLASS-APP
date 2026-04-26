@@ -231,8 +231,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.9';
+const APP_VERSION = '1.5.10';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.10',
+    date: 'April 26, 2026',
+    title: 'Candy Match Core Refactor',
+    summary: 'Candy Match now runs with five polished candy types, improved 3D board visuals, and intact matching, cascading, and scoring logic.',
+    changes: [
+      'Reduced Candy Match from six to five candy types while preserving board generation, swap, match, refill, and scoring behavior.',
+      'Reworked candy visuals into five distinct designs with layered gradients, highlights, depth shading, and refined shapes.',
+      'Locked game levels to a steady 5 candy types for cleaner progression and easier future feature expansion.',
+      'Kept the shop and audio systems untouched, focusing only on core gameplay and visuals.',
+    ]
+  },
   {
     version: '1.5.9',
     date: 'April 26, 2026',

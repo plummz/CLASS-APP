@@ -231,8 +231,27 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.5';
+const APP_VERSION = '1.5.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.6',
+    date: 'April 26, 2026',
+    title: 'Persistent Alarm Overlay + Push Notification Improvements',
+    summary: 'Alarms now show a fullscreen overlay with a looping sound for 30 seconds, Dismiss and Snooze (5 min) buttons. Push notifications stay on screen until dismissed, vibrate strongly, and deliver the alarm sound when tapped.',
+    changes: [
+      'Alarm Clock: Replaced one-shot alert with a fullscreen pulsing overlay when any alarm fires.',
+      'Alarm Clock: Alarm sound loops every 2 seconds for up to 30 seconds with countdown timer.',
+      'Alarm Clock: Dismiss button stops the alarm immediately. Snooze button re-triggers in 5 minutes.',
+      'Alarm Clock: Overlay auto-dismisses after 30 seconds if ignored.',
+      'Alarm Clock: Tapping the overlay resumes the audio context (fixes silent-on-open issue after notification click).',
+      'Push Notifications: requireInteraction=true keeps alarm notification on screen until the user acts.',
+      'Push Notifications: Added Dismiss and Snooze actions directly on the notification banner.',
+      'Push Notifications: Strong vibration pattern added to alarm push notifications.',
+      'Push Notifications: Tapping the notification opens the app and immediately shows the alarm overlay with correct sound.',
+      'Service worker: Snooze/dismiss actions relayed to open app clients via postMessage.',
+      'Note: If the phone is on silent/DND mode, the system notification sound will not play — this is an OS-level restriction.'
+    ]
+  },
   {
     version: '1.5.5',
     date: 'April 26, 2026',

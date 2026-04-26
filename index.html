@@ -116,56 +116,56 @@
 
     <div class="nav-section-title">Main</div>
     <!-- Lobby sits above all year groups -->
-    <div class="nav-item" data-page="lobby" onclick="goToPage('lobby')">
+    <div class="nav-item" data-page="lobby" role="button" tabindex="0">
       <span class="nav-icon">🏫</span>
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
-    <div class="nav-item active" data-page="announcement" onclick="goToPage('announcement')">
+    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
       <span class="nav-icon">📢</span>
       <div class="nav-text"><span class="nav-label">ANNOUNCEMENT</span></div>
     </div>
 
     <!-- Social Media Pages — below Lobby -->
-    <div class="nav-item" data-page="witfb" onclick="goToPage('witfb')">
+    <div class="nav-item" data-page="witfb" role="button" tabindex="0">
       <span class="nav-icon">📘</span>
       <div class="nav-text"><span class="nav-label">Social Media Pages</span></div>
     </div>
 
-    <div class="nav-item" data-page="outputai" onclick="goToPage('outputai')">
+    <div class="nav-item" data-page="outputai" role="button" tabindex="0">
       <span class="nav-icon">🧾</span>
       <div class="nav-text"><span class="nav-label">OUTPUT-AI</span></div>
     </div>
 
-    <div class="nav-item" data-page="codelab" onclick="goToPage('codelab')">
+    <div class="nav-item" data-page="codelab" role="button" tabindex="0">
       <span class="nav-icon">⌨️</span>
       <div class="nav-text"><span class="nav-label">CODE LAB</span></div>
     </div>
 
-    <div class="nav-item" data-page="coding-educational" onclick="goToPage('coding-educational')">
+    <div class="nav-item" data-page="coding-educational" role="button" tabindex="0">
       <span class="nav-icon">📚</span>
       <div class="nav-text"><span class="nav-label">CODING LESSONS</span></div>
     </div>
 
     <div class="nav-section-title">AI & Classes</div>
     <!-- AI Assistants -->
-    <div class="nav-item" data-page="ai" onclick="goToPage('ai')">
+    <div class="nav-item" data-page="ai" role="button" tabindex="0">
       <span class="nav-icon">🤖</span>
       <div class="nav-text"><span class="nav-label">AI Assistants</span></div>
     </div>
 
     <div class="nav-dropdown-group year-1-theme">
-      <div class="nav-dropdown-header" onclick="toggleYear('year1')">
+      <div class="nav-dropdown-header" data-year="year1" role="button" tabindex="0">
         <span class="nav-icon">🎓</span>
         <div class="nav-text"><span class="nav-label">First Year</span></div>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year1" class="nav-dropdown-content">
-        <div class="nav-item" data-page="first" onclick="goToPage('first')">
+        <div class="nav-item" data-page="first" role="button" tabindex="0">
           <span class="nav-icon">⛰️</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" data-page="second" onclick="goToPage('second')">
+        <div class="nav-item" data-page="second" role="button" tabindex="0">
           <span class="nav-icon">🌊</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -173,17 +173,17 @@
     </div>
 
     <div class="nav-dropdown-group year-2-theme">
-      <div class="nav-dropdown-header" onclick="toggleYear('year2')">
+      <div class="nav-dropdown-header" data-year="year2" role="button" tabindex="0">
         <span class="nav-icon">🏛️</span>
         <div class="nav-text"><span class="nav-label">Second Year</span></div>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year2" class="nav-dropdown-content">
-        <div class="nav-item" data-page="y2first" onclick="goToPage('y2first')">
+        <div class="nav-item" data-page="y2first" role="button" tabindex="0">
           <span class="nav-icon">📘</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" data-page="y2second" onclick="goToPage('y2second')">
+        <div class="nav-item" data-page="y2second" role="button" tabindex="0">
           <span class="nav-icon">📙</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -191,17 +191,17 @@
     </div>
 
     <div class="nav-dropdown-group year-3-theme">
-      <div class="nav-dropdown-header" onclick="toggleYear('year3')">
+      <div class="nav-dropdown-header" data-year="year3" role="button" tabindex="0">
         <span class="nav-icon">🚀</span>
         <div class="nav-text"><span class="nav-label">Third Year</span></div>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year3" class="nav-dropdown-content">
-        <div class="nav-item" data-page="y3first" onclick="goToPage('y3first')">
+        <div class="nav-item" data-page="y3first" role="button" tabindex="0">
           <span class="nav-icon">🔬</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" data-page="y3second" onclick="goToPage('y3second')">
+        <div class="nav-item" data-page="y3second" role="button" tabindex="0">
           <span class="nav-icon">🔭</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -209,17 +209,17 @@
     </div>
 
     <div class="nav-dropdown-group year-4-theme">
-      <div class="nav-dropdown-header" onclick="toggleYear('year4')">
+      <div class="nav-dropdown-header" data-year="year4" role="button" tabindex="0">
         <span class="nav-icon">🏆</span>
         <div class="nav-text"><span class="nav-label">Fourth Year</span></div>
         <span class="dropdown-arrow">▼</span>
       </div>
       <div id="dropdown-year4" class="nav-dropdown-content">
-        <div class="nav-item" data-page="y4first" onclick="goToPage('y4first')">
+        <div class="nav-item" data-page="y4first" role="button" tabindex="0">
           <span class="nav-icon">📜</span>
           <div class="nav-text"><span class="nav-label">First Semester</span></div>
         </div>
-        <div class="nav-item" data-page="y4second" onclick="goToPage('y4second')">
+        <div class="nav-item" data-page="y4second" role="button" tabindex="0">
           <span class="nav-icon">✨</span>
           <div class="nav-text"><span class="nav-label">Second Semester</span></div>
         </div>
@@ -227,58 +227,58 @@
     </div>
 
     <div class="nav-section-title">Media & Tools</div>
-    <div class="nav-item" data-page="personal-tools" onclick="goToPage('personal-tools')">
+    <div class="nav-item" data-page="personal-tools" role="button" tabindex="0">
       <span class="nav-icon">🔧</span>
       <div class="nav-text"><span class="nav-label">Personal Tools</span></div>
     </div>
 
-    <div class="nav-item" data-page="events" onclick="goToPage('events')">
+    <div class="nav-item" data-page="events" role="button" tabindex="0">
       <span class="nav-icon">🛩️</span>
       <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
     </div>
  
-    <div class="nav-item" data-page="random" onclick="goToPage('random')">
+    <div class="nav-item" data-page="random" role="button" tabindex="0">
       <span class="nav-icon">🌌</span>
       <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
     </div>
  
-    <div class="nav-item" data-page="chat" onclick="goToPage('chat')">
+    <div class="nav-item" data-page="chat" role="button" tabindex="0">
       <span class="nav-icon" style="position: relative;">💬<span id="chat-notif-dot" class="notif-dot hidden"></span></span>
       <div class="nav-text"><span class="nav-label">Chat</span></div>
     </div>
  
-    <div class="nav-item" data-page="users" onclick="goToPage('users')">
+    <div class="nav-item" data-page="users" role="button" tabindex="0">
       <span class="nav-icon">👥</span>
       <div class="nav-text"><span class="nav-label">Users</span></div>
     </div>
 
-    <div class="nav-item" data-page="diagnostics" onclick="goToPage('diagnostics')">
+    <div class="nav-item" data-page="diagnostics" role="button" tabindex="0">
       <span class="nav-icon">🩺</span>
       <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
     </div>
 
-    <div class="nav-item admin-only hidden" data-page="admin" onclick="goToPage('admin')">
+    <div class="nav-item admin-only hidden" data-page="admin" role="button" tabindex="0">
       <span class="nav-icon">🛡️</span>
       <div class="nav-text"><span class="nav-label">Admin</span></div>
     </div>
  
-    <div class="nav-item" data-page="calendar" onclick="goToPage('calendar')">
+    <div class="nav-item" data-page="calendar" role="button" tabindex="0">
       <span class="nav-icon">📅</span>
       <div class="nav-text"><span class="nav-label">Calendar</span></div>
     </div>
  
-    <div class="nav-item" data-page="music" onclick="goToPage('music')">
+    <div class="nav-item" data-page="music" role="button" tabindex="0">
       <span class="nav-icon">🎵</span>
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
 
     <!-- Games hub — direct link to game selection page -->
-    <div class="nav-item" data-page="games" onclick="goToPage('games')">
+    <div class="nav-item" data-page="games" role="button" tabindex="0">
       <span class="nav-icon">🎮</span>
       <div class="nav-text"><span class="nav-label">Games</span></div>
     </div>
 
-    <div class="nav-item" id="nav-logout" onclick="handleLogout()" style="display: none;">
+    <div class="nav-item" id="nav-logout" role="button" tabindex="0" style="display: none;">
       <span class="nav-icon">🚪</span>
       <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
@@ -286,7 +286,7 @@
     <div class="sidebar-footer" id="sidebar-footer-year">School Portfolio &nbsp;·&nbsp; 2025–2026</div>
   </nav>
  
-  <div id="overlay" onclick="closeMenu()"></div>
+  <div id="overlay"></div>
  
   <div id="auth-modal" class="custom-modal-overlay high-z pointer-auto">
     <div class="custom-modal-box small-box auth-modal-box">

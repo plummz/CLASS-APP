@@ -2708,6 +2708,20 @@ window.royaleModule = (function () {
 
   function drawBots() {
     const TIER_COLORS = { rookie:'#ff8866', veteran:'#ffbb44', elite:'#aaff44' };
+    // rrect: compatible rounded-rect path for older WebViews
+    function rrect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
     for (const bt of bots) {
       if (!bt.alive) continue;
       const tierColor = TIER_COLORS[bt.tier?.name||'rookie'] || '#ff8866';
@@ -2730,12 +2744,12 @@ window.royaleModule = (function () {
 
       // HP bar background
       ctx.fillStyle='rgba(0,0,0,0.7)';
-      ctx.beginPath(); ctx.roundRect(bt.x-18,bt.y-28,36,6,3); ctx.fill();
+      rrect(bt.x-18, bt.y-28, 36, 6, 3); ctx.fill();
       // HP bar fill
       const hpPct = bt.hp / (bt.maxHp||100);
       const hpColor = hpPct > 0.6 ? '#33dd55' : hpPct > 0.3 ? '#ffcc22' : '#ee3322';
       ctx.fillStyle = hpColor;
-      ctx.beginPath(); ctx.roundRect(bt.x-18,bt.y-28,36*hpPct,6,3); ctx.fill();
+      if (36*hpPct > 0) { rrect(bt.x-18, bt.y-28, 36*hpPct, 6, 3); ctx.fill(); }
 
       // Name label with tier color
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bt.x-20,bt.y-38,40,10);

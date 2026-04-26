@@ -3705,17 +3705,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
 
-  document.querySelectorAll('.nav-item, .nav-dropdown-header').forEach((navControl) => {
-    navControl.addEventListener('click', (event) => {
-      const rect = navControl.getBoundingClientRect();
-      navControl.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
-      navControl.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
-      navControl.classList.remove('nav-click-flash');
-      void navControl.offsetWidth;
-      navControl.classList.add('nav-click-flash');
-      window.setTimeout(() => navControl.classList.remove('nav-click-flash'), 420);
+  /* ── Sidebar nav: unified click + keyboard handler ────────────
+     Replaces inline onclick attributes for iOS Safari compatibility.
+     iOS Safari does not reliably fire click on non-interactive <div>
+     elements; we now use role="button" tabindex="0" in HTML and
+     attach listeners here with touch-action: manipulation in CSS. */
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('click', function(event) {
+      const navItem = event.target.closest('.nav-item[data-page]');
+      const dropdownHeader = event.target.closest('.nav-dropdown-header[data-year]');
+      const logoutItem = event.target.closest('#nav-logout');
+
+      const target = navItem || dropdownHeader || logoutItem;
+      if (!target) return;
+
+      // Ripple effect
+      const rect = target.getBoundingClientRect();
+      target.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
+      target.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
+      target.classList.remove('nav-click-flash');
+      void target.offsetWidth;
+      target.classList.add('nav-click-flash');
+      window.setTimeout(() => target.classList.remove('nav-click-flash'), 420);
+
+      // Action
+      if (navItem && navItem.dataset.page) {
+        window.goToPage(navItem.dataset.page);
+      } else if (dropdownHeader && dropdownHeader.dataset.year) {
+        window.toggleYear(dropdownHeader.dataset.year);
+      } else if (logoutItem) {
+        window.handleLogout();
+      }
     });
-  });
+
+    // Keyboard support: Enter / Space triggers click
+    sidebar.addEventListener('keydown', function(event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target.closest('.nav-item[data-page], .nav-dropdown-header[data-year], #nav-logout');
+      if (!target) return;
+      event.preventDefault();
+      target.click();
+    });
+  }
+
+  // Overlay: close menu on tap (touch + click)
+  const overlay = document.getElementById('overlay');
+  if (overlay) {
+    overlay.addEventListener('click', window.closeMenu);
+  }
 
   if (currentUser) { if (isAdmin) revealAdminNav(); establishSession(); }
   else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }

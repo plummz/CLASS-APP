@@ -152,6 +152,61 @@ window.alarmModule = {
       this.notifPermission = Notification.permission;
     }
     this.updateNotifBanner();
+    if (Notification.permission === 'granted') this.subscribePush();
+  },
+
+  // ── Web Push subscription (background alarm delivery) ─────
+  subscribePush: async function() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (!window.sb || !window.currentUser?.username) return;
+
+    try {
+      // Fetch VAPID public key from server
+      const resp = await fetch('/api/push/public-key');
+      const { publicKey, enabled } = await resp.json();
+      if (!enabled || !publicKey) {
+        console.log('[alarm] Push not enabled on server (missing VAPID keys)');
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.ready;
+
+      // Reuse existing subscription or create a new one
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: this._b64urlToUint8(publicKey),
+        });
+        console.log('[alarm] New push subscription created');
+      }
+
+      // Upsert subscription into Supabase alarm_push_subscriptions
+      const subJson = sub.toJSON();
+      const { error } = await window.sb.from('alarm_push_subscriptions').upsert({
+        username: window.currentUser.username,
+        endpoint: subJson.endpoint,
+        subscription: subJson,
+      }, { onConflict: 'endpoint' });
+
+      if (error) {
+        console.warn('[alarm] Failed to save push subscription:', error.message);
+      } else {
+        console.log('[alarm] Push subscription saved for', window.currentUser.username);
+      }
+    } catch (err) {
+      console.warn('[alarm] subscribePush error:', err.message);
+    }
+  },
+
+  _b64urlToUint8: function(b64url) {
+    const pad = '='.repeat((4 - b64url.length % 4) % 4);
+    const b64 = (b64url + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(b64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
   },
 
   updateNotifBanner: function() {
@@ -288,6 +343,8 @@ window.alarmModule = {
     this.startClock();
     this.render();
     this.requestNotifPermission();
+    // If permission was already granted before, subscribe immediately
+    if (Notification.permission === 'granted') this.subscribePush();
   },
 
   destroy: function() {

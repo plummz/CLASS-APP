@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.3-20260425-alarm';
+const CACHE_VERSION = 'v1.5.4-20260426-push-sub';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

@@ -231,7 +231,7 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.11';
+const APP_VERSION = '1.5.12';
 const APP_CHANGELOG = [
   {
     version: '1.5.11',
@@ -258,6 +258,19 @@ const APP_CHANGELOG = [
       'Battle Royale: HP bars now use color (green/yellow/red) based on remaining health percentage.',
       'Battle Royale: Building outer walls enhanced with double-stroke 3D depth, corner accents, and gradient door portals.',
       'Service Worker: Cache bumped to v1.5.11 to propagate all updates to PWA/iOS clients.',
+    ]
+  },
+  {
+    version: '1.5.12',
+    date: 'April 26, 2026',
+    title: 'Users Page: Admin Delete Fix & Profile Scroll Fix',
+    summary: 'Admin can now properly delete users from the profile panel. Opening a profile no longer requires scrolling up to find it.',
+    changes: [
+      'Users page: Fixed "Delete User" button in profile view — it now correctly triggers the admin delete flow (was calling an undefined function).',
+      'Users page: After a successful delete, the deleted user is immediately removed from the local list and the grid re-renders without a page reload.',
+      'Users page: After a successful delete, the profile panel closes automatically.',
+      'Users page: Opening a user profile now auto-scrolls the page to the top so the fixed profile panel is always visible, regardless of scroll position.',
+      'Users page: Admin delete confirmation dialog now uses a red confirm button ("Yes, Delete") to make the destructive action clearer.',
     ]
   },
   {
@@ -2464,9 +2477,14 @@ window.openUserProfile = function(username) {
   `;
 
   if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${safeUsername}')">Edit Profile</button>`;
-  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="deleteUserAPI('${safeUsername}')">Delete User</button>`;
+  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="adminDeleteUser('${safeUsername}')">Delete User</button>`;
   html += `</div><div id="profile-folders-container" class="profile-folders-container"></div>`;
   details.innerHTML = html;
+
+  // Scroll the page to top so the fixed profile panel is always visible
+  const usersPage = document.getElementById('page-users');
+  if (usersPage) usersPage.scrollTop = 0;
+
   profilePanel.setAttribute('tabindex', '-1');
   profilePanel.scrollTop = 0;
   profilePanel.classList.add('active');
@@ -4293,9 +4311,9 @@ window.adminDeleteUser = async function(username) {
       <div id="admin-del-confirm" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal">
           <div class="modal-title">Delete user <b>@${escapeHTML(username)}</b>?</div>
-          <p style="opacity:.65;font-size:13px;margin:10px 0 18px;">This will permanently remove their profile and all associated data.</p>
+          <p style="opacity:.65;font-size:13px;margin:10px 0 18px;">This will permanently remove their profile and all associated data. This cannot be undone.</p>
           <div style="display:flex;gap:10px;">
-            <button class="btn-primary flex-1" id="adm-del-yes">Delete</button>
+            <button class="btn-outline-red flex-1" id="adm-del-yes">Yes, Delete</button>
             <button class="btn-outline flex-1" onclick="removeDynamicModal('admin-del-confirm')">Cancel</button>
           </div>
         </div>
@@ -4303,10 +4321,22 @@ window.adminDeleteUser = async function(username) {
     document.getElementById('adm-del-yes').onclick = () => { removeDynamicModal('admin-del-confirm'); resolve(true); };
   });
   if (!confirmed) return;
+
   const { error } = await sb.rpc('class_app_admin_delete_user', { p_username: username });
-  if (error) return customAlert(error.message);
+  if (error) return customAlert(error.message || 'Delete failed. Make sure the server function exists.');
+
+  // Remove from local users array so grid updates immediately
+  const idx = users.findIndex(u => u.username === username);
+  if (idx !== -1) users.splice(idx, 1);
+
   showToast(`Deleted @${username}.`);
-  loadAdminDashboard();
+
+  // Close the profile panel if it was showing this user
+  closeProfile();
+
+  // Refresh both grids
+  renderUserDirectory();
+  if (document.getElementById('admin-user-list')) loadAdminDashboard();
 };
 
 /* ============================================================

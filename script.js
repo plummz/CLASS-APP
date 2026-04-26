@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.4';
+const APP_VERSION = '1.5.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.5',
+    date: 'April 26, 2026',
+    title: 'Background Alarm Push Subscription',
+    summary: 'Alarm Clock now automatically registers your device for background Web Push notifications. When you grant notification permission, your push subscription is saved to the server so alarms can fire even when the app is closed.',
+    changes: [
+      'Alarm Clock: subscribePush() auto-runs on init if notification permission is already granted.',
+      'Alarm Clock: subscribePush() also runs after the user taps Allow Notifications and grants permission.',
+      'Alarm Clock: Push subscription is saved to alarm_push_subscriptions in Supabase (upserted by endpoint to prevent duplicates).',
+      'Alarm Clock: Logs subscription status to console for debugging.',
+      'Service worker cache bumped to v1.5.4-20260426-push-sub.'
+    ]
+  },
   {
     version: '1.5.4',
     date: 'April 25, 2026',

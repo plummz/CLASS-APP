@@ -231,8 +231,27 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.7';
+const APP_VERSION = '1.5.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.8',
+    date: 'April 26, 2026',
+    title: 'KaTeX Math Display for Calculator',
+    summary: 'The scientific calculator now renders expressions as formatted math using KaTeX. Fractions display vertically, exponents render as superscripts, and square roots show the radical symbol — all in real time as you type.',
+    changes: [
+      'Calculator: Integrated KaTeX library for real-time LaTeX math rendering in the expression display.',
+      'Calculator: Fractions entered as (a)÷(b) now render vertically as proper fractions (\\frac{a}{b}).',
+      'Calculator: Exponents render as true superscripts (x^2 → x²) including nested powers.',
+      'Calculator: sqrt(), cbrt(), nthrt() render with proper radical symbols (√, ∛, ⁿ√).',
+      'Calculator: fact(n) renders as (n)! notation.',
+      'Calculator: Trig functions (sin, cos, tan, arcsin, arccos, arctan) and log/ln use LaTeX formatting.',
+      'Calculator: Constants π and Ans render in proper math notation.',
+      'Calculator: Scientific notation (e.g. 1.23e+8) renders as 1.23×10⁸.',
+      'Calculator: Graceful fallback to plain text if KaTeX cannot parse a partially-typed expression.',
+      'Calculator: KaTeX output inherits the neon-green glow theme of the display.',
+      'Calculator: Calculation logic is unchanged — only the display layer was updated.'
+    ]
+  },
   {
     version: '1.5.7',
     date: 'April 26, 2026',

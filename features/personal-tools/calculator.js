@@ -360,11 +360,134 @@ window.calculatorModule = {
     return str;
   },
 
+  // ── LaTeX Display ─────────────────────────────────────────
+
+  toLatex: function(expr) {
+    if (!expr) return '0';
+    let s = expr;
+    s = this._latexFrac(s);
+    s = this._latexSqrt(s);
+    s = this._latexFact(s);
+    s = this._latexPow(s);
+    // scientific notation from fmt() e.g. 1.23e+8
+    s = s.replace(/(\d+\.?\d*)e([+-]?\d+)/g, (_, m, e) => m + '\\times10^{' + parseInt(e, 10) + '}');
+    // trig & log (multi-char first to avoid partial matches)
+    s = s.replace(/asin\(/g, '\\arcsin(');
+    s = s.replace(/acos\(/g, '\\arccos(');
+    s = s.replace(/atan\(/g, '\\arctan(');
+    s = s.replace(/log2\(/g, '\\log_{2}(');
+    s = s.replace(/sin\(/g,  '\\sin(');
+    s = s.replace(/cos\(/g,  '\\cos(');
+    s = s.replace(/tan\(/g,  '\\tan(');
+    s = s.replace(/log\(/g,  '\\log(');
+    s = s.replace(/ln\(/g,   '\\ln(');
+    // operators & symbols
+    s = s.replace(/×/g, '\\times ');
+    s = s.replace(/÷/g, '\\div ');
+    s = s.replace(/−/g, '-');
+    s = s.replace(/π/g, '\\pi ');
+    s = s.replace(/Ans/g, '\\text{Ans}');
+    // user-typed EXP key e.g. 2E3
+    s = s.replace(/E([+-]?\d*)/g, '\\times10^{$1}');
+    s = s.replace(/%/g, '\\%');
+    return s;
+  },
+
+  _latexFrac: function(s) {
+    let iter = 0;
+    while (iter++ < 20) {
+      const divIdx = s.indexOf(')÷(');
+      if (divIdx === -1) break;
+      let depth = 0, numOpen = -1;
+      for (let i = divIdx; i >= 0; i--) {
+        if (s[i] === ')') depth++;
+        else if (s[i] === '(') { if (--depth === 0) { numOpen = i; break; } }
+      }
+      let depth2 = 0, denClose = -1;
+      for (let i = divIdx + 2; i < s.length; i++) {
+        if (s[i] === '(') depth2++;
+        else if (s[i] === ')') { if (--depth2 === 0) { denClose = i; break; } }
+      }
+      if (numOpen === -1 || denClose === -1) break;
+      const num = this._latexFrac(s.substring(numOpen + 1, divIdx));
+      const den = this._latexFrac(s.substring(divIdx + 3, denClose));
+      s = s.substring(0, numOpen) + '\\frac{' + num + '}{' + den + '}' + s.substring(denClose + 1);
+    }
+    return s;
+  },
+
+  _latexSqrt: function(s) {
+    const fns = [['nthrt(', '\\sqrt[n]{'], ['cbrt(', '\\sqrt[3]{'], ['sqrt(', '\\sqrt{']];
+    for (const [fn, latex] of fns) {
+      let iter = 0;
+      while (iter++ < 20) {
+        const idx = s.indexOf(fn);
+        if (idx === -1) break;
+        const openParen = idx + fn.length - 1;
+        let depth = 0, close = -1;
+        for (let i = openParen; i < s.length; i++) {
+          if (s[i] === '(') depth++;
+          else if (s[i] === ')') { if (--depth === 0) { close = i; break; } }
+        }
+        if (close === -1) {
+          s = s.substring(0, idx) + latex + s.substring(openParen + 1);
+          break;
+        }
+        const inner = this._latexSqrt(s.substring(openParen + 1, close));
+        s = s.substring(0, idx) + latex + inner + '}' + s.substring(close + 1);
+      }
+    }
+    return s;
+  },
+
+  _latexFact: function(s) {
+    let iter = 0;
+    while (iter++ < 20) {
+      const idx = s.indexOf('fact(');
+      if (idx === -1) break;
+      const openParen = idx + 4;
+      let depth = 0, close = -1;
+      for (let i = openParen; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') { if (--depth === 0) { close = i; break; } }
+      }
+      if (close === -1) { s = s.substring(0, idx) + '(' + s.substring(openParen + 1); break; }
+      const inner = s.substring(openParen + 1, close);
+      s = s.substring(0, idx) + '(' + inner + ')!' + s.substring(close + 1);
+    }
+    return s;
+  },
+
+  _latexPow: function(s) {
+    // x^(expr) → x^{expr}
+    let iter = 0;
+    while (iter++ < 20) {
+      const idx = s.indexOf('^(');
+      if (idx === -1) break;
+      let depth = 0, close = -1;
+      for (let i = idx + 1; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') { if (--depth === 0) { close = i; break; } }
+      }
+      if (close === -1) break;
+      const inner = this._latexPow(s.substring(idx + 2, close));
+      s = s.substring(0, idx + 1) + '{' + inner + '}' + s.substring(close + 1);
+    }
+    // x^digits → x^{digits}
+    s = s.replace(/\^(-?[\d.]+)/g, '^{$1}');
+    return s;
+  },
+
   updateDisplay: function() {
     const exprEl = document.getElementById('casio-expr');
-    if (exprEl) {
-      exprEl.textContent = this.expr || '0';
-      exprEl.classList.toggle('long', (this.expr || '').length > 16);
+    if (!exprEl) return;
+    const raw = this.expr || '0';
+    exprEl.classList.toggle('long', raw.length > 16);
+    if (typeof katex === 'undefined') { exprEl.textContent = raw; return; }
+    try {
+      katex.render(this.toLatex(raw), exprEl, { throwOnError: true, displayMode: false, output: 'html' });
+    } catch (e) {
+      exprEl.textContent = raw;
     }
   }
 };

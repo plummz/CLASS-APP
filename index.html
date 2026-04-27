@@ -972,7 +972,7 @@
         </button>
         <button class="lobby-dash-card" type="button" onclick="openChangelogModal()">
           <span>Latest Update</span>
-          <strong id="lobby-dash-update-version">1.5.21</strong>
+          <strong id="lobby-dash-update-version">1.5.22</strong>
           <small>View changelog</small>
         </button>
       </div>
@@ -983,6 +983,16 @@
         </div>
         <div class="lobby-presence-list" id="lobby-presence-list">
           <p class="lobby-open-empty">Open the lobby to see active users.</p>
+        </div>
+      </div>
+
+      <div class="lobby-open-board">
+        <div class="lobby-open-board-head">
+          <span>📊 App Opens</span>
+          <button type="button" onclick="openAppOpenTallyModal()">View All</button>
+        </div>
+        <div id="lobby-app-open-preview" class="lobby-open-list">
+          <p class="lobby-open-empty" style="opacity:0.6">Loading…</p>
         </div>
       </div>
       <div class="lobby-games-quickplay">
@@ -1421,7 +1431,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=64"></script>
+  <script src="script.js?v=65"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1445,7 +1455,7 @@
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=1" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script src="features/personal-tools/calculator.js?v=3" defer></script>
+  <script src="features/personal-tools/calculator.js?v=4" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

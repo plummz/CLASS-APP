@@ -31,19 +31,24 @@ window.reviewersModule = {
     const page = document.getElementById('page-reviewers');
     if (!page) return;
 
-    await this.loadReviewers();
-
+    // Immediately show the base UI so the page never looks blank
     page.innerHTML = `
       <div class="reviewers-wrap">
         <h1 class="reviewers-title">Shared Reviewers</h1>
-        
         <div class="reviewers-grid" id="reviewers-grid">
-          <div class="reviewer-empty"><p>Loading shared reviewers...</p></div>
+          <div class="reviewer-empty"><p>Loading shared reviewers…</p></div>
         </div>
       </div>
     `;
 
-    this.renderGrid();
+    try {
+      await this.loadReviewers();
+      this.renderGrid();
+    } catch (e) {
+      console.error('[Reviewers] Failed to load:', e);
+      const grid = document.getElementById('reviewers-grid');
+      if (grid) grid.innerHTML = '<div class="reviewer-empty"><p>Failed to load shared content. Please refresh.</p></div>';
+    }
   },
 
   renderGrid: function() {

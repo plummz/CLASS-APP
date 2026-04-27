@@ -231,8 +231,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.31';
+const APP_VERSION = '1.5.32';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.32',
+    date: 'April 27, 2026',
+    title: 'Notepad Save Fix & Reviewer Page Rendering Fix',
+    summary: 'Fixed File Summarizer silently saving to wrong storage. Fixed Reviewer page black screen caused by missing background config.',
+    changes: [
+      'File Summarizer: Fixed fake "saved to Notepad" message — notes now actually save to localStorage (same storage Notepad page reads).',
+      'File Summarizer: Added save verification — success message only shows after confirming the note exists in localStorage.',
+      'File Summarizer: Added detailed logging for save attempts, userId, and success/failure.',
+      'Reviewer Page: Fixed black screen bug — missing pageConfig.reviewers entry caused the background to never activate.',
+      'Reviewer Page: Base UI now renders immediately before data loads, preventing blank screen during slow Supabase fetches.',
+      'Reviewer Page: Added proper error handling — shows "Failed to load shared content" if fetch fails instead of blank screen.',
+      'File Summarizer Page: Added pageConfig entry so it also gets the correct galaxy background.',
+    ]
+  },
   {
     version: '1.5.31',
     date: 'April 27, 2026',
@@ -3156,6 +3171,8 @@ pageConfig.alarm      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: 
 pageConfig.notepad    = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 Notepad' };
 pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🧮 Calculator' };
 pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🎨 Personalization' };
+pageConfig.reviewers       = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📄 REVIEWERS' };
+pageConfig['file-summarizer'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 File Summarizer' };
 
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};

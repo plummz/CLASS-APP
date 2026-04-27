@@ -239,11 +239,12 @@ const APP_CHANGELOG = [
     title: 'Integrated Reviewers System & Notepad Sync',
     summary: 'A major upgrade to the File Summarizer and Notepad. You can now save summaries to a private cloud Notepad, share them to a public Reviewer feed, and view them in a beautiful bond-paper style.',
     changes: [
-      'File Summarizer: Fixed upload bug and added support for more formats.',
+      'File Summarizer: Fixed file upload bug and added support for .doc and .ppt files.',
       'Notepad: Now syncs with Supabase. Private AI summaries are saved automatically to your account.',
       'Public Reviewers: New page to discover notes shared by other students.',
       'Viewer: Added a dedicated, aesthetic "bond-paper" viewer for reading summaries comfortably on any device.',
-      'Security: Implemented Row Level Security (RLS) to ensure private notes remain private.'
+      'Security: Implemented Row Level Security (RLS) to ensure private notes remain private.',
+      'Lobby: Removed redundant Quick Play Games section (dedicated Games page already exists).'
     ]
   },
   {

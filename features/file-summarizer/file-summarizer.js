@@ -131,34 +131,50 @@
       if (summaryEl) summaryEl.value = sumData.summary || '';
       if (summarySection) summarySection.style.display = 'block';
 
-      // Attempt to save to Reviewers / Notepad via Supabase
-      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+      // Save to Notepad (localStorage — same storage as notepadModule)
       const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+      const userId = user?.username || 'guest';
 
-      if (client && user && user.username) {
-        try {
-          setStatus('Saving to private Notepad…');
-          const { error: dbErr } = await client.from('reviewers').insert([{
-            user_id: user.username,
-            title: `${selectedFile.name} (${type})`,
-            original_file_name: selectedFile.name,
-            summary_content: sumData.summary,
-            summary_type: type,
-            contributor_name: user.username,
-            is_shared: false,
-          }]);
-          if (dbErr) {
-            console.error('[FileSummarizer] Supabase insert error:', dbErr);
-            setStatus('Summary ready. (Could not save to Notepad.)');
-          } else {
-            setStatus('Summary ready — saved to your private Notepad!');
-          }
-        } catch (dbEx) {
-          console.error('[FileSummarizer] Supabase exception:', dbEx);
-          setStatus('Summary ready.');
+      try {
+        setStatus('Saving to private Notepad…');
+
+        const typeLabel = {
+          short: 'Short Summary', detailed: 'Detailed Notes',
+          key: 'Key Points', terms: 'Terms & Definitions', quiz: 'Quiz',
+        }[type] || type;
+
+        const newNote = {
+          title: `${selectedFile.name} — ${typeLabel}`,
+          content: sumData.summary,
+          date: new Date().toISOString(),
+          type: 'file-summary',
+          userId,
+        };
+
+        console.log('[FileSummarizer] Saving to Notepad:', { title: newNote.title, userId, date: newNote.date });
+
+        const existing = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+        existing.unshift(newNote);
+        localStorage.setItem('notepad-notes', JSON.stringify(existing));
+
+        // Sync with notepadModule if already loaded so it stays in sync
+        if (window.notepadModule) {
+          window.notepadModule.notes = existing;
         }
-      } else {
-        setStatus('Summary ready.');
+
+        // Verify the note was stored
+        const verify = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+        const saved = verify.some(n => n.date === newNote.date);
+        if (saved) {
+          console.log('[FileSummarizer] Note saved successfully. Total notes:', verify.length);
+          setStatus('Summary ready — saved to your private Notepad!');
+        } else {
+          console.error('[FileSummarizer] Verification failed — note not found after save.');
+          setStatus('Summary generated, but could not save to Notepad.');
+        }
+      } catch (saveErr) {
+        console.error('[FileSummarizer] Failed to save to Notepad:', saveErr);
+        setStatus('Summary generated, but could not save to Notepad.');
       }
     } catch (err) {
       setError(err.message || 'Summarization failed. Please try again.');

@@ -231,8 +231,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.26';
+const APP_VERSION = '1.5.27';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.27',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Backend Fix & Logging',
+    summary: 'Fixed missing parsing libraries, improved error messages, added .doc file support, and backend logging for uploads.',
+    changes: [
+      'File Summarizer: Fixed "Server missing parsing libraries" error — pdf-parse, mammoth, adm-zip now properly installed.',
+      'File Summarizer: Added .doc (Office 97-2003) file support via mammoth parser.',
+      'File Summarizer: Backend now logs file uploads with size, type, parser used, and success/failure results.',
+      'File Summarizer: User-friendly error messages — removed technical "run npm install" errors.',
+      'Backend: Improved error handling and parsing fallback for corrupted or empty files.',
+      'File Summarizer: Clear message when .ppt (legacy PowerPoint) files are uploaded (only .pptx supported).'
+    ]
+  },
   {
     version: '1.5.26',
     date: 'April 27, 2026',

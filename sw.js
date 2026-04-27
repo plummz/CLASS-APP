@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.25-20260427-reviewers-system';
+const CACHE_VERSION = 'v1.5.26-20260427-upload-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -22,9 +22,9 @@ const ASSETS = [
   '/features/royale/royale.css?v=17',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
-  '/features/file-summarizer/file-summarizer.css?v=1',
+  '/features/file-summarizer/file-summarizer.css?v=2',
   '/features/reviewers/reviewers.css?v=1',
-  '/script.js?v=66',
+  '/script.js?v=67',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
@@ -46,7 +46,7 @@ const ASSETS = [
   '/features/royale/royale.js?v=24',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=10',
-  '/features/file-summarizer/file-summarizer.js?v=1',
+  '/features/file-summarizer/file-summarizer.js?v=2',
   '/features/reviewers/reviewers.js?v=1',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',

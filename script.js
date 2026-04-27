@@ -231,8 +231,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.17';
+const APP_VERSION = '1.5.19';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.19',
+    date: 'April 27, 2026',
+    title: 'Battle Royale Code Cleanup & UI Restoration',
+    summary: 'Resolved underlying file encoding issues that caused corrupted text characters in comments and UI elements across the Battle Royale module.',
+    changes: [
+      'Battle Royale: Cleaned corrupted encoding artifacts (mojibake) from source code comments and section headers.',
+      'Battle Royale: Restored native UI emoji strings for kill feed, weapon icons, locker buttons, and game notifications that were previously rendering as unreadable characters.',
+      'Battle Royale: Verified and fixed syntax structures within the system update logs and styling sheets.',
+    ]
+  },
   {
     version: '1.5.17',
     date: 'April 27, 2026',

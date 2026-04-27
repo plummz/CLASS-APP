@@ -231,8 +231,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.23';
+const APP_VERSION = '1.5.24';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.24',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Feature Released',
+    summary: 'Finished and stabilized the new File Summarizer page, securely connecting uploaded files to Gemini AI for powerful study note generation.',
+    changes: [
+      'File Summarizer: Users can now upload PDF, DOCX, and PPTX files directly into the app.',
+      'File Summarizer: Secure backend extracts text and uses Gemini to generate summaries without leaking API keys.',
+      'File Summarizer: Added buttons for Short Summary, Detailed Study Notes, Key Points, Terms, and Quiz generation.',
+      'UI/UX: Fixed layout bugs to place the Summarizer neatly into the main content view, avoiding sidebar breakage.'
+    ]
+  },
   {
     version: '1.5.23',
     date: 'April 27, 2026',

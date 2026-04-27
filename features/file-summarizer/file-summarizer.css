@@ -1,1 +1,19 @@
-
+/* File Summarizer Styles */
+.fs-wrap { max-width: 480px; margin: 0 auto; padding: 24px 8px 40px 8px; background: rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 4px 32px rgba(0,0,0,0.10); }
+.fs-title { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 18px; color: #00d4ff; letter-spacing: 0.02em; }
+.fs-upload-area { display: flex; flex-direction: column; align-items: center; margin-bottom: 18px; }
+#fs-file-input { display: none; }
+.fs-upload-label { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #00d4ff; border-radius: 12px; padding: 28px 32px; background: rgba(0,0,0,0.12); color: #00d4ff; font-size: 1.1rem; cursor: pointer; transition: border-color 0.2s; }
+.fs-upload-label:hover { border-color: #00ffb8; }
+.fs-upload-icon { font-size: 2.2rem; margin-bottom: 8px; }
+.fs-upload-status { margin-top: 10px; color: #fff; font-size: 0.98rem; min-height: 18px; }
+.fs-btn-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.fs-action-btn { flex: 1 1 120px; min-width: 120px; padding: 10px 0; border-radius: 8px; border: none; background: linear-gradient(90deg,#00d4ff,#00ffb8); color: #222; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: background 0.18s, color 0.18s; }
+.fs-action-btn:active { background: linear-gradient(90deg,#00ffb8,#00d4ff); color: #111; }
+.fs-summary-section { margin-bottom: 12px; }
+.fs-summary-label { font-size: 1.08rem; color: #00d4ff; margin-bottom: 6px; }
+.fs-summary-output { width: 100%; min-height: 120px; border-radius: 8px; border: 1.5px solid #00d4ff; background: rgba(0,0,0,0.13); color: #fff; font-size: 1rem; padding: 10px; resize: vertical; margin-bottom: 8px; }
+.fs-summary-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.fs-copy-btn, .fs-clear-btn { padding: 7px 18px; border-radius: 7px; border: none; font-weight: 700; font-size: 0.98rem; cursor: pointer; background: #00d4ff; color: #111; transition: background 0.18s; }
+.fs-copy-btn:active, .fs-clear-btn:active { background: #00ffb8; }
+.fs-error { color: #ff4a6b; font-size: 0.98rem; text-align: center; min-height: 18px; margin-top: 8px; }

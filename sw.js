@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.19-20260427-royale-mojibake-clean';
+const CACHE_VERSION = 'v1.5.20-20260427-royale-bugfix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

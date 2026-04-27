@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.20';
+const APP_VERSION = '1.5.21';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.21',
+    date: 'April 27, 2026',
+    title: 'Major AI, UI & Analytics Update',
+    summary: 'Smarter Battle Royale bots, polished character models, accurate App Opens tracking, and a brand new Lobby Quick Play menu.',
+    changes: [
+      'Battle Royale: Bots now intelligently navigate into the safe zone, avoiding obstacles and boundaries rather than getting stuck.',
+      'Battle Royale: Upgraded player and bot models with dynamic body animations, deep shadows, and better clothing rendering.',
+      'System: Completely overhauled App Opens tracking using secure session storage, preventing duplicate counts on page refreshes or hot reloads.',
+      'Lobby: Added new Quick Play Game Cards with premium styling and hover animations for instant access to your favorite games.',
+      'System: General bug fixes and stability improvements across multiple modules.'
+    ]
+  },
   {
     version: '1.5.20',
     date: 'April 27, 2026',
@@ -2390,6 +2403,7 @@ window.handleLogout = async function() {
         }
     }
     currentUser = null;
+    sessionStorage.removeItem('recordedAppOpenFor');
     saveSession();
     location.reload();
 };
@@ -3794,7 +3808,7 @@ window.refreshAppOpenCount = async function() {
   }
 };
 
-let recordedAppOpenFor = null;
+let recordedAppOpenFor = sessionStorage.getItem('recordedAppOpenFor') || null;
 async function recordAppOpen() {
   if (!currentUser?.username || recordedAppOpenFor === currentUser.username) {
     return window.refreshAppOpenCount();
@@ -3804,6 +3818,7 @@ async function recordAppOpen() {
     const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
     if (error) throw error;
     recordedAppOpenFor = currentUser.username;
+    sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
   } catch (_) {
@@ -3816,9 +3831,11 @@ async function recordAppOpen() {
       if (!res.ok) throw new Error('Count unavailable');
       const data = await res.json();
       recordedAppOpenFor = currentUser.username;
+      sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
       renderAppOpenStats(data);
     } catch (_) {
       recordedAppOpenFor = currentUser.username;
+      sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
       renderAppOpenRows(localAppOpenRows());
     }
   }

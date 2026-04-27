@@ -1739,57 +1739,74 @@ window.royaleModule = (function () {
     const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
     const pd=PANTS.find(p=>p.id===playerSkin.pants)||PANTS[0];
     const lift = jumpLift();
+    
+    // Movement swaying & swinging
+    const movSpd = Math.hypot(moveVel.x, moveVel.y);
+    const isMoving = movSpd > 10;
+    const sway = isMoving ? Math.sin(gameTime * 14) * 0.12 : 0;
+    const armSwing = isMoving ? Math.sin(gameTime * 14) * 3.5 : 0;
+
     ctx.save();
     ctx.translate(player.x, player.y - lift);
     ctx.scale(1, sc);
-    ctx.rotate(player.angle - Math.PI/2);
+    ctx.rotate(player.angle - Math.PI/2 + sway);
 
-    // Shadow
-    ctx.fillStyle='rgba(0,0,0,0.22)';
-    ctx.beginPath(); ctx.ellipse(3,3,9,6,0,0,Math.PI*2); ctx.fill();
+    // Drop Shadow
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(4, 4, 11, 8, 0, 0, Math.PI*2); ctx.fill();
 
-    // Arms
-    ctx.fillStyle='#5a4a3a';
-    ctx.beginPath(); ctx.ellipse(-7,2,3,5,0.3,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse( 7,2,3,5,-0.3,0,Math.PI*2); ctx.fill();
+    // Arms with swing
+    ctx.fillStyle='#e0a080';
+    ctx.beginPath(); ctx.ellipse(-8, 2 + armSwing, 4, 6, 0.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 8, 2 - armSwing, 4, 6, -0.2, 0, Math.PI*2); ctx.fill();
 
-    // Body
+    // Body (Polished shape)
     ctx.fillStyle=bd.color;
-    ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(-7, -4, 14, 13, 4);
+    ctx.fill();
+    
     // Pants
     ctx.fillStyle=pd.color;
-    ctx.beginPath(); ctx.ellipse(0,8,6,5,0,0,Math.PI*2); ctx.fill();
-    // Vest highlight
-    ctx.fillStyle='rgba(255,255,255,0.07)';
-    ctx.beginPath(); ctx.ellipse(-1,-1,4,6,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-6, 7, 12, 6, 3); ctx.fill();
+    
+    // Armor visual
+    if (player.armor > 0) {
+      ctx.strokeStyle = '#4488ff'; ctx.lineWidth = 2;
+      ctx.strokeRect(-6, -3, 12, 10);
+      ctx.fillStyle = 'rgba(60, 140, 255, 0.3)'; ctx.fillRect(-6, -3, 12, 10);
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.1)';
+      ctx.beginPath(); ctx.ellipse(0, 1, 5, 7, 0, 0, Math.PI*2); ctx.fill();
+    }
 
-    // Rifle barrel
-    ctx.fillStyle='#222';
-    ctx.fillRect(-1.5,-20,3,14);
-    ctx.fillRect(-2,-12,4,8);
+    // Weapon
+    ctx.fillStyle='#2b2b2b';
+    ctx.fillRect(-2,-22,4,16); // barrel
+    ctx.fillStyle='#555';
+    ctx.fillRect(-2.5,-12,5,8); // stock
 
     // Head
     ctx.fillStyle=hd.color;
-    ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-8,6.5,0,Math.PI*2); ctx.fill();
 
     if (hd.crown) {
       ctx.fillStyle='#ffd700';
       ctx.beginPath();
-      ctx.moveTo(-4,-13); ctx.lineTo(-2,-17); ctx.lineTo(0,-14); ctx.lineTo(2,-17); ctx.lineTo(4,-13); ctx.closePath();
+      ctx.moveTo(-4,-14); ctx.lineTo(-2,-18); ctx.lineTo(0,-15); ctx.lineTo(2,-18); ctx.lineTo(4,-14); ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle='rgba(255,255,100,0.6)'; ctx.lineWidth=0.8; ctx.strokeRect(-4,-14,8,2);
+      ctx.strokeStyle='rgba(255,255,100,0.6)'; ctx.lineWidth=0.8; ctx.strokeRect(-4,-15,8,2);
     } else if (hd.beak) {
       ctx.fillStyle='#ff8c00';
-      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(10,-10); ctx.lineTo(10,-5); ctx.closePath(); ctx.fill();
       ctx.fillStyle='#cc6000';
-      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(9,-10); ctx.lineTo(9,-8); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(3,-7); ctx.lineTo(10,-10); ctx.lineTo(10,-8); ctx.closePath(); ctx.fill();
     } else if (hd.mask) {
-      ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(-4,-12,8,7);
-      ctx.fillStyle='rgba(255,0,0,0.25)'; ctx.fillRect(-4,-12,8,2);
+      ctx.fillStyle='rgba(0,0,0,0.78)'; ctx.fillRect(-5,-13,10,8);
+      ctx.fillStyle='rgba(255,0,0,0.25)'; ctx.fillRect(-5,-13,10,2);
     } else {
       ctx.fillStyle='#4a4a2a';
-      ctx.beginPath(); ctx.arc(0,-9,5.9,Math.PI,Math.PI*2); ctx.fill();
-      ctx.fillRect(-7,-9,14,2);
+      ctx.beginPath(); ctx.arc(0,-8,6.5,0,Math.PI,true); ctx.fill();
     }
 
     if (hd.eyes==='red') {
@@ -2917,18 +2934,44 @@ window.royaleModule = (function () {
       if (!bt.alive) continue;
       const tierColor = TIER_COLORS[bt.tier?.name||'rookie'] || '#ff8866';
 
-      ctx.save(); ctx.translate(bt.x,bt.y); ctx.rotate(bt.angle-Math.PI/2);
+      const isMoving = bt.state === 'roam' || bt.state === 'chase';
+      const armSwing = isMoving ? Math.sin(gameTime * 14 + bt.id.charCodeAt(0)) * 3.5 : 0;
+      const sway = isMoving ? Math.sin(gameTime * 14 + bt.id.charCodeAt(0)) * 0.12 : 0;
+
+      ctx.save(); ctx.translate(bt.x,bt.y); ctx.rotate(bt.angle-Math.PI/2 + sway);
 
       // Elite glow outline
       if (bt.tier?.name === 'elite') {
         ctx.shadowColor = tierColor; ctx.shadowBlur = 10;
       }
 
-      ctx.fillStyle='#8b2020'; // enemy red body
-      ctx.beginPath(); ctx.ellipse(0,2,7,9,0,0,Math.PI*2); ctx.fill();
+      // Drop shadow
+      ctx.fillStyle='rgba(0,0,0,0.35)';
+      ctx.beginPath(); ctx.ellipse(4, 4, 11, 8, 0, 0, Math.PI*2); ctx.fill();
+
+      // Arms
       ctx.fillStyle='#c87050';
-      ctx.beginPath(); ctx.arc(0,-8,5.5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#2a2a2a'; ctx.fillRect(-2,-18,4,14);
+      ctx.beginPath(); ctx.ellipse(-8, 2 + armSwing, 4, 6, 0.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse( 8, 2 - armSwing, 4, 6, -0.2, 0, Math.PI*2); ctx.fill();
+
+      // Body
+      ctx.fillStyle='#8b2020'; // enemy red body
+      ctx.beginPath(); ctx.roundRect(-7, -4, 14, 13, 4); ctx.fill();
+      
+      // Vest / Detail
+      ctx.fillStyle='rgba(0,0,0,0.15)';
+      ctx.fillRect(-4,-2,8,8);
+
+      // Weapon
+      ctx.fillStyle='#2a2a2a'; ctx.fillRect(-2,-20,4,16);
+      
+      // Head
+      ctx.fillStyle='#c87050';
+      ctx.beginPath(); ctx.arc(0,-8,6.5,0,Math.PI*2); ctx.fill();
+      
+      // Enemy Headband (Visual distinction)
+      ctx.fillStyle='#551111';
+      ctx.fillRect(-6.5,-10,13,3);
 
       ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
       ctx.restore();
@@ -3503,9 +3546,19 @@ window.royaleModule = (function () {
 
       // Zone flee - move toward zone center if outside
       const dz=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
-      if (dz > zone.r*0.85) {
-        const az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
-        bt.x+=Math.cos(az)*115*dt; bt.y+=Math.sin(az)*115*dt;
+      if (dz > Math.max(zone.r*0.85, 50)) {
+        let az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
+        // Anti-stuck fallback logic
+        bt._stuckT = bt._stuckT || 0;
+        if (bt._lastX !== undefined && Math.abs(bt.x - bt._lastX) < 0.5 && Math.abs(bt.y - bt._lastY) < 0.5) {
+           bt._stuckT += dt;
+        } else {
+           bt._stuckT = 0;
+        }
+        bt._lastX = bt.x; bt._lastY = bt.y;
+        if (bt._stuckT > 0.25) az += (bt.id.charCodeAt(0) % 2 === 0 ? 1 : -1) * Math.PI * 0.45;
+
+        bt.x+=Math.cos(az)*125*dt; bt.y+=Math.sin(az)*125*dt;
         bt.angle=az;
         bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
         bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
@@ -3569,8 +3622,15 @@ window.royaleModule = (function () {
         const wd=Math.sqrt(wx*wx+wy*wy);
         if (wd<20) {
           const rng=seededRng(now*0.001+(bt.id.charCodeAt(4)||0));
-          bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
-          bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
+          if (zone && zone.r < MAP_PX) {
+            const zA = rng() * Math.PI * 2;
+            const zR = rng() * zone.r * 0.75; // Stay well inside the safe circle
+            bt.waypointX = zone.cx + Math.cos(zA) * zR;
+            bt.waypointY = zone.cy + Math.sin(zA) * zR;
+          } else {
+            bt.waypointX=(20+rng()*(MAP_W-40))*TILE;
+            bt.waypointY=(20+rng()*(MAP_H-40))*TILE;
+          }
         } else {
           bt.angle=Math.atan2(wy,wx);
           bt.x+=Math.cos(bt.angle)*55*dt; bt.y+=Math.sin(bt.angle)*55*dt;

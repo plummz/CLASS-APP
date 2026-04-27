@@ -1419,6 +1419,70 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+/* ── File Summarizer Endpoint ────────────────────────────── */
+app.post('/api/summarize-file', [upload.single('file'), express.json()], async (req, res) => {
+  try {
+    if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      let extractedText = '';
+
+      if (ext === '.pdf') {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(req.file.buffer);
+        extractedText = data.text;
+      } else if (ext === '.docx') {
+        const mammoth = require('mammoth');
+        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+        extractedText = result.value;
+      } else if (ext === '.pptx') {
+        const AdmZip = require('adm-zip');
+        const zip = new AdmZip(req.file.buffer);
+        const slideFiles = zip.getEntries().filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'));
+        let text = '';
+        for (const file of slideFiles) {
+          const content = zip.readAsText(file);
+          const matches = content.match(/<a:t>([^<]+)<\/a:t>/g);
+          if (matches) {
+            text += matches.map(m => m.replace(/<\/?a:t>/g, '')).join(' ') + '\n';
+          }
+        }
+        extractedText = text;
+      } else {
+        return res.status(400).json({ error: 'Unsupported file type.' });
+      }
+
+      if (!extractedText || !extractedText.trim()) {
+        return res.status(400).json({ error: 'No readable text found in file.' });
+      }
+
+      return res.json({ text: extractedText.trim().slice(0, 50000), type: ext }); // cap at 50K chars to avoid token limits
+    } 
+
+    if (req.body && req.body.text) {
+      const { text, type } = req.body;
+      let prompt = '';
+      if (type === 'short') prompt = 'Provide a short, concise summary of the following text:';
+      else if (type === 'detailed') prompt = 'Provide detailed study notes based on the following text. Use bullet points and clear headings:';
+      else if (type === 'key') prompt = 'Extract the key points and main ideas from the following text:';
+      else if (type === 'terms') prompt = 'Extract a list of important terms or vocabulary from the following text, along with short definitions:';
+      else if (type === 'quiz') prompt = 'Generate 5 multiple-choice quiz questions based on the following text to test comprehension. Include answers at the bottom:';
+      else return res.status(400).json({ error: 'Invalid summary type.' });
+
+      const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text}` }];
+      const result = await tryWithFallback('gemini', messages);
+      return res.json({ summary: result.text });
+    }
+
+    return res.status(400).json({ error: 'Invalid request format.' });
+  } catch (error) {
+    console.error('[Summarizer]', error);
+    if (error.code === 'MODULE_NOT_FOUND') {
+      return res.status(500).json({ error: 'Server missing parsing libraries. Contact administrator to run npm install.' });
+    }
+    return res.status(500).json({ error: error.message || 'File processing failed' });
+  }
+});
+
 /* ── AI Endpoints ────────────────────────────────────────── */
 app.post('/api/gemini', express.json(), async (req, res) => {
   const { messages } = req.body || {};

@@ -1662,6 +1662,7 @@ window.royaleModule = (function () {
     neon:   { r:200, g:20,  b:255, name:'Neon' },
     black:  { r:20,  g:10,  b:10,  name:'Black' },
   };
+  let bloodSkinColor = BLOOD_SKINS.red;
 
   function spawnBlood(x, y) {
     const parts = [];

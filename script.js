@@ -231,8 +231,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.21';
+const APP_VERSION = '1.5.22';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.22',
+    date: 'April 27, 2026',
+    title: 'Nested Fractions & App Opens Analytics Fix',
+    summary: 'Calculator now renders proper stacked vertical fractions (nested a/b). App Opens tally fixed with loading state, lobby preview panel, and debug logging.',
+    changes: [
+      'Calculator: Full nested fraction rendering engine — a/b buttons now produce proper \\frac{}{} LaTeX nodes, including fraction-over-fraction.',
+      'Calculator: Tree-based expression parser (_parseNodes) handles unlimited nesting depth without string hacks.',
+      'Calculator: Smart DEL key removes fraction separator cleanly; frac() key wraps trailing numbers as numerators.',
+      'App Opens: Added loading state before data appears in lobby panel.',
+      'App Opens: Added dedicated lobby preview panel showing top 5 users directly on the Lobby page.',
+      'App Opens: Added console logs for recording, skipping, and fallback states for easy debugging.',
+      'App Opens: Null/empty fallback displays informative message instead of blank panel.',
+      'Lobby: New App Opens board section visible directly on lobby page without opening a modal.'
+    ]
+  },
   {
     version: '1.5.21',
     date: 'April 27, 2026',
@@ -3613,6 +3629,21 @@ function renderAppOpenCount(count) {
   if (dash) dash.textContent = safeCount.toLocaleString();
 }
 
+function renderLobbyAppOpenPreview(list = []) {
+  const preview = document.getElementById('lobby-app-open-preview');
+  if (!preview) return;
+  if (!list || !list.length) {
+    preview.innerHTML = '<p class="lobby-open-empty">No opens recorded yet.</p>';
+    return;
+  }
+  preview.innerHTML = list.slice(0, 5).map(item => `
+    <div class="lobby-open-row">
+      <span class="lobby-open-user">${escapeHTML(item.username || 'Unknown')}</span>
+      <span class="lobby-open-total">${Number(item.count || 0).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
 function renderAppOpenUsers(list = []) {
   const box = document.getElementById('app-open-user-list');
   if (!box) return;
@@ -3631,6 +3662,7 @@ function renderAppOpenUsers(list = []) {
 function renderAppOpenStats(data = {}) {
   renderAppOpenCount(data.count);
   renderAppOpenUsers(data.users || []);
+  renderLobbyAppOpenPreview(data.users || []);
   const dash = document.getElementById('lobby-dash-open-count');
   if (dash) dash.textContent = Number(data.count || 0).toLocaleString();
 }
@@ -3672,8 +3704,10 @@ function normalizeAppOpenRows(rows = []) {
 
 function renderAppOpenRows(rows = []) {
   const normalized = normalizeAppOpenRows(rows);
+  const total = normalized.reduce((sum, row) => sum + Number(row.count || 0), 0);
+  console.log('[AppOpen] Rendering', normalized.length, 'users, total:', total);
   renderAppOpenStats({
-    count: normalized.reduce((sum, row) => sum + Number(row.count || 0), 0),
+    count: total,
     users: normalized,
   });
 }
@@ -3792,36 +3826,54 @@ window.openContributionTallyModal = async function() {
 };
 
 window.refreshAppOpenCount = async function() {
+  // Show loading in lobby preview while fetching
+  const preview = document.getElementById('lobby-app-open-preview');
+  if (preview) preview.innerHTML = '<p class="lobby-open-empty" style="opacity:0.6">Loading…</p>';
   try {
     const rows = await fetchSupabaseAppOpenRows();
+    console.log('[AppOpen] Fetched', rows.length, 'rows from Supabase');
     renderAppOpenRows(rows);
-  } catch (_) {
+  } catch (err) {
+    console.warn('[AppOpen] Supabase fetch failed:', err?.message || err);
     try {
       const res = await fetch('/api/app-open-count');
       if (!res.ok) throw new Error('Count unavailable');
       const data = await res.json();
       renderAppOpenStats(data);
     } catch (_) {
+      console.warn('[AppOpen] API fallback failed — using localStorage');
       const localRows = localAppOpenRows();
-      renderAppOpenRows(localRows);
+      if (localRows.length) {
+        renderAppOpenRows(localRows);
+      } else {
+        if (preview) preview.innerHTML = '<p class="lobby-open-empty">No data available.</p>';
+      }
     }
   }
 };
 
 let recordedAppOpenFor = sessionStorage.getItem('recordedAppOpenFor') || null;
 async function recordAppOpen() {
-  if (!currentUser?.username || recordedAppOpenFor === currentUser.username) {
+  if (!currentUser?.username) {
+    console.log('[AppOpen] Skipped — no user logged in');
     return window.refreshAppOpenCount();
   }
+  if (recordedAppOpenFor === currentUser.username) {
+    console.log('[AppOpen] Skipped — already recorded for', currentUser.username, 'this session');
+    return window.refreshAppOpenCount();
+  }
+  console.log('[AppOpen] Recording open for', currentUser.username);
   const localCount = incrementLocalAppOpenTally(currentUser.username);
   try {
     const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
     if (error) throw error;
     recordedAppOpenFor = currentUser.username;
     sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
+    console.log('[AppOpen] Recorded via Supabase RPC. Local count:', localCount);
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
-  } catch (_) {
+  } catch (err) {
+    console.warn('[AppOpen] RPC failed:', err?.message || err);
     try {
       const res = await fetch('/api/app-open-count', {
         method: 'POST',
@@ -3834,6 +3886,8 @@ async function recordAppOpen() {
       sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
       renderAppOpenStats(data);
     } catch (_) {
+      // Graceful fallback — at minimum persist local tally
+      console.warn('[AppOpen] All remote paths failed — using localStorage fallback');
       recordedAppOpenFor = currentUser.username;
       sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
       renderAppOpenRows(localAppOpenRows());

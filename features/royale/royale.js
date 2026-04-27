@@ -1,7 +1,7 @@
 window.royaleModule = (function () {
   'use strict';
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Tile IDs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Tile IDs -
   const T = { GRASS:0, DIRT:1, ROAD:2, SAND:3, WATER:4, DEEP_WATER:5, FLOOR:6 };
   // --- Royale Audio System ---
   const royaleAudio = (() => {
@@ -31,30 +31,30 @@ window.royaleModule = (function () {
     };
   })();
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Map dimensions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Map dimensions -
   const TILE   = 32;   // px per tile
   const MAP_W  = 200;  // tiles
   const MAP_H  = 200;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Player physics Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Player physics -
   const PLAYER_SPEED = 190; // px/s
   const PLAYER_R     = 10;  // collision radius px
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Building wall offsets (2.5-D effect) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Building wall offsets (2.5-D effect) -
   const WALL_H     = 18;  // south wall pixel height
   const WALL_DEPTH = 9;   // east wall pixel width
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Grass / dirt colour variants Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Grass / dirt colour variants -
   const GRASS_V = ['#4a7c2f','#4e8332','#46782d','#527a2f','#4a7530'];
   const DIRT_V  = ['#8b6914','#926e18','#846213','#8e6b15'];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Runtime state (set in init) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Runtime state (set in init) -
   let canvas, ctx, canvasW, canvasH;
   let animId   = null;
   let lastTime = 0;
   let running  = false;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Map data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Map data -
   let mapTiles = null; // Uint8Array[MAP_H][MAP_W]
 
   function seededRng(seed) {
@@ -129,7 +129,7 @@ window.royaleModule = (function () {
     prepareBuildingInteriors();
 
     // Bridge over river (river runs ~tx=38-42, ty=46-100)
-    // Horizontal bridge crossing the river at tyâ‰ˆ72 (5 tiles wide, 3 tiles thick)
+    // Horizontal bridge crossing the river at ty-72 (5 tiles wide, 3 tiles thick)
     for (let bx = 34; bx <= 46; bx++) {
       setTile(bx, 70, T.ROAD);
       setTile(bx, 71, T.FLOOR); // walkable bridge deck
@@ -141,8 +141,8 @@ window.royaleModule = (function () {
     generateObstacles();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Buildings Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-  // { tx,ty,tw,th, roof, wall } Ã¢â‚¬â€ tile coords + colours
+  // - Buildings -
+  // { tx,ty,tw,th, roof, wall } - tile coords + colours
   const BUILDINGS = [
     // Central town
     {tx:93,ty:87,tw:8,th:6,roof:'#8b6b3d',wall:'#5a3e20'},
@@ -174,11 +174,11 @@ window.royaleModule = (function () {
     {tx:53,ty:73,tw:8,th:6,roof:'#5a3d8b',wall:'#2d1a5a'},
     {tx:169,ty:98,tw:6,th:5,roof:'#8b8b3d',wall:'#5a5a20'},
     {tx:23,ty:93,tw:7,th:5,roof:'#3d8b5a',wall:'#1a5a35'},
-    // NEW â€” Watchtower (high-ground advantage, NE corner)
+    // NEW - Watchtower (high-ground advantage, NE corner)
     {tx:172,ty:22,tw:5,th:5,roof:'#5a4a30',wall:'#3a2d18'},
-    // NEW â€” Warehouse (mid-tier loot, west side)
+    // NEW - Warehouse (mid-tier loot, west side)
     {tx:12,ty:68,tw:14,th:10,roof:'#5a5a6b',wall:'#32323a'},
-    // NEW â€” Small houses (low-tier loot)
+    // NEW - Small houses (low-tier loot)
     {tx:74,ty:140,tw:5,th:4,roof:'#8b5a3d',wall:'#5a2d1a'},
     {tx:44,ty:32,tw:5,th:4,roof:'#3d8b5a',wall:'#1a5a35'},
   ];
@@ -244,31 +244,31 @@ window.royaleModule = (function () {
     return list;
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Trees Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-  // { x, y Ã¢â‚¬â€ world px; r Ã¢â‚¬â€ canopy radius px; type: 'oak'|'pine'|'bush' }
+  // - Trees -
+  // { x, y - world px; r - canopy radius px; type: 'oak'|'pine'|'bush' }
   let trees = [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Boulders Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Boulders -
   let boulders = [];
   let obstacles = [];
   let interiorProps = [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Blood splatters Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Blood splatters -
   let bloodSplatters = [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Trail particles Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Trail particles -
   let trailParticles = [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Animated water time Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Animated water time -
   let gameTime = 0;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Active throwable type Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Active throwable type -
   let activeThrowable = 'grenade';
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Skin menu state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Skin menu state -
   let skinBtnPlay = null, skinTabRects = [], skinItemRects = [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Skin & Coin system Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Skin & Coin system -
   const COIN_KEY = 'rl_coins_v1';
   const SKIN_KEY = 'rl_skin_v1';
   let coins = parseInt(localStorage.getItem(COIN_KEY)||'150', 10);
@@ -383,7 +383,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Player Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Player -
   let player = {
     x: 100*TILE, y: 100*TILE,
     angle: 0,
@@ -394,12 +394,12 @@ window.royaleModule = (function () {
     kills: 0,
   };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Game state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Game state -
   let gamePhase = 'skinSelect'; // 'skinSelect'|'parachute'|'playing'|'dead'|'win'
   let gameEndTimer = 0;
   let totalKills   = 0;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Parachute intro state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Parachute intro state -
   const PLANE_Y   = 80 * TILE;          // fixed lat the plane flies
   let paraPlane   = { x:0, speed:280 }; // plane world-x, px/s
   let paraDeployed = false;             // player opened chute
@@ -408,31 +408,31 @@ window.royaleModule = (function () {
   let paraFastDrop = false;             // early-drop descent boost
   let paraLanded   = false;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Stance system Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Stance system -
   // 'stand' | 'crouch' | 'prone'
   let stance = 'stand';
   const STANCE_SPEED  = { stand:190, crouch:110, prone:55 };
   const STANCE_SPREAD = { stand:1.0, crouch:0.6, prone:0.3 };
   const STANCE_HEIGHT = { stand:1.0, crouch:0.7, prone:0.45 }; // draw scale
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Screen shake Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Screen shake -
   let shakeAmt = 0;   // current shake magnitude px
   let shakeX=0, shakeY=0;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Muzzle flash Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Muzzle flash -
   let muzzleFlash = 0; // frames remaining
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Floating damage numbers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Floating damage numbers -
   let dmgNumbers = []; // { x,y,val,life,maxLife,col }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Hit marker Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Hit marker -
   let hitMarker = 0;   // frames to show crosshair hit flash
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Spectate Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Spectate -
   let spectateTarget = null; // bot object being watched
   let spectateCam    = { x:0, y:0 };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Camera Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Camera -
   let cam = { x: 100*TILE, y: 100*TILE };
   let moveVel = { x: 0, y: 0 };
   let aimVel = 0;
@@ -447,14 +447,14 @@ window.royaleModule = (function () {
   let rotatedLandscapeShell = false;
   let stepTimer = 0; // footstep audio timer
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Keyboard input Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Keyboard input -
   const keys = {};
   const keysJustDown = new Set(); // cleared each frame Ã¢â‚¬â€ used for semi-auto fire
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Left joystick (move) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Left joystick (move) -
   const joy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Lifecycle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Lifecycle -
   function init() {
     canvas = document.getElementById('rl-canvas');
     if (!canvas) return;
@@ -788,7 +788,7 @@ window.royaleModule = (function () {
     document.querySelector('.rl-wrapper')?.classList.remove('end-active');
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Input handlers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Input handlers -
   function onKey(e) {
     keys[e.code] = e.type === 'keydown';
     if (e.type === 'keydown') {
@@ -1017,7 +1017,7 @@ window.royaleModule = (function () {
     return best;
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Game loop Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Game loop -
   function loop(ts) {
     if (!running) return;
     const dt = Math.min((ts - lastTime) / 1000, 0.1);
@@ -1034,7 +1034,7 @@ window.royaleModule = (function () {
     updateDmgNumbers(dt);
     bloodSplatters = bloodSplatters.filter(s => { s.life -= dt; return s.life > 0; });
 
-    // Skin select Ã¢â‚¬â€ no game logic
+    // Skin select - no game logic
     if (gamePhase === 'skinSelect') return;
     hideEndActionButtons();
 
@@ -1163,7 +1163,7 @@ window.royaleModule = (function () {
     cam.x += (player.x - cam.x) * ls * dt;
     cam.y += (player.y - cam.y) * ls * dt;
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Fire Ã¢â‚¬â€ auto: held button/key; semi-auto: single tap per press
+    // - Fire - auto: held button/key; semi-auto: single tap per press
     const wkey = inventory[activeSlot];
     if (wkey && WEAPONS[wkey]) {
       const w = WEAPONS[wkey];
@@ -1201,7 +1201,7 @@ window.royaleModule = (function () {
     broadcastState();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Tile rendering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Tile rendering -
   function drawTiles(x1, x2, y1, y2) {
     for (let ty = y1; ty < y2; ty++) {
       for (let tx = x1; tx < x2; tx++) {
@@ -1266,7 +1266,7 @@ window.royaleModule = (function () {
             break;
           }
           case T.FLOOR: {
-            // Bridge deck: tx 34-46, ty=71 â†’ wooden planks
+            // Bridge deck: tx 34-46, ty=71 - wooden planks
             const isBridge = tx >= 34 && tx <= 46 && ty === 71;
             if (isBridge) {
               ctx.fillStyle = '#7a5530'; ctx.fillRect(px,py,TILE,TILE);
@@ -1294,7 +1294,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Building rendering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Building rendering -
   function shade(hex, amt) {
     let r=parseInt(hex.slice(1,3),16)+amt;
     let g=parseInt(hex.slice(3,5),16)+amt;
@@ -1443,7 +1443,7 @@ window.royaleModule = (function () {
     const doorW = Math.min(42, pw * 0.28);
     const doorX = px + pw / 2 - doorW / 2;
 
-    // Thick outer wall Ã¢â‚¬â€ dark shadow base
+    // Thick outer wall - dark shadow base
     ctx.strokeStyle = 'rgba(0,0,0,0.45)';
     ctx.lineWidth = 11;
     ctx.lineCap = 'square';
@@ -1478,7 +1478,7 @@ window.royaleModule = (function () {
       ctx.fillRect(cx, cy, 8, 8);
     });
 
-    // Door indicator Ã¢â‚¬â€ gradient portal glow
+    // Door indicator - gradient portal glow
     const dg = ctx.createLinearGradient(doorX, py+ph-6, doorX+doorW, py+ph+6);
     dg.addColorStop(0,'rgba(0,255,136,0)');
     dg.addColorStop(0.5,'rgba(0,255,136,0.35)');
@@ -1556,7 +1556,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Tree rendering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Tree rendering -
   function pRng(seed) {
     let s = seed;
     return ()=>{ s=Math.sin(s)*43758.5453; s-=Math.floor(s); return s; };
@@ -1637,7 +1637,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Boulder rendering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Boulder rendering -
   function drawBoulders() {
     for (const bo of boulders) {
       ctx.fillStyle='rgba(0,0,0,0.22)';
@@ -1654,8 +1654,8 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Blood effects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-  // Blood skin presets Ã¢â‚¬â€ set bloodSkinColor to change appearance
+  // - Blood effects -
+  // Blood skin presets - set bloodSkinColor to change appearance
   const BLOOD_SKINS = {
     red:    { r:180, g:0,   b:0,   name:'Red (Realistic)' },
     dark:   { r:100, g:0,   b:0,   name:'Dark Red' },
@@ -1685,7 +1685,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Parachute render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Parachute render -
   function drawParachute() {
     if (paraLanded) return;
     const px=player.x, py=player.y;
@@ -1719,14 +1719,14 @@ window.royaleModule = (function () {
       ctx.fillText(`ALT ${Math.round(paraZ)}m`, px, py-38-paraZ*0.25);
       ctx.textAlign='left';
     } else {
-      // Free-fall Ã¢â‚¬â€ arms spread
+      // Free-fall - arms spread
       ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='10px monospace'; ctx.textAlign='center';
       ctx.fillText('SPACE / TAP to deploy', px, py-30);
       ctx.textAlign='left';
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Player rendering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Player rendering -
   function jumpLift() {
     if (jumpBoost <= 0) return 0;
     return Math.sin((jumpBoost / 0.22) * Math.PI) * 18;
@@ -1804,7 +1804,7 @@ window.royaleModule = (function () {
     ctx.restore();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ HUD extras Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - HUD extras -
   function drawKillFeed() {
     let ky=canvasH-80; // game bottom-left = portrait top-left area (safe)
     for (const kf of killFeed) {
@@ -1838,11 +1838,11 @@ window.royaleModule = (function () {
     // Alive count badge (right of zone bar)
     ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx+bw+6, by-2, 52, bh+4);
     ctx.fillStyle='#8fce50'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
-    ctx.fillText(`Ã°Å¸â€˜Â¥ ${aliveTotal}`, bx+bw+32, by+bh-3);
+    ctx.fillText(`💀 ${aliveTotal}`, bx+bw+32, by+bh-3);
     ctx.textAlign='left';
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Minimap Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Minimap -
   let mmCanvas = null;
 
   function buildMinimap() {
@@ -1860,7 +1860,7 @@ window.royaleModule = (function () {
   }
 
   function drawHUD() {
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Health bar
+    // - Health bar
     const barW = 190;
     const hx=canvasW/2-barW/2, hy=canvasH-44;
     const ammo = getAmmoLabel();
@@ -1894,7 +1894,7 @@ window.royaleModule = (function () {
     ctx.fillText(`ARMOR ${Math.ceil(player.armor)}`, ax+barW/2, ay+9);
     ctx.textAlign='left';
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Stance + Hidden indicators (stacked, no overlap)
+    // - Stance + Hidden indicators (stacked, no overlap)
     let badgeY = canvasH - 80;
     if (stance !== 'stand') {
       ctx.fillStyle = stance==='prone' ? 'rgba(200,100,0,0.65)' : 'rgba(0,100,200,0.55)';
@@ -1910,7 +1910,7 @@ window.royaleModule = (function () {
       ctx.fillText('HIDDEN', 27, badgeY+13);
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Minimap Ã¢â‚¬â€ positioned at game top-LEFT so it appears at portrait top-right,
+    // - Minimap - positioned at game top-LEFT so it appears at portrait top-right,
     // safely away from the FIRE/RELOAD buttons at portrait bottom-right
     if (!mmCanvas) buildMinimap();
     const mx=10, my=10, mw=110, mh=110;
@@ -1944,7 +1944,7 @@ window.royaleModule = (function () {
     ctx.strokeStyle='rgba(255,255,255,0.5)';
     ctx.lineWidth=1; ctx.strokeRect(mx,my,mw,mh);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Title bar
+    // - Title bar
     ctx.fillStyle='rgba(0,0,0,0.45)';
     ctx.fillRect(canvasW/2-90,6,180,22);
     ctx.fillStyle='#8fce50'; ctx.font='bold 12px monospace';
@@ -1964,7 +1964,7 @@ window.royaleModule = (function () {
     return { text: `${current} / ${reserve}`, hasWeapon: true };
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Render -
   function normalizeAngle(a) {
     while (a < -Math.PI) a += Math.PI * 2;
     while (a > Math.PI) a -= Math.PI * 2;
@@ -2065,7 +2065,7 @@ window.royaleModule = (function () {
       ctx.textAlign = 'left';
     }
   }
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Weapon definitions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Weapon definitions -
   const WEAPONS = {
     pistol:     {name:'Pistol',        dmg:25,  rof:400,  spd:520, range:380, spread:0.06, ammo:12, maxAmmo:60,  auto:false, pellets:1, reload:1400},
     revolver:   {name:'Revolver',      dmg:55,  rof:700,  spd:560, range:420, spread:0.04, ammo:6,  maxAmmo:36,  auto:false, pellets:1, reload:2000},
@@ -2077,12 +2077,12 @@ window.royaleModule = (function () {
     grenade:    {name:'Grenade',       dmg:120, rof:3000, spd:0,   range:0,   spread:0,    ammo:2,  maxAmmo:6,   auto:false, pellets:0, reload:0},
     molotov:    {name:'Molotov',       dmg:8,   rof:4000, spd:0,   range:0,   spread:0,    ammo:2,  maxAmmo:4,   auto:false, pellets:0, reload:0},
     rpg:        {name:'RPG',           dmg:200, rof:5000, spd:260, range:800, spread:0.02, ammo:1,  maxAmmo:4,   auto:false, pellets:0, reload:4000},
-    // Ã¢Å¡Â  CRATE-EXCLUSIVE Ã¢â‚¬â€ do NOT add to LOOT_POOL or WEAPON_RARITY
+    // - CRATE-EXCLUSIVE - do NOT add to LOOT_POOL or WEAPON_RARITY
     gatling:    {name:'Gatling Gun',   dmg:22,  rof:80,   spd:560, range:380, spread:0.14, ammo:100,maxAmmo:300, auto:true,  pellets:1, reload:3500, crateOnly:true},
     rocket:     {name:'Rocket Launcher',dmg:280,rof:4000, spd:240, range:900, spread:0.01, ammo:2,  maxAmmo:8,   auto:false, pellets:0, reload:4500, crateOnly:true},
   };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Runtime arrays Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Runtime arrays -
   let bullets    = [];   // { x,y,vx,vy,dmg,range,dist,shooterId,shooterType,teamId,weaponKey,tracer }
   let throwables = [];   // { x,y,vx,vy,vy3,z,type,timer,ownerId }
   let fires      = [];   // { x,y,r,life,maxLife }
@@ -2092,7 +2092,7 @@ window.royaleModule = (function () {
   let airdrop    = null; // { x,y,vx,vy,z,phase:'fly'|'fall'|'land' }
   let bots       = [];   // { id,x,y,angle,hp,weapon,ammo,state,target,reloadT,fireT }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Player loadout Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Player loadout -
   let inventory  = [];            // weapon keys player is holding (max 2)
   let activeSlot = 0;
   let ammoCache  = {};            // { weaponKey: count }
@@ -2103,7 +2103,7 @@ window.royaleModule = (function () {
   let shootJustDown = false; // fire button just tapped (semi-auto, cleared each frame)
   const FRIENDLY_FIRE = false;
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Safe zone Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Safe zone -
   const ZONE_PHASES = [
     {wait:60,  shrink:60,  toR:2400},
     {wait:60,  shrink:50,  toR:1600},
@@ -2121,21 +2121,21 @@ window.royaleModule = (function () {
     dmgTick:0,
   };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Kill feed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Kill feed -
   let killFeed = [];   // { text, life }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Multiplayer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Multiplayer -
   let rlChannel  = null;
   let localId    = Math.random().toString(36).slice(2,9);
   let remotePlayers = {}; // id Ã¢â€ â€™ { x,y,angle,hp }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Right aim joystick Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Right aim joystick -
   const aimJoy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Loot & crate spawning Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Loot & crate spawning -
   const LOOT_POOL = ['pistol','smg','ar','shotgun','sniper','revolver','battlerifle','grenade','molotov','rpg'];
   const WEAPON_RARITY = ['pistol','pistol','smg','smg','ar','ar','shotgun','revolver','battlerifle','sniper','grenade','grenade','molotov','molotov','rpg'];
-  // medkit appears 3Ã— for ~38% medkit rate among supplies
+  // medkit appears 3- for ~38% medkit rate among supplies
   const SUPPLY_POOL = ['medkit','medkit','medkit','armor_light','armor_heavy','ammo_box'];
 
   function spawnLoot() {
@@ -2278,7 +2278,7 @@ window.royaleModule = (function () {
     zone.phase = 0; zone.timer = 0; zone.shrinking = false;
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Shooting Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Shooting -
   function tryFire(fromX, fromY, angle, weaponKey, ownerId) {
     const w = WEAPONS[weaponKey];
     if (!w) return;
@@ -2472,7 +2472,7 @@ window.royaleModule = (function () {
       ammoCache[item.key] = Math.min(WEAPONS[item.key].maxAmmo, (ammoCache[item.key]||0) + Math.max(1, item.ammo || 1));
       activeThrowable = item.key;
       const throwBtn = document.getElementById('rl-throw-btn');
-      if (throwBtn) throwBtn.textContent = item.key === 'grenade' ? 'Ã°Å¸â€™Â£' : 'Ã°Å¸ÂÂ¾';
+      if (throwBtn) throwBtn.textContent = item.key === 'grenade' ? '💣' : '🍾';
       showPickup(`${WEAPONS[item.key].name} x${ammoCache[item.key]}`);
       return;
     }
@@ -2503,7 +2503,7 @@ window.royaleModule = (function () {
     updateHealButton();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Touch aim drag (no visible joystick UI) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Touch aim drag (no visible joystick UI) -
   function onAimTouchStart(t) {
     if (aimJoy.active) return;
     const p = controlPointFromClient(t.clientX, t.clientY);
@@ -2530,7 +2530,7 @@ window.royaleModule = (function () {
     aimJoy.active=false; aimJoy.dx=0; aimJoy.dy=0;
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Physics updates Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Physics updates -
   function canBulletDamageTarget(bullet, target) {
     const shooterId = bullet.shooterId || bullet.owner;
     const shooterType = bullet.shooterType || (shooterId === localId ? 'player' : 'bot');
@@ -2573,7 +2573,7 @@ window.royaleModule = (function () {
         if (p.solid && pointInRect(b.x, b.y, p)) { blocked = true; break; }
       }
       if (blocked) {
-        spawnDmgNum(b.x, b.y - 8, 'Ã¢â‚¬Â¢', 'rgba(220,220,220,0.8)');
+        spawnDmgNum(b.x, b.y - 8, '🛡️', 'rgba(220,220,220,0.8)');
         bullets.splice(i,1); continue;
       }
       // Hit player
@@ -2614,7 +2614,7 @@ window.royaleModule = (function () {
       t.z = Math.max(0, t.z + t.vz*dt);
       t.vz -= 280*dt; // gravity
       t.timer += dt;
-      // Friction (not for RPG Ã¢â‚¬â€ it maintains constant velocity)
+      // Friction (not for RPG - it maintains constant velocity)
       if (t.type !== 'rpg') { t.vx *= 0.92; t.vy *= 0.92; }
       if (t.type==='rpg') {
         // RPG keeps moving, explodes on hit or range
@@ -2765,9 +2765,9 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Render: world effects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Render: world effects -
   function drawLoot() {
-    const ICONS = {pistol:'Ã°Å¸â€Â«',smg:'Ã°Å¸â€Â«',ar:'Ã°Å¸â€Â«',shotgun:'Ã°Å¸â€Â«',sniper:'Ã°Å¸â€Â«',revolver:'Ã°Å¸â€Â«',battlerifle:'Ã°Å¸â€Â«',grenade:'Ã°Å¸â€™Â£',molotov:'Ã°Å¸ÂÂ¾',rpg:'Ã°Å¸Å¡â‚¬',medkit:'Ã°Å¸â€™Å ',armor_light:'Ã°Å¸Â¦Âº',armor_heavy:'Ã°Å¸â€ºÂ¡Ã¯Â¸Â',ammo_box:'Ã°Å¸â€œÂ¦'};
+    const ICONS = {pistol:'🔫',smg:'🔫',ar:'🔫',shotgun:'🔫',sniper:'🔫',revolver:'🔫',battlerifle:'🔫',grenade:'💣',molotov:'🔥',rpg:'🚀',medkit:'🩹',armor_light:'🦺',armor_heavy:'🛡️',ammo_box:'📦'};
     for (const it of loot) {
       const pulse = 0.75 + Math.sin(gameTime * 4 + it.x * 0.01) * 0.25;
       ctx.fillStyle=it.indoor ? `rgba(0,212,255,${0.10 + pulse*0.08})` : `rgba(255,220,0,${0.12 + pulse*0.08})`;
@@ -2870,8 +2870,8 @@ window.royaleModule = (function () {
       const s = 1 + (t.z/200)*0.6;
       ctx.save(); ctx.translate(t.x,t.y); ctx.scale(s,s);
       ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      const icons={grenade:'Ã°Å¸â€™Â£',molotov:'Ã°Å¸ÂÂ¾',rpg:'Ã°Å¸Å¡â‚¬'};
-      ctx.fillText(icons[t.type]||'Ã¢â€”Â',0,0);
+      const icons={grenade:'💣',molotov:'🍾',rpg:'🚀'};
+      ctx.fillText(icons[t.type]||'💣',0,0);
       ctx.restore();
     }
     ctx.textAlign='left'; ctx.textBaseline='alphabetic';
@@ -3003,7 +3003,7 @@ window.royaleModule = (function () {
     ctx.restore();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Remote players Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Remote players -
   function drawRemotePlayer(rp) {
     ctx.save(); ctx.translate(rp.x,rp.y); ctx.rotate((rp.angle||0)-Math.PI/2);
     ctx.fillStyle='#4a8b2a';  // friendly green
@@ -3017,7 +3017,7 @@ window.royaleModule = (function () {
     ctx.fillText(rp.name||'Player', rp.x, rp.y-22); ctx.textAlign='left';
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Supabase multiplayer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Supabase multiplayer -
   let broadcastThrottle=0;
 
   function initMultiplayer() {
@@ -3056,8 +3056,8 @@ window.royaleModule = (function () {
     remotePlayers={};
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Schedule airdrop Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Special Crate System (90s, crate-exclusive weapons) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Schedule airdrop -
+  // - Special Crate System (90s, crate-exclusive weapons) -
   let specialCrateTimer = 90; // First one at 90s
   const SPECIAL_CRATE_LOOT = [
     // 60% chance exclusive
@@ -3098,7 +3098,7 @@ window.royaleModule = (function () {
     };
     if (!window._rlFallingCrates) window._rlFallingCrates = [];
     window._rlFallingCrates.push(sc);
-    killFeed.push({ text: '\u2B50 Special crate inbound! Ã¢Å¡Â Ã¯Â¸Â', life: 6 });
+    killFeed.push({ text: '\u2B50 Special crate inbound! ⚠️', life: 6 });
     royaleAudio.crateAlert();
   }
   function updateSpecialCrates(dt) {
@@ -3127,7 +3127,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Parachute update Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Parachute update -
   function updateParachute(dt) {
     if (paraLanded) return;
 
@@ -3177,7 +3177,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Damage helper Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Damage helper -
   function applyDamageToPlayer(rawDmg, sourceX = null, sourceY = null) {
     if (!player.alive) return;
     let dmg = rawDmg;
@@ -3198,7 +3198,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Screen shake Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Screen shake -
   function addShake(amt) { shakeAmt = Math.max(shakeAmt, amt); }
 
   function updateShake(dt) {
@@ -3209,7 +3209,7 @@ window.royaleModule = (function () {
     } else { shakeX=0; shakeY=0; }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Floating damage numbers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Floating damage numbers -
   function spawnDmgNum(wx, wy, val, col) {
     dmgNumbers.push({ x:wx, y:wy, val:Number.isFinite(val) ? Math.ceil(val) : String(val), life:1.2, maxLife:1.2, col:col||'#ff4444' });
   }
@@ -3233,7 +3233,7 @@ window.royaleModule = (function () {
     ctx.globalAlpha=1; ctx.textAlign='left';
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Muzzle flash Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Muzzle flash -
   function drawMuzzleFlash() {
     if (muzzleFlash <= 0) return;
     muzzleFlash--;
@@ -3248,18 +3248,18 @@ window.royaleModule = (function () {
     ctx.beginPath(); ctx.arc(fx,fy,16,0,Math.PI*2); ctx.fill();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Win / death detection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Win / death detection -
   function checkEndCondition() {
     if (gamePhase !== 'playing') return;
     const aliveCount = bots.filter(b=>b.alive).length + Object.keys(remotePlayers).length;
     if (aliveCount === 0 && player.alive) {
       gamePhase = 'win'; gameEndTimer = 0;
       coins += 100; saveCoins();
-      killFeed.push({text:'VICTORY ROYALE! (+100 Ã°Å¸â€™Â°)', life:999});
+      killFeed.push({text:'VICTORY ROYALE! (+100 🪙)', life:999});
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Skin locker Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Skin locker -
   function drawSkinPreview(px, py, scale) {
     const hd=HEADS.find(h=>h.id===playerSkin.head)||HEADS[0];
     const bd=BODIES.find(b=>b.id===playerSkin.body)||BODIES[0];
@@ -3318,7 +3318,7 @@ window.royaleModule = (function () {
     ctx.shadowColor='rgba(255,215,0,0.55)'; ctx.shadowBlur=16;
     ctx.fillStyle='#ffd700';
     ctx.font=`bold 26px monospace`; ctx.textAlign='center';
-    ctx.fillText('Ã¢Å¡â€  BATTLE ROYALE  LOCKER', canvasW/2, 28);
+    ctx.fillText('⚔️  BATTLE ROYALE  LOCKER', canvasW/2, 28);
     ctx.shadowBlur=0;
 
     // Coins badge (top-right)
@@ -3326,7 +3326,7 @@ window.royaleModule = (function () {
     ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(cbx,cby,cbw,cbh);
     ctx.strokeStyle='rgba(255,215,0,0.45)'; ctx.lineWidth=1.5; ctx.strokeRect(cbx,cby,cbw,cbh);
     ctx.fillStyle='#ffd700'; ctx.font='bold 13px monospace'; ctx.textAlign='center';
-    ctx.fillText(`Ã°Å¸â€™Â°  ${coins} coins`, cbx+cbw/2, cby+18);
+    ctx.fillText(`💰  ${coins} coins`, cbx+cbw/2, cby+18);
 
     // Player preview badge
     const pvX=cbx-52, pvY=cby+13;
@@ -3393,13 +3393,13 @@ window.royaleModule = (function () {
 
       if (selected) {
         ctx.fillStyle='#ffd700'; ctx.font='10px monospace';
-        ctx.fillText('Ã¢Å“â€œ EQUIPPED', tx2, iy+ih*0.75);
+        ctx.fillText('✓ EQUIPPED', tx2, iy+ih*0.75);
       } else if (owned) {
         ctx.fillStyle='#8fce50'; ctx.font='10px monospace';
         ctx.fillText('OWNED', tx2, iy+ih*0.75);
       } else {
         ctx.fillStyle=canAfford?'#ffd700':'#777'; ctx.font='10px monospace';
-        ctx.fillText(`Ã°Å¸â€™Â° ${itm.price}`, tx2, iy+ih*0.75);
+        ctx.fillText(`💰 ${itm.price}`, tx2, iy+ih*0.75);
         if (!canAfford) {
           ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(ix,iy,iw-6,ih);
         }
@@ -3416,7 +3416,7 @@ window.royaleModule = (function () {
     ctx.strokeStyle='rgba(80,255,130,0.9)'; ctx.lineWidth=2.5; ctx.strokeRect(bx2,by2,bw,bh);
     ctx.shadowBlur=0;
     ctx.fillStyle='#fff'; ctx.font='bold 17px monospace'; ctx.textAlign='center';
-    ctx.fillText('Ã¢â€“Â¶  BATTLE ROYALE', bx2+bw/2, by2+bh*0.65);
+    ctx.fillText('▶  BATTLE ROYALE', bx2+bw/2, by2+bh*0.65);
     skinBtnPlay={x:bx2,y:by2,w:bw,h:bh};
     ctx.textAlign='left';
   }
@@ -3449,7 +3449,7 @@ window.royaleModule = (function () {
     return false;
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Dynamic crosshair Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Dynamic crosshair -
   function drawCrosshair() {
     if (gamePhase !== 'playing') return;
     const wkey = inventory[activeSlot];
@@ -3475,7 +3475,7 @@ window.royaleModule = (function () {
     ctx.beginPath(); ctx.arc(cx,cy,1.8,0,Math.PI*2); ctx.fill();
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Spectate camera Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Spectate camera -
   function updateSpectate(dt) {
     if (gamePhase!=='dead') return;
     const alive = bots.filter(b=>b.alive);
@@ -3498,7 +3498,7 @@ window.royaleModule = (function () {
     ctx.textAlign='left';
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Mouse aim + click-to-fire (desktop) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Mouse aim + click-to-fire (desktop) -
   function onMouseMove(e) {
     if (gamePhase !== 'playing') return;
     if (e.buttons || document.pointerLockElement === canvas) {
@@ -3521,13 +3521,13 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Advanced bot AI: zone-flee + loot-seek Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Advanced bot AI: zone-flee + loot-seek -
   function updateBotsAdvanced(dt) {
     const now=performance.now();
     for (const bt of bots) {
       if (!bt.alive) continue;
 
-      // Zone flee Ã¢â‚¬â€ move toward zone center if outside
+      // Zone flee - move toward zone center if outside
       const dz=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (dz > zone.r*0.85) {
         const az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
@@ -3622,7 +3622,7 @@ window.royaleModule = (function () {
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Restart game (no re-adding event listeners) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Restart game (no re-adding event listeners) -
   function restartGame() {
     if (animId) { cancelAnimationFrame(animId); animId = null; }
     player.x=0; player.y=PLANE_Y; player.health=100; player.armor=0; player.alive=true; player.kills=0;
@@ -3645,6 +3645,6 @@ window.royaleModule = (function () {
     animId = requestAnimationFrame(loop);
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Public API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // - Public API -
   return { init, destroy };
 })();

@@ -165,24 +165,32 @@ window.candyModule = (() => {
   }
 
   // ── Match finding ─────────────────────────────────────────────────────
+  // normalType: returns the display type (0-4) for both regular and special gems
+  function normalType(v) {
+    if (v < 0) return -1;
+    if (!isSpecial(v)) return v;
+    // specials encode type as (SPECIAL_BASE + typeIdx*5 + sIdx) → use % 5 for display type
+    return (v - SPECIAL_BASE) % 5;
+  }
+
   function findMatches(b) {
     const matched = new Set();
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c <= COLS - 3; c++) {
-        const t = b[idx(r, c)]; if (t < 0) continue;
-        if (b[idx(r,c+1)] === t && b[idx(r,c+2)] === t) {
+        const t = normalType(b[idx(r, c)]); if (t < 0) continue;
+        if (normalType(b[idx(r,c+1)]) === t && normalType(b[idx(r,c+2)]) === t) {
           let e = c + 3;
-          while (e < COLS && b[idx(r,e)] === t) e++;
+          while (e < COLS && normalType(b[idx(r,e)]) === t) e++;
           for (let x = c; x < e; x++) matched.add(idx(r, x));
         }
       }
     }
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r <= ROWS - 3; r++) {
-        const t = b[idx(r, c)]; if (t < 0) continue;
-        if (b[idx(r+1,c)] === t && b[idx(r+2,c)] === t) {
+        const t = normalType(b[idx(r, c)]); if (t < 0) continue;
+        if (normalType(b[idx(r+1,c)]) === t && normalType(b[idx(r+2,c)]) === t) {
           let e = r + 3;
-          while (e < ROWS && b[idx(e,c)] === t) e++;
+          while (e < ROWS && normalType(b[idx(e,c)]) === t) e++;
           for (let x = r; x < e; x++) matched.add(idx(x, c));
         }
       }
@@ -192,11 +200,10 @@ window.candyModule = (() => {
 
   // ── Special candy config (adjust weights here) ────────────────────────
   const SPECIAL_CONFIG = {
-    row:    { weight: 14, label: '↔',  color: '#ff6b35' },
-    col:    { weight: 14, label: '↕',  color: '#35b5ff' },
-    color:  { weight:  6, label: '★',  color: '#cc44ff' },
-    board:  { weight:  1, label: '💥', color: '#ffdd00' },
-    // sentinel total; DO NOT hardcode — computed below
+    row:   { weight: 14, label: '⚡', color: '#ff6b35', glow: '#ff9955' },
+    col:   { weight: 14, label: '💎', color: '#35b5ff', glow: '#66ccff' },
+    color: { weight:  6, label: '✨', color: '#cc44ff', glow: '#ee88ff' },
+    board: { weight:  1, label: '💥', color: '#ffdd00', glow: '#ffee66' },
   };
   const SPECIAL_TOTAL = Object.values(SPECIAL_CONFIG).reduce((s,v)=>s+v.weight,0);
   const SPECIAL_TYPES = Object.keys(SPECIAL_CONFIG);
@@ -209,8 +216,8 @@ window.candyModule = (() => {
   function specialKey(v){ return SPECIAL_FROM[v] || null; }
   function specialVal(k){ return SPECIAL_IDX[k]; }
 
-  // Spawn chance per new gem: ~7% overall by default (driven by weights)
-  const SPECIAL_SPAWN_CHANCE = 0.07;
+  // Spawn chance per new gem: ~9% overall
+  const SPECIAL_SPAWN_CHANCE = 0.09;
 
   function rollSpecial() {
     let r = Math.random() * SPECIAL_TOTAL;
@@ -446,28 +453,37 @@ window.candyModule = (() => {
     const key = specialKey(specialV);
     if (!key) return new Set();
     const cleared = new Set();
+    const cfg = SPECIAL_CONFIG[key];
 
     if (key === 'row') {
-      // Beam animation first
       showBeamAnim(trigR, trigC, 'row');
+      spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
       await delay(120);
       for (let c = 0; c < COLS; c++) cleared.add(idx(trigR, c));
       candyAudio.rowClear();
     } else if (key === 'col') {
       showBeamAnim(trigR, trigC, 'col');
+      spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
       await delay(120);
       for (let r = 0; r < ROWS; r++) cleared.add(idx(r, trigC));
       candyAudio.colClear();
     } else if (key === 'color') {
-      const targetType = (matchedType >= 0 && matchedType < 100) ? matchedType : rand(5);
+      let targetType = rand(5);
+      for (const mi of matchedType instanceof Set ? matchedType : []) {
+        const v = b[mi];
+        if (!isSpecial(v) && v >= 0) { targetType = v; break; }
+      }
+      if (typeof matchedType === 'number' && matchedType >= 0 && matchedType < 100) targetType = matchedType;
       showChainGlow(targetType, b);
+      spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
       await delay(180);
       for (let i = 0; i < b.length; i++) {
-        if (b[i] === targetType) cleared.add(i);
+        if (normalType(b[i]) === targetType) cleared.add(i);
       }
       candyAudio.colorClear();
     } else if (key === 'board') {
       showBoardWipe();
+      spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
       await delay(250);
       for (let i = 0; i < b.length; i++) {
         if (!blockerSet.has(i)) cleared.add(i);
@@ -526,6 +542,40 @@ window.candyModule = (() => {
   }
 
 
+  // ── Particle burst on special activation ─────────────────────────────
+  function spawnCandyParticles(r, c, color) {
+    const cell = cellEl(r, c);
+    if (!cell) return;
+    const rect = cell.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top  + rect.height / 2;
+    for (let i = 0; i < 16; i++) {
+      const p = document.createElement('div');
+      const angle = (i / 16) * 360;
+      const dist  = 28 + Math.random() * 52;
+      const size  = 4 + Math.random() * 7;
+      p.style.cssText = [
+        'position:fixed',
+        `left:${cx}px`, `top:${cy}px`,
+        `width:${size}px`, `height:${size}px`,
+        `background:${color}`,
+        'border-radius:50%',
+        'pointer-events:none',
+        'z-index:9999',
+        `box-shadow:0 0 8px ${color},0 0 16px ${color}`,
+        'transform:translate(-50%,-50%)',
+        'transition:all 0.6s cubic-bezier(.15,.85,.25,1)',
+      ].join(';');
+      document.body.appendChild(p);
+      requestAnimationFrame(() => {
+        const rad = angle * Math.PI / 180;
+        p.style.transform = `translate(calc(-50% + ${Math.cos(rad)*dist}px),calc(-50% + ${Math.sin(rad)*dist}px))`;
+        p.style.opacity = '0';
+        p.style.transform += ' scale(0.3)';
+      });
+      setTimeout(() => p.remove(), 680);
+    }
+  }
 
   // ── DOM rendering ─────────────────────────────────────────────────────
   function render(dropSet) {
@@ -543,28 +593,30 @@ window.candyModule = (() => {
         const sCfg  = sKey ? SPECIAL_CONFIG[sKey] : null;
 
         const cell = document.createElement('div');
-        cell.className = 'candy-cell' + (t === 1 ? ' candy-has-stick' : '') + (isSpc ? ' candy-has-special' : '');
+        cell.className = 'candy-cell'
+          + (normalType(t) === 1 && !isSpc ? ' candy-has-stick' : '')
+          + (isSpc ? ' candy-has-special candy-stype-' + sKey : '');
+        if (sCfg) cell.style.setProperty('--special-color', sCfg.color);
         cell.dataset.r = r;
         cell.dataset.c = c;
         cell.addEventListener('click', () => handleClick(r, c));
 
         const gem = document.createElement('div');
         // Special candies render as their underlying type for shape, plus a glow class
-        const displayType = isSpc ? (Math.abs(t - SPECIAL_BASE) % 5) : t;
+        const displayType = isSpc ? normalType(t) : t;
         gem.className = 'candy-gem t' + displayType + (isNew ? ' anim-drop' : '') + (isSpc ? ' candy-special candy-special-' + sKey : '');
         if (sCfg) gem.style.setProperty('--special-color', sCfg.color);
         cell.appendChild(gem);
 
         if (sCfg) {
-          // Badge label overlay
           const badge = document.createElement('span');
           badge.className = 'candy-special-badge';
           badge.textContent = sCfg.label;
-          badge.style.color = sCfg.color;
+          badge.style.color = sCfg.glow || sCfg.color;
           cell.appendChild(badge);
         }
 
-        if (t === 1 && !isSpc) {
+        if (normalType(t) === 1 && !isSpc) {
           const stick = document.createElement('div');
           stick.className = 'candy-lolly-stick' + (isNew ? ' anim-drop' : '');
           cell.appendChild(stick);

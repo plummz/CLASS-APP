@@ -240,7 +240,7 @@ const APP_CHANGELOG = [
     summary: 'Removed debug logs, fixed rare freeze bug, and cleaned up UI and bot logic for a smoother Royale experience.',
     changes: [
       'Royale: Removed all debug/test console logs and info output from production.',
-      'Royale: Fixed rare freeze bug by wrapping bot logic in defensive try/catch.',
+      'Royale: Fixed rare freeze bug caused by undefined bloodSkinColor during damage hitmarker destructuring.',
       'Royale: Cleaned up UI logic and ensured weapon/kill feed panels only show in correct phases.',
       'Royale: Fixed any mojibake/corrupted text artifacts in UI and comments.',
       'Royale: Updated version and cache for all clients.'

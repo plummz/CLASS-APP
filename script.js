@@ -231,9 +231,85 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.12';
+const APP_VERSION = '1.5.17';
 const APP_CHANGELOG = [
   {
+    version: '1.5.17',
+    date: 'April 27, 2026',
+    title: 'Battle Royale Bug Fixes — Movement & UI',
+    summary: 'Fixed weapon panel blocking joystick movement, rogue UI text during loading, and falling crate rendering in wrong position.',
+    changes: [
+      'Battle Royale: Fixed weapon inventory panel intercepting joystick touch events — panel now has pointer-events:none on container.',
+      'Battle Royale: Weapon panel now only renders during the "playing" phase — no more "No weapons" text during loading or skin select.',
+      'Battle Royale: Moved weapon panel to top-center to avoid all bottom joystick and fire button conflicts.',
+      'Battle Royale: Fixed falling special crates rendering at wrong screen position (was applying camera offset twice).',
+      'Battle Royale: Fixed canvas textAlign not being reset after special crate marker, which caused misaligned text elsewhere.',
+      'Battle Royale: Crate countdown badge now hides correctly during non-playing phases.',
+    ]
+  },
+  {
+    version: '1.5.16',
+    date: 'April 27, 2026',
+    title: 'Battle Royale CSS — Weapon Panel & Crate Badge',
+    summary: 'Added styled CSS for weapon inventory panel, special crate countdown badge, and blood skin modal.',
+    changes: [
+      'Battle Royale: Added CSS for #rl-weapon-panel with glassmorphic slot buttons and fade-in animation.',
+      'Battle Royale: Added #rl-crate-badge — pulsing gold countdown badge (flashes orange under 15s).',
+      'Battle Royale: Added blood skin modal drop-bounce entrance animation.',
+      'Battle Royale: Added Blood button (top-right HUD) to open blood skin picker in-game.',
+      'Battle Royale: Weapon panel and badge properly hidden on end screen and portrait-blocked states.',
+    ]
+  },
+  {
+    version: '1.5.15',
+    date: 'April 27, 2026',
+    title: 'Battle Royale Map Expansion, Loot Balancing & Footsteps',
+    summary: 'New map areas (bridge, watchtower, warehouse, small houses), more medkits, and surface-aware footstep audio.',
+    changes: [
+      'Battle Royale: Added walkable wooden bridge over the river (tiles 34-46, ty=71) with plank visuals and rail posts.',
+      'Battle Royale: Added Watchtower (NE corner) with support legs, ladder, and WATCHTOWER HUD label.',
+      'Battle Royale: Added Warehouse (west side) — large mid-tier loot building with shelf/crate cover objects.',
+      'Battle Royale: Added two new small houses for additional low-tier loot spots.',
+      'Battle Royale: Terrain cover doubled — boulders/rocks increased from 18 to 43 for more strategic positions.',
+      'Battle Royale: Medkit spawn rate tripled in SUPPLY_POOL (3x weight). Supply rate raised: indoors 28%→42%, outdoors 25%→38%.',
+      'Battle Royale: Footstep audio wired to player movement — fires every 0.38s (stand), 0.45s (crouch), 0.55s (prone).',
+      'Battle Royale: Footstep surface detection — grass (soft), road/floor (concrete click), water/sand (splash).',
+    ]
+  },
+  {
+    version: '1.5.14',
+    date: 'April 27, 2026',
+    title: 'Battle Royale — Audio, Special Crates & Weapon Inventory',
+    summary: 'Full audio system, 90-second special crate airdrops with exclusive weapons, and a visual weapon inventory panel.',
+    changes: [
+      'Battle Royale: Added royaleAudio — Web Audio API procedural sounds with spatial (distance-based) volume.',
+      'Battle Royale: Unique gunshot sounds per weapon type (AR, shotgun, sniper, gatling, rocket, etc.).',
+      'Battle Royale: Reload, heal, pickup, and special crate alert sounds added.',
+      'Battle Royale: Added Gatling Gun (dmg:22, rof:80, 100 rounds) — crate-exclusive weapon.',
+      'Battle Royale: Added Rocket Launcher (dmg:280, rof:4000) — crate-exclusive weapon.',
+      'Battle Royale: Special Crate spawns every 90 seconds — falls from sky with altitude display, smoke trail, and gold beam on landing.',
+      'Battle Royale: Special crates contain exclusive weapons, heavy armor, sniper, or medkits.',
+      'Battle Royale: Weapon inventory panel shows all carried weapons with active slot highlighting and RARE badges.',
+      'Battle Royale: Blood Effect Skins — 4 variants (Red, Dark Red, Neon, Black) via openBloodSkinMenu().',
+      'Battle Royale: Blood splatter particle count increased from 12 to 18 for more impact.',
+    ]
+  },
+  {
+    version: '1.5.13',
+    date: 'April 27, 2026',
+    title: 'Candy Match — Special Candy Fixes & Neon Visuals',
+    summary: 'Special candies now match correctly with same-type gems, and all special candy visuals have been overhauled with neon glow rings and particle bursts.',
+    changes: [
+      'Candy Match: Fixed special candy matching — normalType() helper ensures specials match both normal and other specials of the same color.',
+      'Candy Match: Color Clear candy now correctly clears all gems of the matched type.',
+      'Candy Match: Added spawnCandyParticles() — particle burst fires at every special candy activation.',
+      'Candy Match: Special candy visuals overhauled — pulsing neon border rings, large centered badge emojis, boosted drop-shadow glow.',
+      'Candy Match: Board Wipe candy gains a rotating sparkle ring animation.',
+      'Candy Match: Beam intensity increased for Row/Column Clear animations.',
+      'Candy Match: Special candy spawn rate raised from 7% to 9%.',
+      'Candy Match: Fixed lollipop stick rendering — no longer shows on specials that display as type 1.',
+    ]
+  },
     version: '1.5.11',
     date: 'April 26, 2026',
     title: 'Special Candies, Audio Manager & Royale AI Overhaul',

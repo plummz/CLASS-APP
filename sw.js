@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.22-20260427-fraction-analytics-fix';
+const CACHE_VERSION = 'v1.5.23-20260427-ast-fractions';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -22,13 +22,13 @@ const ASSETS = [
   '/features/royale/royale.css?v=17',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
-  '/script.js?v=65',
+  '/script.js?v=66',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',
   '/features/chat/chat.js?v=1',
   '/features/calendar/calendar.js?v=1',
-  '/features/personal-tools/calculator.js?v=4',
+  '/features/personal-tools/calculator.js?v=5',
   '/features/music/music.js?v=1',
   '/features/social/social.js?v=1',
   '/features/users/users.js?v=1',

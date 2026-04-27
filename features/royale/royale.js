@@ -2221,21 +2221,11 @@ window.royaleModule = (function () {
     const key = source || 'unknown';
 
     if (key === 'bullet' && options.shooterId && options.shooterId === bot.id) {
-      console.warn('[Royale] Blocked bullet self-damage', {
-        shooter: options.shooterId,
-        target: bot.id,
-        weapon: options.weaponKey || 'unknown',
-        source: key,
-      });
+      // Defensive: block self-damage, no log in production
       return false;
     }
     if (key === 'bullet' && !FRIENDLY_FIRE && options.shooterType === 'bot' && options.targetType === 'bot') {
-      console.info('[Royale] Blocked bot friendly bullet damage', {
-        shooter: options.shooterId,
-        target: bot.id,
-        weapon: options.weaponKey || 'unknown',
-        source: key,
-      });
+      // Defensive: block bot friendly fire, no log in production
       return false;
     }
 
@@ -2246,14 +2236,7 @@ window.royaleModule = (function () {
     if (cooldown) bot.damageCooldowns[key] = now;
 
     bot.hp = Math.max(0, Math.min(bot.maxHp || 100, bot.hp) - dmg);
-    console.info('[Royale] Damage event', {
-      shooter: options.shooterId || key,
-      target: bot.id,
-      targetName: bot.name,
-      weapon: options.weaponKey || key,
-      source: key,
-      damage: Math.round(dmg * 10) / 10,
-    });
+    // No noisy logs for damage events
 
     if (bot.hp <= 0) {
       bot.alive = false;
@@ -2539,21 +2522,11 @@ window.royaleModule = (function () {
 
     if (!shooterId || !target?.id) return true;
     if (target.id === shooterId) {
-      console.warn('[Royale] Blocked bullet self-hit', {
-        shooter: shooterId,
-        target: target.id,
-        weapon: bullet.weaponKey || 'unknown',
-        source: 'bullet',
-      });
+      // Defensive: block self-hit, no log in production
       return false;
     }
     if (!FRIENDLY_FIRE && shooterTeam && targetTeam && shooterTeam === targetTeam) {
-      console.info('[Royale] Blocked friendly bullet hit', {
-        shooter: shooterId,
-        target: target.id,
-        weapon: bullet.weaponKey || 'unknown',
-        source: 'bullet',
-      });
+      // Defensive: block friendly fire, no log in production
       return false;
     }
     return true;
@@ -3037,7 +3010,7 @@ window.royaleModule = (function () {
         }
       });
       rlChannel.subscribe();
-    } catch(e) { console.warn('Royale multiplayer unavailable',e); }
+    } catch(e) { /* Multiplayer unavailable, ignore in production */ }
   }
 
   function broadcastState() {

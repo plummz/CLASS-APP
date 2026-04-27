@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.28';
+const APP_VERSION = '1.5.31';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.31',
+    date: 'April 27, 2026',
+    title: 'Intelligent AI Fallback System',
+    summary: 'Upgraded File Summarizer with three-tier AI fallback: detects Gemini quota errors and intelligently switches to Groq Llama 3 8B, with local summarizer as final backup.',
+    changes: [
+      'File Summarizer: Implemented quota-aware AI provider switching — detects when Gemini hits quota and immediately uses Groq without retrying other Gemini models.',
+      'AI Service: Added Groq Llama 3 8B (llama3-8b-8192) as primary fallback provider with full error handling.',
+      'AI Service: Implemented local summarizer as final-tier fallback — extracts key sentences when all cloud AI providers fail.',
+      'Security: GROQ_API_KEY remains backend-only; never exposed to frontend.',
+      'Reliability: Three-tier cascade ensures summaries always generate, even during service outages or quota exhaustion.',
+    ]
+  },
   {
     version: '1.5.28',
     date: 'April 27, 2026',

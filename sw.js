@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'v1.5.28-20260427-debug-fix';
+const CACHE_VERSION = 'v1.5.31-20260427-ai-fallback';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=77',
+  '/index.html?v=78',
   '/style.css?v=30',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -24,7 +24,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=2',
   '/features/reviewers/reviewers.css?v=1',
-  '/script.js?v=69',
+  '/script.js?v=71',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',

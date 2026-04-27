@@ -231,8 +231,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.22';
+const APP_VERSION = '1.5.23';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.23',
+    date: 'April 27, 2026',
+    title: 'AST Math Engine & App Opens Tracking Fixed',
+    summary: 'Calculator completely rebuilt with an Abstract Syntax Tree (AST) engine for native DOM nested fraction rendering. Fixed App Opens tracking duplication and stability.',
+    changes: [
+      'Calculator: Nested fraction system implemented natively. Fractions render vertically using dynamic DOM trees without plain text fallback.',
+      'Calculator: Replaced string parsing with true AST tree-based cursor logic, allowing seamless navigation inside/outside nested fractions.',
+      'Calculator: Editing safety applied — backspace now correctly navigates and deletes tree nodes without structure collapse.',
+      'App Opens: Tracking fixed — strictly counts once per session, handles async fetch delays gracefully without showing "No opens" prematurely.',
+      'App Opens: Duplicate UI removed — unified lobby layout strictly uses dashboard for global total, preserving clean design.',
+      'Analytics: Fixed database write logic — automatically falls back from Supabase RPC to direct upsert to local storage gracefully.'
+    ]
+  },
   {
     version: '1.5.22',
     date: 'April 27, 2026',
@@ -3629,40 +3643,25 @@ function renderAppOpenCount(count) {
   if (dash) dash.textContent = safeCount.toLocaleString();
 }
 
-function renderLobbyAppOpenPreview(list = []) {
-  const preview = document.getElementById('lobby-app-open-preview');
-  if (!preview) return;
+function renderAppOpenUsers(list = []) {
+  const box = document.getElementById('app-open-user-list');
+  if (!box) return;
   if (!list || !list.length) {
-    preview.innerHTML = '<p class="lobby-open-empty">No opens recorded yet.</p>';
+    box.innerHTML = '<p class="lobby-open-empty">No app opens recorded yet.</p>';
     return;
   }
-  preview.innerHTML = list.slice(0, 5).map(item => `
-    <div class="lobby-open-row">
+  box.innerHTML = list.map((item, index) => `
+    <div class="lobby-open-row ${index < 3 ? 'top-rank' : ''}">
       <span class="lobby-open-user">${escapeHTML(item.username || 'Unknown')}</span>
       <span class="lobby-open-total">${Number(item.count || 0).toLocaleString()}</span>
     </div>
   `).join('');
 }
 
-function renderAppOpenUsers(list = []) {
-  const box = document.getElementById('app-open-user-list');
-  if (!box) return;
-  if (!list.length) {
-    box.innerHTML = '<p class="lobby-open-empty">No app opens recorded yet.</p>';
-    return;
-  }
-  box.innerHTML = list.map((item) => `
-    <div class="lobby-open-row">
-      <span class="lobby-open-user">${escapeHTML(item.username || 'Unknown')}</span>
-      <span class="lobby-open-total">${Number(item.count || 0).toLocaleString()}</span>
-    </div>
-  `).join('');
-}
 
 function renderAppOpenStats(data = {}) {
   renderAppOpenCount(data.count);
   renderAppOpenUsers(data.users || []);
-  renderLobbyAppOpenPreview(data.users || []);
   const dash = document.getElementById('lobby-dash-open-count');
   if (dash) dash.textContent = Number(data.count || 0).toLocaleString();
 }
@@ -3826,9 +3825,9 @@ window.openContributionTallyModal = async function() {
 };
 
 window.refreshAppOpenCount = async function() {
-  // Show loading in lobby preview while fetching
-  const preview = document.getElementById('lobby-app-open-preview');
-  if (preview) preview.innerHTML = '<p class="lobby-open-empty" style="opacity:0.6">Loading…</p>';
+  const dash = document.getElementById('lobby-dash-open-count');
+  if (dash && dash.textContent === '0') dash.textContent = '...';
+
   try {
     const rows = await fetchSupabaseAppOpenRows();
     console.log('[AppOpen] Fetched', rows.length, 'rows from Supabase');
@@ -3843,53 +3842,54 @@ window.refreshAppOpenCount = async function() {
     } catch (_) {
       console.warn('[AppOpen] API fallback failed — using localStorage');
       const localRows = localAppOpenRows();
-      if (localRows.length) {
-        renderAppOpenRows(localRows);
-      } else {
-        if (preview) preview.innerHTML = '<p class="lobby-open-empty">No data available.</p>';
-      }
+      renderAppOpenRows(localRows);
     }
   }
 };
 
-let recordedAppOpenFor = sessionStorage.getItem('recordedAppOpenFor') || null;
 async function recordAppOpen() {
   if (!currentUser?.username) {
     console.log('[AppOpen] Skipped — no user logged in');
     return window.refreshAppOpenCount();
   }
-  if (recordedAppOpenFor === currentUser.username) {
-    console.log('[AppOpen] Skipped — already recorded for', currentUser.username, 'this session');
+  
+  if (sessionStorage.getItem('appOpenRecorded') === 'true') {
+    console.log('[AppOpen] Skipped — already recorded this session');
     return window.refreshAppOpenCount();
   }
+  
   console.log('[AppOpen] Recording open for', currentUser.username);
   const localCount = incrementLocalAppOpenTally(currentUser.username);
+  
   try {
     const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
     if (error) throw error;
-    recordedAppOpenFor = currentUser.username;
-    sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
-    console.log('[AppOpen] Recorded via Supabase RPC. Local count:', localCount);
+    
+    sessionStorage.setItem('appOpenRecorded', 'true');
+    console.log('[AppOpen] Recorded via Supabase RPC.');
+    
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
   } catch (err) {
     console.warn('[AppOpen] RPC failed:', err?.message || err);
     try {
-      const res = await fetch('/api/app-open-count', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: currentUser.username }),
-      });
-      if (!res.ok) throw new Error('Count unavailable');
-      const data = await res.json();
-      recordedAppOpenFor = currentUser.username;
-      sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
-      renderAppOpenStats(data);
-    } catch (_) {
-      // Graceful fallback — at minimum persist local tally
-      console.warn('[AppOpen] All remote paths failed — using localStorage fallback');
-      recordedAppOpenFor = currentUser.username;
-      sessionStorage.setItem('recordedAppOpenFor', currentUser.username);
+      const { error: upsertErr } = await sb.from('app_open_counts').upsert({
+        username: currentUser.username,
+        count: localCount,
+        last_opened_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'username' });
+      
+      if (upsertErr) throw upsertErr;
+      
+      sessionStorage.setItem('appOpenRecorded', 'true');
+      console.log('[AppOpen] Recorded via direct table upsert.');
+      
+      const rows = await fetchSupabaseAppOpenRows();
+      renderAppOpenRows(rows);
+    } catch (upsertFail) {
+      console.warn('[AppOpen] Direct upsert also failed:', upsertFail?.message || upsertFail);
+      sessionStorage.setItem('appOpenRecorded', 'true');
       renderAppOpenRows(localAppOpenRows());
     }
   }

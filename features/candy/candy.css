@@ -972,126 +972,187 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SPECIAL CANDY SYSTEM
+   SPECIAL CANDY SYSTEM — Enhanced Visuals
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Cell glow ring for special candies */
+/* Cell glow ring — strong neon border pulse */
+@keyframes candy-cell-special-ring {
+  0%,100% {
+    border-color: var(--special-color, #fff);
+    box-shadow: inset 0 0 0 2px var(--special-color, #fff),
+                0 0 10px var(--special-color, #fff),
+                0 0 24px var(--special-color, #fff),
+                0 0 0 3px rgba(0,0,0,.5);
+  }
+  50% {
+    border-color: #fff;
+    box-shadow: inset 0 0 0 2px #fff,
+                0 0 18px var(--special-color, #fff),
+                0 0 40px var(--special-color, #fff),
+                0 0 0 3px rgba(0,0,0,.5);
+  }
+}
 .candy-cell.candy-has-special {
-  border-color: var(--special-color, #fff);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
-    0 0 10px rgba(255,255,255,.25),
-    0 0 18px color-mix(in srgb, var(--special-color, #fff) 50%, transparent);
+  animation: candy-cell-special-ring 1.1s ease-in-out infinite;
+  background: radial-gradient(ellipse at 50% 40%,
+    color-mix(in srgb, var(--special-color, #fff) 22%, transparent) 0%,
+    rgba(0,0,0,.04) 70%) !important;
+  border-width: 2.5px;
+  border-style: solid;
+  z-index: 2;
+}
+/* Low-end: static border only */
+.candy-board.candy-low-end .candy-cell.candy-has-special {
+  animation: none !important;
+  border-color: var(--special-color, #fff) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 8px var(--special-color, #fff) !important;
 }
 
-/* Base special gem — adds outer ring + pulse */
-@keyframes candy-special-pulse {
-  0%,100% { box-shadow: 0 12px 24px rgba(0,0,0,.24), 0 0 8px var(--special-color, #fff), inset 0 2px 10px rgba(255,255,255,.24); }
-  50%     { box-shadow: 0 14px 30px rgba(0,0,0,.30), 0 0 22px var(--special-color, #fff), 0 0 36px color-mix(in srgb, var(--special-color, #fff) 60%, transparent), inset 0 2px 10px rgba(255,255,255,.28); }
+/* Per-type CSS color tokens on the CELL */
+.candy-cell.candy-has-special.candy-stype-row   { --special-color: #ff6b35; }
+.candy-cell.candy-has-special.candy-stype-col   { --special-color: #35b5ff; }
+.candy-cell.candy-has-special.candy-stype-color { --special-color: #cc44ff; }
+.candy-cell.candy-has-special.candy-stype-board { --special-color: #ffdd00; }
+
+/* Base special gem — bright neon pulse */
+@keyframes candy-special-gem-pulse {
+  0%,100% {
+    filter: brightness(1.1) drop-shadow(0 0 6px var(--special-color, #fff))
+            drop-shadow(0 0 14px var(--special-color, #fff));
+  }
+  50% {
+    filter: brightness(1.4) drop-shadow(0 0 12px var(--special-color, #fff))
+            drop-shadow(0 0 28px var(--special-color, #fff))
+            drop-shadow(0 0 48px var(--special-color, #fff));
+  }
 }
 .candy-gem.candy-special {
-  animation: candy-special-pulse 1.4s ease-in-out infinite;
+  animation: candy-special-gem-pulse 1.1s ease-in-out infinite;
 }
 /* Low-end: keep special visible but stop animation */
 .candy-board.candy-low-end .candy-gem.candy-special {
   animation: none !important;
-  box-shadow: 0 12px 24px rgba(0,0,0,.24), 0 0 6px var(--special-color, #fff), inset 0 2px 10px rgba(255,255,255,.24);
+  filter: brightness(1.15) drop-shadow(0 0 5px var(--special-color, #fff));
 }
 
-/* Per-type color tokens */
+/* Per-type color tokens on the GEM */
 .candy-gem.candy-special-row   { --special-color: #ff6b35; }
 .candy-gem.candy-special-col   { --special-color: #35b5ff; }
 .candy-gem.candy-special-color { --special-color: #cc44ff; }
 .candy-gem.candy-special-board { --special-color: #ffdd00; }
 
-/* Badge label */
+/* Badge label — large, centered, emoji */
 .candy-special-badge {
   position: absolute;
-  bottom: 3px;
-  right: 3px;
-  font-size: 9px;
-  font-weight: 900;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
   line-height: 1;
   pointer-events: none;
-  z-index: 5;
-  text-shadow: 0 0 4px rgba(0,0,0,.8), 0 1px 2px rgba(0,0,0,.6);
-  filter: drop-shadow(0 0 3px currentColor);
+  z-index: 8;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,.9)) drop-shadow(0 0 8px currentColor);
   letter-spacing: 0;
+}
+
+/* Board-wipe candy: rotating sparkle ring around gem */
+@keyframes candy-board-ring-spin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(360deg); }
+}
+.candy-gem.candy-special-board::before {
+  content: '✦ ✦ ✦ ✦';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 7px;
+  color: #ffee66;
+  white-space: nowrap;
+  width: 130%;
+  text-align: center;
+  animation: candy-board-ring-spin 2s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+  filter: drop-shadow(0 0 4px #ffdd00);
+}
+.candy-board.candy-low-end .candy-gem.candy-special-board::before {
+  animation: none;
 }
 
 /* ── Beam animations ──────────────────────────────────────────────────── */
 @keyframes candy-beam-h-anim {
   0%   { opacity: 0; transform: scaleX(0); }
-  15%  { opacity: 1; transform: scaleX(1); }
+  12%  { opacity: 1; transform: scaleX(1); }
   75%  { opacity: 1; }
-  100% { opacity: 0; transform: scaleX(1.04); }
+  100% { opacity: 0; transform: scaleX(1.06); }
 }
 @keyframes candy-beam-v-anim {
   0%   { opacity: 0; transform: scaleY(0); }
-  15%  { opacity: 1; transform: scaleY(1); }
+  12%  { opacity: 1; transform: scaleY(1); }
   75%  { opacity: 1; }
-  100% { opacity: 0; transform: scaleY(1.04); }
+  100% { opacity: 0; transform: scaleY(1.06); }
 }
 
 .candy-beam-h {
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(255,107,53,.8) 10%,
-    #ff9955 30%,
+    rgba(255,107,53,.8) 8%,
+    #ff9955 28%,
     #fff9e6 50%,
-    #ff9955 70%,
-    rgba(255,107,53,.8) 90%,
+    #ff9955 72%,
+    rgba(255,107,53,.8) 92%,
     transparent 100%
   );
   border-radius: 6px;
-  box-shadow: 0 0 18px rgba(255,107,53,.8), 0 0 36px rgba(255,150,80,.5);
-  animation: candy-beam-h-anim .45s ease-in-out forwards;
+  box-shadow: 0 0 22px rgba(255,107,53,.9), 0 0 44px rgba(255,150,80,.6);
+  animation: candy-beam-h-anim .48s ease-in-out forwards;
   transform-origin: center center;
 }
 
 .candy-beam-v {
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(53,181,255,.8) 10%,
-    #55ccff 30%,
+    rgba(53,181,255,.8) 8%,
+    #55ccff 28%,
     #eafaff 50%,
-    #55ccff 70%,
-    rgba(53,181,255,.8) 90%,
+    #55ccff 72%,
+    rgba(53,181,255,.8) 92%,
     transparent 100%
   );
   border-radius: 6px;
-  box-shadow: 0 0 18px rgba(53,181,255,.8), 0 0 36px rgba(80,160,255,.5);
-  animation: candy-beam-v-anim .45s ease-in-out forwards;
+  box-shadow: 0 0 22px rgba(53,181,255,.9), 0 0 44px rgba(80,160,255,.6);
+  animation: candy-beam-v-anim .48s ease-in-out forwards;
   transform-origin: center center;
 }
 
 /* ── Color clear chain glow ───────────────────────────────────────────── */
 @keyframes candy-chain-glow-anim {
-  0%   { filter: brightness(1)    drop-shadow(0 0 0px transparent); }
-  30%  { filter: brightness(1.8)  drop-shadow(0 0 12px #cc44ff) drop-shadow(0 0 24px rgba(204,68,255,.7)); }
-  60%  { filter: brightness(1.5)  drop-shadow(0 0 8px #cc44ff); }
-  100% { filter: brightness(1)    drop-shadow(0 0 0px transparent); }
+  0%   { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+  25%  { filter: brightness(2.2) drop-shadow(0 0 16px #cc44ff) drop-shadow(0 0 32px rgba(204,68,255,.9)); }
+  60%  { filter: brightness(1.6) drop-shadow(0 0 10px #cc44ff) drop-shadow(0 0 22px rgba(204,68,255,.6)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
 .candy-gem.candy-chain-glow {
-  animation: candy-chain-glow-anim .55s ease-out forwards !important;
+  animation: candy-chain-glow-anim .6s ease-out forwards !important;
 }
 
 /* ── Board wipe ripple ────────────────────────────────────────────────── */
 @keyframes candy-wipe-ripple {
   0%   { transform: scale(0);    opacity: 1; }
-  80%  { transform: scale(1.5);  opacity: .7; }
-  100% { transform: scale(2);    opacity: 0; }
+  80%  { transform: scale(2);    opacity: .7; }
+  100% { transform: scale(2.8);  opacity: 0; }
 }
 .candy-board-wipe-ripple {
   position: absolute;
   inset: 50%;
-  width: 80px;
-  height: 80px;
-  margin: -40px;
+  width: 100px;
+  height: 100px;
+  margin: -50px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,221,68,.9) 0%, rgba(255,107,157,.6) 50%, transparent 70%);
-  box-shadow: 0 0 40px rgba(255,221,68,.8), 0 0 80px rgba(255,107,157,.5);
-  animation: candy-wipe-ripple .55s ease-out forwards;
+  background: radial-gradient(circle, rgba(255,221,68,.95) 0%, rgba(255,107,157,.7) 40%, transparent 70%);
+  box-shadow: 0 0 50px rgba(255,221,68,.9), 0 0 100px rgba(255,107,157,.6);
+  animation: candy-wipe-ripple .6s ease-out forwards;
   pointer-events: none;
   z-index: 15;
 }
@@ -1099,10 +1160,10 @@
 /* Board blast flash */
 @keyframes candy-board-blast-anim {
   0%   { filter: brightness(1)    saturate(1); }
-  20%  { filter: brightness(2.5)  saturate(2.5); }
-  60%  { filter: brightness(1.4)  saturate(1.6); }
+  15%  { filter: brightness(3)    saturate(3); }
+  50%  { filter: brightness(1.5)  saturate(2); }
   100% { filter: brightness(1)    saturate(1); }
 }
 .candy-board.candy-board-blast {
-  animation: candy-board-blast-anim .5s ease-out forwards !important;
+  animation: candy-board-blast-anim .55s ease-out forwards !important;
 }

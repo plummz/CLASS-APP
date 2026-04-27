@@ -40,7 +40,7 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=22',
+  '/features/royale/royale.js?v=23',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=10',
   '/assets/images/code-web-card.svg',

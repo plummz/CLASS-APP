@@ -3,6 +3,33 @@ window.royaleModule = (function () {
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Tile IDs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const T = { GRASS:0, DIRT:1, ROAD:2, SAND:3, WATER:4, DEEP_WATER:5, FLOOR:6 };
+  // --- Royale Audio System ---
+  const royaleAudio = (() => {
+    let actx = null;
+    const init = () => { if (!actx && window.AudioContext) actx = new AudioContext(); };
+    const play = (f, t, d, v) => {
+      try {
+        if (!actx) return;
+        if (actx.state === 'suspended') actx.resume();
+        const o = actx.createOscillator();
+        const g = actx.createGain();
+        o.type = t; o.frequency.setValueAtTime(f, actx.currentTime);
+        g.gain.setValueAtTime(v, actx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + d);
+        o.connect(g); g.connect(actx.destination);
+        o.start(); o.stop(actx.currentTime + d);
+      } catch(e) {}
+    };
+    return {
+      init,
+      footstep: (s) => play(s==='water'?300:120, 'triangle', 0.1, 0.05),
+      shoot: (w) => play(w==='sniper'?100:(w==='shotgun'?80:200), 'square', 0.2, 0.15),
+      reload: () => play(600, 'sine', 0.2, 0.05),
+      heal: () => play(800, 'sine', 0.4, 0.1),
+      pickup: () => play(1200, 'sine', 0.1, 0.05),
+      crateAlert: () => play(300, 'sawtooth', 0.8, 0.2)
+    };
+  })();
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Map dimensions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const TILE   = 32;   // px per tile
@@ -770,7 +797,7 @@ window.royaleModule = (function () {
     }
   }
 
-  function onTouchStart(e) {
+  function onTouchStart(e) { royaleAudio.init();
     e.preventDefault();
     // Skin menu: handle taps immediately on touchstart for responsiveness
     if (gamePhase === 'skinSelect') {
@@ -2349,25 +2376,25 @@ window.royaleModule = (function () {
     const disabled = inventory.length < 2;
     btn.classList.toggle('disabled', disabled);
     btn.disabled = false;
-    const WICONS = {pistol:'Ã°Å¸â€Â«',smg:'Ã°Å¸â€Â«',ar:'Ã°Å¸â€Â«',shotgun:'Ã°Å¸â€Â«',sniper:'Ã°Å¸â€Â«',
-                    revolver:'Ã°Å¸â€Â«',battlerifle:'Ã°Å¸â€Â«',gatling:'Ã¢Å¡â„¢Ã¯Â¸Â',rocket:'Ã°Å¸Å¡â‚¬',
-                    rpg:'Ã°Å¸Å¡â‚¬',grenade:'Ã°Å¸â€™Â£',molotov:'Ã°Å¸ÂÂ¾'};
-    btn.textContent = key ? `${WICONS[key]||'Ã°Å¸â€Â«'} ${WEAPONS[key]?.name || 'Weapon'}` : 'Ã¢â€ â€ No Weapon';
+    const wName = key ? (WEAPONS[key]?.name || key) : 'No Weapon';
+    btn.textContent = '\u21d4 ' + wName;
     btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     btn.title = disabled ? 'Pick up a second weapon to switch' : 'Switch weapon';
 
-    // Weapon inventory panel (shows all slots)
+    // Weapon panel -- only show during playing phase with weapons
     let panel = document.getElementById('rl-weapon-panel');
     if (!panel) {
       panel = document.createElement('div');
       panel.id = 'rl-weapon-panel';
-      panel.style.cssText = [
-        'position:absolute','bottom:130px','left:50%','transform:translateX(-50%)',
-        'display:flex','gap:6px','z-index:60','pointer-events:auto',
-      ].join(';');
+      // pointer-events:none on container so it NEVER eats canvas/joystick touches
+      panel.style.cssText = 'position:absolute;top:56px;left:50%;transform:translateX(-50%);display:none;flex-wrap:nowrap;gap:6px;z-index:60;pointer-events:none;';
       const wrap = document.querySelector('#page-royale .rl-wrapper') || document.body;
       wrap.appendChild(panel);
     }
+    const showPanel = (gamePhase === 'playing') && inventory.length > 0;
+    panel.style.display = showPanel ? 'flex' : 'none';
+    if (!showPanel) return;
+
     panel.innerHTML = '';
     inventory.forEach((k, i) => {
       const w = WEAPONS[k];
@@ -2375,21 +2402,22 @@ window.royaleModule = (function () {
       const isExclusive = w?.crateOnly;
       const slot = document.createElement('button');
       slot.style.cssText = [
-        `background:${active ? 'rgba(255,220,0,0.25)' : 'rgba(0,0,0,0.55)'}`,
-        `border:2px solid ${active ? '#ffdd00' : (isExclusive ? '#ff8800' : 'rgba(255,255,255,0.3)')}`,
-        'border-radius:10px','padding:5px 10px','color:#fff',
-        'font-size:12px','font-weight:700','cursor:pointer',
-        'min-width:70px','text-align:center','touch-action:manipulation',
-        'box-shadow:0 2px 8px rgba(0,0,0,0.5)',
+        'background:' + (active ? 'rgba(255,220,0,0.22)' : 'rgba(0,0,0,0.65)'),
+        'border:2px solid ' + (active ? '#ffdd00' : (isExclusive ? '#ff8800' : 'rgba(255,255,255,0.28)')),
+        'border-radius:10px','padding:4px 10px','color:#fff',
+        'font-size:11px','font-weight:700','cursor:pointer',
+        'min-width:64px','text-align:center','touch-action:manipulation',
+        'box-shadow:0 2px 8px rgba(0,0,0,0.55)',
+        'pointer-events:auto', // override container none so buttons still work
+        'user-select:none','-webkit-user-select:none','-webkit-tap-highlight-color:transparent',
       ].join(';');
-      slot.innerHTML = `${WICONS[k]||'Ã°Å¸â€Â«'}<br><span style="font-size:10px">${w?.name||k}</span>${isExclusive?'<br><span style="color:#ffaa00;font-size:8px">Ã¢Ëœâ€¦RARE</span>':''}`;
+      const wLabel = w?.name || k;
+      const rareMark = isExclusive ? '<br><span style="color:#ffaa00;font-size:8px">RARE</span>' : '';
+      slot.innerHTML = '<span style="font-size:12px">' + (active ? '[A]' : '[ ]') + '</span><br><span style="font-size:10px">' + wLabel + '</span>' + rareMark;
       slot.onclick = () => { activeSlot = i; reloading = false; updateSwitchWeaponButton(); };
       slot.addEventListener('touchend', (e) => { e.preventDefault(); activeSlot = i; reloading = false; updateSwitchWeaponButton(); }, {passive:false});
       panel.appendChild(slot);
     });
-    if (inventory.length === 0) {
-      panel.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:11px;padding:6px">No weapons</div>';
-    }
   }
 
   function updateHealButton() {
@@ -2788,30 +2816,37 @@ window.royaleModule = (function () {
         ctx.fillStyle=beamG;
         ctx.fillRect(cr.x-6,cr.y-beamH,12,beamH);
         ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('Ã¢Â­Â',cr.x,cr.y);
+        ctx.fillText('★',cr.x,cr.y);
       }
     }
-    // Draw falling special crates
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+    // Draw falling special crates (world-space coords - same as regular crates)
     if (window._rlFallingCrates) {
       for (const fc of window._rlFallingCrates) {
-        const sx = fc.x - cam.x + canvasW/2;
-        const sy = fc.y - cam.y + canvasH/2 - fc.z * 0.3;
-        // Smoke trail
-        const sg = ctx.createRadialGradient(sx,sy,0,sx,sy,18);
-        sg.addColorStop(0,'rgba(180,180,180,0.5)');
-        sg.addColorStop(1,'rgba(180,180,180,0)');
-        ctx.fillStyle=sg;
-        ctx.beginPath(); ctx.arc(sx,sy+8,18,0,Math.PI*2); ctx.fill();
-        // Crate
-        ctx.fillStyle='#ffdd00'; ctx.fillRect(sx-14,sy-14,28,28);
-        ctx.strokeStyle='#ff8800'; ctx.lineWidth=2;
-        ctx.strokeRect(sx-14,sy-14,28,28);
-        ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('Ã¢Â­Â',sx,sy);
-        // Altitude label
-        ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(sx-22,sy-26,44,12);
-        ctx.fillStyle='#ffdd00'; ctx.font='bold 8px monospace'; ctx.textAlign='center';
-        ctx.fillText(`ALT ${Math.round(fc.z)}`,sx,sy-20);
+        // fc.x, fc.y are world coords; z offsets the visual vertically (simulates altitude)
+        const fy = fc.y - fc.z * 0.25;
+        // Smoke trail below
+        const sg = ctx.createRadialGradient(fc.x, fy+18, 0, fc.x, fy+18, 22);
+        sg.addColorStop(0, 'rgba(180,180,180,0.45)');
+        sg.addColorStop(1, 'rgba(180,180,180,0)');
+        ctx.fillStyle = sg;
+        ctx.beginPath(); ctx.arc(fc.x, fy+14, 22, 0, Math.PI*2); ctx.fill();
+        // Crate body
+        ctx.fillStyle = '#ffdd00';
+        ctx.fillRect(fc.x-13, fy-13, 26, 26);
+        ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2;
+        ctx.strokeRect(fc.x-13, fy-13, 26, 26);
+        // Altitude label (near the crate, in world space)
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(fc.x-20, fy-28, 40, 13);
+        ctx.fillStyle = '#ffdd00';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('ALT ' + Math.round(fc.z), fc.x, fy-22);
+        ctx.restore();
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       }
     }
     ctx.textAlign='left'; ctx.textBaseline='alphabetic';

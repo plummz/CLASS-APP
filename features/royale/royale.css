@@ -514,7 +514,7 @@ body.rl-portrait-blocked .rl-early-drop-btn {
 /* === Weapon Inventory Panel (#rl-weapon-panel) === */
 #rl-weapon-panel {
   position: absolute;
-  bottom: 134px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

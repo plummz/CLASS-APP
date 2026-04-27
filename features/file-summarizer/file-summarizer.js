@@ -18,6 +18,11 @@
   let extractedText = '';
   let fileType = '';
 
+  if (!fileInput) {
+    console.error('File input element not found');
+    return;
+  }
+
   // Initial state: disable action buttons
   actionBtns.forEach(b => b.disabled = true);
 
@@ -45,7 +50,7 @@
   }
 
   fileInput.addEventListener('change', async function(e) {
-    const file = fileInput.files[0];
+    const file = e.target?.files[0];
     resetAll(true); // reset UI but keep file in input
     if (!file) return;
     

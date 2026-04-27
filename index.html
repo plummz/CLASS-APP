@@ -325,7 +325,7 @@
     <div class="fs-wrap">
       <h1 class="fs-title">File Summarizer</h1>
       <div class="fs-upload-area" id="fs-upload-area">
-        <input type="file" id="fs-file-input" accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+        <input type="file" id="fs-file-input" accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
         <label for="fs-file-input" class="fs-upload-label">
           <span class="fs-upload-icon">📄</span>
           <span class="fs-upload-text">Upload PDF, DOCX, or PPTX</span>
@@ -1032,36 +1032,6 @@
         </div>
         <div class="lobby-presence-list" id="lobby-presence-list">
           <p class="lobby-open-empty">Open the lobby to see active users.</p>
-        </div>
-      </div>
-
-      <div class="lobby-games-quickplay">
-        <div class="lobby-open-board-head">
-          <span>Quick Play Games</span>
-          <button type="button" onclick="openPage('games')">View All</button>
-        </div>
-        <div class="lobby-games-grid">
-          <button class="lobby-game-card" onclick="openPage('royale')">
-            <span class="lg-icon">⚔️</span>
-            <div class="lg-info">
-              <h3>Battle Royale</h3>
-              <p>Survive the zone</p>
-            </div>
-          </button>
-          <button class="lobby-game-card" onclick="openPage('candy')">
-            <span class="lg-icon">🍬</span>
-            <div class="lg-info">
-              <h3>Candy Match</h3>
-              <p>Sweet puzzles</p>
-            </div>
-          </button>
-          <button class="lobby-game-card" onclick="openPage('pokemon')">
-            <span class="lg-icon">🐉</span>
-            <div class="lg-info">
-              <h3>Pokemon</h3>
-              <p>Catch & train</p>
-            </div>
-          </button>
         </div>
       </div>
 

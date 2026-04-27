@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.25';
+const APP_VERSION = '1.5.26';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.26',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Upload Fix & Cache Refresh',
+    summary: 'Fixed the File Summarizer upload so files are shown immediately on selection. Removed Quick Play lobby section. Updated PWA cache.',
+    changes: [
+      'File Summarizer: Fixed upload — file name, size, and type now show instantly when selected (no blank screen).',
+      'File Summarizer: Decoupled file selection from backend call — text extraction now happens only when a summarize button is clicked.',
+      'File Summarizer: Added .doc and .ppt file support on top of .docx, .pptx, .pdf.',
+      'Lobby: Removed redundant Quick Play Games section (dedicated Games page already exists).',
+      'Cache/PWA: Updated service worker cache version to invalidate stale files for all users.',
+    ]
+  },
   {
     version: '1.5.25',
     date: 'April 27, 2026',

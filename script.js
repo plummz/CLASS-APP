@@ -310,6 +310,7 @@ const APP_CHANGELOG = [
       'Candy Match: Fixed lollipop stick rendering — no longer shows on specials that display as type 1.',
     ]
   },
+  {
     version: '1.5.11',
     date: 'April 26, 2026',
     title: 'Special Candies, Audio Manager & Royale AI Overhaul',

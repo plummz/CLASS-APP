@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.13-20260427-candy-overlap-royale-fix';
+const CACHE_VERSION = 'v1.5.16-20260427-royale-css-crate-badge-blood-btn';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -19,9 +19,9 @@ const ASSETS = [
   '/features/folders/folders.css?v=1',
   '/features/gallery/gallery.css?v=1',
   '/features/pokemon/pokemon.css?v=3',
-  '/features/royale/royale.css?v=14',
+  '/features/royale/royale.css?v=15',
   '/features/pacman/pacman.css?v=3',
-  '/features/candy/candy.css?v=10',
+  '/features/candy/candy.css?v=11',
   '/script.js?v=60',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
@@ -40,9 +40,9 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=16',
+  '/features/royale/royale.js?v=19',
   '/features/pacman/pacman.js?v=3',
-  '/features/candy/candy.js?v=9',
+  '/features/candy/candy.js?v=10',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

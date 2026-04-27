@@ -231,8 +231,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.27';
+const APP_VERSION = '1.5.28';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.28',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Deep Debug & Full Fix',
+    summary: 'Fixed root cause of "Server error processing file" — AI summarize call was unguarded. Fully separated extraction and summarization error paths with granular logging.',
+    changes: [
+      'File Summarizer: Removed dangerous shared try/catch — extraction and AI summarization now have separate error handlers.',
+      'File Summarizer: AI errors now return friendly message instead of generic server error.',
+      'File Summarizer: Removed redundant express.json() from route middleware (already global).',
+      'File Summarizer: Added comprehensive server-side logging: file name, size, MIME, buffer length, ext, parser used, char count.',
+      'File Summarizer: Full error stack trace logged on parse failure for easier debugging.',
+      'File Summarizer: Buffer existence check added before parsing — detects if multer failed to receive the file.',
+    ]
+  },
   {
     version: '1.5.27',
     date: 'April 27, 2026',

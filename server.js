@@ -1423,81 +1423,107 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
 });
 
 /* ── File Summarizer Endpoint ────────────────────────────── */
-app.post('/api/summarize-file', [upload.single('file'), express.json()], async (req, res) => {
-  try {
-    if (req.file) {
-      const fileName = req.file.originalname;
-      const fileSize = req.file.size;
-      const ext = path.extname(fileName).toLowerCase();
+app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
+  const hasFile = !!req.file;
+  const hasText = !!(req.body && req.body.text);
+  const ctype   = (req.headers['content-type'] || '').split(';')[0].trim();
+  console.log(`[FileSummarizer] HIT | hasFile:${hasFile} hasText:${hasText} ctype:"${ctype}"`);
 
-      console.log(`[FileSummarizer] Upload: ${fileName} | Size: ${(fileSize / 1024).toFixed(2)} KB | Type: ${ext}`);
+  // ── PATH 1: File upload → extract text ───────────────────
+  if (hasFile) {
+    const fileName  = req.file.originalname || 'unknown';
+    const fileSize  = req.file.size || 0;
+    const mimeType  = req.file.mimetype || 'unknown';
+    const bufferLen = req.file.buffer ? req.file.buffer.length : 0;
+    const ext       = path.extname(fileName).toLowerCase();
 
-      let extractedText = '';
-      let parser = '';
+    console.log(`[FileSummarizer] File: "${fileName}" | ${(fileSize/1024).toFixed(1)} KB | mime: ${mimeType} | buffer: ${bufferLen} bytes | ext: "${ext}"`);
 
-      try {
-        if (ext === '.pdf') {
-          parser = 'pdf-parse';
-          const data = await pdfParse(req.file.buffer);
-          extractedText = data.text;
-        } else if (ext === '.docx' || ext === '.doc') {
-          parser = 'mammoth';
-          const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-          extractedText = result.value;
-        } else if (ext === '.pptx') {
-          parser = 'adm-zip (PPTX)';
-          const zip = new AdmZip(req.file.buffer);
-          const slideFiles = zip.getEntries().filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'));
-          let text = '';
-          for (const file of slideFiles) {
-            const content = zip.readAsText(file);
-            const matches = content.match(/<a:t>([^<]+)<\/a:t>/g);
-            if (matches) {
-              text += matches.map(m => m.replace(/<\/?a:t>/g, '')).join(' ') + '\n';
-            }
-          }
-          extractedText = text;
-        } else if (ext === '.ppt') {
-          return res.status(400).json({ error: 'PowerPoint 97-2003 (.ppt) format is not supported. Please use .pptx format instead.' });
-        } else {
-          return res.status(400).json({ error: `File type ${ext} is not supported. Please use PDF, DOCX, or PPTX.` });
-        }
-
-        if (!extractedText || !extractedText.trim()) {
-          console.log(`[FileSummarizer] No text extracted from ${fileName} (${parser})`);
-          return res.status(400).json({ error: 'No readable text found in this file. It may be empty, image-based, or corrupted.' });
-        }
-
-        const trimmed = extractedText.trim().slice(0, 50000);
-        console.log(`[FileSummarizer] SUCCESS: ${fileName} | Parser: ${parser} | Extracted: ${trimmed.length} chars`);
-        return res.json({ text: trimmed, type: ext });
-      } catch (parseError) {
-        console.error(`[FileSummarizer] PARSE ERROR with ${parser}:`, parseError.message);
-        return res.status(400).json({ error: `Failed to parse ${ext} file. File may be corrupted or in an unsupported format.` });
-      }
+    if (!req.file.buffer || bufferLen === 0) {
+      console.error('[FileSummarizer] Buffer missing or empty — multer may not have received the file');
+      return res.status(400).json({ error: 'File data was not received by the server. Please try again.' });
     }
 
-    if (req.body && req.body.text) {
-      const { text, type } = req.body;
-      let prompt = '';
-      if (type === 'short') prompt = 'Provide a short, concise summary of the following text:';
-      else if (type === 'detailed') prompt = 'Provide detailed study notes based on the following text. Use bullet points and clear headings:';
-      else if (type === 'key') prompt = 'Extract the key points and main ideas from the following text:';
-      else if (type === 'terms') prompt = 'Extract a list of important terms or vocabulary from the following text, along with short definitions:';
-      else if (type === 'quiz') prompt = 'Generate 5 multiple-choice quiz questions based on the following text to test comprehension. Include answers at the bottom:';
-      else return res.status(400).json({ error: 'Invalid summary type.' });
+    try {
+      let extractedText = '';
 
+      if (ext === '.pdf') {
+        console.log('[FileSummarizer] Parsing PDF with pdf-parse…');
+        const data = await pdfParse(req.file.buffer);
+        extractedText = data.text || '';
+        console.log(`[FileSummarizer] PDF parsed: ${extractedText.length} chars`);
+      } else if (ext === '.docx' || ext === '.doc') {
+        console.log('[FileSummarizer] Parsing DOCX/DOC with mammoth…');
+        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+        extractedText = result.value || '';
+        console.log(`[FileSummarizer] DOCX/DOC parsed: ${extractedText.length} chars`);
+      } else if (ext === '.pptx') {
+        console.log('[FileSummarizer] Parsing PPTX with adm-zip…');
+        const zip = new AdmZip(req.file.buffer);
+        const slideFiles = zip.getEntries().filter(e =>
+          e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml')
+        );
+        console.log(`[FileSummarizer] PPTX slides found: ${slideFiles.length}`);
+        let text = '';
+        for (const file of slideFiles) {
+          const content = zip.readAsText(file);
+          const matches = content.match(/<a:t>([^<]+)<\/a:t>/g);
+          if (matches) text += matches.map(m => m.replace(/<\/?a:t>/g, '')).join(' ') + '\n';
+        }
+        extractedText = text;
+        console.log(`[FileSummarizer] PPTX parsed: ${extractedText.length} chars`);
+      } else if (ext === '.ppt') {
+        return res.status(400).json({ error: 'PowerPoint 97-2003 (.ppt) is not supported. Please convert your file to .pptx and try again.' });
+      } else {
+        return res.status(400).json({ error: `"${ext}" files are not supported. Please upload PDF, DOCX, or PPTX.` });
+      }
+
+      const trimmed = extractedText.trim();
+      if (!trimmed) {
+        console.log(`[FileSummarizer] No text found in "${fileName}" — possibly image-based or empty`);
+        return res.status(400).json({ error: 'No readable text found in this file. It may be image-based, empty, or password-protected.' });
+      }
+
+      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" → ${trimmed.length} chars`);
+      return res.json({ text: trimmed.slice(0, 50000), type: ext });
+
+    } catch (parseErr) {
+      console.error(`[FileSummarizer] PARSE ERROR for "${fileName}":`, parseErr.message);
+      console.error(parseErr.stack);
+      return res.status(400).json({ error: `Could not read "${fileName}". The file may be corrupted, password-protected, or in an incompatible format.` });
+    }
+  }
+
+  // ── PATH 2: Text → AI summary ─────────────────────────────
+  if (hasText) {
+    const { text, type } = req.body;
+    console.log(`[FileSummarizer] Summarize | type: "${type}" | text: ${text ? text.length : 0} chars`);
+
+    if (!text || !text.trim()) return res.status(400).json({ error: 'No text provided to summarize.' });
+
+    const prompts = {
+      short:    'Provide a short, concise summary of the following text:',
+      detailed: 'Provide detailed study notes based on the following text. Use bullet points and clear headings:',
+      key:      'Extract the key points and main ideas from the following text:',
+      terms:    'Extract a list of important terms or vocabulary from the following text, along with short definitions:',
+      quiz:     'Generate 5 multiple-choice quiz questions based on the following text to test comprehension. Include answers at the bottom:',
+    };
+    const prompt = prompts[type];
+    if (!prompt) return res.status(400).json({ error: 'Invalid summary type. Must be: short, detailed, key, terms, or quiz.' });
+
+    try {
       const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text}` }];
       const result = await tryWithFallback('gemini', messages);
-      console.log(`[FileSummarizer] Generated ${type} summary (${result.text.length} chars)`);
+      console.log(`[FileSummarizer] AI summary OK | type: ${type} | ${result.text.length} chars`);
       return res.json({ summary: result.text });
+    } catch (aiErr) {
+      console.error('[FileSummarizer] AI ERROR:', aiErr.message);
+      return res.status(500).json({ error: 'Could not generate a summary. The AI service may be temporarily unavailable. Please try again in a moment.' });
     }
-
-    return res.status(400).json({ error: 'Invalid request format.' });
-  } catch (error) {
-    console.error('[FileSummarizer] CRITICAL ERROR:', error.message);
-    return res.status(500).json({ error: 'Server error processing file. Please try again or contact support.' });
   }
+
+  console.log('[FileSummarizer] Invalid request — no file, no text body');
+  return res.status(400).json({ error: 'Invalid request. Please upload a file to summarize.' });
 });
 
 /* ── AI Endpoints ────────────────────────────────────────── */

@@ -231,8 +231,49 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.26';
+const APP_VERSION = '1.5.31';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.31',
+    date: 'April 27, 2026',
+    title: 'Intelligent AI Fallback System',
+    summary: 'Upgraded File Summarizer with three-tier AI fallback: detects Gemini quota errors and intelligently switches to Groq Llama 3 8B, with local summarizer as final backup.',
+    changes: [
+      'File Summarizer: Implemented quota-aware AI provider switching — detects when Gemini hits quota and immediately uses Groq without retrying other Gemini models.',
+      'AI Service: Added Groq Llama 3 8B (llama3-8b-8192) as primary fallback provider with full error handling.',
+      'AI Service: Implemented local summarizer as final-tier fallback — extracts key sentences when all cloud AI providers fail.',
+      'Security: GROQ_API_KEY remains backend-only; never exposed to frontend.',
+      'Reliability: Three-tier cascade ensures summaries always generate, even during service outages or quota exhaustion.',
+    ]
+  },
+  {
+    version: '1.5.28',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Deep Debug & Full Fix',
+    summary: 'Fixed root cause of "Server error processing file" — AI summarize call was unguarded. Fully separated extraction and summarization error paths with granular logging.',
+    changes: [
+      'File Summarizer: Removed dangerous shared try/catch — extraction and AI summarization now have separate error handlers.',
+      'File Summarizer: AI errors now return friendly message instead of generic server error.',
+      'File Summarizer: Removed redundant express.json() from route middleware (already global).',
+      'File Summarizer: Added comprehensive server-side logging: file name, size, MIME, buffer length, ext, parser used, char count.',
+      'File Summarizer: Full error stack trace logged on parse failure for easier debugging.',
+      'File Summarizer: Buffer existence check added before parsing — detects if multer failed to receive the file.',
+    ]
+  },
+  {
+    version: '1.5.27',
+    date: 'April 27, 2026',
+    title: 'File Summarizer Backend Fix & Logging',
+    summary: 'Fixed missing parsing libraries, improved error messages, added .doc file support, and backend logging for uploads.',
+    changes: [
+      'File Summarizer: Fixed "Server missing parsing libraries" error — pdf-parse, mammoth, adm-zip now properly installed.',
+      'File Summarizer: Added .doc (Office 97-2003) file support via mammoth parser.',
+      'File Summarizer: Backend now logs file uploads with size, type, parser used, and success/failure results.',
+      'File Summarizer: User-friendly error messages — removed technical "run npm install" errors.',
+      'Backend: Improved error handling and parsing fallback for corrupted or empty files.',
+      'File Summarizer: Clear message when .ppt (legacy PowerPoint) files are uploaded (only .pptx supported).'
+    ]
+  },
   {
     version: '1.5.26',
     date: 'April 27, 2026',

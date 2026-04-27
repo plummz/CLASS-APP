@@ -18,6 +18,9 @@ const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const helmet   = require('helmet');
+const pdfParse = require('pdf-parse');
+const mammoth  = require('mammoth');
+const AdmZip   = require('adm-zip');
 
 let webpush = null;
 try {
@@ -1423,40 +1426,56 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
 app.post('/api/summarize-file', [upload.single('file'), express.json()], async (req, res) => {
   try {
     if (req.file) {
-      const ext = path.extname(req.file.originalname).toLowerCase();
+      const fileName = req.file.originalname;
+      const fileSize = req.file.size;
+      const ext = path.extname(fileName).toLowerCase();
+
+      console.log(`[FileSummarizer] Upload: ${fileName} | Size: ${(fileSize / 1024).toFixed(2)} KB | Type: ${ext}`);
+
       let extractedText = '';
+      let parser = '';
 
-      if (ext === '.pdf') {
-        const pdfParse = require('pdf-parse');
-        const data = await pdfParse(req.file.buffer);
-        extractedText = data.text;
-      } else if (ext === '.docx') {
-        const mammoth = require('mammoth');
-        const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-        extractedText = result.value;
-      } else if (ext === '.pptx') {
-        const AdmZip = require('adm-zip');
-        const zip = new AdmZip(req.file.buffer);
-        const slideFiles = zip.getEntries().filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'));
-        let text = '';
-        for (const file of slideFiles) {
-          const content = zip.readAsText(file);
-          const matches = content.match(/<a:t>([^<]+)<\/a:t>/g);
-          if (matches) {
-            text += matches.map(m => m.replace(/<\/?a:t>/g, '')).join(' ') + '\n';
+      try {
+        if (ext === '.pdf') {
+          parser = 'pdf-parse';
+          const data = await pdfParse(req.file.buffer);
+          extractedText = data.text;
+        } else if (ext === '.docx' || ext === '.doc') {
+          parser = 'mammoth';
+          const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+          extractedText = result.value;
+        } else if (ext === '.pptx') {
+          parser = 'adm-zip (PPTX)';
+          const zip = new AdmZip(req.file.buffer);
+          const slideFiles = zip.getEntries().filter(e => e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml'));
+          let text = '';
+          for (const file of slideFiles) {
+            const content = zip.readAsText(file);
+            const matches = content.match(/<a:t>([^<]+)<\/a:t>/g);
+            if (matches) {
+              text += matches.map(m => m.replace(/<\/?a:t>/g, '')).join(' ') + '\n';
+            }
           }
+          extractedText = text;
+        } else if (ext === '.ppt') {
+          return res.status(400).json({ error: 'PowerPoint 97-2003 (.ppt) format is not supported. Please use .pptx format instead.' });
+        } else {
+          return res.status(400).json({ error: `File type ${ext} is not supported. Please use PDF, DOCX, or PPTX.` });
         }
-        extractedText = text;
-      } else {
-        return res.status(400).json({ error: 'Unsupported file type.' });
-      }
 
-      if (!extractedText || !extractedText.trim()) {
-        return res.status(400).json({ error: 'No readable text found in file.' });
-      }
+        if (!extractedText || !extractedText.trim()) {
+          console.log(`[FileSummarizer] No text extracted from ${fileName} (${parser})`);
+          return res.status(400).json({ error: 'No readable text found in this file. It may be empty, image-based, or corrupted.' });
+        }
 
-      return res.json({ text: extractedText.trim().slice(0, 50000), type: ext }); // cap at 50K chars to avoid token limits
-    } 
+        const trimmed = extractedText.trim().slice(0, 50000);
+        console.log(`[FileSummarizer] SUCCESS: ${fileName} | Parser: ${parser} | Extracted: ${trimmed.length} chars`);
+        return res.json({ text: trimmed, type: ext });
+      } catch (parseError) {
+        console.error(`[FileSummarizer] PARSE ERROR with ${parser}:`, parseError.message);
+        return res.status(400).json({ error: `Failed to parse ${ext} file. File may be corrupted or in an unsupported format.` });
+      }
+    }
 
     if (req.body && req.body.text) {
       const { text, type } = req.body;
@@ -1470,16 +1489,14 @@ app.post('/api/summarize-file', [upload.single('file'), express.json()], async (
 
       const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text}` }];
       const result = await tryWithFallback('gemini', messages);
+      console.log(`[FileSummarizer] Generated ${type} summary (${result.text.length} chars)`);
       return res.json({ summary: result.text });
     }
 
     return res.status(400).json({ error: 'Invalid request format.' });
   } catch (error) {
-    console.error('[Summarizer]', error);
-    if (error.code === 'MODULE_NOT_FOUND') {
-      return res.status(500).json({ error: 'Server missing parsing libraries. Contact administrator to run npm install.' });
-    }
-    return res.status(500).json({ error: error.message || 'File processing failed' });
+    console.error('[FileSummarizer] CRITICAL ERROR:', error.message);
+    return res.status(500).json({ error: 'Server error processing file. Please try again or contact support.' });
   }
 });
 

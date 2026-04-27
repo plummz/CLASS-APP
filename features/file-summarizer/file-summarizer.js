@@ -14,16 +14,23 @@
     terms:   document.getElementById('fs-btn-terms'),
     quiz:    document.getElementById('fs-btn-quiz'),
   };
+  const actionBtns = Object.values(btns);
   let extractedText = '';
   let fileType = '';
 
-  function resetAll() {
+  // Initial state: disable action buttons
+  actionBtns.forEach(b => b.disabled = true);
+
+  function resetAll(keepFile = false) {
     summaryEl.value = '';
     extractedText = '';
     fileType = '';
-    fileInput.value = '';
-    status.textContent = '';
-    errorBox.textContent = '';
+    if (!keepFile) {
+      fileInput.value = '';
+      status.textContent = '';
+      errorBox.textContent = '';
+      actionBtns.forEach(b => b.disabled = true);
+    }
     summarySection.style.display = 'none';
   }
 
@@ -38,18 +45,24 @@
   }
 
   fileInput.addEventListener('change', async function(e) {
-    resetAll();
     const file = fileInput.files[0];
+    resetAll(true); // reset UI but keep file in input
     if (!file) return;
-    if (!/\.(pdf|docx|pptx)$/i.test(file.name)) {
+    
+    // UI feedback for file selection
+    setStatus(`Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+    if (!/\.(pdf|doc|docx|ppt|pptx)$/i.test(file.name)) {
       setError('Unsupported file type. Only PDF, DOCX, and PPTX are allowed.');
+      fileInput.value = '';
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
       setError('File too large. Max 8 MB allowed.');
+      fileInput.value = '';
       return;
     }
-    setStatus('Extracting text...');
+    setStatus(`Extracting text from ${file.name}...`);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -59,10 +72,12 @@
       extractedText = data.text || '';
       fileType = data.type || '';
       if (!extractedText) throw new Error('No readable text found in file.');
-      setStatus('File loaded. Choose a summary type.');
+      setStatus(`File "${file.name}" loaded. Choose a summary type below.`);
+      actionBtns.forEach(b => b.disabled = false);
       summarySection.style.display = 'block';
     } catch(e) {
       setError(e.message);
+      actionBtns.forEach(b => b.disabled = true);
       summarySection.style.display = 'none';
     }
   });
@@ -81,7 +96,32 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Summary failed');
       summaryEl.value = data.summary || '';
-      setStatus('Summary ready.');
+      
+      // Save to Notepad / Reviewers in Supabase
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+      const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+
+      if (client && user?.username) {
+        try {
+          setStatus('Saving to private Notepad...');
+          const { error } = await client.from('reviewers').insert([{
+            user_id: user.username,
+            title: `${fileInput.files[0].name} (${type})`,
+            original_file_name: fileInput.files[0].name,
+            summary_content: data.summary,
+            summary_type: type,
+            contributor_name: user.username,
+            is_shared: false
+          }]);
+          if (error) console.error('Failed to save reviewer', error);
+          else setStatus('Summary ready & saved to Notepad!');
+        } catch(err) {
+          console.error(err);
+          setStatus('Summary ready.');
+        }
+      } else {
+        setStatus('Summary ready.');
+      }
     } catch(e) {
       setError(e.message);
     }

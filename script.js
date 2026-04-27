@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.24';
+const APP_VERSION = '1.5.25';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.25',
+    date: 'April 27, 2026',
+    title: 'Integrated Reviewers System & Notepad Sync',
+    summary: 'A major upgrade to the File Summarizer and Notepad. You can now save summaries to a private cloud Notepad, share them to a public Reviewer feed, and view them in a beautiful bond-paper style.',
+    changes: [
+      'File Summarizer: Fixed upload bug and added support for more formats.',
+      'Notepad: Now syncs with Supabase. Private AI summaries are saved automatically to your account.',
+      'Public Reviewers: New page to discover notes shared by other students.',
+      'Viewer: Added a dedicated, aesthetic "bond-paper" viewer for reading summaries comfortably on any device.',
+      'Security: Implemented Row Level Security (RLS) to ensure private notes remain private.'
+    ]
+  },
   {
     version: '1.5.24',
     date: 'April 27, 2026',
@@ -3317,6 +3330,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'notepad' && typeof notepadModule !== 'undefined') notepadModule.init();
   if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') calculatorModule.init();
   if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') personalizationModule.init();
+  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') reviewersModule.init();
   if (pageName === 'diagnostics') loadDiagnostics();
   // Games hub: draw royale preview canvas
   if (pageName === 'games') drawRoyalePreviewCanvas();

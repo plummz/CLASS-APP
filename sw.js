@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'v1.5.37-20260428-phase5-quiz';
+const CACHE_VERSION = 'v1.5.38-20260428-phase6-semester';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=85',
-  '/style.css?v=31',
+  '/style.css?v=32',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -24,7 +24,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=3',
   '/features/reviewers/reviewers.css?v=3',
-  '/script.js?v=79',
+  '/script.js?v=80',
   '/features/file-summarizer/file-summarizer.js?v=7',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/reviewers/reviewers.js?v=6',

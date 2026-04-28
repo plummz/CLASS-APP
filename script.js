@@ -171,23 +171,45 @@ function buildSubjectCards(gridId, subjects) {
   if (!grid) return;
   grid.innerHTML = '';
 
+  const sectionLabel = grid.parentElement?.querySelector('.section-label');
+
   if (subjects.length === 0) {
-    grid.innerHTML = '<p style="color:rgba(255,255,255,0.35);text-align:center;width:100%;margin-top:40px;font-size:13px;letter-spacing:1px;">No subjects added yet — they will appear here once added.</p>';
+    if (sectionLabel) sectionLabel.style.display = 'none';
+    grid.innerHTML = `
+      <div class="semester-empty-state">
+        <div class="semester-empty-icon">📚</div>
+        <p class="semester-empty-text">No subjects have been added for this semester yet.</p>
+        <p class="semester-empty-sub">You can still summarize files and generate quizzes for any subject:</p>
+        <button class="semester-empty-btn" onclick="goToPage('file-summarizer')">📄 Go to File Summarizer →</button>
+      </div>
+    `;
     return;
   }
 
+  if (sectionLabel) sectionLabel.style.display = '';
+
+  // Quick action bar at the top of the grid
+  const bar = document.createElement('div');
+  bar.className = 'semester-shortcut';
+  bar.innerHTML = `
+    <span class="semester-shortcut-label">Quick Actions</span>
+    <button class="semester-shortcut-btn" onclick="goToPage('file-summarizer')">📄 Summarize a File →</button>
+  `;
+  grid.appendChild(bar);
+
   subjects.forEach((subject) => {
+    const safeCode = subject.code.replace(/'/g, "\\'");
     const card = document.createElement('div');
     card.className = 'subject-card';
-    card.style.cursor = 'pointer';
     card.onclick = () => window.openFolderExplorer(subject.code);
- 
+
     card.innerHTML = `
       <span class="card-icon">${subject.icon}</span>
       <div class="card-subject">${subject.code}</div>
       <div class="card-teacher">${subject.teacher || 'No teacher assigned'}</div>
-      <div class="card-view-label">
-        View Folders 📂
+      <div class="card-actions">
+        <button class="card-action-btn card-action-folders" onclick="event.stopPropagation(); window.openFolderExplorer('${safeCode}')">📂 Folders</button>
+        <button class="card-action-btn card-action-summarize" onclick="event.stopPropagation(); goToPage('file-summarizer')">📄 Summarize</button>
       </div>
     `;
     grid.appendChild(card);
@@ -231,8 +253,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.37';
+const APP_VERSION = '1.5.38';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.38',
+    date: 'April 28, 2026',
+    title: 'Phase 6 — Semester & Subject Page Improvements',
+    summary: 'Subject cards now have a direct "Summarize" shortcut, empty Year 2–4 semesters show a helpful placeholder instead of blank space, and a quick-action bar sits above subjects for fast navigation.',
+    changes: [
+      'Feature: Each subject card now has two action buttons — "📂 Folders" (opens folder explorer) and "📄 Summarize" (goes to File Summarizer).',
+      'Feature: Quick-action bar added at the top of every subject grid with a direct "Summarize a File →" shortcut.',
+      'UX: Year 2, 3, and 4 empty semester pages now show a proper empty state with icon, explanation, and a File Summarizer shortcut button instead of blank gray space.',
+      'UX: The "CLICK A SUBJECT TO VIEW FOLDERS" section label is automatically hidden when a semester has no subjects.',
+    ]
+  },
   {
     version: '1.5.37',
     date: 'April 28, 2026',

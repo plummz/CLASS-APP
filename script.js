@@ -253,8 +253,25 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.40';
+const APP_VERSION = '1.5.41';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.41',
+    date: 'April 28, 2026',
+    title: 'Phase 3 — Notepad Cloud Sync',
+    summary: 'Notepad now syncs to Supabase with offline fallback. Real-time sync status indicator, first-login import prompt for local notes, and shared note warnings.',
+    changes: [
+      'Feature: Notepad now syncs to cloud (Supabase user_notes table) — notes persist across devices.',
+      'Feature: Sync status indicator in notepad header shows "☁️ Synced", "⏱️ Syncing…", or "⚠️ Offline (cached)".',
+      'Feature: First-login import prompt asks to sync existing localStorage notes to cloud on first cloud login.',
+      'Feature: Shared notes show "⚠️ Shared to Reviewers" warning — local edits won\'t update the public version.',
+      'Feature: Offline fallback banner shows "Log in to sync across devices" when offline or not logged in.',
+      'Feature: Automatic sync on online/offline transitions — reconnection triggers background sync.',
+      'Backend: Added migration 011_user_notes_table.sql with RLS policies (user-scoped access).',
+      'UX: Notes load from cloud first, fall back to localStorage if offline or not logged in.',
+      'UX: Delete and share operations sync to cloud in background.',
+    ]
+  },
   {
     version: '1.5.40',
     date: 'April 28, 2026',

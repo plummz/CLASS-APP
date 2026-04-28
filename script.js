@@ -6397,7 +6397,7 @@ function loadTrendingReviewers() {
       }
 
       trendingContainer.innerHTML = data.map(r => `
-        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer('${String(r.id).replace(/'/g, '\\'')}')">
+        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer(${JSON.stringify(String(r.id))})">
           <div class="home-trending-title">${escapeHTML(r.title || 'Untitled')}</div>
           <div class="home-trending-by">By ${escapeHTML(r.contributor_name || 'Anonymous')}</div>
         </div>
@@ -6409,39 +6409,18 @@ function loadTrendingReviewers() {
     });
 }
 
-// Initialize on announcement page load
-const pageConfigAnnouncement = pageConfig['announcement'] || {};
-const originalAnnouncementInit = window.announcementInit;
-window.announcementInit = function() {
-  if (originalAnnouncementInit) originalAnnouncementInit();
-  setTimeout(initHomeDashboard, 50);
+// Re-init dashboard whenever user navigates to announcement page
+const _origGoToPageForDash = window.goToPage;
+window.goToPage = function(pageName) {
+  const result = _origGoToPageForDash.call(this, pageName);
+  if (pageName === 'announcement') setTimeout(initHomeDashboard, 100);
+  return result;
 };
 
-// Also initialize on page navigation to announcement
-document.addEventListener('goToPageEvent', (e) => {
-  if (e.detail?.page === 'announcement') {
-    setTimeout(initHomeDashboard, 100);
-  }
+// Also init on first load if already on announcement
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentPage === 'announcement') setTimeout(initHomeDashboard, 200);
 });
-
-// Hook into goToPage for announcement
-const originalGoToPageAnnounce = window.goToPage;
-if (typeof originalGoToPageAnnounce === 'function') {
-  window.goToPage = function(pageName) {
-    const result = originalGoToPageAnnounce.call(this, pageName);
-    if (pageName === 'announcement') {
-      setTimeout(initHomeDashboard, 100);
-    }
-    return result;
-  };
-}
-
-// Initialize on page load if already on announcement
-if (currentPage === 'announcement') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initHomeDashboard, 200);
-  });
-}
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */
 

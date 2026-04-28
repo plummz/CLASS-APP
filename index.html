@@ -1128,6 +1128,23 @@
 
   <!-- ── ANNOUNCEMENT / HOME ────────────────────────────────────── -->
   <div class="page active" id="page-announcement">
+    <!-- ── CLASS ANNOUNCEMENTS (shown first) ──────────────────────────────────── -->
+    <div class="shared-board announcement-board">
+      <div class="shared-board-header">
+        <div>
+          <div class="shared-board-kicker">Public Board</div>
+          <h1 class="shared-board-title">📢 Class Announcements</h1>
+          <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
+        </div>
+        <div class="board-toolbar">
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
+          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+        </div>
+      </div>
+      <div class="announcement-stats" id="announcement-stats"></div>
+      <div class="shared-board-feed" id="announcement-feed"></div>
+    </div>
+
     <!-- ── STUDY DASHBOARD SECTION ──────────────────────────────────── -->
     <div class="home-dashboard">
       <!-- Welcome Banner -->
@@ -1178,23 +1195,6 @@
       </div>
 
       <hr class="home-divider">
-    </div>
-
-    <!-- ── CLASS ANNOUNCEMENTS ──────────────────────────────────── -->
-    <div class="shared-board announcement-board">
-      <div class="shared-board-header">
-        <div>
-          <div class="shared-board-kicker">Public Board</div>
-          <h1 class="shared-board-title">📢 Class Announcements</h1>
-          <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
-        </div>
-        <div class="board-toolbar">
-          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
-          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
-        </div>
-      </div>
-      <div class="announcement-stats" id="announcement-stats"></div>
-      <div class="shared-board-feed" id="announcement-feed"></div>
     </div>
   </div>
 

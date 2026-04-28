@@ -4,6 +4,7 @@
 
 window.notepadModule = {
   notes: [],
+  searchQuery: '',
 
   init: function() {
     this.loadNotes();
@@ -38,6 +39,10 @@ window.notepadModule = {
           </div>
         </div>
 
+        <input type="search" id="notepad-search" class="notepad-search-input"
+          placeholder="🔍 Search notes…" oninput="notepadModule.onSearch(this.value)"
+          value="${this.escapeHtml(this.searchQuery)}">
+
         <div class="notepad-list" id="notepad-list">
           ${this.notes.length === 0 ? '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>' : ''}
         </div>
@@ -57,16 +62,30 @@ window.notepadModule = {
     this.renderNotes();
   },
 
+  onSearch: function(value) {
+    this.searchQuery = value;
+    this.renderNotes();
+  },
+
   renderNotes: function() {
     const listEl = document.getElementById('notepad-list');
     if (!listEl) return;
+
+    const q = (this.searchQuery || '').toLowerCase().trim();
+    const visible = this.notes
+      .map((note, index) => ({ note, index }))
+      .filter(({ note }) => !q || (note.title || '').toLowerCase().includes(q) || (note.content || '').toLowerCase().includes(q));
 
     if (this.notes.length === 0) {
       listEl.innerHTML = '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>';
       return;
     }
+    if (visible.length === 0) {
+      listEl.innerHTML = '<div class="notepad-empty"><p>No notes match your search.</p></div>';
+      return;
+    }
 
-    const notesHtml = this.notes.map((note, index) => {
+    const notesHtml = visible.map(({ note, index }) => {
       const date = new Date(note.date);
       const dateStr = date.toLocaleDateString('en-US', {
         month: 'short',
@@ -157,19 +176,23 @@ window.notepadModule = {
   },
 
   deleteNote: function(index) {
-    if (confirm('Delete this note?')) {
+    const doDelete = () => {
       this.notes.splice(index, 1);
       this.saveNotes();
       this.renderNotes();
-    }
+    };
+    if (window.customConfirm) { customConfirm('Delete this note?', doDelete); return; }
+    if (confirm('Delete this note?')) doDelete();
   },
 
   clearAll: function() {
-    if (confirm('Delete all notes? This cannot be undone.')) {
+    const doClear = () => {
       this.notes = [];
       this.saveNotes();
       this.renderNotes();
-    }
+    };
+    if (window.customConfirm) { customConfirm('Delete all notes? This cannot be undone.', doClear); return; }
+    if (confirm('Delete all notes? This cannot be undone.')) doClear();
   },
 
   shareNote: async function(index) {
@@ -215,7 +238,20 @@ window.notepadModule = {
         }
       } else {
         console.log('[Notepad] Note shared successfully:', record.title);
-        customAlert('✅ Shared to Reviewer page! Other users can now see it.');
+        if (window.showToast) {
+          showToast('✅ Shared to Reviewers!', 'success');
+          // Show a follow-up toast with a navigation link after brief delay
+          setTimeout(() => {
+            const t = document.createElement('div');
+            t.className = 'app-toast app-toast-info';
+            t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" onclick="window.goToPage&&goToPage(\'reviewers\')">View Reviewers →</span>';
+            document.body.appendChild(t);
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);
+          }, 400);
+        } else {
+          customAlert('✅ Shared to Reviewer page! Other users can now see it.');
+        }
       }
     } catch (ex) {
       console.error('[Notepad] Share exception:', ex);

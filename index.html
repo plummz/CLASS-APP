@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
   <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=3">
-  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=2">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=3">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -383,6 +383,7 @@
         <textarea class="fs-summary-output" id="fs-summary-output" readonly></textarea>
         <div class="fs-output-actions">
           <button class="fs-outline-btn" id="fs-copy-btn">📋 Copy</button>
+          <button class="fs-outline-btn" id="fs-share-btn">📤 Share to Reviewers</button>
           <button class="fs-outline-btn danger" id="fs-clear-btn">✕ Clear</button>
         </div>
       </div>
@@ -1506,7 +1507,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=76"></script>
+  <script src="script.js?v=77"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1528,12 +1529,12 @@
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=3" defer></script>
+  <script src="features/personal-tools/notepad.js?v=4" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=5" defer></script>
-  <script src="features/reviewers/reviewers.js?v=4" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=6" defer></script>
+  <script src="features/reviewers/reviewers.js?v=5" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

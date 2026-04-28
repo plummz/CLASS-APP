@@ -1,68 +1,204 @@
-# IMPORTANT
-Always read this file first before making any changes to the repository.
-
 # CLAUDE.md
 
-## Project Rule
-This is the CLASS-APP repository. Always read this file first before making changes.
+## ⚠️ CRITICAL RULE
+ALWAYS READ THIS FILE FIRST BEFORE MAKING ANY CHANGES.
 
-## Main Instruction
-Whenever you update, fix, or add any app feature, also update the in-app **Software Update** feature/page so users can see what changed.
+If this file is ignored, the implementation is considered INVALID.
 
-Every update entry should include:
-- Update title
+---
+
+## 📌 PROJECT CONTEXT
+This is the CLASS-APP repository.
+
+The system is:
+- Mobile-first (HIGH PRIORITY)
+- iOS + Android compatible
+- PWA-enabled
+- Performance-optimized
+- Clean, minimal, futuristic UI (glassmorphism)
+
+---
+
+## 🧠 CORE BEHAVIOR RULES (STRICT MODE)
+
+Claude MUST:
+
+- ❌ NOT blindly agree with prompts
+- ✅ Critically evaluate every request
+- ⚠️ Identify bad or risky suggestions and say why
+- ✅ Suggest safer or better alternatives
+- ✅ Detect current bugs AND predict potential bugs
+- ✅ Think about system-wide impact before editing
+
+If a request will:
+- break UX
+- introduce bugs
+- affect performance
+- conflict with architecture
+
+➡️ Claude MUST stop and explain before proceeding.
+
+---
+
+## 📱 iOS COMPATIBILITY (MANDATORY)
+
+Every change MUST be verified for iOS Safari behavior:
+
+Check for:
+- touch event compatibility (no hover-only interactions)
+- button click reliability
+- viewport issues (100vh bugs, safe areas)
+- font scaling issues
+- overflow scrolling issues
+- PWA install behavior on iOS
+- audio/video autoplay restrictions
+
+If something may break on iOS:
+➡️ Fix it OR explicitly flag it.
+
+---
+
+## 🔁 SOFTWARE UPDATE (MANDATORY AFTER EVERY CHANGE)
+
+After ANY feature, fix, or UI update:
+
+1. Update the **Software Update page**
+2. Include:
+
+- Update Title
 - Date
-- Short changelog
-- Fixed bugs
-- New features
-- Improved features
+- New Features
+- Improvements
+- Bug Fixes
 
-Do not skip the Software Update entry unless the change is only a comment or non-user-facing cleanup.
+❌ DO NOT SKIP THIS
+Even small UI fixes must be logged.
 
-## Code Safety Rules
-Before finishing any task:
-- Check if the code runs without syntax errors
-- Check for broken imports or missing files
-- Check for broken buttons, navigation, and event listeners
-- Check responsive layout on mobile
-- Check for duplicated UI/components
-- Check localStorage/database logic if affected
-- Check possible edge-case bugs, not only obvious bugs
+---
 
-## Do Not Break Working Features
-- Do not rewrite working systems unless necessary
-- Do not delete working code without explaining why
-- Prefer small, safe changes
-- Continue existing implementation instead of restarting
-- Preserve current UI/UX unless the task says to redesign it
+## 🧩 CACHE VERSION CONTROL (MANDATORY)
 
-## Development Flow
-For every task:
-1. Inspect existing files first
-2. Find the correct file before editing
-3. Reuse existing patterns
-4. Implement the requested change
-5. Test or reason through functionality
-6. Update Software Update feature
-7. Summarize files changed and possible risks
+After ANY change affecting frontend:
 
-## Token-Saving Context
-Assume these app priorities unless told otherwise:
-- Mobile-first
-- Android-friendly
-- PWA-friendly
-- Glassmorphism / premium futuristic UI
-- Avoid messy layouts
-- Keep features organized by folders
-- Keep HTML mostly in index.html when requested
-- Put feature CSS/JS in their own folders
-- Do not over-explain simple changes
-- Be direct and implementation-focused
+You MUST update version identifiers in:
 
-## Output Format
-After every coding task, respond with:
-- Files changed
-- What was added/fixed
-- Software Update entry added
-- Bugs checked
-- Remaining risks or limitations
+- `index.html`
+- `script.js`
+- `sw.js`
+
+This prevents stale cache issues.
+
+Failure to update cache = BROKEN DEPLOYMENT.
+
+---
+
+## 🛡️ CODE SAFETY CHECKLIST (RUN BEFORE FINISHING)
+
+Claude MUST verify:
+
+### Functionality
+- No syntax errors
+- No undefined variables
+- No broken imports
+- All functions properly called
+
+### UI/UX
+- Buttons clickable (especially mobile)
+- Navigation works across pages
+- No overlapping elements
+- No duplicated UI components
+
+### Cross-page impact
+- Changes do NOT break other pages
+- Shared components still work
+- Routes/navigation still valid
+
+### Data integrity
+- localStorage / database not corrupted
+- no unintended overwrites
+
+### Edge cases
+- empty inputs
+- rapid clicking
+- slow network
+- repeated actions
+
+---
+
+## 🚫 DO NOT BREAK WORKING SYSTEMS
+
+- Do NOT rewrite stable features without reason
+- Do NOT delete code unless justified
+- Do NOT introduce new frameworks unless necessary
+
+Always:
+✔ Extend existing logic
+✔ Patch instead of rebuild
+✔ Keep changes minimal and safe
+
+---
+
+## 🔍 DEVELOPMENT FLOW (STRICT)
+
+For EVERY task:
+
+1. Analyze request
+2. Evaluate if request is good or risky
+3. Inspect existing code
+4. Identify affected files/pages
+5. Implement safely
+6. Run mental test scenarios
+7. Check cross-page impact
+8. Update Software Update page
+9. Update cache versions
+10. Report results
+
+---
+
+## 🧱 ARCHITECTURE RULES
+
+- Keep HTML mainly in `index.html` (unless specified)
+- Separate feature logic into folders
+- Avoid clutter
+- Maintain clean structure
+
+---
+
+## ⚡ PERFORMANCE RULES
+
+- Avoid unnecessary re-renders
+- Avoid heavy loops on UI thread
+- Lazy load when possible
+- Optimize images/assets
+
+---
+
+## 📦 OUTPUT FORMAT (MANDATORY)
+
+After completing a task, ALWAYS respond with:
+
+### Files Changed
+(list of files)
+
+### What Was Done
+(clear and concise)
+
+### Software Update Entry
+(full entry content)
+
+### Bugs Checked
+(list checks performed)
+
+### Risks / Limitations
+(honest assessment)
+
+---
+
+## ❗ FINAL RULE
+
+If Claude is unsure:
+➡️ It MUST say it is unsure
+➡️ It MUST NOT hallucinate fixes
+➡️ It MUST suggest verification steps
+
+Accuracy > confidence.

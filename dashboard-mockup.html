@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CLASS APP — Dashboard</title>
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:          #08091a;
+  --bg2:         #0d0f26;
+  --bg3:         #111330;
+  --card:        rgba(255,255,255,0.045);
+  --card-hover:  rgba(255,255,255,0.08);
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.12);
+
+  --purple:      #9333ea;
+  --purple-l:    #a855f7;
+  --purple-d:    #6b21a8;
+  --blue:        #2563eb;
+  --blue-l:      #3b82f6;
+  --cyan:        #00d4ff;
+  --green:       #22c55e;
+  --green-l:     #4ade80;
+  --orange:      #f97316;
+  --rose:        #f43f5e;
+  --amber:       #f59e0b;
+
+  --txt:         #ffffff;
+  --txt2:        rgba(255,255,255,0.60);
+  --txt3:        rgba(255,255,255,0.35);
+
+  --glow-p:      0 0 22px rgba(147,51,234,0.45);
+  --glow-b:      0 0 18px rgba(37,99,235,0.40);
+  --glow-c:      0 0 18px rgba(0,212,255,0.35);
+  --glow-g:      0 0 18px rgba(34,197,94,0.35);
+
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 16px; }
+body {
+  background: var(--bg);
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+button { border: none; background: none; cursor: pointer; color: inherit; font: inherit; }
+
+/* App shell */
+.app {
+  max-width: 430px;
+  margin: 0 auto;
+  padding-bottom: 96px;
+  position: relative;
+}
+
+/* Tap feedback */
+.tap {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  cursor: pointer;
+}
+.tap:active { transform: scale(0.95); }
+
+/* ═══════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 56px 18px 14px;
+}
+
+.hdr-menu {
+  width: 44px; height: 44px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hdr-menu svg { opacity: 0.85; }
+
+.hdr-greet { flex: 1; min-width: 0; }
+.hdr-greet h1 {
+  font-size: 1.18rem; font-weight: 700; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hdr-greet h1 em { font-style: normal; color: var(--purple-l); }
+.hdr-greet p { font-size: 0.78rem; color: var(--txt2); margin-top: 2px; }
+
+.hdr-right { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+
+.notif-btn {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.notif-dot {
+  position: absolute; top: 7px; right: 7px;
+  width: 8px; height: 8px;
+  background: #ef4444; border-radius: 50%;
+  border: 1.5px solid var(--bg);
+}
+
+.avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  border: 2px solid rgba(147,51,234,0.55);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ═══════════════════════════════════════════════
+   CONTENT SCROLL
+═══════════════════════════════════════════════ */
+.content {
+  padding: 0 16px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADER
+═══════════════════════════════════════════════ */
+.sec-title {
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--txt3);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.sec-title::before {
+  content: '';
+  width: 3px; height: 13px;
+  background: var(--purple-l);
+  border-radius: 2px;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════
+   ANNOUNCEMENT CARD
+═══════════════════════════════════════════════ */
+.ann-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 15px 16px;
+  background: linear-gradient(135deg, rgba(88,28,135,0.28) 0%, rgba(30,20,70,0.55) 100%);
+  border: 1.5px solid rgba(147,51,234,0.45);
+  border-radius: var(--r-xl);
+  box-shadow: var(--glow-p), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.ann-card:active { transform: scale(0.97); box-shadow: 0 0 36px rgba(147,51,234,0.55); }
+
+.ann-icon-wrap {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(147,51,234,0.18);
+  border: 1px solid rgba(147,51,234,0.3);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.55rem;
+}
+
+.ann-body { flex: 1; min-width: 0; }
+.ann-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.ann-label {
+  font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.08em; color: var(--txt);
+}
+.ann-badge {
+  font-size: 0.58rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  background: rgba(147,51,234,0.3);
+  border: 1px solid rgba(167,139,250,0.4);
+  color: #c084fc; letter-spacing: 0.04em;
+}
+.ann-msg {
+  font-size: 0.83rem; color: var(--txt2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ann-tap { font-size: 0.72rem; color: var(--purple-l); margin-top: 3px; }
+
+.ann-arrow {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(147,51,234,0.18);
+  border: 1px solid rgba(147,51,234,0.35);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--purple-l); font-size: 1.2rem; font-weight: 300;
+}
+
+/* ═══════════════════════════════════════════════
+   QUICK SETTINGS
+═══════════════════════════════════════════════ */
+.qs-row {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 9px;
+}
+.qs-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 11px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.qs-card:active { background: var(--card-hover); transform: scale(0.93); }
+.qs-ico { font-size: 1.35rem; line-height: 1; }
+.qs-lbl { font-size: 0.67rem; font-weight: 600; color: var(--txt); text-align: center; white-space: nowrap; }
+.qs-val { font-size: 0.60rem; font-weight: 700; }
+.qs-on  { color: var(--green-l); }
+.qs-off { color: var(--txt3); }
+.qs-purple { color: var(--purple-l); }
+.qs-muted  { color: var(--txt3); }
+
+/* ═══════════════════════════════════════════════
+   2-COL FEATURE CARD GRID
+═══════════════════════════════════════════════ */
+.grid2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 11px; }
+
+.fc {
+  border-radius: var(--r-lg);
+  padding: 15px 13px 13px;
+  display: flex; flex-direction: column; gap: 9px;
+  border: 1px solid rgba(255,255,255,0.06);
+  position: relative; overflow: hidden; min-height: 96px;
+}
+.fc::after {
+  content: '›';
+  position: absolute; bottom: 12px; right: 13px;
+  font-size: 1.05rem; color: rgba(255,255,255,0.25);
+}
+.fc:active { transform: scale(0.95); }
+
+.fc-ico  { font-size: 1.75rem; line-height: 1; }
+.fc-name { font-size: 0.86rem; font-weight: 700; color: #fff; }
+.fc-desc { font-size: 0.72rem; color: rgba(255,255,255,0.50); margin-top: -4px; }
+
+/* gradient palettes */
+.gp  { background: linear-gradient(145deg,#1e0a40,#2d1b69); }   /* purple */
+.gb  { background: linear-gradient(145deg,#0a1a3a,#0f2e6e); }   /* blue */
+.gt  { background: linear-gradient(145deg,#042a2b,#085c4a); }   /* teal */
+.gg  { background: linear-gradient(145deg,#0a2d1a,#0d5030); }   /* green */
+.go  { background: linear-gradient(145deg,#2a1200,#4d2100); }   /* orange */
+.gr  { background: linear-gradient(145deg,#2a0a1a,#4d1030); }   /* rose */
+.gi  { background: linear-gradient(145deg,#1a1040,#2e2075); }   /* indigo */
+.gc  { background: linear-gradient(145deg,#041a2a,#084055); }   /* cyan */
+.gd  { background: linear-gradient(145deg,#131320,#1c1c30); }   /* dark */
+.ga  { background: linear-gradient(145deg,#201000,#3d1e00); }   /* amber */
+
+/* ═══════════════════════════════════════════════
+   MY CLASSES — 4-col grid
+═══════════════════════════════════════════════ */
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 9px; }
+
+.cc {
+  border-radius: var(--r-md);
+  padding: 13px 6px 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  border: 1px solid rgba(255,255,255,0.07);
+  text-align: center;
+}
+.cc:active { transform: scale(0.93); }
+.cc-ico  { font-size: 1.55rem; line-height: 1; }
+.cc-name { font-size: 0.73rem; font-weight: 700; color: #fff; }
+.cc-sub  { font-size: 0.62rem; color: rgba(255,255,255,0.45); }
+
+.cc1 { background: linear-gradient(145deg,#042a1e,#086040); border-color: rgba(0,180,100,0.18); }
+.cc2 { background: linear-gradient(145deg,#04142a,#083060); border-color: rgba(0,100,220,0.18); }
+.cc3 { background: linear-gradient(145deg,#2a1400,#4e2800); border-color: rgba(220,140,0,0.18); }
+.cc4 { background: linear-gradient(145deg,#2a0a1a,#521232); border-color: rgba(200,0,80,0.18); }
+
+/* ═══════════════════════════════════════════════
+   COMMUNITY — 2-col + full-width
+═══════════════════════════════════════════════ */
+.span2 { grid-column: span 2; }
+
+/* ═══════════════════════════════════════════════
+   TOOLS — horizontal scroll row
+═══════════════════════════════════════════════ */
+.tools-scroll {
+  display: flex; gap: 10px;
+  overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.tools-scroll::-webkit-scrollbar { display: none; }
+
+.tc {
+  flex-shrink: 0; width: 96px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 13px 8px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  text-align: center;
+}
+.tc:active { transform: scale(0.93); background: var(--card-hover); }
+.tc-ico  { font-size: 1.5rem; line-height: 1; }
+.tc-lbl  { font-size: 0.70rem; font-weight: 600; color: var(--txt); }
+.tc-desc { font-size: 0.60rem; color: var(--txt2); }
+
+/* ═══════════════════════════════════════════════
+   GAMES + SYSTEM SIDE-BY-SIDE
+═══════════════════════════════════════════════ */
+.gs-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  align-items: start;
+}
+.gs-row .fc { min-height: 90px; }
+
+/* ═══════════════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════════════ */
+.bnav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+  display: flex; justify-content: center;
+  padding: 6px 14px 20px;
+  background: linear-gradient(to top, var(--bg) 60%, transparent);
+  pointer-events: none;
+}
+.bnav-inner {
+  max-width: 430px; width: 100%;
+  background: rgba(12,14,34,0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-hi);
+  border-radius: 22px;
+  padding: 10px 6px 10px;
+  display: flex; justify-content: space-around; align-items: center;
+  pointer-events: all;
+}
+
+.ni {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 10px; border-radius: 13px;
+  min-width: 52px; cursor: pointer;
+  transition: background 0.18s;
+}
+.ni.active { background: rgba(147,51,234,0.18); }
+.ni-ico  { font-size: 1.35rem; line-height: 1; }
+.ni-lbl  { font-size: 0.62rem; font-weight: 600; color: var(--txt3); transition: color 0.18s; }
+.ni.active .ni-lbl { color: var(--purple-l); }
+
+.ni-center {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; margin-top: -26px;
+}
+.ni-center-btn {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--blue));
+  box-shadow: 0 0 26px rgba(124,58,237,0.65), 0 4px 14px rgba(0,0,0,0.45);
+  border: 2px solid rgba(167,139,250,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.45rem; line-height: 1;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.ni-center-btn:active { transform: scale(0.90); box-shadow: 0 0 40px rgba(124,58,237,0.85); }
+.ni-center-lbl { font-size: 0.60rem; font-weight: 700; color: rgba(255,255,255,0.75); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ─────────────────────────────── -->
+  <header class="header">
+    <div class="hdr-menu tap" onclick="toggleMenu()">
+      <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+        <rect width="20" height="2" rx="1" fill="white"/>
+        <rect y="6"  width="14" height="2" rx="1" fill="white"/>
+        <rect y="12" width="20" height="2" rx="1" fill="white"/>
+      </svg>
+    </div>
+
+    <div class="hdr-greet">
+      <h1 id="greeting">Good Morning, <em>Alex!</em> 👋</h1>
+      <p>Let's make today productive.</p>
+    </div>
+
+    <div class="hdr-right">
+      <div class="notif-btn tap" onclick="nav('notifications')">
+        <svg width="18" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <div class="notif-dot"></div>
+      </div>
+      <div class="avatar tap" onclick="nav('profile')">
+        <span>👤</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── CONTENT ────────────────────────────── -->
+  <main class="content">
+
+    <!-- ANNOUNCEMENT -->
+    <div class="ann-card tap" onclick="nav('announcement')">
+      <div class="ann-icon-wrap">📣</div>
+      <div class="ann-body">
+        <div class="ann-row">
+          <span class="ann-label">ANNOUNCEMENT</span>
+          <span class="ann-badge">NEW</span>
+        </div>
+        <p class="ann-msg" id="ann-msg">Midterm exams will start from 15 May.</p>
+        <p class="ann-tap">Tap to view full announcement</p>
+      </div>
+      <div class="ann-arrow">›</div>
+    </div>
+
+    <!-- QUICK SETTINGS -->
+    <div class="qs-row">
+      <div class="qs-card tap" id="qs-dm" onclick="toggleDark()">
+        <span class="qs-ico">🌙</span>
+        <span class="qs-lbl">Dark Mode</span>
+        <span class="qs-val qs-on" id="dm-val">On</span>
+      </div>
+      <div class="qs-card tap" onclick="cycleAccent()">
+        <span class="qs-ico" id="acc-ico">🟣</span>
+        <span class="qs-lbl">Accent</span>
+        <span class="qs-val qs-purple" id="acc-val">Purple</span>
+      </div>
+      <div class="qs-card tap" id="qs-notif" onclick="toggleNotif()">
+        <span class="qs-ico">🔔</span>
+        <span class="qs-lbl">Notifications</span>
+        <span class="qs-val qs-on" id="notif-val">On</span>
+      </div>
+      <div class="qs-card tap" onclick="checkUpdates()">
+        <span class="qs-ico">❕</span>
+        <span class="qs-lbl">Updates</span>
+        <span class="qs-val qs-muted" id="upd-val">No new</span>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div>
+      <div class="sec-title">Main</div>
+      <div class="grid2">
+        <div class="fc gp tap" onclick="nav('home')">
+          <span class="fc-ico">🏠</span>
+          <div><div class="fc-name">Home</div><div class="fc-desc">On to Home</div></div>
+        </div>
+        <div class="fc gb tap" onclick="nav('lobby')">
+          <span class="fc-ico">🏫</span>
+          <div><div class="fc-name">Lobby</div><div class="fc-desc">Enter Lobby</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEARNING -->
+    <div>
+      <div class="sec-title">Learning</div>
+      <div class="grid2">
+        <div class="fc gt tap" onclick="nav('file-summarizer')">
+          <span class="fc-ico">📄</span>
+          <div><div class="fc-name">File Summarizer</div><div class="fc-desc">Summarize any file</div></div>
+        </div>
+        <div class="fc gi tap" onclick="nav('reviewers')">
+          <span class="fc-ico">📋</span>
+          <div><div class="fc-name">Reviewers</div><div class="fc-desc">Study &amp; review</div></div>
+        </div>
+        <div class="fc gc tap" onclick="nav('ai')">
+          <span class="fc-ico">🤖</span>
+          <div><div class="fc-name">AI Assistants</div><div class="fc-desc">Smart AI help</div></div>
+        </div>
+        <div class="fc gr tap" onclick="nav('coding-lessons')">
+          <span class="fc-ico">📚</span>
+          <div><div class="fc-name">Coding Lessons</div><div class="fc-desc">Learn to code</div></div>
+        </div>
+        <div class="fc gd tap" onclick="nav('codelab')">
+          <span class="fc-ico">⌨️</span>
+          <div><div class="fc-name">Code Lab</div><div class="fc-desc">Practice coding</div></div>
+        </div>
+        <div class="fc ga tap" onclick="nav('output-ai')">
+          <span class="fc-ico">🖨️</span>
+          <div><div class="fc-name">Output-AI</div><div class="fc-desc">AI generated output</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY CLASSES -->
+    <div>
+      <div class="sec-title">My Classes</div>
+      <div class="grid4">
+        <div class="cc cc1 tap" onclick="nav('class/1')">
+          <span class="cc-ico">🎓</span>
+          <div class="cc-name">First Year</div>
+          <div class="cc-sub">24 Subjects</div>
+        </div>
+        <div class="cc cc2 tap" onclick="nav('class/2')">
+          <span class="cc-ico">🏛️</span>
+          <div class="cc-name">Second Year</div>
+          <div class="cc-sub">28 Subjects</div>
+        </div>
+        <div class="cc cc3 tap" onclick="nav('class/3')">
+          <span class="cc-ico">🚀</span>
+          <div class="cc-name">Third Year</div>
+          <div class="cc-sub">30 Subjects</div>
+        </div>
+        <div class="cc cc4 tap" onclick="nav('class/4')">
+          <span class="cc-ico">🏆</span>
+          <div class="cc-name">Fourth Year</div>
+          <div class="cc-sub">22 Subjects</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMMUNITY -->
+    <div>
+      <div class="sec-title">Community</div>
+      <div class="grid2">
+        <div class="fc gp tap" onclick="nav('chat')">
+          <span class="fc-ico">💬</span>
+          <div><div class="fc-name">Chat</div><div class="fc-desc">Join conversations</div></div>
+        </div>
+        <div class="fc gb tap" onclick="nav('users')">
+          <span class="fc-ico">👥</span>
+          <div><div class="fc-name">Users</div><div class="fc-desc">Connect with users</div></div>
+        </div>
+        <div class="fc gt tap span2" onclick="nav('social')">
+          <span class="fc-ico">📱</span>
+          <div><div class="fc-name">Social Media Pages</div><div class="fc-desc">Official pages</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLS -->
+    <div>
+      <div class="sec-title">Tools</div>
+      <div class="tools-scroll">
+        <div class="tc tap" onclick="nav('personal-tools')">
+          <span class="tc-ico">🔧</span>
+          <span class="tc-lbl">Personal Tools</span>
+          <span class="tc-desc">Useful utilities</span>
+        </div>
+        <div class="tc tap" onclick="nav('calendar')">
+          <span class="tc-ico">📅</span>
+          <span class="tc-lbl">Calendar</span>
+          <span class="tc-desc">Schedule &amp; events</span>
+        </div>
+        <div class="tc tap" onclick="nav('music')">
+          <span class="tc-ico">🎵</span>
+          <span class="tc-lbl">Music</span>
+          <span class="tc-desc">Listen &amp; relax</span>
+        </div>
+        <div class="tc tap" onclick="nav('gallery')">
+          <span class="tc-ico">📷</span>
+          <span class="tc-lbl">Event Pictures</span>
+          <span class="tc-desc">Event memories</span>
+        </div>
+        <div class="tc tap" onclick="nav('random-pictures')">
+          <span class="tc-ico">🖼️</span>
+          <span class="tc-lbl">Random Pictures</span>
+          <span class="tc-desc">Surprise images</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAMES + SYSTEM -->
+    <div class="gs-row">
+      <!-- GAMES -->
+      <div>
+        <div class="sec-title">Games</div>
+        <div class="fc gg tap" onclick="nav('games')">
+          <span class="fc-ico">🎮</span>
+          <div><div class="fc-name">Games</div><div class="fc-desc">Play &amp; enjoy</div></div>
+        </div>
+      </div>
+      <!-- SYSTEM -->
+      <div>
+        <div class="sec-title">System</div>
+        <div class="grid2">
+          <div class="fc gd tap" onclick="nav('diagnostics')">
+            <span class="fc-ico">🩺</span>
+            <div><div class="fc-name">Diagnostics</div><div class="fc-desc">System check</div></div>
+          </div>
+          <div class="fc gi tap" onclick="nav('admin')">
+            <span class="fc-ico">🛡️</span>
+            <div><div class="fc-name">Admin</div><div class="fc-desc">Admin panel</div></div>
+          </div>
+          <div class="fc gr tap span2" onclick="confirmLogout()">
+            <span class="fc-ico">🚪</span>
+            <div><div class="fc-name">Log Out</div><div class="fc-desc">Sign out</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bnav">
+    <div class="bnav-inner">
+      <div class="ni tap active" id="ni-home" onclick="setNav('home')">
+        <span class="ni-ico">🏠</span>
+        <span class="ni-lbl">Home</span>
+      </div>
+      <div class="ni tap" id="ni-notepad" onclick="setNav('notepad')">
+        <span class="ni-ico">📓</span>
+        <span class="ni-lbl">Notepad</span>
+      </div>
+      <div class="ni-center tap" onclick="setNav('ai-chat')">
+        <div class="ni-center-btn">🤖</div>
+        <span class="ni-center-lbl">AI Chat</span>
+      </div>
+      <div class="ni tap" id="ni-classes" onclick="setNav('classes')">
+        <span class="ni-ico">🎓</span>
+        <span class="ni-lbl">Classes</span>
+      </div>
+      <div class="ni tap" id="ni-profile" onclick="setNav('profile')">
+        <span class="ni-ico">👤</span>
+        <span class="ni-lbl">Profile</span>
+      </div>
+    </div>
+  </nav>
+
+  </main>
+</div>
+
+<script>
+/* ── Greeting ── */
+(function(){
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+  document.getElementById('greeting').innerHTML = `${g}, <em>Alex!</em> 👋`;
+})();
+
+/* ── Navigation ── */
+function nav(page){ console.log('Navigate →', page); }
+function toggleMenu(){ console.log('Menu toggled'); }
+
+/* ── Bottom nav active state ── */
+const navIds = ['home','notepad','classes','profile'];
+function setNav(tab){
+  navIds.forEach(id => {
+    const el = document.getElementById('ni-' + id);
+    if(el) el.classList.remove('active');
+  });
+  const el = document.getElementById('ni-' + tab);
+  if(el) el.classList.add('active');
+}
+
+/* ── Quick Settings ── */
+let darkOn = true;
+function toggleDark(){
+  darkOn = !darkOn;
+  const el = document.getElementById('dm-val');
+  el.textContent = darkOn ? 'On' : 'Off';
+  el.className = 'qs-val ' + (darkOn ? 'qs-on' : 'qs-off');
+}
+
+const accents = ['Purple','Blue','Green','Orange'];
+const accIco  = ['🟣','🔵','🟢','🟠'];
+let accIdx = 0;
+function cycleAccent(){
+  accIdx = (accIdx + 1) % accents.length;
+  document.getElementById('acc-val').textContent = accents[accIdx];
+  document.getElementById('acc-ico').textContent = accIco[accIdx];
+}
+
+let notifOn = true;
+function toggleNotif(){
+  notifOn = !notifOn;
+  const el = document.getElementById('notif-val');
+  el.textContent = notifOn ? 'On' : 'Off';
+  el.className = 'qs-val ' + (notifOn ? 'qs-on' : 'qs-off');
+}
+
+function checkUpdates(){
+  const el = document.getElementById('upd-val');
+  el.textContent = 'Checking…';
+  el.className = 'qs-val qs-purple';
+  setTimeout(() => {
+    el.textContent = 'Up to date';
+    el.className = 'qs-val qs-on';
+  }, 1400);
+}
+
+/* ── Log out ── */
+function confirmLogout(){
+  if(confirm('Sign out of CLASS APP?')) nav('logout');
+}
+
+/* ── Tap ripple helper ── */
+document.querySelectorAll('.tap').forEach(el => {
+  el.addEventListener('touchstart', () => {}, { passive: true });
+});
+</script>
+</body>
+</html>

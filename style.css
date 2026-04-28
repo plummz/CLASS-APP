@@ -5068,3 +5068,175 @@ body.light-mode .chat-skeleton {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── PHASE 7: MOBILE RESPONSIVE + OFFLINE (Mobile Fixes) ──────────────────────────────── */
+/* Minimum 44×44px touch targets for all buttons */
+button, a[role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 14px;
+}
+
+/* Quiz choice buttons - ensure 44px minimum */
+.quiz-choice-btn, .quiz-mc-btn, .fs-quiz-mc-btn {
+  min-height: 44px;
+  min-width: 100%;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Quiz chips - 44px minimum */
+.quiz-chips label, .fs-quiz-chip-label, .quiz-chip-btn {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+}
+
+/* Notepad action buttons */
+.notepad-action-btn, .note-delete-btn, .note-share-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Reviewer buttons */
+.reviewer-view-btn, .reviewer-delete-btn, .reviewer-save-note-btn {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+
+/* Nav items and dropdown */
+.nav-item, .nav-dropdown-header {
+  min-height: 44px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-dropdown-item {
+  min-height: 44px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+
+/* Sidebar full-width tap targets */
+@media (max-width: 768px) {
+  .nav-item {
+    padding: 14px 12px;
+    min-height: 48px;
+  }
+  
+  .nav-dropdown-item {
+    padding: 14px 24px;
+    min-height: 48px;
+  }
+}
+
+/* ── Quiz Modal Mobile Fixes ──────────────────────────────── */
+@media (max-height: 600px), (max-width: 480px) {
+  .fs-quiz-modal {
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  
+  .fs-quiz-content {
+    max-height: calc(90dvh - 100px);
+    overflow-y: auto;
+  }
+  
+  .quiz-modal-inner {
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+}
+
+/* Quiz choices scrollable on narrow screens */
+@media (max-width: 320px) {
+  .quiz-choices-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-bottom: 100px;
+  }
+}
+
+/* ── iOS Keyboard Awareness ──────────────────────────────── */
+/* Add bottom padding when keyboard is visible */
+.quiz-id-input:focus {
+  /* Will be set via JS visualViewport API */
+}
+
+.fs-quiz-id-input:focus {
+  /* Will be set via JS visualViewport API */
+}
+
+/* Ensure quiz submit button stays accessible */
+@media (max-height: 600px) {
+  .quiz-submit-btn, .fs-quiz-submit-btn {
+    min-height: 44px;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+}
+
+/* ── Fix Overflow Issues ──────────────────────────────────── */
+.page {
+  overflow-x: hidden;
+}
+
+.shared-board {
+  overflow-x: hidden;
+}
+
+.announcement-board, .output-ai-board {
+  overflow-x: hidden;
+}
+
+/* Card containers shouldn't overflow */
+.game-card, .folder-card, .folder-card-modern {
+  overflow: hidden;
+}
+
+/* Modal content scrollable */
+.custom-modal-box, .modal-content {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+/* Responsive text overflow */
+.page-title, .modal-title, .shared-board-title {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ── Responsive Fine-tuning ──────────────────────────────── */
+@media (max-width: 480px) {
+  /* Reduce margins on very small screens */
+  .page {
+    padding: 12px 8px;
+  }
+  
+  /* Card grids adapt to smaller screens */
+  .games-grid, .game-card {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Buttons get more padding on mobile */
+  .btn-primary, .btn-secondary {
+    padding: 12px 16px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  
+  /* Input fields large enough */
+  input[type="text"], input[type="search"], input[type="email"], textarea {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+}

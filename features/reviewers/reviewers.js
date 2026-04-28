@@ -114,7 +114,7 @@ window.reviewersModule = {
       const canDel  = isAdmin || (me && rev.user_id === me);
 
       return `<div class="reviewer-card">
-        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer(${rev.id})">
+        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 100 ? '…' : ''}</div>
           <div class="reviewer-card-footer">
@@ -123,7 +123,7 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
-          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer(${rev.id})">View</button>
+          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
           ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${rev.id}, event)">Delete</button>` : ''}
         </div>
       </div>`;

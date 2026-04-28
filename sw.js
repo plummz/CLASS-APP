@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.41-20260428-phase3-notepad-cloud';
+const CACHE_VERSION = 'v1.5.42-20260428-phase4-reviewers-trending';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -27,8 +27,8 @@ const ASSETS = [
   '/script.js?v=83',
   '/features/file-summarizer/file-summarizer.js?v=7',
   '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/reviewers/reviewers.js?v=7',
-  '/features/reviewers/reviewers.css?v=3',
+  '/features/reviewers/reviewers.js?v=8',
+  '/features/reviewers/reviewers.css?v=4',
   '/features/personal-tools/notepad.js?v=5',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',

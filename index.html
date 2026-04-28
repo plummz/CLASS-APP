@@ -324,6 +324,7 @@
   <div class="page" id="page-file-summarizer">
     <div class="fs-wrap">
       <h1 class="fs-title">File Summarizer</h1>
+      <div class="fs-subtitle">Turn your files into study materials instantly</div>
       <div class="fs-upload-area" id="fs-upload-area">
         <input type="file" id="fs-file-input" accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
         <label for="fs-file-input" class="fs-upload-label">
@@ -333,11 +334,28 @@
         <div class="fs-upload-status" id="fs-upload-status"></div>
       </div>
       <div class="fs-btn-row">
-        <button class="fs-action-btn" id="fs-btn-short">Short Summary</button>
-        <button class="fs-action-btn" id="fs-btn-detailed">Detailed Study Notes</button>
-        <button class="fs-action-btn" id="fs-btn-key">Key Points</button>
-        <button class="fs-action-btn" id="fs-btn-terms">Important Terms</button>
-        <button class="fs-action-btn" id="fs-btn-quiz">Quiz Questions</button>
+        <button class="fs-action-btn" id="fs-btn-short"><span>📋</span> Short Summary</button>
+        <button class="fs-action-btn" id="fs-btn-detailed"><span>📚</span> Detailed Notes</button>
+        <button class="fs-action-btn" id="fs-btn-key"><span>⭐</span> Key Points</button>
+        <button class="fs-action-btn" id="fs-btn-terms"><span>📖</span> Terms</button>
+        <div class="fs-quiz-menu" id="fs-quiz-menu-wrap">
+          <button class="fs-action-btn" id="fs-btn-quiz-toggle"><span>❓</span> Quiz</button>
+          <div class="fs-quiz-dropdown" id="fs-quiz-dropdown" style="display: none;">
+            <div class="fs-quiz-submenu">
+              <div class="fs-quiz-label">Quiz Type:</div>
+              <button class="fs-quiz-option" data-quiz-type="identification">Identification</button>
+              <button class="fs-quiz-option" data-quiz-type="multiple-choice">Multiple Choice</button>
+              <button class="fs-quiz-option" data-quiz-type="both">Both</button>
+            </div>
+            <div class="fs-quiz-submenu">
+              <div class="fs-quiz-label">Number of Items:</div>
+              <button class="fs-quiz-count" data-quiz-count="10">10</button>
+              <button class="fs-quiz-count" data-quiz-count="20">20</button>
+              <button class="fs-quiz-count" data-quiz-count="30">30</button>
+              <button class="fs-quiz-count" data-quiz-count="50">50</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="fs-summary-section" id="fs-summary-section">
         <div class="fs-summary-label">Summary Output</div>
@@ -1441,7 +1459,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=72"></script>
+  <script src="script.js?v=74"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1463,12 +1481,12 @@
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=1" defer></script>
+  <script src="features/personal-tools/notepad.js?v=2" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=3" defer></script>
-  <script src="features/reviewers/reviewers.js?v=2" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=4" defer></script>
+  <script src="features/reviewers/reviewers.js?v=3" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

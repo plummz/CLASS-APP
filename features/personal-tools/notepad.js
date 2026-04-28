@@ -87,6 +87,7 @@ window.notepadModule = {
           <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
           <div class="notepad-item-actions">
             <button onclick="notepadModule.editNote(${index})">Edit</button>
+            <button onclick="notepadModule.shareNote(${index})">Share to Reviewers</button>
             <button class="delete" onclick="notepadModule.deleteNote(${index})">Delete</button>
           </div>
         </div>
@@ -168,6 +169,43 @@ window.notepadModule = {
       this.notes = [];
       this.saveNotes();
       this.renderNotes();
+    }
+  },
+
+  shareNote: async function(index) {
+    const note = this.notes[index];
+    if (!note) return;
+
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+
+    if (!client || !user) {
+      customAlert('Not logged in. Cannot share note.');
+      return;
+    }
+
+    try {
+      const { error } = await client.from('reviewers').insert([{
+        title: note.title,
+        summary_content: note.content,
+        contributor_name: user.username || user.display_name || 'Anonymous',
+        user_id: user.username,
+        original_file_name: note.title,
+        summary_type: 'shared-note',
+        is_shared: true,
+        created_at: note.date,
+      }]);
+
+      if (error) {
+        console.error('[Notepad] Share error:', error);
+        customAlert('Could not share note: ' + (error.message || 'Unknown error'));
+      } else {
+        console.log('[Notepad] Note shared:', note.title);
+        customAlert('Shared to Reviewer page!');
+      }
+    } catch (ex) {
+      console.error('[Notepad] Share exception:', ex);
+      customAlert('Failed to share note.');
     }
   },
 

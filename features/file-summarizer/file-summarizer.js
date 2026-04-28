@@ -12,17 +12,20 @@
     detailed: document.getElementById('fs-btn-detailed'),
     key: document.getElementById('fs-btn-key'),
     terms: document.getElementById('fs-btn-terms'),
-    quiz: document.getElementById('fs-btn-quiz'),
   };
-  const actionBtns = Object.values(btns);
+  const quizToggle = document.getElementById('fs-btn-quiz-toggle');
+  const quizDropdown = document.getElementById('fs-quiz-dropdown');
+  const quizTypeButtons = Array.from(document.querySelectorAll('.fs-quiz-option'));
+  const quizCountButtons = Array.from(document.querySelectorAll('.fs-quiz-count'));
+  const actionBtns = Object.values(btns).concat(quizToggle);
 
   if (!fileInput) {
     console.error('[FileSummarizer] #fs-file-input not found in DOM');
     return;
   }
 
-  // Single source of truth for the selected file
   let selectedFile = null;
+  let quizSettings = { type: null, count: 10 };
 
   // Initial state
   actionBtns.forEach(b => b.disabled = true);
@@ -45,9 +48,39 @@
     if (summaryEl) summaryEl.value = '';
     if (summarySection) summarySection.style.display = 'none';
     actionBtns.forEach(b => b.disabled = true);
+    quizDropdown.style.display = 'none';
+    quizTypeButtons.forEach(b => b.classList.remove('selected'));
+    quizCountButtons.forEach(b => b.classList.remove('selected'));
+    quizSettings = { type: null, count: 10 };
   }
 
-  // Step 1: file selected — just validate and show info. No network call.
+  // Quiz dropdown logic
+  quizToggle.addEventListener('click', () => {
+    quizDropdown.style.display = quizDropdown.style.display === 'none' ? 'block' : 'none';
+  });
+
+  quizTypeButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      quizTypeButtons.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      quizSettings.type = btn.dataset.quizType;
+    });
+  });
+
+  quizCountButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      quizCountButtons.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      quizSettings.count = parseInt(btn.dataset.quizCount);
+      // Generate quiz after count is selected
+      if (quizSettings.type && selectedFile) {
+        quizDropdown.style.display = 'none';
+        requestQuiz();
+      }
+    });
+  });
+
+  // File selection
   fileInput.addEventListener('change', function (e) {
     const file = e.target.files && e.target.files[0];
 
@@ -66,7 +99,7 @@
       return;
     }
 
-    const maxBytes = 8 * 1024 * 1024; // 8 MB
+    const maxBytes = 8 * 1024 * 1024;
     if (file.size > maxBytes) {
       setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB allowed.`);
       fileInput.value = '';
@@ -75,7 +108,6 @@
       return;
     }
 
-    // File is valid — store it and show info immediately, no network round-trip
     selectedFile = file;
     const sizeMB = (file.size / 1024 / 1024).toFixed(2);
     setStatus(`✅ Ready: ${file.name} • ${sizeMB} MB • .${ext.toUpperCase()}`);
@@ -84,7 +116,7 @@
     actionBtns.forEach(b => b.disabled = false);
   });
 
-  // Step 2: summarize button clicked — NOW upload the file and process
+  // Summarize request
   async function requestSummary(type) {
     if (!selectedFile) {
       setError('No file selected. Please choose a PDF, DOC, DOCX, PPT, or PPTX file first.');
@@ -93,7 +125,7 @@
 
     actionBtns.forEach(b => b.disabled = true);
     if (summaryEl) summaryEl.value = '';
-    setStatus(`Uploading and extracting text from “${selectedFile.name}”…`);
+    setStatus(`Uploading and extracting text from "${selectedFile.name}"…`);
 
     let extractedText = '';
     let fileType = '';
@@ -131,7 +163,7 @@
       if (summaryEl) summaryEl.value = sumData.summary || '';
       if (summarySection) summarySection.style.display = 'block';
 
-      // Save to Notepad (localStorage — same storage as notepadModule)
+      // Save to Notepad
       const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
       const userId = user?.username || 'guest';
 
@@ -157,12 +189,10 @@
         existing.unshift(newNote);
         localStorage.setItem('notepad-notes', JSON.stringify(existing));
 
-        // Sync with notepadModule if already loaded so it stays in sync
         if (window.notepadModule) {
           window.notepadModule.notes = existing;
         }
 
-        // Verify the note was stored
         const verify = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
         const saved = verify.some(n => n.date === newNote.date);
         if (saved) {
@@ -183,11 +213,91 @@
     actionBtns.forEach(b => b.disabled = false);
   }
 
+  // Quiz generation
+  async function requestQuiz() {
+    if (!selectedFile) {
+      setError('No file selected.');
+      return;
+    }
+
+    if (!quizSettings.type || !quizSettings.count) {
+      setError('Please select quiz type and number of items.');
+      return;
+    }
+
+    actionBtns.forEach(b => b.disabled = true);
+    if (summaryEl) summaryEl.value = '';
+    setStatus(`Uploading and extracting text from "${selectedFile.name}"…`);
+
+    let extractedText = '';
+
+    try {
+      const fd = new FormData();
+      fd.append('file', selectedFile);
+
+      const extractRes = await fetch('/api/summarize-file', { method: 'POST', body: fd });
+      const extractData = await extractRes.json();
+
+      if (!extractRes.ok) throw new Error(extractData.error || 'Text extraction failed.');
+      extractedText = extractData.text || '';
+      if (!extractedText.trim()) throw new Error('No readable text found in this file.');
+    } catch (err) {
+      setError(err.message || 'Upload or extraction failed.');
+      actionBtns.forEach(b => b.disabled = false);
+      return;
+    }
+
+    setStatus(`Generating ${quizSettings.count}-item ${quizSettings.type} quiz…`);
+
+    try {
+      const quizPrompts = {
+        'identification': `Generate exactly ${quizSettings.count} identification questions (statement completion). Format each as: Q#: [question]. No answer keys needed.`,
+        'multiple-choice': `Generate exactly ${quizSettings.count} multiple choice questions with 4 choices each. Format: Q#: [question] A) [choice] B) [choice] C) [choice] D) [choice]. Mark the correct answer with **A)** or similar.`,
+        'both': `Generate exactly ${Math.ceil(quizSettings.count/2)} identification questions and ${Math.floor(quizSettings.count/2)} multiple choice questions (4 choices each).`
+      };
+
+      const prompt = quizPrompts[quizSettings.type] || quizPrompts['multiple-choice'];
+
+      const quizRes = await fetch('/api/summarize-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: extractedText, type: 'quiz', customPrompt: prompt }),
+      });
+
+      const quizData = await quizRes.json();
+      if (!quizRes.ok) throw new Error(quizData.error || 'Quiz generation failed.');
+
+      // Format quiz display
+      const quizHtml = formatQuizDisplay(quizData.summary, quizSettings.type);
+      if (summaryEl) summaryEl.value = quizHtml;
+      if (summarySection) summarySection.style.display = 'block';
+
+      setStatus('Quiz ready!');
+    } catch (err) {
+      setError(err.message || 'Quiz generation failed. Please try again.');
+    }
+
+    actionBtns.forEach(b => b.disabled = false);
+  }
+
+  // Format quiz for display
+  function formatQuizDisplay(quizText, quizType) {
+    // Return the quiz text as-is; styling will be handled by CSS
+    return quizText;
+  }
+
+  // Event listeners
   btns.short.addEventListener('click', () => requestSummary('short'));
   btns.detailed.addEventListener('click', () => requestSummary('detailed'));
   btns.key.addEventListener('click', () => requestSummary('key'));
   btns.terms.addEventListener('click', () => requestSummary('terms'));
-  btns.quiz.addEventListener('click', () => requestSummary('quiz'));
+
+  // Close dropdown when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#fs-quiz-menu-wrap')) {
+      quizDropdown.style.display = 'none';
+    }
+  });
 
   if (copyBtn) {
     copyBtn.addEventListener('click', () => {

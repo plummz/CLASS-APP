@@ -231,8 +231,26 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.32';
+const APP_VERSION = '1.5.33';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.33',
+    date: 'April 27, 2026',
+    title: 'Notepad Sharing, Reviewer Feed, File Summarizer UI, & Quiz System Upgrade',
+    summary: 'Added Notepad sharing to public Reviewer page, enhanced File Summarizer UI with light theme and animations, upgraded quiz system with type/count selection.',
+    changes: [
+      'Notepad: Added "Share to Reviewers" button to save notes to public Reviewer page via Supabase.',
+      'Reviewer Page: Shows delete button for notes owned by current user — only owners can delete their shares.',
+      'Reviewer Page: Fixed visibility with proper pageConfig; always renders UI (never blank).',
+      'File Summarizer: Enhanced UI with light gradient background, subtle glow effects, and better spacing.',
+      'File Summarizer: Added icons to each button (📋 📚 ⭐ 📖 ❓).',
+      'File Summarizer: Upgraded Quiz system from single button to dropdown menu with type selection (Identification, Multiple Choice, Both).',
+      'File Summarizer: Added item count selection for quizzes (10, 20, 30, 50 items).',
+      'File Summarizer: Improved summary output container with scrolling and better padding.',
+      'File Summarizer: Added loading animations and hover effects for better UX.',
+      'Data Consistency: Notepad and Reviewer page now share the same Supabase backend for persistent, synced data across users.',
+    ]
+  },
   {
     version: '1.5.32',
     date: 'April 27, 2026',

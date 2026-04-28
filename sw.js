@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'v1.5.32-20260427-notepad-fix';
+const CACHE_VERSION = 'v1.5.33-20260427-notepad-sharing';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=79',
+  '/index.html?v=81',
   '/style.css?v=30',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -24,9 +24,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=2',
   '/features/reviewers/reviewers.css?v=1',
-  '/script.js?v=72',
-  '/features/file-summarizer/file-summarizer.js?v=3',
-  '/features/reviewers/reviewers.js?v=2',
+  '/script.js?v=74',
+  '/features/file-summarizer/file-summarizer.js?v=4',
+  '/features/reviewers/reviewers.js?v=3',
+  '/features/personal-tools/notepad.js?v=2',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',

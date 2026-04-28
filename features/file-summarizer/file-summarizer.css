@@ -480,3 +480,73 @@
   margin-top: 2px;
   font-style: italic;
 }
+
+/* ── PHASE 7: Mobile Responsive Fixes ──────────────────────────────── */
+
+/* Ensure quiz modal scrolls on small screens */
+@media (max-height: 700px) {
+  .fs-quiz-modal {
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  
+  .fs-quiz-content {
+    max-height: calc(90dvh - 80px);
+    overflow-y: auto;
+  }
+}
+
+/* Quiz choice buttons minimum touch target */
+.fs-quiz-mc-btn {
+  min-height: 48px;
+  padding: 12px 14px;
+  font-size: 14px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+/* Quiz identification input with iOS keyboard awareness */
+.fs-quiz-id-input {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  width: 100%;
+}
+
+/* Quiz submit button always accessible */
+.fs-quiz-submit-btn {
+  min-height: 48px;
+  padding: 12px 20px;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+/* Quiz timer visible on mobile */
+@media (max-width: 480px) {
+  .fs-quiz-header {
+    padding: 12px 12px;
+    font-size: 13px;
+  }
+  
+  .fs-quiz-timer {
+    font-size: 18px;
+    min-height: 40px;
+  }
+}
+
+/* Responsive quiz review on mobile */
+@media (max-width: 480px) {
+  .fs-quiz-review {
+    padding: 10px;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  
+  .fs-review-item {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}

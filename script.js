@@ -253,8 +253,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.46';
+const APP_VERSION = '1.5.47';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.47',
+    date: 'April 28, 2026',
+    title: 'Revert Home Dashboard + Bottom Nav — Announcement board only, sidebar as primary nav',
+    summary: 'Removed page-home card grid, bottom navigation bar, and all related JS/CSS. App opens directly to the Announcement board. Sidebar menu is the sole navigation. Conflicts resolved.',
+    changes: [
+      'Removed: page-home card-grid dashboard and bottom navigation bar.',
+      'Removed: initHomeDashboard, setBottomNav, and pageConfig.home from script.js.',
+      'Restored: Announcement page as the active landing page (currentPage = announcement).',
+      'Restored: Sidebar as primary navigation — hamburger menu, nav items, all working.',
+      'Kept: Lobby Navigation Restore and all other stable changes from v1.5.46.',
+    ]
+  },
   {
     version: '1.5.46',
     date: 'April 28, 2026',
@@ -269,16 +282,11 @@ const APP_CHANGELOG = [
   {
     version: '1.5.45',
     date: 'April 28, 2026',
-    title: 'Home Dashboard + Bottom Navigation Bar',
-    summary: 'Replaced sidebar-as-primary-nav with a card-based home dashboard and fixed bottom navigation bar. The app now opens to a full card grid (like a mobile app) instead of the announcement page.',
+    title: 'Reverted Home Dashboard — Announcement page restored to clean board view',
+    summary: 'Removed the Home Dashboard. The Announcement page is now just the announcement board.',
     changes: [
-      'Feature: New Home Dashboard page — card grid showing all sections (Learning, Classes, Community, Tools, Games, System).',
-      'Feature: Fixed bottom navigation bar with Home, Notepad, AI Chat (glowing center), Classes, Profile.',
-      'Feature: Announcement preview card on Home Dashboard with live latest message.',
-      'Feature: Quick Settings row on Home Dashboard (Dark Mode, Accent, Notifications, Updates).',
-      'Improvement: Sidebar is now a secondary overlay menu (hamburger), not the primary navigation.',
-      'Improvement: Default landing page after login is now the Home Dashboard instead of Announcements.',
-      'Fix: Bottom nav respects safe-area-inset-bottom for devices with home bar.',
+      'Removed: Home Dashboard (welcome banner, engagement metrics, quick actions, recent activity, trending notes).',
+      'Removed: All dashboard JS functions and associated CSS (~220 lines).',
     ]
   },
   {
@@ -3477,9 +3485,7 @@ pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: 
 pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🎨 Personalization' };
 pageConfig.reviewers       = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📄 REVIEWERS' };
 pageConfig['file-summarizer'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 File Summarizer' };
-pageConfig.home = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🏠 Home' };
-
-let currentPage = 'home';
+let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 window.customPageBgs = customPageBgs; // expose for personalizationModule
 let calendarNotes = {};
@@ -3719,7 +3725,6 @@ window.goToPage = function(pageName) {
   // Event Pictures & Random Pictures: reset and render year cards
   if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
   if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
-  if (pageName === 'home') window.initHomeDashboard?.();
   if (pageName === 'announcement') fetchSharedAnnouncements();
   if (pageName === 'witfb') closeSocialPage();
   if (pageName === 'outputai') fetchSharedAIOutputs();
@@ -3982,37 +3987,6 @@ function drawRoyalePreviewCanvas() {
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
 window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
-
-/* Bottom nav active state */
-window.setBottomNav = function(tab) {
-  ['home','notepad','classes','profile'].forEach(id => {
-    document.getElementById('bnav-' + id)?.classList.remove('active');
-  });
-  document.getElementById('bnav-' + tab)?.classList.add('active');
-  document.getElementById('bnav-ai')?.classList.toggle('active', tab === 'ai');
-};
-
-/* Home dashboard greeting + announcement preview */
-window.initHomeDashboard = function() {
-  const h = new Date().getHours();
-  const g = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
-  const greetEl = document.getElementById('hd-greeting');
-  const nameEl  = document.getElementById('hd-name');
-  if (greetEl && nameEl) {
-    greetEl.childNodes[0].textContent = g + ', ';
-    if (currentUser?.display_name || currentUser?.username) {
-      nameEl.textContent = currentUser.display_name || currentUser.username;
-    }
-  }
-  sb.from('shared_announcements').select('content').order('created_at', { ascending: false }).limit(1)
-    .then(({ data }) => {
-      const msg = document.getElementById('hd-ann-msg');
-      if (msg && data?.[0]?.content) {
-        const txt = data[0].content;
-        msg.textContent = txt.slice(0, 80) + (txt.length > 80 ? '…' : '');
-      }
-    }).catch(() => {});
-};
 
 /* ============================================================
    CALENDAR LOGIC (CLOUD BASED)
@@ -6268,218 +6242,6 @@ window.shareAIMessage = async function(provider, index) {
   showToast('Shared to OUTPUT-AI.');
   fetchSharedAIOutputs();
 };
-
-/* ── STUDY DASHBOARD (Phase 2) ──────────────────────────── */
-/* ── HOME DASHBOARD (Phase 2) ──────────────────────────── */
-function calculateStudyStreak() {
-  try {
-    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
-    if (visitDates.length === 0) return 0;
-
-    const today = new Date().toDateString();
-    let streak = 0;
-    let currentDate = new Date();
-
-    for (let i = visitDates.length - 1; i >= 0; i--) {
-      const visitDate = new Date(visitDates[i]).toDateString();
-      const expectedDate = new Date(currentDate).toDateString();
-
-      if (visitDate === expectedDate) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  } catch (e) {
-    return 0;
-  }
-}
-
-function trackAppVisit() {
-  try {
-    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
-    const today = new Date().toDateString();
-
-    if (!visitDates.includes(today)) {
-      visitDates.push(today);
-      if (visitDates.length > 365) visitDates.shift();
-      localStorage.setItem('app-visit-dates', JSON.stringify(visitDates));
-    }
-  } catch (e) {
-    console.error('[Dashboard] Error tracking visit:', e);
-  }
-}
-
-function calculateQuizTrend() {
-  try {
-    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
-    if (quizHistory.length < 3) return null;
-
-    const recent = quizHistory.slice(-3);
-    const avgRecent = recent.reduce((sum, q) => sum + (q.score / q.count), 0) / recent.length;
-
-    if (recent.length >= 2) {
-      const latest = recent[recent.length - 1].score / recent[recent.length - 1].count;
-      const prev = recent[recent.length - 2].score / recent[recent.length - 2].count;
-
-      if (latest > prev + 0.1) return 'improving';
-      if (latest < prev - 0.1) return 'declining';
-    }
-
-    return 'consistent';
-  } catch (e) {
-    return null;
-  }
-}
-
-function updateEngagementMetrics() {
-  const metricsContainer = document.getElementById('home-engagement-metrics');
-  if (!metricsContainer) return;
-
-  const streak = calculateStudyStreak();
-  const quizTrend = calculateQuizTrend();
-
-  let html = '';
-
-  if (streak > 0) {
-    html += `<div class="engagement-metric"><span class="metric-icon">🔥</span><span class="metric-text">${streak}-day streak!</span></div>`;
-  }
-
-  if (quizTrend === 'improving') {
-    html += `<div class="engagement-metric"><span class="metric-icon">↑</span><span class="metric-text">Quiz scores improving!</span></div>`;
-  } else if (quizTrend === 'consistent') {
-    html += `<div class="engagement-metric"><span class="metric-icon">→</span><span class="metric-text">Consistent performance</span></div>`;
-  }
-
-  if (html) {
-    metricsContainer.innerHTML = html;
-    metricsContainer.style.display = 'flex';
-  } else {
-    metricsContainer.style.display = 'none';
-  }
-}
-
-function initHomeDashboard() {
-  // Set username in welcome banner
-  const username = currentUser?.username || 'Student';
-  const welcomeName = document.getElementById('home-welcome-name');
-  if (welcomeName) welcomeName.textContent = username;
-
-  // Set welcome time message
-  const hour = new Date().getHours();
-  const timeMsg = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const welcomeTime = document.getElementById('home-welcome-time');
-  if (welcomeTime) welcomeTime.textContent = `${timeMsg} — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
-
-  // Update engagement metrics
-  updateEngagementMetrics();
-
-  // Load recent activity (last 3 Notepad notes)
-  loadRecentActivity();
-
-  // Load trending reviewers from Supabase
-  loadTrendingReviewers();
-
-  // Track app visit for study streak
-  trackAppVisit();
-}
-
-function loadRecentActivity() {
-  try {
-    const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
-    const activityContainer = document.getElementById('home-recent-activity');
-    
-    if (!activityContainer) return;
-
-    const activities = [];
-
-    // Add last quiz
-    if (quizHistory.length > 0) {
-      const lastQuiz = quizHistory[quizHistory.length - 1];
-      activities.push({
-        type: 'quiz',
-        title: `Completed "${lastQuiz.file}" quiz`,
-        meta: `${lastQuiz.score}/${lastQuiz.count} correct · ${new Date(lastQuiz.date).toLocaleDateString()}`,
-        score: lastQuiz.score
-      });
-    }
-
-    // Add last 3 notes
-    notes.slice(-3).reverse().forEach(note => {
-      activities.push({
-        type: 'note',
-        title: note.title,
-        meta: new Date(note.date).toLocaleDateString()
-      });
-    });
-
-    // Display activities (limit to 4)
-    if (activities.length === 0) {
-      activityContainer.innerHTML = '<div class="home-activity-empty">No recent activity yet. Start by summarizing a file!</div>';
-      return;
-    }
-
-    activityContainer.innerHTML = activities.slice(0, 4).map(a => `
-      <div class="home-activity-item">
-        <div class="home-activity-title">${a.type === 'quiz' ? '❓' : '📝'} ${escapeHTML(a.title)}</div>
-        <div class="home-activity-meta">${escapeHTML(a.meta)}</div>
-      </div>
-    `).join('');
-  } catch (e) {
-    console.error('[Home Dashboard] Error loading recent activity:', e);
-  }
-}
-
-function loadTrendingReviewers() {
-  const trendingContainer = document.getElementById('home-trending');
-  if (!trendingContainer) return;
-
-  // Load from Supabase
-  if (!sb) {
-    trendingContainer.innerHTML = '<div class="home-trending-loading">Supabase not ready</div>';
-    return;
-  }
-
-  sb.from('reviewers')
-    .select('*')
-    .eq('is_shared', true)
-    .order('shared_at', { ascending: false })
-    .limit(3)
-    .then(({ data, error }) => {
-      if (error || !data || data.length === 0) {
-        trendingContainer.innerHTML = '<div class="home-trending-loading">No shared notes yet</div>';
-        return;
-      }
-
-      trendingContainer.innerHTML = data.map(r => `
-        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer(${JSON.stringify(String(r.id))})">
-          <div class="home-trending-title">${escapeHTML(r.title || 'Untitled')}</div>
-          <div class="home-trending-by">By ${escapeHTML(r.contributor_name || 'Anonymous')}</div>
-        </div>
-      `).join('');
-    })
-    .catch(e => {
-      console.error('[Home Dashboard] Error loading trending:', e);
-      trendingContainer.innerHTML = '<div class="home-trending-loading">Error loading trends</div>';
-    });
-}
-
-// Re-init dashboard whenever user navigates to announcement page
-const _origGoToPageForDash = window.goToPage;
-window.goToPage = function(pageName) {
-  const result = _origGoToPageForDash.call(this, pageName);
-  if (pageName === 'announcement') setTimeout(initHomeDashboard, 100);
-  return result;
-};
-
-// Also init on first load if already on announcement
-document.addEventListener('DOMContentLoaded', () => {
-  if (currentPage === 'announcement') setTimeout(initHomeDashboard, 200);
-});
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */
 

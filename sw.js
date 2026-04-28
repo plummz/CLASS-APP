@@ -1,4 +1,25 @@
-const CACHE_VERSION = 'v1.5.42-20260428-phase4-reviewers-trending';
+// ═══════════════════════════════════════════════════════════════════════════
+// SERVICE WORKER - Cache Management & Asset Versioning
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// IMPORTANT: When updating a feature file, bump its version in BOTH:
+//  1. This file (sw.js) — in the ASSETS list below
+//  2. index.html — in the corresponding <script> or <link> tag
+//
+// Feature version bump checklist:
+//  - notepad.js → bump both notepad.js?v=N and notepad.css?v=N
+//  - reviewers.js → bump both reviewers.js?v=N and reviewers.css?v=N
+//  - file-summarizer.js → bump both file-summarizer.js?v=N and file-summarizer.css?v=N
+//  - script.js → bump script.js?v=N (main app logic)
+//  - style.css → bump style.css?v=N (global styles)
+//  - index.html → bump index.html?v=N (app shell)
+//  - CACHE_VERSION → update version string (e.g., v1.5.43-YYYYMMDD-description)
+//
+// Use scripts/version-check.js to verify consistency:
+//  node scripts/version-check.js
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CACHE_VERSION = 'v1.5.43-20260428-phase8-engagement-undo';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -23,13 +44,12 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/reviewers/reviewers.css?v=3',
-  '/script.js?v=83',
   '/features/file-summarizer/file-summarizer.js?v=7',
-  '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/reviewers/reviewers.js?v=8',
-  '/features/reviewers/reviewers.css?v=4',
-  '/features/personal-tools/notepad.js?v=5',
+  '/script.js?v=84',
+  '/features/reviewers/reviewers.js?v=9',
+  '/features/reviewers/reviewers.css?v=5',
+  '/features/personal-tools/notepad.js?v=6',
+  '/features/personal-tools/notepad.css?v=6',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',
   '/features/lobby/lobby.js?v=1',

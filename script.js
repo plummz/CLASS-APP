@@ -253,8 +253,26 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.42';
+const APP_VERSION = '1.5.43';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.43',
+    date: 'April 28, 2026',
+    title: 'Phase 8 — Engagement, Undo Actions, Performance & Hardening',
+    summary: 'Added undo functionality for destructive actions, gamification mechanics (study streaks, contributor badges), and pagination. Fixed double-save race condition in Reviewer modal.',
+    changes: [
+      'Feature: 5-second undo toast for deleted notes/reviewers — optimistic UI with "Undo" button to restore within window.',
+      'Feature: Study Streak tracker — shows "🔥 N-day streak!" on Dashboard if user visits app on consecutive days.',
+      'Feature: Quiz Score Trend — shows "↑ Improving!" or "→ Consistent" if 3+ quiz attempts logged.',
+      'Feature: Contributor Badge — ⭐ shows on reviewer cards for authors with 5+ shared notes.',
+      'Feature: Reviewer Pagination — loads first 20 reviewers, "Load More" button to fetch next batch (reduces initial load).',
+      'Feature: Engagement Metrics — Dashboard displays active streaks and quiz trends in glowing metric pills.',
+      'Bug Fix: "Save to My Notes" button now disables during save — prevents double-save race condition.',
+      'Bug Fix: Tooltip/hover state improvements on vote buttons and contributor badges.',
+      'Developer Tool: Added scripts/version-check.js — validates version consistency between sw.js and index.html.',
+      'Documentation: Added comment block to sw.js listing which version strings need bumping per feature file.',
+    ]
+  },
   {
     version: '1.5.42',
     date: 'April 28, 2026',
@@ -6179,6 +6197,97 @@ window.shareAIMessage = async function(provider, index) {
 
 /* ── STUDY DASHBOARD (Phase 2) ──────────────────────────── */
 /* ── HOME DASHBOARD (Phase 2) ──────────────────────────── */
+function calculateStudyStreak() {
+  try {
+    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
+    if (visitDates.length === 0) return 0;
+
+    const today = new Date().toDateString();
+    let streak = 0;
+    let currentDate = new Date();
+
+    for (let i = visitDates.length - 1; i >= 0; i--) {
+      const visitDate = new Date(visitDates[i]).toDateString();
+      const expectedDate = new Date(currentDate).toDateString();
+
+      if (visitDate === expectedDate) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function trackAppVisit() {
+  try {
+    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
+    const today = new Date().toDateString();
+
+    if (!visitDates.includes(today)) {
+      visitDates.push(today);
+      if (visitDates.length > 365) visitDates.shift();
+      localStorage.setItem('app-visit-dates', JSON.stringify(visitDates));
+    }
+  } catch (e) {
+    console.error('[Dashboard] Error tracking visit:', e);
+  }
+}
+
+function calculateQuizTrend() {
+  try {
+    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
+    if (quizHistory.length < 3) return null;
+
+    const recent = quizHistory.slice(-3);
+    const avgRecent = recent.reduce((sum, q) => sum + (q.score / q.count), 0) / recent.length;
+
+    if (recent.length >= 2) {
+      const latest = recent[recent.length - 1].score / recent[recent.length - 1].count;
+      const prev = recent[recent.length - 2].score / recent[recent.length - 2].count;
+
+      if (latest > prev + 0.1) return 'improving';
+      if (latest < prev - 0.1) return 'declining';
+    }
+
+    return 'consistent';
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateEngagementMetrics() {
+  const metricsContainer = document.getElementById('home-engagement-metrics');
+  if (!metricsContainer) return;
+
+  const streak = calculateStudyStreak();
+  const quizTrend = calculateQuizTrend();
+
+  let html = '';
+
+  if (streak > 0) {
+    html += `<div class="engagement-metric"><span class="metric-icon">🔥</span><span class="metric-text">${streak}-day streak!</span></div>`;
+  }
+
+  if (quizTrend === 'improving') {
+    html += `<div class="engagement-metric"><span class="metric-icon">↑</span><span class="metric-text">Quiz scores improving!</span></div>`;
+  } else if (quizTrend === 'consistent') {
+    html += `<div class="engagement-metric"><span class="metric-icon">→</span><span class="metric-text">Consistent performance</span></div>`;
+  }
+
+  if (html) {
+    metricsContainer.innerHTML = html;
+    metricsContainer.style.display = 'flex';
+  } else {
+    metricsContainer.style.display = 'none';
+  }
+}
+
 function initHomeDashboard() {
   // Set username in welcome banner
   const username = currentUser?.username || 'Student';
@@ -6191,11 +6300,17 @@ function initHomeDashboard() {
   const welcomeTime = document.getElementById('home-welcome-time');
   if (welcomeTime) welcomeTime.textContent = `${timeMsg} — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
 
+  // Update engagement metrics
+  updateEngagementMetrics();
+
   // Load recent activity (last 3 Notepad notes)
   loadRecentActivity();
 
   // Load trending reviewers from Supabase
   loadTrendingReviewers();
+
+  // Track app visit for study streak
+  trackAppVisit();
 }
 
 function loadRecentActivity() {

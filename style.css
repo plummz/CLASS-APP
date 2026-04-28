@@ -4919,6 +4919,32 @@ body.light-mode .chat-skeleton {
   color: #aaa;
 }
 
+/* Engagement Metrics */
+.home-engagement-metrics {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.engagement-metric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(255,215,0,.15) 0%, rgba(255,100,0,.1) 100%);
+  border: 1px solid rgba(255,200,0,.3);
+  border-radius: 20px;
+  color: #ffc800;
+  font-size: 13px;
+  font-weight: 600;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.metric-icon {
+  font-size: 16px;
+}
+
 /* Quick Actions */
 .home-quick-actions {
   display: grid;

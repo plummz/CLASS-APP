@@ -28,12 +28,12 @@
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
-  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
   <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
-  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=4">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=5">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1138,6 +1138,9 @@
         </div>
       </div>
 
+      <!-- Engagement Metrics -->
+      <div class="home-engagement-metrics" id="home-engagement-metrics" style="display: none;"></div>
+
       <!-- Quick Actions -->
       <div class="home-quick-actions">
         <button class="home-action-card" onclick="goToPage('file-summarizer')">
@@ -1561,7 +1564,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=83"></script>
+  <script src="script.js?v=84"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1583,12 +1586,12 @@
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=5" defer></script>
+  <script src="features/personal-tools/notepad.js?v=6" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
   <script src="features/file-summarizer/file-summarizer.js?v=7" defer></script>
-  <script src="features/reviewers/reviewers.js?v=8" defer></script>
+  <script src="features/reviewers/reviewers.js?v=9" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

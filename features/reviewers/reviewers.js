@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// PUBLIC REVIEWERS - Module (Upvoting + Trending) v1.5.42
+// PUBLIC REVIEWERS - Module (Upvoting + Trending) v1.5.44 (v10)
 // ═══════════════════════════════════════════════════════════
 
 window.reviewersModule = {
@@ -206,7 +206,7 @@ window.reviewersModule = {
     let html = this.displayed.map(rev => {
       const date    = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const preview = (rev.summary_content || '').slice(0, 100).trim();
+      const preview = (rev.summary_content || '').slice(0, 150).trim();
       const canDel  = isAdmin || (me && rev.user_id === me);
       const voteCount = this.voteCounts[rev.id] || 0;
       const hasVoted = this.userVotes[rev.id] || false;
@@ -219,7 +219,7 @@ window.reviewersModule = {
         ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : ''}
         <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
-          <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 100 ? '…' : ''}</div>
+          <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 150 ? '…' : ''}</div>
           <div class="reviewer-card-footer">
             <span class="reviewer-card-by">By <strong>${this.esc(rev.contributor_name)}</strong></span>
             <span class="reviewer-card-date">${dateStr}</span>
@@ -275,7 +275,7 @@ window.reviewersModule = {
           ${rev.original_file_name ? ` · Source: ${this.esc(rev.original_file_name)}` : ''}
           · ${dateStr}
         </div>
-        <div class="reviewer-paper-content">${this.esc(rev.summary_content)}</div>
+        <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
           <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId})">📝 Save to My Notes</button>
         </div>
@@ -460,5 +460,24 @@ window.reviewersModule = {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
+  },
+
+  smartBold: function(text) {
+    if (!text) return '';
+    // Escape HTML first
+    const escaped = this.esc(text);
+
+    // Bold patterns:
+    // 1. **term** markdown → <strong>term</strong>
+    // 2. ALL CAPS words (3+ chars, not common stop words)
+    // 3. Terms that come after "Definition:", "Formula:", "Note:", "Important:", "Key:", etc.
+    return escaped
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\b([A-Z]{3,})\b/g, (m) => {
+        const skip = ['THE','AND','FOR','NOT','BUT','ARE','HAS','HAD','WAS','WERE','CAN','WILL','ALSO','FROM'];
+        return skip.includes(m) ? m : `<strong>${m}</strong>`;
+      })
+      .replace(/(Definition|Formula|Note|Important|Key|Example|Theorem|Law|Rule|Equation):\s*/gi,
+        (m) => `<strong>${m}</strong>`);
   },
 };

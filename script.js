@@ -259,12 +259,14 @@ const APP_CHANGELOG = [
     version: '1.5.38',
     date: 'April 28, 2026',
     title: 'Phase 6 — Semester & Subject Page Improvements',
-    summary: 'Subject cards now have a direct "Summarize" shortcut, empty Year 2–4 semesters show a helpful placeholder instead of blank space, and a quick-action bar sits above subjects for fast navigation.',
+    summary: 'Subject cards now have a direct "Summarize" shortcut, empty Year 2–4 semesters show a helpful placeholder instead of blank space, and a quick-action bar sits above subjects for fast navigation. Fixed error handling in folder/file explorer.',
     changes: [
       'Feature: Each subject card now has two action buttons — "📂 Folders" (opens folder explorer) and "📄 Summarize" (goes to File Summarizer).',
       'Feature: Quick-action bar added at the top of every subject grid with a direct "Summarize a File →" shortcut.',
       'UX: Year 2, 3, and 4 empty semester pages now show a proper empty state with icon, explanation, and a File Summarizer shortcut button instead of blank gray space.',
       'UX: The "CLICK A SUBJECT TO VIEW FOLDERS" section label is automatically hidden when a semester has no subjects.',
+      'Bug Fix: Folder and file explorer now display Supabase errors to the user instead of silently logging to console — missing/gone files now show a clear error message with "Please refresh and try again".',
+      'Bug Fix: Sub-folder loading errors are now visible to the user with descriptive error messages.',
     ]
   },
   {
@@ -1319,11 +1321,16 @@ window.openFolderExplorer = async function(parentName) {
 function fetchAndRenderFolders() {
     sb.from('folders').select('*').eq('parent', currentParentContext)
     .then(({ data: folders, error }) => {
-        if (error) return console.error("Folder fetch error:", error);
-        
         const grid = document.getElementById('folder-grid-modal');
         if(!grid) return;
         grid.innerHTML = '';
+
+        if (error) {
+            console.error("Folder fetch error:", error);
+            grid.innerHTML = `<div class="empty-state-text"><p style="color: #ff6b6b;">Error loading folders: ${escapeHTML(error.message || 'Unknown error')}</p><p style="font-size: 12px; margin-top: 8px;">Please refresh and try again.</p></div>`;
+            return;
+        }
+
         const visibleFolders = (folders || []).filter(canViewFolder);
         if(visibleFolders.length === 0) {
             grid.innerHTML = '<p class="empty-state-text">No folders available yet.</p>';
@@ -1471,13 +1478,18 @@ function fetchAndRenderFiles() {
     if (uploadArea) uploadArea.style.display = allowEdit ? '' : 'none';
     sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
     .then(({ data: files, error }) => {
-        if (error) return console.error(error);
-        
-        currentPlaylist = (files || []).filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
-        
         const list = document.getElementById('file-list-container');
         if(!list) return;
         list.innerHTML = '';
+
+        if (error) {
+            console.error(error);
+            list.innerHTML = `<p class="empty-state-text" style="color: #ff6b6b;">Error loading files: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+            return;
+        }
+
+        currentPlaylist = (files || []).filter(f => f.name.toLowerCase().endsWith('.mp3') || f.name.toLowerCase().endsWith('.wav'));
+
         if(!files || files.length === 0) {
             list.innerHTML = '<p class="empty-state-text">Folder is empty.</p>';
             return;
@@ -1512,10 +1524,16 @@ function fetchAndRenderSubFolders() {
     if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
     sb.from('folders').select('*').eq('parent', parentId)
     .then(({ data: subs, error }) => {
-        if (error) return console.error('Subfolder fetch error:', error);
         const grid = document.getElementById('subfolder-grid-modal');
         if (!grid) return;
         grid.innerHTML = '';
+
+        if (error) {
+            console.error('Subfolder fetch error:', error);
+            grid.innerHTML = `<p class="empty-state-text small" style="color: #ff6b6b;">Error loading sub-folders: ${escapeHTML(error.message || 'Unknown error')}</p>`;
+            return;
+        }
+
         const visibleSubs = (subs || []).filter(canViewFolder);
         if (visibleSubs.length === 0) {
             grid.innerHTML = '<p class="empty-state-text small">No sub-folders yet.</p>';

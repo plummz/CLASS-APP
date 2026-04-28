@@ -1,33 +1,228 @@
 // ═══════════════════════════════════════════════════════════
-// NOTEPAD - Module (Refactored)
+// NOTEPAD - Module (Cloud Sync + Offline Support)
 // ═══════════════════════════════════════════════════════════
 
 window.notepadModule = {
   notes: [],
   searchQuery: '',
+  syncStatus: 'synced',
+  syncInProgress: false,
+  userLoaded: false,
+  firstLoginPromptShown: false,
+  isOnline: navigator.onLine,
 
   init: function() {
+    this.setupOnlineHandler();
     this.loadNotes();
     this.render();
+    this.checkFirstLogin();
   },
 
-  loadNotes: function() {
-    const saved = localStorage.getItem('notepad-notes');
-    this.notes = saved ? JSON.parse(saved) : [];
+  setupOnlineHandler: function() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.syncStatus = 'syncing';
+      this.render();
+      this.syncNotes().then(() => {
+        this.syncStatus = 'synced';
+        this.render();
+      });
+    });
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.syncStatus = 'offline';
+      this.render();
+    });
   },
 
-  saveNotes: function() {
+  checkFirstLogin: async function() {
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    if (!user || !user.username) return;
+
+    const imported = localStorage.getItem('notepad-imported-to-cloud');
+    if (imported === 'true') return;
+
+    const local = localStorage.getItem('notepad-notes');
+    const localNotes = local ? JSON.parse(local) : [];
+    if (localNotes.length === 0) {
+      localStorage.setItem('notepad-imported-to-cloud', 'true');
+      return;
+    }
+
+    if (this.firstLoginPromptShown) return;
+    this.firstLoginPromptShown = true;
+
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client || !navigator.onLine) {
+      localStorage.setItem('notepad-imported-to-cloud', 'true');
+      return;
+    }
+
+    const doImport = async () => {
+      try {
+        const records = localNotes.map(note => ({
+          title: note.title,
+          content: note.content,
+          user_id: user.username,
+          created_at: note.date || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+
+        const { error } = await client.from('user_notes').insert(records);
+        if (error) {
+          console.error('[Notepad] Import error:', error);
+          customAlert('Could not import notes. They remain in offline cache.');
+        } else {
+          customAlert('✅ Notes imported to cloud!');
+          localStorage.setItem('notepad-imported-to-cloud', 'true');
+          this.loadNotes();
+          this.render();
+        }
+      } catch (ex) {
+        console.error('[Notepad] Import exception:', ex);
+      }
+    };
+
+    if (window.customConfirm) {
+      customConfirm('Sync your ' + localNotes.length + ' local notes to the cloud?', doImport);
+    } else {
+      if (confirm('Sync your ' + localNotes.length + ' local notes to the cloud?')) doImport();
+    }
+  },
+
+  loadNotes: async function() {
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+
+    if (!user || !user.username || !client || !navigator.onLine) {
+      const saved = localStorage.getItem('notepad-notes');
+      this.notes = saved ? JSON.parse(saved) : [];
+      this.syncStatus = user && user.username ? 'offline' : 'offline';
+      return;
+    }
+
+    try {
+      this.syncStatus = 'syncing';
+      const { data, error } = await client
+        .from('user_notes')
+        .select('*')
+        .eq('user_id', user.username)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('[Notepad] Load error:', error);
+        const saved = localStorage.getItem('notepad-notes');
+        this.notes = saved ? JSON.parse(saved) : [];
+        this.syncStatus = 'offline';
+        return;
+      }
+
+      this.notes = (data || []).map(record => ({
+        title: record.title,
+        content: record.content,
+        date: record.updated_at || record.created_at,
+        cloudId: record.id,
+        sharedToReviewers: record.shared_to_reviewers || false
+      }));
+
+      localStorage.setItem('notepad-notes', JSON.stringify(this.notes));
+      this.syncStatus = 'synced';
+    } catch (ex) {
+      console.error('[Notepad] Load exception:', ex);
+      const saved = localStorage.getItem('notepad-notes');
+      this.notes = saved ? JSON.parse(saved) : [];
+      this.syncStatus = 'offline';
+    }
+  },
+
+  syncNotes: async function() {
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+
+    if (!user || !user.username || !client || !navigator.onLine) return;
+
+    try {
+      this.syncStatus = 'syncing';
+      await this.loadNotes();
+      this.syncStatus = 'synced';
+      if (this.render) this.render();
+    } catch (ex) {
+      console.error('[Notepad] Sync exception:', ex);
+      this.syncStatus = 'offline';
+    }
+  },
+
+  saveNotes: async function() {
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
     localStorage.setItem('notepad-notes', JSON.stringify(this.notes));
+
+    if (!user || !user.username || !navigator.onLine) return;
+
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client) return;
+
+    try {
+      this.syncStatus = 'syncing';
+      if (this.render) this.render();
+
+      for (const note of this.notes) {
+        if (note.cloudId) {
+          const { error } = await client
+            .from('user_notes')
+            .update({
+              title: note.title,
+              content: note.content,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', note.cloudId);
+          if (error) console.error('[Notepad] Update error:', error);
+        } else {
+          const { data, error } = await client
+            .from('user_notes')
+            .insert([{
+              title: note.title,
+              content: note.content,
+              user_id: user.username,
+              created_at: note.date || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select();
+
+          if (error) {
+            console.error('[Notepad] Insert error:', error);
+          } else if (data && data[0]) {
+            note.cloudId = data[0].id;
+          }
+        }
+      }
+
+      this.syncStatus = 'synced';
+      if (this.render) this.render();
+    } catch (ex) {
+      console.error('[Notepad] Save exception:', ex);
+      this.syncStatus = 'offline';
+    }
   },
 
   render: function() {
     const page = document.getElementById('page-notepad');
     if (!page) return;
 
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    const syncIcon = this.syncStatus === 'synced' ? '☁️ Synced' :
+                     this.syncStatus === 'syncing' ? '⏱️ Syncing…' : '⚠️ Offline';
+
+    let offlineBanner = '';
+    if (!navigator.onLine || !user || !user.username) {
+      offlineBanner = `<div class="notepad-offline-banner">📡 Log in to sync across devices</div>`;
+    }
+
     page.innerHTML = `
+      ${offlineBanner}
       <div class="tool-page-header">
         <button class="tool-back-btn" onclick="window.goToPage('personal-tools')">← Back</button>
         <h1 class="tool-page-title">Notepad</h1>
+        <div class="notepad-sync-status">${syncIcon}</div>
       </div>
 
       <div class="notepad-container">
@@ -97,12 +292,15 @@ window.notepadModule = {
         minute: '2-digit'
       });
 
+      const sharedWarning = note.sharedToReviewers ? '<div class="notepad-shared-warning">⚠️ Shared to Reviewers (local edits won\'t update)</div>' : '';
+
       return `
         <div class="notepad-item">
           <div class="notepad-item-header">
             <div class="notepad-item-title">${this.escapeHtml(note.title)}</div>
             <div class="notepad-item-date">${dateStr} ${timeStr}</div>
           </div>
+          ${sharedWarning}
           <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
           <div class="notepad-item-actions">
             <button onclick="notepadModule.editNote(${index})">Edit</button>
@@ -141,7 +339,7 @@ window.notepadModule = {
     if (form) form.style.display = 'none';
   },
 
-  saveNote: function() {
+  saveNote: async function() {
     const title = document.getElementById('note-title').value.trim();
     const content = document.getElementById('note-content').value.trim();
 
@@ -154,11 +352,9 @@ window.notepadModule = {
     const editIndex = form.dataset.editIndex;
 
     if (editIndex !== undefined && this.notes[editIndex]) {
-      // Update existing note
       this.notes[editIndex].title = title;
       this.notes[editIndex].content = content;
     } else {
-      // Create new note
       this.notes.unshift({
         title,
         content,
@@ -166,30 +362,56 @@ window.notepadModule = {
       });
     }
 
-    this.saveNotes();
+    await this.saveNotes();
     this.hideForm();
-    this.renderNotes();
+    this.render();
   },
 
   editNote: function(index) {
     this.showForm(index);
   },
 
-  deleteNote: function(index) {
-    const doDelete = () => {
+  deleteNote: async function(index) {
+    const doDelete = async () => {
+      const note = this.notes[index];
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+
+      if (note.cloudId && client && navigator.onLine) {
+        try {
+          await client.from('user_notes').delete().eq('id', note.cloudId);
+        } catch (ex) {
+          console.error('[Notepad] Delete error:', ex);
+        }
+      }
+
       this.notes.splice(index, 1);
-      this.saveNotes();
-      this.renderNotes();
+      await this.saveNotes();
+      this.render();
     };
     if (window.customConfirm) { customConfirm('Delete this note?', doDelete); return; }
     if (confirm('Delete this note?')) doDelete();
   },
 
-  clearAll: function() {
-    const doClear = () => {
+  clearAll: async function() {
+    const doClear = async () => {
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+
+      if (client && navigator.onLine) {
+        try {
+          const ids = this.notes.filter(n => n.cloudId).map(n => n.cloudId);
+          if (ids.length > 0) {
+            for (const id of ids) {
+              await client.from('user_notes').delete().eq('id', id);
+            }
+          }
+        } catch (ex) {
+          console.error('[Notepad] Clear error:', ex);
+        }
+      }
+
       this.notes = [];
-      this.saveNotes();
-      this.renderNotes();
+      await this.saveNotes();
+      this.render();
     };
     if (window.customConfirm) { customConfirm('Delete all notes? This cannot be undone.', doClear); return; }
     if (confirm('Delete all notes? This cannot be undone.')) doClear();
@@ -238,9 +460,22 @@ window.notepadModule = {
         }
       } else {
         console.log('[Notepad] Note shared successfully:', record.title);
+        note.sharedToReviewers = true;
+
+        if (note.cloudId && navigator.onLine) {
+          try {
+            await client.from('user_notes').update({
+              shared_to_reviewers: true,
+              updated_at: new Date().toISOString()
+            }).eq('id', note.cloudId);
+          } catch (ex) {
+            console.error('[Notepad] Cloud share flag error:', ex);
+          }
+        }
+
+        await this.saveNotes();
         if (window.showToast) {
           showToast('✅ Shared to Reviewers!', 'success');
-          // Show a follow-up toast with a navigation link after brief delay
           setTimeout(() => {
             const t = document.createElement('div');
             t.className = 'app-toast app-toast-info';
@@ -252,6 +487,7 @@ window.notepadModule = {
         } else {
           customAlert('✅ Shared to Reviewer page! Other users can now see it.');
         }
+        this.render();
       }
     } catch (ex) {
       console.error('[Notepad] Share exception:', ex);

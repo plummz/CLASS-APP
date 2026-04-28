@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.47-20260428-revert-home-dashboard';
+const CACHE_VERSION = 'v1.5.48-20260428-youtube-fix-reviewers-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=88',
+  '/index.html?v=89',
   '/style.css?v=38',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,9 +45,9 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=7',
-  '/script.js?v=88',
-  '/features/reviewers/reviewers.js?v=10',
-  '/features/reviewers/reviewers.css?v=6',
+  '/script.js?v=89',
+  '/features/reviewers/reviewers.js?v=11',
+  '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
   '/features/personal-tools/notepad.css?v=6',
   '/features/ai/ai.js?v=1',
@@ -118,7 +118,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html?v=87'))
+        .catch(() => caches.match('/') || caches.match('/index.html?v=89'))
     );
     return;
   }

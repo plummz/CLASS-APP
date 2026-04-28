@@ -215,8 +215,10 @@ window.reviewersModule = {
       const isContributor = contributorCount >= 5;
 
       return `<div class="reviewer-card">
-        <div class="reviewer-card-badge">👍 ${voteCount}</div>
-        ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : ''}
+        <div class="reviewer-card-header">
+          ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : '<div></div>'}
+          <div class="reviewer-card-badge">👍 ${voteCount}</div>
+        </div>
         <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 150 ? '…' : ''}</div>
@@ -277,7 +279,7 @@ window.reviewersModule = {
         </div>
         <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
-          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId})">📝 Save to My Notes</button>
+          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId}, event)">📝 Save to My Notes</button>
         </div>
       </div>
     `;
@@ -295,21 +297,24 @@ window.reviewersModule = {
   deleteReviewer: async function(id, event) {
     event.stopPropagation();
 
-    const rev = this.sharedReviewers.find(r => r.id === id);
+    const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
     const me  = this.currentUsername();
 
-    if (!this.isAdmin() && (!me || !rev || rev.user_id !== me)) {
-      window.customAlert ? customAlert('You can only delete your own shared reviewers.') : alert('You can only delete your own shared reviewers.');
+    if (!rev) {
+      window.showToast ? showToast('Reviewer not found.', 'error') : alert('Reviewer not found.');
       return;
     }
 
-    if (!rev) return;
+    if (!this.isAdmin() && (!me || rev.user_id !== me)) {
+      window.customAlert ? customAlert('You can only delete your own shared reviewers.') : alert('You can only delete your own shared reviewers.');
+      return;
+    }
 
     const title = rev.title || 'Reviewer';
     const key = `delete-${id}-${Date.now()}`;
 
     this.pendingDeletes[key] = { id, rev };
-    this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
+    this.sharedReviewers = this.sharedReviewers.filter(r => String(r.id) !== String(id));
     this.applyFilter();
     this.renderGrid();
 
@@ -415,7 +420,7 @@ window.reviewersModule = {
     }
   },
 
-  saveToNotepad: async function(id) {
+  saveToNotepad: async function(id, event) {
     const btn = event?.target;
     if (btn) {
       btn.disabled = true;

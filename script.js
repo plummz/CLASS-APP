@@ -253,8 +253,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.47';
+const APP_VERSION = '1.5.48';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.48',
+    date: 'April 28, 2026',
+    title: 'YouTube Fix + Reviewers Overlap & Delete Fix',
+    summary: 'Fixed YouTube videos playing inside the app (Error 153), fixed overlapping badges on reviewer cards, fixed delete button reliability, and fixed Save to Notes button responsiveness.',
+    changes: [
+      'Fixed: YouTube embed now includes origin parameter — resolves Error 153 playback error.',
+      'Fixed: Reviewer card badges (vote count + contributor) now use flex header row — no more text overlap.',
+      'Fixed: Delete button now uses safe string ID comparison — prevents silent failures on all ID types.',
+      'Fixed: Save to Notes button now correctly receives event — double-save prevention now works.',
+      'Improved: Reviewer action buttons enlarged to 36px min-height with touch-action: manipulation for better iOS tap.',
+    ]
+  },
   {
     version: '1.5.47',
     date: 'April 28, 2026',
@@ -2100,7 +2113,7 @@ function loadYouTubeIframe(videoId, title) {
         }
     }, 3000);
 
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&origin=${encodeURIComponent(location.origin)}&rel=0&enablejsapi=1`;
     iframe.classList.remove('hidden');
     if (placeholder) placeholder.style.display = 'none';
     ytActive = true;

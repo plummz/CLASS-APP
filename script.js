@@ -253,8 +253,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.43';
+const APP_VERSION = '1.5.44';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.44',
+    date: 'April 28, 2026',
+    title: 'Critical Fix — Button Crash + Announcement Layout Reorganized',
+    summary: 'Fixed a JavaScript syntax error that crashed ALL buttons (including the menu). Announcement page now shows the board first for instant info access. iOS tap improvements on Quick Action cards.',
+    changes: [
+      'Bug Fix: Critical — JS syntax error in loadTrendingReviewers() broke the entire app (menu + all buttons unresponsive).',
+      'Layout: Announcement board now appears at the TOP of the Home page for immediate visibility.',
+      'Layout: Study Dashboard (quick actions, recent activity, trending notes) moved below the board.',
+      'iOS: Added touch-action: manipulation to Quick Action cards for reliable tap response on iOS/Safari.',
+      'Code: Removed dead goToPageEvent listener and redundant announcementInit wrapper.',
+      'Code: Cleaned up top-level variable pollution (unused pageConfigAnnouncement).',
+    ]
+  },
   {
     version: '1.5.43',
     date: 'April 28, 2026',
@@ -6382,7 +6396,7 @@ function loadTrendingReviewers() {
       }
 
       trendingContainer.innerHTML = data.map(r => `
-        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer('${String(r.id).replace(/'/g, '\\'')}')">
+        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer(${JSON.stringify(String(r.id))})">
           <div class="home-trending-title">${escapeHTML(r.title || 'Untitled')}</div>
           <div class="home-trending-by">By ${escapeHTML(r.contributor_name || 'Anonymous')}</div>
         </div>
@@ -6394,39 +6408,18 @@ function loadTrendingReviewers() {
     });
 }
 
-// Initialize on announcement page load
-const pageConfigAnnouncement = pageConfig['announcement'] || {};
-const originalAnnouncementInit = window.announcementInit;
-window.announcementInit = function() {
-  if (originalAnnouncementInit) originalAnnouncementInit();
-  setTimeout(initHomeDashboard, 50);
+// Re-init dashboard whenever user navigates to announcement page
+const _origGoToPageForDash = window.goToPage;
+window.goToPage = function(pageName) {
+  const result = _origGoToPageForDash.call(this, pageName);
+  if (pageName === 'announcement') setTimeout(initHomeDashboard, 100);
+  return result;
 };
 
-// Also initialize on page navigation to announcement
-document.addEventListener('goToPageEvent', (e) => {
-  if (e.detail?.page === 'announcement') {
-    setTimeout(initHomeDashboard, 100);
-  }
+// Also init on first load if already on announcement
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentPage === 'announcement') setTimeout(initHomeDashboard, 200);
 });
-
-// Hook into goToPage for announcement
-const originalGoToPageAnnounce = window.goToPage;
-if (typeof originalGoToPageAnnounce === 'function') {
-  window.goToPage = function(pageName) {
-    const result = originalGoToPageAnnounce.call(this, pageName);
-    if (pageName === 'announcement') {
-      setTimeout(initHomeDashboard, 100);
-    }
-    return result;
-  };
-}
-
-// Initialize on page load if already on announcement
-if (currentPage === 'announcement') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initHomeDashboard, 200);
-  });
-}
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */
 

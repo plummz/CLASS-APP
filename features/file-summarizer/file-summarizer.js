@@ -8,6 +8,7 @@
   const summaryEl   = document.getElementById('fs-summary-output');
   const summarySection = document.getElementById('fs-summary-section');
   const copyBtn     = document.getElementById('fs-copy-btn');
+  const shareBtn    = document.getElementById('fs-share-btn');
   const clearBtn    = document.getElementById('fs-clear-btn');
 
   const btnShort    = document.getElementById('fs-btn-short');
@@ -43,7 +44,9 @@
   // ── State ──────────────────────────────────────────────────
   let selectedFile    = null;
   let extractedText   = '';
-  let quizSettings    = { type: null, count: null };
+  let quizSettings    = (() => {
+    try { return JSON.parse(localStorage.getItem('fs-quiz-settings') || 'null') || { type: null, count: null }; } catch(_) { return { type: null, count: null }; }
+  })();
   let activeQuestions = [];
   let quizCurrent     = 0;
   let quizScore_val   = 0;
@@ -140,13 +143,16 @@
 
     if (!selectedFile) throw new Error('No file selected.');
 
-    setStatus(`Extracting text from "${selectedFile.name}"…`);
+    const sizeMB = (selectedFile.size / 1024 / 1024).toFixed(1);
+    setStatus(`📤 Uploading ${selectedFile.name} (${sizeMB} MB)…`);
     setSummaryBtnsDisabled(true);
 
     const fd = new FormData();
     fd.append('file', selectedFile);
 
+    setStatus(`📤 Uploading… parsing ${selectedFile.name.split('.').pop().toUpperCase()} file`);
     const res  = await fetch('/api/summarize-file', { method: 'POST', body: fd });
+    setStatus('🔍 Extracting text…');
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Extraction failed.');
     if (!data.text || !data.text.trim()) throw new Error('No readable text found in this file.');
@@ -166,7 +172,8 @@
 
     try {
       const text = await extractText();
-      setStatus('Generating summary…');
+      const typeLabels = { short: 'short summary', detailed: 'detailed notes', key: 'key points', terms: 'terms & definitions' };
+      setStatus(`🤖 AI generating ${typeLabels[type] || 'summary'}…`);
 
       const res  = await fetch('/api/summarize-file', {
         method:  'POST',
@@ -218,12 +225,22 @@
     }
   }
 
+  // ── Restore saved quiz settings ───────────────────────────
+  if (quizSettings.type) {
+    quizTypeChips.forEach(c => c.classList.toggle('selected', c.dataset.quizType === quizSettings.type));
+  }
+  if (quizSettings.count) {
+    quizCountChips.forEach(c => c.classList.toggle('selected', parseInt(c.dataset.quizCount) === quizSettings.count));
+  }
+  updateQuizSelection();
+
   // ── Quiz chip selection ────────────────────────────────────
   quizTypeChips.forEach(chip => {
     chip.addEventListener('click', () => {
       quizTypeChips.forEach(c => c.classList.remove('selected'));
       chip.classList.add('selected');
       quizSettings.type = chip.dataset.quizType;
+      try { localStorage.setItem('fs-quiz-settings', JSON.stringify(quizSettings)); } catch(_) {}
       updateQuizSelection();
     });
   });
@@ -233,6 +250,7 @@
       quizCountChips.forEach(c => c.classList.remove('selected'));
       chip.classList.add('selected');
       quizSettings.count = parseInt(chip.dataset.quizCount);
+      try { localStorage.setItem('fs-quiz-settings', JSON.stringify(quizSettings)); } catch(_) {}
       updateQuizSelection();
     });
   });
@@ -252,7 +270,7 @@
 
       try {
         const text = await extractText();
-        setStatus('Building quiz…');
+        setStatus(`🤖 AI building ${quizSettings.count}-item ${quizSettings.type} quiz…`);
 
         const res  = await fetch('/api/quiz', {
           method:  'POST',
@@ -477,4 +495,64 @@
   }
 
   if (clearBtn) clearBtn.addEventListener('click', clearAll);
+
+  if (shareBtn) {
+    shareBtn.addEventListener('click', async () => {
+      const summary = summaryEl?.value?.trim();
+      if (!summary) { setError('No summary to share.'); return; }
+
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+      const user   = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+      if (!client) { setError('Not connected. Please try again.'); return; }
+      if (!user?.username) { setError('Log in first to share.'); return; }
+
+      const title = selectedFile ? `${selectedFile.name} — Summary` : 'Shared Summary';
+      shareBtn.disabled = true;
+      shareBtn.textContent = '⏳ Sharing…';
+
+      const now = new Date().toISOString();
+      const record = {
+        title,
+        summary_content:    summary,
+        contributor_name:   user.display_name || user.username,
+        user_id:            user.username,
+        original_file_name: selectedFile?.name || '',
+        summary_type:       'file-summary',
+        is_shared:          true,
+        created_at:         now,
+        shared_at:          now,
+      };
+
+      try {
+        const { error } = await client.from('reviewers').insert([record]);
+        if (error) {
+          if (error.code === '42P01') {
+            setError('Reviewers table missing — run migration 010_reviewers_table.sql.');
+          } else {
+            setError('Share failed: ' + (error.message || 'Unknown error'));
+          }
+        } else {
+          setStatus('');
+          if (window.showToast) {
+            showToast('📤 Shared to Reviewers!', 'success');
+            setTimeout(() => {
+              const t = document.createElement('div');
+              t.className = 'app-toast app-toast-info';
+              t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" onclick="window.goToPage&&goToPage(\'reviewers\')">View Reviewers →</span>';
+              document.body.appendChild(t);
+              requestAnimationFrame(() => t.classList.add('show'));
+              setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);
+            }, 400);
+          } else {
+            customAlert('✅ Shared to Reviewers!');
+          }
+        }
+      } catch (ex) {
+        setError('Share failed. Please try again.');
+      } finally {
+        shareBtn.disabled = false;
+        shareBtn.textContent = '📤 Share to Reviewers';
+      }
+    });
+  }
 })();

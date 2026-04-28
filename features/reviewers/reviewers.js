@@ -61,10 +61,14 @@ window.reviewersModule = {
 
     const searchEl = document.getElementById('reviewers-search');
     if (searchEl) {
+      let searchDebounce = null;
       searchEl.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase();
-        this.applyFilter();
-        this.renderGrid();
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+          this.searchQuery = e.target.value.toLowerCase();
+          this.applyFilter();
+          this.renderGrid();
+        }, 300);
       });
     }
 
@@ -146,6 +150,7 @@ window.reviewersModule = {
     }
 
     const dateStr = new Date(rev.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const safeId = String(rev.id).replace(/[^0-9]/g, '');
     overlay.innerHTML = `
       <div class="reviewer-viewer-paper">
         <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
@@ -156,6 +161,9 @@ window.reviewersModule = {
           · ${dateStr}
         </div>
         <div class="reviewer-paper-content">${this.esc(rev.summary_content)}</div>
+        <div class="reviewer-viewer-actions">
+          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId})">📝 Save to My Notes</button>
+        </div>
       </div>
     `;
     setTimeout(() => overlay.classList.add('active'), 10);
@@ -176,26 +184,52 @@ window.reviewersModule = {
     const me  = this.currentUsername();
 
     if (!this.isAdmin() && (!me || !rev || rev.user_id !== me)) {
-      alert('You can only delete your own shared reviewers.');
+      window.customAlert ? customAlert('You can only delete your own shared reviewers.') : alert('You can only delete your own shared reviewers.');
       return;
     }
 
-    if (!confirm(`Delete "${rev?.title || 'this reviewer'}"?`)) return;
+    const doDelete = async () => {
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+      if (!client) return;
 
-    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
-    if (!client) return;
+      const { error } = await client.from('reviewers').delete().eq('id', id);
+      if (error) {
+        console.error('[Reviewers] Delete error:', error);
+        window.customAlert ? customAlert('Delete failed: ' + (error.message || 'Unknown error')) : alert('Delete failed: ' + (error.message || 'Unknown error'));
+        return;
+      }
 
-    const { error } = await client.from('reviewers').delete().eq('id', id);
-    if (error) {
-      console.error('[Reviewers] Delete error:', error);
-      alert('Delete failed: ' + (error.message || 'Unknown error'));
+      console.log('[Reviewers] Deleted id:', id);
+      this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
+      this.applyFilter();
+      this.renderGrid();
+    };
+
+    if (window.customConfirm) {
+      customConfirm(`Delete "${rev?.title || 'this reviewer'}"?`, doDelete);
       return;
     }
+    if (confirm(`Delete "${rev?.title || 'this reviewer'}"?`)) doDelete();
+  },
 
-    console.log('[Reviewers] Deleted id:', id);
-    this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
-    this.applyFilter();
-    this.renderGrid();
+  saveToNotepad: function(id) {
+    const rev = this.sharedReviewers.find(r => r.id === id);
+    if (!rev) return;
+
+    try {
+      const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+      const already = notes.some(n => n.title === rev.title && n.content === rev.summary_content);
+      if (already) {
+        window.showToast ? showToast('Already in your Notes.', 'info') : alert('Already in your Notes.');
+        return;
+      }
+      notes.unshift({ title: rev.title, content: rev.summary_content, date: new Date().toISOString() });
+      localStorage.setItem('notepad-notes', JSON.stringify(notes));
+      if (window.notepadModule) window.notepadModule.notes = notes;
+      window.showToast ? showToast('📝 Saved to your Notepad!', 'success') : alert('Saved to your Notepad!');
+    } catch(e) {
+      window.customAlert ? customAlert('Could not save to Notepad.') : alert('Could not save to Notepad.');
+    }
   },
 
   esc: function(text) {

@@ -231,8 +231,26 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.34';
+const APP_VERSION = '1.5.35';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.35',
+    date: 'April 28, 2026',
+    title: '10-Phase UX & Bug Fix Sweep',
+    summary: 'Comprehensive UX, bug, and quality-of-life improvements across File Summarizer, Quiz, Notepad, and Reviewers based on full app audit.',
+    changes: [
+      'Bug Fix: Quiz modal and score screen now close automatically when navigating away from File Summarizer.',
+      'Bug Fix: Quiz type/count chip selections are now persisted to localStorage and restored on page reload.',
+      'Bug Fix: Delete confirmations in Notepad and Reviewers now use the in-app custom modal instead of jarring browser confirm().',
+      'Bug Fix: Reviewer delete() uses customConfirm for ownership check errors too — no more browser alert().',
+      'UX: Reviewer search input is now debounced (300ms) to prevent jank on slow devices.',
+      'UX: File upload/extraction/summary steps now show staged progress messages (Uploading → Extracting → AI generating).',
+      'UX: After sharing a note from Notepad, a clickable toast appears: "View Reviewers →" instead of a generic alert.',
+      'Feature: Reviewer modal now has a "Save to My Notes" button — saves shared note directly to your local Notepad.',
+      'Feature: Notepad now has a live search bar — filter notes by title or content instantly.',
+      'Feature: File Summarizer output card now has a "Share to Reviewers" button — share directly without going through Notepad.',
+    ]
+  },
   {
     version: '1.5.34',
     date: 'April 27, 2026',
@@ -3377,6 +3395,11 @@ window.goToPage = function(pageName) {
   if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
   // Alarm: tear down clock when leaving
   if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
+  // File Summarizer: close quiz modal/score screen when navigating away
+  if (currentPage === 'file-summarizer') {
+    document.getElementById('fs-quiz-modal')?.classList.remove('active');
+    document.getElementById('fs-quiz-score')?.classList.remove('active');
+  }
 
   // YouTube mini-player: show when leaving music, hide when returning
   const ytMini = document.getElementById('yt-mini-player');

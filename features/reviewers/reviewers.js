@@ -5,13 +5,19 @@
 window.reviewersModule = {
   sharedReviewers: [],
   filtered: [],
+  displayed: [],
   searchQuery: '',
   sortBy: 'trending',
   voteCounts: {},
   userVotes: {},
+  pendingDeletes: {},
+  pendingDeleteTimeouts: {},
+  pageSize: 20,
+  currentPage: 1,
 
   init: function() {
     this.sortBy = localStorage.getItem('reviewers-sort-by') || 'trending';
+    this.currentPage = 1;
     this.render();
   },
 
@@ -52,27 +58,33 @@ window.reviewersModule = {
     if (!client) return;
 
     try {
-      const { data, error } = await client
+      const { data: votes, error: voteError } = await client
         .from('reviewer_votes')
         .select('reviewer_id, user_id');
 
-      if (error) {
-        console.warn('[Reviewers] Vote load error:', error);
-        return;
+      if (voteError) {
+        console.warn('[Reviewers] Vote load error:', voteError);
+      } else {
+        this.voteCounts = {};
+        this.userVotes = {};
+        const me = this.currentUsername();
+
+        (votes || []).forEach(vote => {
+          this.voteCounts[vote.reviewer_id] = (this.voteCounts[vote.reviewer_id] || 0) + 1;
+          if (me && vote.user_id === me) {
+            this.userVotes[vote.reviewer_id] = true;
+          }
+        });
       }
 
-      this.voteCounts = {};
-      this.userVotes = {};
-      const me = this.currentUsername();
-
-      (data || []).forEach(vote => {
-        this.voteCounts[vote.reviewer_id] = (this.voteCounts[vote.reviewer_id] || 0) + 1;
-        if (me && vote.user_id === me) {
-          this.userVotes[vote.reviewer_id] = true;
-        }
+      // Count contributions per author for contributor badges
+      const contributorCounts = {};
+      (this.sharedReviewers || []).forEach(rev => {
+        contributorCounts[rev.user_id] = (contributorCounts[rev.user_id] || 0) + 1;
       });
+      this.contributorCounts = contributorCounts;
 
-      console.log('[Reviewers] Vote counts loaded');
+      console.log('[Reviewers] Vote counts and contributor stats loaded');
     } catch (ex) {
       console.error('[Reviewers] Vote load exception:', ex);
     }
@@ -157,6 +169,20 @@ window.reviewersModule = {
     }
 
     this.filtered = result;
+    this.currentPage = 1;
+    this.updateDisplayed();
+  },
+
+  updateDisplayed: function() {
+    const start = 0;
+    const end = this.currentPage * this.pageSize;
+    this.displayed = this.filtered.slice(start, end);
+  },
+
+  loadMore: function() {
+    this.currentPage++;
+    this.updateDisplayed();
+    this.renderGrid();
   },
 
   renderGrid: function() {
@@ -170,10 +196,14 @@ window.reviewersModule = {
       return;
     }
 
+    if (this.displayed.length === 0) {
+      this.updateDisplayed();
+    }
+
     const me      = this.currentUsername();
     const isAdmin = this.isAdmin();
 
-    grid.innerHTML = this.filtered.map(rev => {
+    let html = this.displayed.map(rev => {
       const date    = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const preview = (rev.summary_content || '').slice(0, 100).trim();
@@ -181,9 +211,12 @@ window.reviewersModule = {
       const voteCount = this.voteCounts[rev.id] || 0;
       const hasVoted = this.userVotes[rev.id] || false;
       const voteClass = hasVoted ? 'voted' : '';
+      const contributorCount = this.contributorCounts?.[rev.user_id] || 0;
+      const isContributor = contributorCount >= 5;
 
       return `<div class="reviewer-card">
         <div class="reviewer-card-badge">👍 ${voteCount}</div>
+        ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : ''}
         <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 100 ? '…' : ''}</div>
@@ -199,6 +232,12 @@ window.reviewersModule = {
         </div>
       </div>`;
     }).join('');
+
+    if (this.displayed.length < this.filtered.length) {
+      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" onclick="window.reviewersModule.loadMore()">Load More</button></div>`;
+    }
+
+    grid.innerHTML = html;
   },
 
   openViewer: async function(id) {
@@ -264,28 +303,61 @@ window.reviewersModule = {
       return;
     }
 
-    const doDelete = async () => {
-      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
-      if (!client) return;
+    if (!rev) return;
 
-      const { error } = await client.from('reviewers').delete().eq('id', id);
-      if (error) {
-        console.error('[Reviewers] Delete error:', error);
-        window.customAlert ? customAlert('Delete failed: ' + (error.message || 'Unknown error')) : alert('Delete failed: ' + (error.message || 'Unknown error'));
-        return;
-      }
+    const title = rev.title || 'Reviewer';
+    const key = `delete-${id}-${Date.now()}`;
 
-      console.log('[Reviewers] Deleted id:', id);
-      this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
-      this.applyFilter();
-      this.renderGrid();
+    this.pendingDeletes[key] = { id, rev };
+    this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
+    this.applyFilter();
+    this.renderGrid();
+
+    const showUndoToast = () => {
+      const t = document.createElement('div');
+      t.className = 'app-toast app-toast-info';
+      t.innerHTML = `Deleted '${this.esc(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.reviewersModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+
+      clearTimeout(this.pendingDeleteTimeouts[key]);
+      this.pendingDeleteTimeouts[key] = setTimeout(async () => {
+        delete this.pendingDeletes[key];
+        delete this.pendingDeleteTimeouts[key];
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 220);
+
+        const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+        if (!client) return;
+
+        const { error } = await client.from('reviewers').delete().eq('id', id);
+        if (error) {
+          console.error('[Reviewers] Delete error:', error);
+        }
+      }, 5000);
     };
 
-    if (window.customConfirm) {
-      customConfirm(`Delete "${rev?.title || 'this reviewer'}"?`, doDelete);
-      return;
+    if (window.showToast) {
+      showToast(`Deleted '${title}'`, 'info');
     }
-    if (confirm(`Delete "${rev?.title || 'this reviewer'}"?`)) doDelete();
+    showUndoToast();
+  },
+
+  undoDelete: async function(key) {
+    const pending = this.pendingDeletes[key];
+    if (!pending) return;
+
+    clearTimeout(this.pendingDeleteTimeouts[key]);
+    delete this.pendingDeletes[key];
+    delete this.pendingDeleteTimeouts[key];
+
+    this.sharedReviewers.push(pending.rev);
+    this.applyFilter();
+    this.renderGrid();
+
+    if (window.showToast) {
+      showToast('✅ Restored!', 'success');
+    }
   },
 
   toggleVote: async function(reviewerId, event) {
@@ -343,23 +415,44 @@ window.reviewersModule = {
     }
   },
 
-  saveToNotepad: function(id) {
-    const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
-    if (!rev) return;
+  saveToNotepad: async function(id) {
+    const btn = event?.target;
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+    }
 
     try {
+      const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
+      if (!rev) {
+        if (btn) btn.disabled = false;
+        return;
+      }
+
       const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
       const already = notes.some(n => n.title === rev.title && n.content === rev.summary_content);
       if (already) {
         window.showToast ? showToast('Already in your Notes.', 'info') : alert('Already in your Notes.');
+        if (btn) btn.disabled = false;
         return;
       }
+
       notes.unshift({ title: rev.title, content: rev.summary_content, date: new Date().toISOString() });
       localStorage.setItem('notepad-notes', JSON.stringify(notes));
       if (window.notepadModule) window.notepadModule.notes = notes;
+
       window.showToast ? showToast('📝 Saved to your Notepad!', 'success') : alert('Saved to your Notepad!');
+
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
     } catch(e) {
       window.customAlert ? customAlert('Could not save to Notepad.') : alert('Could not save to Notepad.');
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
     }
   },
 

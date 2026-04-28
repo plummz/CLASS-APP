@@ -104,6 +104,20 @@
   z-index: 2;
 }
 
+.reviewer-card-contributor-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(200,150,255,0.15);
+  border: 1px solid rgba(200,150,255,0.3);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #d0a5ff;
+  z-index: 2;
+}
+
 .reviewer-card-content {
   padding: 14px 14px 10px;
   cursor: pointer;
@@ -191,6 +205,30 @@
 }
 .reviewer-delete-btn:hover {
   background: rgba(255,74,107,0.22);
+}
+
+/* Load More */
+.reviewer-load-more {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+}
+
+.reviewer-load-more-btn {
+  padding: 12px 24px;
+  background: rgba(0,212,255,0.12);
+  color: var(--accent, #00d4ff);
+  border: 1px solid rgba(0,212,255,0.3);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reviewer-load-more-btn:hover {
+  background: rgba(0,212,255,0.22);
+  border-color: rgba(0,212,255,0.5);
 }
 
 /* Empty state */

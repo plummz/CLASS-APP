@@ -10,6 +10,8 @@ window.notepadModule = {
   userLoaded: false,
   firstLoginPromptShown: false,
   isOnline: navigator.onLine,
+  pendingDeletes: {},
+  pendingDeleteTimeouts: {},
 
   init: function() {
     this.setupOnlineHandler();
@@ -372,49 +374,127 @@ window.notepadModule = {
   },
 
   deleteNote: async function(index) {
-    const doDelete = async () => {
-      const note = this.notes[index];
-      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    const note = this.notes[index];
+    if (!note) return;
 
-      if (note.cloudId && client && navigator.onLine) {
-        try {
-          await client.from('user_notes').delete().eq('id', note.cloudId);
-        } catch (ex) {
-          console.error('[Notepad] Delete error:', ex);
+    const title = note.title || 'Note';
+    const key = `delete-${index}-${Date.now()}`;
+
+    this.pendingDeletes[key] = { index, note };
+    this.notes.splice(index, 1);
+    await this.saveNotes();
+    this.render();
+
+    const showUndoToast = () => {
+      const t = document.createElement('div');
+      t.className = 'app-toast app-toast-info';
+      t.innerHTML = `Deleted '${this.escapeHtml(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+
+      clearTimeout(this.pendingDeleteTimeouts[key]);
+      this.pendingDeleteTimeouts[key] = setTimeout(async () => {
+        delete this.pendingDeletes[key];
+        delete this.pendingDeleteTimeouts[key];
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 220);
+
+        const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+        if (note.cloudId && client && navigator.onLine) {
+          try {
+            await client.from('user_notes').delete().eq('id', note.cloudId);
+          } catch (ex) {
+            console.error('[Notepad] Delete error:', ex);
+          }
         }
-      }
-
-      this.notes.splice(index, 1);
-      await this.saveNotes();
-      this.render();
+      }, 5000);
     };
-    if (window.customConfirm) { customConfirm('Delete this note?', doDelete); return; }
-    if (confirm('Delete this note?')) doDelete();
+
+    if (window.showToast) {
+      window.showToast(`Deleted '${title}'`, 'info');
+    }
+    showUndoToast();
+  },
+
+  undoDelete: async function(key) {
+    const pending = this.pendingDeletes[key];
+    if (!pending) return;
+
+    clearTimeout(this.pendingDeleteTimeouts[key]);
+    delete this.pendingDeletes[key];
+    delete this.pendingDeleteTimeouts[key];
+
+    this.notes.splice(pending.index, 0, pending.note);
+    await this.saveNotes();
+    this.render();
+
+    if (window.showToast) {
+      showToast('✅ Restored!', 'success');
+    }
   },
 
   clearAll: async function() {
-    const doClear = async () => {
-      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (this.notes.length === 0) return;
 
-      if (client && navigator.onLine) {
-        try {
-          const ids = this.notes.filter(n => n.cloudId).map(n => n.cloudId);
-          if (ids.length > 0) {
-            for (const id of ids) {
-              await client.from('user_notes').delete().eq('id', id);
+    const key = `clear-${Date.now()}`;
+    const savedNotes = [...this.notes];
+
+    this.pendingDeletes[key] = { notes: savedNotes };
+    this.notes = [];
+    await this.saveNotes();
+    this.render();
+
+    const showUndoToast = () => {
+      const t = document.createElement('div');
+      t.className = 'app-toast app-toast-info';
+      t.innerHTML = `Deleted ${savedNotes.length} note(s) <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoClearAll('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+
+      clearTimeout(this.pendingDeleteTimeouts[key]);
+      this.pendingDeleteTimeouts[key] = setTimeout(async () => {
+        delete this.pendingDeletes[key];
+        delete this.pendingDeleteTimeouts[key];
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 220);
+
+        const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+        if (client && navigator.onLine) {
+          try {
+            const ids = savedNotes.filter(n => n.cloudId).map(n => n.cloudId);
+            if (ids.length > 0) {
+              for (const id of ids) {
+                await client.from('user_notes').delete().eq('id', id);
+              }
             }
+          } catch (ex) {
+            console.error('[Notepad] Clear error:', ex);
           }
-        } catch (ex) {
-          console.error('[Notepad] Clear error:', ex);
         }
-      }
-
-      this.notes = [];
-      await this.saveNotes();
-      this.render();
+      }, 5000);
     };
-    if (window.customConfirm) { customConfirm('Delete all notes? This cannot be undone.', doClear); return; }
-    if (confirm('Delete all notes? This cannot be undone.')) doClear();
+
+    if (window.showToast) {
+      showToast(`Deleted ${savedNotes.length} note(s)`, 'info');
+    }
+    showUndoToast();
+  },
+
+  undoClearAll: async function(key) {
+    const pending = this.pendingDeletes[key];
+    if (!pending || !pending.notes) return;
+
+    clearTimeout(this.pendingDeleteTimeouts[key]);
+    delete this.pendingDeletes[key];
+    delete this.pendingDeleteTimeouts[key];
+
+    this.notes = pending.notes;
+    await this.saveNotes();
+    this.render();
+
+    if (window.showToast) {
+      showToast('✅ Restored!', 'success');
+    }
   },
 
   shareNote: async function(index) {

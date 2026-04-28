@@ -1,137 +1,164 @@
 // ═══════════════════════════════════════════════════════════
-// PUBLIC REVIEWERS - Module
+// PUBLIC REVIEWERS - Module  v1.5.34
 // ═══════════════════════════════════════════════════════════
 
 window.reviewersModule = {
   sharedReviewers: [],
+  filtered: [],
+  searchQuery: '',
 
   init: function() {
     this.render();
   },
 
+  isAdmin: function() {
+    const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    return u?.username === 'Marquillero';
+  },
+
+  currentUsername: function() {
+    const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    return u?.username || null;
+  },
+
   loadReviewers: async function() {
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
-    if (!client) return;
-    try {
-      const { data, error } = await client
-        .from('reviewers')
-        .select('*')
-        .eq('is_shared', true)
-        .order('shared_at', { ascending: false });
-      
-      if (!error && data) {
-        this.sharedReviewers = data;
-      }
-    } catch (e) {
-      console.warn('Failed to load shared reviewers', e);
+    if (!client) {
+      console.warn('[Reviewers] Supabase client not ready.');
+      return;
     }
+    const { data, error } = await client
+      .from('reviewers')
+      .select('*')
+      .eq('is_shared', true)
+      .order('shared_at', { ascending: false });
+
+    if (error) {
+      console.error('[Reviewers] Load error:', error);
+      throw error;
+    }
+    this.sharedReviewers = data || [];
+    console.log('[Reviewers] Loaded:', this.sharedReviewers.length, 'items');
   },
 
   render: async function() {
     const page = document.getElementById('page-reviewers');
     if (!page) return;
 
-    // Immediately show the base UI so the page never looks blank
+    // Immediately paint base structure — never blank
     page.innerHTML = `
       <div class="reviewers-wrap">
-        <h1 class="reviewers-title">Shared Reviewers</h1>
+        <div class="reviewers-header">
+          <h1 class="reviewers-title">📄 Shared Reviewers</h1>
+          <input type="search" class="reviewers-search" id="reviewers-search"
+            placeholder="Search by title or contributor…">
+        </div>
         <div class="reviewers-grid" id="reviewers-grid">
-          <div class="reviewer-empty"><p>Loading shared reviewers…</p></div>
+          <div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>
         </div>
       </div>
     `;
 
+    const searchEl = document.getElementById('reviewers-search');
+    if (searchEl) {
+      searchEl.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value.toLowerCase();
+        this.applyFilter();
+        this.renderGrid();
+      });
+    }
+
     try {
       await this.loadReviewers();
+      this.applyFilter();
       this.renderGrid();
     } catch (e) {
-      console.error('[Reviewers] Failed to load:', e);
       const grid = document.getElementById('reviewers-grid');
       if (grid) grid.innerHTML = '<div class="reviewer-empty"><p>Failed to load shared content. Please refresh.</p></div>';
     }
+  },
+
+  applyFilter: function() {
+    if (!this.searchQuery) {
+      this.filtered = this.sharedReviewers;
+      return;
+    }
+    this.filtered = this.sharedReviewers.filter(r =>
+      (r.title || '').toLowerCase().includes(this.searchQuery) ||
+      (r.contributor_name || '').toLowerCase().includes(this.searchQuery)
+    );
   },
 
   renderGrid: function() {
     const grid = document.getElementById('reviewers-grid');
     if (!grid) return;
 
-    if (this.sharedReviewers.length === 0) {
-      grid.innerHTML = '<div class="reviewer-empty"><p>No shared reviewers yet. Be the first to share one from your Notepad!</p></div>';
+    if (this.filtered.length === 0) {
+      grid.innerHTML = this.sharedReviewers.length === 0
+        ? '<div class="reviewer-empty"><span>📚</span><p>No shared reviewers yet.</p><p class="reviewer-empty-hint">Share one from your Notepad!</p></div>'
+        : '<div class="reviewer-empty"><span>🔍</span><p>No results found.</p></div>';
       return;
     }
 
-    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-    const currentUserId = user?.username || null;
+    const me      = this.currentUsername();
+    const isAdmin = this.isAdmin();
 
-    grid.innerHTML = this.sharedReviewers.map((rev) => {
-      const date = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
+    grid.innerHTML = this.filtered.map(rev => {
+      const date    = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const isOwner = currentUserId && rev.user_id === currentUserId;
+      const preview = (rev.summary_content || '').slice(0, 100).trim();
+      const canDel  = isAdmin || (me && rev.user_id === me);
 
-      return \`
-        <div class="reviewer-card">
-          <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('\${rev.id}')">
-            <div class="reviewer-card-title">\${this.escapeHtml(rev.title)}</div>
-            <div class="reviewer-card-preview">\${this.escapeHtml(rev.summary_content)}</div>
-            <div class="reviewer-card-footer">
-              <span>By: \${this.escapeHtml(rev.contributor_name)}</span>
-              <span>\${dateStr}</span>
-            </div>
+      return `<div class="reviewer-card">
+        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer(${rev.id})">
+          <div class="reviewer-card-title">${this.esc(rev.title)}</div>
+          <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 100 ? '…' : ''}</div>
+          <div class="reviewer-card-footer">
+            <span class="reviewer-card-by">By <strong>${this.esc(rev.contributor_name)}</strong></span>
+            <span class="reviewer-card-date">${dateStr}</span>
           </div>
-          \${isOwner ? \`<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteSharedNote('\${rev.id}', event)">🗑️</button>\` : ''}
         </div>
-      \`;
+        <div class="reviewer-card-actions">
+          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer(${rev.id})">View</button>
+          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${rev.id}, event)">Delete</button>` : ''}
+        </div>
+      </div>`;
     }).join('');
   },
 
   openViewer: async function(id) {
-    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
-    if (!client) return;
-    try {
-      // First check local loaded lists to avoid extra fetch if possible
-      let rev = this.sharedReviewers.find(r => r.id === id);
-      if (!rev && window.notepadModule && window.notepadModule.reviewers) {
-        rev = window.notepadModule.reviewers.find(r => r.id === id);
+    let rev = this.sharedReviewers.find(r => r.id === id);
+    if (!rev) {
+      const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+      if (client) {
+        const { data } = await client.from('reviewers').select('*').eq('id', id).single();
+        if (data) rev = data;
       }
-      
-      // If not found in cache, fetch from db
-      if (!rev) {
-        const { data, error } = await client.from('reviewers').select('*').eq('id', id).single();
-        if (!error && data) rev = data;
-      }
-
-      if (!rev) {
-        alert('Reviewer not found. It may have been deleted.');
-        return;
-      }
-
-      let overlay = document.getElementById('reviewer-viewer-modal');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'reviewer-viewer-modal';
-        overlay.className = 'reviewer-viewer-overlay';
-        document.body.appendChild(overlay);
-      }
-
-      const dateStr = new Date(rev.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-      overlay.innerHTML = \`
-        <div class="reviewer-viewer-paper">
-          <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
-          <div class="reviewer-paper-title">\${this.escapeHtml(rev.title)}</div>
-          <div class="reviewer-paper-meta">
-            Shared by \${this.escapeHtml(rev.contributor_name)} | Source: \${this.escapeHtml(rev.original_file_name)} | \${dateStr}
-          </div>
-          <div class="reviewer-paper-content">\${this.escapeHtml(rev.summary_content)}</div>
-        </div>
-      \`;
-
-      // Trigger animation
-      setTimeout(() => overlay.classList.add('active'), 10);
-
-    } catch (e) {
-      console.error('Error opening viewer:', e);
     }
+    if (!rev) { alert('Reviewer not found.'); return; }
+
+    let overlay = document.getElementById('reviewer-viewer-modal');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'reviewer-viewer-modal';
+      overlay.className = 'reviewer-viewer-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const dateStr = new Date(rev.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    overlay.innerHTML = `
+      <div class="reviewer-viewer-paper">
+        <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
+        <div class="reviewer-paper-title">${this.esc(rev.title)}</div>
+        <div class="reviewer-paper-meta">
+          Shared by <strong>${this.esc(rev.contributor_name)}</strong>
+          ${rev.original_file_name ? ` · Source: ${this.esc(rev.original_file_name)}` : ''}
+          · ${dateStr}
+        </div>
+        <div class="reviewer-paper-content">${this.esc(rev.summary_content)}</div>
+      </div>
+    `;
+    setTimeout(() => overlay.classList.add('active'), 10);
   },
 
   closeViewer: function() {
@@ -142,33 +169,38 @@ window.reviewersModule = {
     }
   },
 
-  deleteSharedNote: async function(id, event) {
+  deleteReviewer: async function(id, event) {
     event.stopPropagation();
-    if (!confirm('Delete this shared note?')) return;
+
+    const rev = this.sharedReviewers.find(r => r.id === id);
+    const me  = this.currentUsername();
+
+    if (!this.isAdmin() && (!me || !rev || rev.user_id !== me)) {
+      alert('You can only delete your own shared reviewers.');
+      return;
+    }
+
+    if (!confirm(`Delete "${rev?.title || 'this reviewer'}"?`)) return;
 
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     if (!client) return;
 
-    try {
-      const { error } = await client.from('reviewers').delete().eq('id', id);
-      if (error) {
-        console.error('[Reviewers] Delete error:', error);
-        alert('Failed to delete note.');
-      } else {
-        console.log('[Reviewers] Note deleted:', id);
-        this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
-        this.renderGrid();
-      }
-    } catch (ex) {
-      console.error('[Reviewers] Delete exception:', ex);
-      alert('Failed to delete note.');
+    const { error } = await client.from('reviewers').delete().eq('id', id);
+    if (error) {
+      console.error('[Reviewers] Delete error:', error);
+      alert('Delete failed: ' + (error.message || 'Unknown error'));
+      return;
     }
+
+    console.log('[Reviewers] Deleted id:', id);
+    this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
+    this.applyFilter();
+    this.renderGrid();
   },
 
-  escapeHtml: function(text) {
+  esc: function(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
-  }
+  },
 };
-

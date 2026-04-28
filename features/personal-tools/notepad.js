@@ -179,29 +179,43 @@ window.notepadModule = {
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
 
-    if (!client || !user) {
-      customAlert('Not logged in. Cannot share note.');
+    if (!client) {
+      customAlert('Could not connect to server. Please try again.');
+      return;
+    }
+    if (!user || !user.username) {
+      customAlert('Log in first before sharing a note.');
       return;
     }
 
+    const now = new Date().toISOString();
+    const record = {
+      title:              note.title,
+      summary_content:    note.content,
+      contributor_name:   user.display_name || user.username,
+      user_id:            user.username,
+      original_file_name: note.title,
+      summary_type:       'shared-note',
+      is_shared:          true,
+      created_at:         note.date || now,
+      shared_at:          now,
+    };
+
+    console.log('[Notepad] Sharing note:', record.title, '| user_id:', record.user_id);
+
     try {
-      const { error } = await client.from('reviewers').insert([{
-        title: note.title,
-        summary_content: note.content,
-        contributor_name: user.username || user.display_name || 'Anonymous',
-        user_id: user.username,
-        original_file_name: note.title,
-        summary_type: 'shared-note',
-        is_shared: true,
-        created_at: note.date,
-      }]);
+      const { error } = await client.from('reviewers').insert([record]);
 
       if (error) {
-        console.error('[Notepad] Share error:', error);
-        customAlert('Could not share note: ' + (error.message || 'Unknown error'));
+        console.error('[Notepad] Share error:', error.code, error.message);
+        if (error.code === '42P01') {
+          customAlert('Reviewers table not found. Ask your admin to run the database migration (010_reviewers_table.sql).');
+        } else {
+          customAlert('Could not share: ' + (error.message || 'Unknown error'));
+        }
       } else {
-        console.log('[Notepad] Note shared:', note.title);
-        customAlert('Shared to Reviewer page!');
+        console.log('[Notepad] Note shared successfully:', record.title);
+        customAlert('✅ Shared to Reviewer page! Other users can now see it.');
       }
     } catch (ex) {
       console.error('[Notepad] Share exception:', ex);

@@ -1,313 +1,480 @@
-// File Summarizer Frontend Logic
+// File Summarizer — v1.5.34
 (function () {
-  const fileInput = document.getElementById('fs-file-input');
-  const status = document.getElementById('fs-upload-status');
-  const errorBox = document.getElementById('fs-error');
-  const summaryEl = document.getElementById('fs-summary-output');
+  // ── DOM refs ───────────────────────────────────────────────
+  const fileInput   = document.getElementById('fs-file-input');
+  const uploadLabel = document.getElementById('fs-upload-label');
+  const status      = document.getElementById('fs-upload-status');
+  const errorBox    = document.getElementById('fs-error');
+  const summaryEl   = document.getElementById('fs-summary-output');
   const summarySection = document.getElementById('fs-summary-section');
-  const copyBtn = document.getElementById('fs-copy-btn');
-  const clearBtn = document.getElementById('fs-clear-btn');
-  const btns = {
-    short: document.getElementById('fs-btn-short'),
-    detailed: document.getElementById('fs-btn-detailed'),
-    key: document.getElementById('fs-btn-key'),
-    terms: document.getElementById('fs-btn-terms'),
-  };
-  const quizToggle = document.getElementById('fs-btn-quiz-toggle');
-  const quizDropdown = document.getElementById('fs-quiz-dropdown');
-  const quizTypeButtons = Array.from(document.querySelectorAll('.fs-quiz-option'));
-  const quizCountButtons = Array.from(document.querySelectorAll('.fs-quiz-count'));
-  const actionBtns = Object.values(btns).concat(quizToggle);
+  const copyBtn     = document.getElementById('fs-copy-btn');
+  const clearBtn    = document.getElementById('fs-clear-btn');
 
-  if (!fileInput) {
-    console.error('[FileSummarizer] #fs-file-input not found in DOM');
-    return;
-  }
+  const btnShort    = document.getElementById('fs-btn-short');
+  const btnDetailed = document.getElementById('fs-btn-detailed');
+  const btnKey      = document.getElementById('fs-btn-key');
+  const btnTerms    = document.getElementById('fs-btn-terms');
+  const btnQuiz     = document.getElementById('fs-btn-quiz');
+  const summaryBtns = [btnShort, btnDetailed, btnKey, btnTerms];
 
-  let selectedFile = null;
-  let quizSettings = { type: null, count: 10 };
+  const quizTypeChips  = Array.from(document.querySelectorAll('.fs-chip[data-quiz-type]'));
+  const quizCountChips = Array.from(document.querySelectorAll('.fs-chip[data-quiz-count]'));
+  const quizSelection  = document.getElementById('fs-quiz-selection');
 
-  // Initial state
-  actionBtns.forEach(b => b.disabled = true);
-  if (summarySection) summarySection.style.display = 'none';
+  // Quiz modal refs
+  const quizModal      = document.getElementById('fs-quiz-modal');
+  const quizProgress   = document.getElementById('fs-quiz-progress');
+  const quizTimer      = document.getElementById('fs-quiz-timer');
+  const quizQText      = document.getElementById('fs-quiz-question-text');
+  const quizChoices    = document.getElementById('fs-quiz-choices');
+  const quizFeedback   = document.getElementById('fs-quiz-feedback');
+  const quizNextBtn    = document.getElementById('fs-quiz-next-btn');
 
+  // Score screen refs
+  const quizScore      = document.getElementById('fs-quiz-score');
+  const scoreEmoji     = document.getElementById('fs-quiz-score-emoji');
+  const scoreText      = document.getElementById('fs-quiz-score-text');
+  const scoreDetail    = document.getElementById('fs-quiz-score-detail');
+  const quizRestartBtn = document.getElementById('fs-quiz-restart-btn');
+  const quizCloseBtn   = document.getElementById('fs-quiz-close-btn');
+
+  if (!fileInput) return;
+
+  // ── State ──────────────────────────────────────────────────
+  let selectedFile    = null;
+  let extractedText   = '';
+  let quizSettings    = { type: null, count: null };
+  let activeQuestions = [];
+  let quizCurrent     = 0;
+  let quizScore_val   = 0;
+  let quizTimerID     = null;
+  let quizTimeLeft    = 10;
+  let quizAnswered    = false;
+
+  // ── Helpers ────────────────────────────────────────────────
   function setError(msg) {
-    if (errorBox) errorBox.textContent = msg;
-    if (status) status.textContent = '';
+    if (errorBox) { errorBox.textContent = msg; }
+    if (status)   { status.textContent = ''; }
   }
-
   function setStatus(msg) {
-    if (status) status.textContent = msg;
-    if (errorBox) errorBox.textContent = '';
+    if (status)   { status.textContent = msg; }
+    if (errorBox) { errorBox.textContent = ''; }
+  }
+  function setSummaryBtnsDisabled(disabled) {
+    summaryBtns.forEach(b => b && (b.disabled = disabled));
+    if (btnQuiz) btnQuiz.disabled = disabled || !quizSettings.type || !quizSettings.count;
   }
 
   function clearAll() {
-    selectedFile = null;
+    selectedFile  = null;
+    extractedText = '';
     fileInput.value = '';
     setStatus('');
+    setError('');
     if (summaryEl) summaryEl.value = '';
     if (summarySection) summarySection.style.display = 'none';
-    actionBtns.forEach(b => b.disabled = true);
-    quizDropdown.style.display = 'none';
-    quizTypeButtons.forEach(b => b.classList.remove('selected'));
-    quizCountButtons.forEach(b => b.classList.remove('selected'));
-    quizSettings = { type: null, count: 10 };
+    setSummaryBtnsDisabled(true);
+    if (uploadLabel) {
+      uploadLabel.querySelector('.fs-upload-main').textContent = 'Tap to upload a file';
+      uploadLabel.querySelector('.fs-upload-sub').textContent  = 'PDF · DOCX · PPTX — max 8 MB';
+    }
   }
 
-  // Quiz dropdown logic
-  quizToggle.addEventListener('click', () => {
-    quizDropdown.style.display = quizDropdown.style.display === 'none' ? 'block' : 'none';
-  });
+  function updateQuizSelection() {
+    if (!quizSettings.type && !quizSettings.count) {
+      quizSelection.textContent = 'Select type and count above';
+    } else if (quizSettings.type && !quizSettings.count) {
+      const label = quizSettings.type === 'multiple-choice' ? 'Multiple Choice'
+        : quizSettings.type === 'identification' ? 'Identification' : 'Both';
+      quizSelection.textContent = `Selected: ${label} • choose count`;
+    } else if (!quizSettings.type && quizSettings.count) {
+      quizSelection.textContent = `Selected: ${quizSettings.count} items • choose type`;
+    } else {
+      const label = quizSettings.type === 'multiple-choice' ? 'Multiple Choice'
+        : quizSettings.type === 'identification' ? 'Identification' : 'Both';
+      quizSelection.textContent = `✓ ${label} • ${quizSettings.count} items`;
+    }
+    if (btnQuiz) btnQuiz.disabled = !selectedFile || !quizSettings.type || !quizSettings.count;
+  }
 
-  quizTypeButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      quizTypeButtons.forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      quizSettings.type = btn.dataset.quizType;
-    });
-  });
-
-  quizCountButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      quizCountButtons.forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      quizSettings.count = parseInt(btn.dataset.quizCount);
-      // Generate quiz after count is selected
-      if (quizSettings.type && selectedFile) {
-        quizDropdown.style.display = 'none';
-        requestQuiz();
-      }
-    });
-  });
-
-  // File selection
+  // ── File selection ─────────────────────────────────────────
   fileInput.addEventListener('change', function (e) {
     const file = e.target.files && e.target.files[0];
-
-    if (!file) {
-      clearAll();
-      return;
-    }
+    if (!file) { clearAll(); return; }
 
     const ext = file.name.split('.').pop().toLowerCase();
     const allowed = ['pdf', 'doc', 'docx', 'ppt', 'pptx'];
     if (!allowed.includes(ext)) {
-      setError('Unsupported file type. Only PDF, DOC, DOCX, PPT, and PPTX are allowed.');
+      setError('Unsupported file. Only PDF, DOC, DOCX, PPT, PPTX allowed.');
       fileInput.value = '';
       selectedFile = null;
-      actionBtns.forEach(b => b.disabled = true);
+      setSummaryBtnsDisabled(true);
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError(`File too large (${(file.size/1024/1024).toFixed(1)} MB). Max 8 MB.`);
+      fileInput.value = '';
+      selectedFile = null;
+      setSummaryBtnsDisabled(true);
       return;
     }
 
-    const maxBytes = 8 * 1024 * 1024;
-    if (file.size > maxBytes) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB allowed.`);
-      fileInput.value = '';
-      selectedFile = null;
-      actionBtns.forEach(b => b.disabled = true);
-      return;
-    }
-
-    selectedFile = file;
+    selectedFile  = file;
+    extractedText = '';
     const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-    setStatus(`✅ Ready: ${file.name} • ${sizeMB} MB • .${ext.toUpperCase()}`);
+    if (uploadLabel) {
+      uploadLabel.querySelector('.fs-upload-main').textContent = `✅ ${file.name}`;
+      uploadLabel.querySelector('.fs-upload-sub').textContent  = `${sizeMB} MB · .${ext.toUpperCase()}`;
+    }
+    setStatus('');
+    setError('');
     if (summaryEl) summaryEl.value = '';
     if (summarySection) summarySection.style.display = 'none';
-    actionBtns.forEach(b => b.disabled = false);
+    setSummaryBtnsDisabled(false);
+    updateQuizSelection();
   });
 
-  // Summarize request
+  // ── Extract text (shared step) ────────────────────────────
+  async function extractText() {
+    if (extractedText) return extractedText; // cached
+
+    if (!selectedFile) throw new Error('No file selected.');
+
+    setStatus(`Extracting text from "${selectedFile.name}"…`);
+    setSummaryBtnsDisabled(true);
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    const res  = await fetch('/api/summarize-file', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Extraction failed.');
+    if (!data.text || !data.text.trim()) throw new Error('No readable text found in this file.');
+
+    extractedText = data.text;
+    return extractedText;
+  }
+
+  // ── Summary request ────────────────────────────────────────
   async function requestSummary(type) {
-    if (!selectedFile) {
-      setError('No file selected. Please choose a PDF, DOC, DOCX, PPT, or PPTX file first.');
-      return;
-    }
+    if (!selectedFile) { setError('No file selected.'); return; }
 
-    actionBtns.forEach(b => b.disabled = true);
+    setError('');
+    setSummaryBtnsDisabled(true);
     if (summaryEl) summaryEl.value = '';
-    setStatus(`Uploading and extracting text from "${selectedFile.name}"…`);
-
-    let extractedText = '';
-    let fileType = '';
+    if (summarySection) summarySection.style.display = 'none';
 
     try {
-      const fd = new FormData();
-      fd.append('file', selectedFile);
+      const text = await extractText();
+      setStatus('Generating summary…');
 
-      const extractRes = await fetch('/api/summarize-file', { method: 'POST', body: fd });
-      const extractData = await extractRes.json();
-
-      if (!extractRes.ok) throw new Error(extractData.error || 'Text extraction failed.');
-      extractedText = extractData.text || '';
-      fileType = extractData.type || '';
-
-      if (!extractedText.trim()) throw new Error('No readable text found in this file.');
-
-    } catch (err) {
-      setError(err.message || 'Upload or extraction failed. Please try again.');
-      actionBtns.forEach(b => b.disabled = false);
-      return;
-    }
-
-    setStatus('Summarizing…');
-
-    try {
-      const sumRes = await fetch('/api/summarize-file', {
-        method: 'POST',
+      const res  = await fetch('/api/summarize-file', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: extractedText, type }),
+        body:    JSON.stringify({ text, type }),
       });
-      const sumData = await sumRes.json();
-      if (!sumRes.ok) throw new Error(sumData.error || 'Summarization failed.');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Summarization failed.');
 
-      if (summaryEl) summaryEl.value = sumData.summary || '';
+      if (summaryEl) summaryEl.value = data.summary || '';
       if (summarySection) summarySection.style.display = 'block';
 
       // Save to Notepad
+      saveToNotepad(selectedFile.name, type, data.summary);
+
+    } catch (err) {
+      setError(err.message || 'Failed. Please try again.');
+    } finally {
+      setSummaryBtnsDisabled(false);
+    }
+  }
+
+  // ── Notepad save ───────────────────────────────────────────
+  function saveToNotepad(fileName, type, summary) {
+    try {
       const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
       const userId = user?.username || 'guest';
+      const typeLabel = { short:'Short Summary', detailed:'Detailed Notes', key:'Key Points', terms:'Terms' }[type] || type;
 
-      try {
-        setStatus('Saving to private Notepad…');
-
-        const typeLabel = {
-          short: 'Short Summary', detailed: 'Detailed Notes',
-          key: 'Key Points', terms: 'Terms & Definitions', quiz: 'Quiz',
-        }[type] || type;
-
-        const newNote = {
-          title: `${selectedFile.name} — ${typeLabel}`,
-          content: sumData.summary,
-          date: new Date().toISOString(),
-          type: 'file-summary',
-          userId,
-        };
-
-        console.log('[FileSummarizer] Saving to Notepad:', { title: newNote.title, userId, date: newNote.date });
-
-        const existing = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-        existing.unshift(newNote);
-        localStorage.setItem('notepad-notes', JSON.stringify(existing));
-
-        if (window.notepadModule) {
-          window.notepadModule.notes = existing;
-        }
-
-        const verify = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-        const saved = verify.some(n => n.date === newNote.date);
-        if (saved) {
-          console.log('[FileSummarizer] Note saved successfully. Total notes:', verify.length);
-          setStatus('Summary ready — saved to your private Notepad!');
-        } else {
-          console.error('[FileSummarizer] Verification failed — note not found after save.');
-          setStatus('Summary generated, but could not save to Notepad.');
-        }
-      } catch (saveErr) {
-        console.error('[FileSummarizer] Failed to save to Notepad:', saveErr);
-        setStatus('Summary generated, but could not save to Notepad.');
-      }
-    } catch (err) {
-      setError(err.message || 'Summarization failed. Please try again.');
-    }
-
-    actionBtns.forEach(b => b.disabled = false);
-  }
-
-  // Quiz generation
-  async function requestQuiz() {
-    if (!selectedFile) {
-      setError('No file selected.');
-      return;
-    }
-
-    if (!quizSettings.type || !quizSettings.count) {
-      setError('Please select quiz type and number of items.');
-      return;
-    }
-
-    actionBtns.forEach(b => b.disabled = true);
-    if (summaryEl) summaryEl.value = '';
-    setStatus(`Uploading and extracting text from "${selectedFile.name}"…`);
-
-    let extractedText = '';
-
-    try {
-      const fd = new FormData();
-      fd.append('file', selectedFile);
-
-      const extractRes = await fetch('/api/summarize-file', { method: 'POST', body: fd });
-      const extractData = await extractRes.json();
-
-      if (!extractRes.ok) throw new Error(extractData.error || 'Text extraction failed.');
-      extractedText = extractData.text || '';
-      if (!extractedText.trim()) throw new Error('No readable text found in this file.');
-    } catch (err) {
-      setError(err.message || 'Upload or extraction failed.');
-      actionBtns.forEach(b => b.disabled = false);
-      return;
-    }
-
-    setStatus(`Generating ${quizSettings.count}-item ${quizSettings.type} quiz…`);
-
-    try {
-      const quizPrompts = {
-        'identification': `Generate exactly ${quizSettings.count} identification questions (statement completion). Format each as: Q#: [question]. No answer keys needed.`,
-        'multiple-choice': `Generate exactly ${quizSettings.count} multiple choice questions with 4 choices each. Format: Q#: [question] A) [choice] B) [choice] C) [choice] D) [choice]. Mark the correct answer with **A)** or similar.`,
-        'both': `Generate exactly ${Math.ceil(quizSettings.count/2)} identification questions and ${Math.floor(quizSettings.count/2)} multiple choice questions (4 choices each).`
+      const note = {
+        title:   `${fileName} — ${typeLabel}`,
+        content: summary,
+        date:    new Date().toISOString(),
+        type:    'file-summary',
+        userId,
       };
 
-      const prompt = quizPrompts[quizSettings.type] || quizPrompts['multiple-choice'];
+      const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+      notes.unshift(note);
+      localStorage.setItem('notepad-notes', JSON.stringify(notes));
+      if (window.notepadModule) window.notepadModule.notes = notes;
 
-      const quizRes = await fetch('/api/summarize-file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: extractedText, type: 'quiz', customPrompt: prompt }),
-      });
-
-      const quizData = await quizRes.json();
-      if (!quizRes.ok) throw new Error(quizData.error || 'Quiz generation failed.');
-
-      // Format quiz display
-      const quizHtml = formatQuizDisplay(quizData.summary, quizSettings.type);
-      if (summaryEl) summaryEl.value = quizHtml;
-      if (summarySection) summarySection.style.display = 'block';
-
-      setStatus('Quiz ready!');
-    } catch (err) {
-      setError(err.message || 'Quiz generation failed. Please try again.');
+      const ok = JSON.parse(localStorage.getItem('notepad-notes') || '[]').some(n => n.date === note.date);
+      setStatus(ok ? 'Summary ready — saved to your Notepad!' : 'Summary ready.');
+      console.log('[FileSummarizer] Saved to notepad:', note.title);
+    } catch (e) {
+      setStatus('Summary ready. (Could not save to Notepad.)');
+      console.error('[FileSummarizer] Notepad save error:', e);
     }
-
-    actionBtns.forEach(b => b.disabled = false);
   }
 
-  // Format quiz for display
-  function formatQuizDisplay(quizText, quizType) {
-    // Return the quiz text as-is; styling will be handled by CSS
-    return quizText;
-  }
-
-  // Event listeners
-  btns.short.addEventListener('click', () => requestSummary('short'));
-  btns.detailed.addEventListener('click', () => requestSummary('detailed'));
-  btns.key.addEventListener('click', () => requestSummary('key'));
-  btns.terms.addEventListener('click', () => requestSummary('terms'));
-
-  // Close dropdown when clicking elsewhere
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#fs-quiz-menu-wrap')) {
-      quizDropdown.style.display = 'none';
-    }
+  // ── Quiz chip selection ────────────────────────────────────
+  quizTypeChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      quizTypeChips.forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      quizSettings.type = chip.dataset.quizType;
+      updateQuizSelection();
+    });
   });
 
-  if (copyBtn) {
-    copyBtn.addEventListener('click', () => {
-      if (summaryEl && summaryEl.value) {
-        navigator.clipboard.writeText(summaryEl.value).then(() => setStatus('Copied to clipboard!'));
+  quizCountChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      quizCountChips.forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      quizSettings.count = parseInt(chip.dataset.quizCount);
+      updateQuizSelection();
+    });
+  });
+
+  // ── Start Quiz ─────────────────────────────────────────────
+  if (btnQuiz) {
+    btnQuiz.addEventListener('click', async () => {
+      if (!selectedFile) { setError('No file selected.'); return; }
+      if (!quizSettings.type || !quizSettings.count) {
+        setError('Select quiz type and number of items first.');
+        return;
+      }
+
+      setError('');
+      setSummaryBtnsDisabled(true);
+      btnQuiz.textContent = 'Generating Quiz…';
+
+      try {
+        const text = await extractText();
+        setStatus('Building quiz…');
+
+        const res  = await fetch('/api/quiz', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ text, quizType: quizSettings.type, count: quizSettings.count }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Quiz generation failed.');
+        if (!data.questions?.length) throw new Error('No questions returned.');
+
+        setStatus('');
+        activeQuestions = data.questions;
+        startQuiz();
+
+      } catch (err) {
+        setError(err.message || 'Quiz failed. Please try again.');
+      } finally {
+        setSummaryBtnsDisabled(false);
+        btnQuiz.textContent = 'Start Quiz';
       }
     });
   }
 
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearAll);
+  // ── Quiz Engine ────────────────────────────────────────────
+  function startQuiz() {
+    quizCurrent   = 0;
+    quizScore_val = 0;
+    quizAnswered  = false;
+    quizModal.classList.add('active');
+    showQuestion();
   }
+
+  function stopTimer() {
+    clearInterval(quizTimerID);
+    quizTimerID = null;
+  }
+
+  function startTimer() {
+    stopTimer();
+    quizTimeLeft = 10;
+    quizTimer.textContent = quizTimeLeft;
+    quizTimer.classList.remove('urgent');
+
+    quizTimerID = setInterval(() => {
+      quizTimeLeft--;
+      quizTimer.textContent = quizTimeLeft;
+      if (quizTimeLeft <= 3) quizTimer.classList.add('urgent');
+      if (quizTimeLeft <= 0) {
+        stopTimer();
+        if (!quizAnswered) timeUp();
+      }
+    }, 1000);
+  }
+
+  function showQuestion() {
+    const q = activeQuestions[quizCurrent];
+    if (!q) { endQuiz(); return; }
+
+    quizAnswered = false;
+    quizFeedback.className = 'fs-quiz-feedback';
+    quizFeedback.textContent = '';
+    quizNextBtn.style.display = 'none';
+    quizChoices.innerHTML = '';
+    quizTimer.classList.remove('urgent');
+
+    quizProgress.textContent = `Q ${quizCurrent + 1} / ${activeQuestions.length}`;
+    quizQText.textContent = q.text;
+
+    if (q.type === 'multiple-choice' && q.choices?.length) {
+      q.choices.forEach((choice, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'fs-quiz-choice-btn';
+        btn.textContent = choice;
+        btn.addEventListener('click', () => submitMCAnswer(i, q));
+        quizChoices.appendChild(btn);
+      });
+    } else {
+      // Identification
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'fs-quiz-id-input';
+      input.placeholder = 'Type your answer…';
+      input.autocomplete = 'off';
+
+      const submit = document.createElement('button');
+      submit.className = 'fs-quiz-id-submit';
+      submit.textContent = 'Submit';
+      submit.addEventListener('click', () => submitIdAnswer(input.value, q, input, submit));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') submit.click();
+      });
+
+      quizChoices.appendChild(input);
+      quizChoices.appendChild(submit);
+      setTimeout(() => input.focus(), 80);
+    }
+
+    startTimer();
+  }
+
+  function submitMCAnswer(choiceIndex, q) {
+    if (quizAnswered) return;
+    quizAnswered = true;
+    stopTimer();
+
+    const choiceBtns = quizChoices.querySelectorAll('.fs-quiz-choice-btn');
+    choiceBtns.forEach(b => b.disabled = true);
+
+    const correctLetter = (q.answer || '').trim().toUpperCase();
+    const letters = ['A','B','C','D'];
+    const correctIdx = letters.indexOf(correctLetter);
+
+    const isCorrect = choiceIndex === correctIdx;
+    if (isCorrect) quizScore_val++;
+
+    choiceBtns[choiceIndex].classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect && correctIdx >= 0) choiceBtns[correctIdx].classList.add('correct');
+
+    showFeedback(isCorrect, q);
+  }
+
+  function submitIdAnswer(value, q, inputEl, submitBtn) {
+    if (quizAnswered) return;
+    quizAnswered = true;
+    stopTimer();
+
+    if (inputEl) inputEl.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
+
+    const userAnswer = value.trim().toLowerCase();
+    const correct    = (q.answer || '').trim().toLowerCase();
+    const isCorrect  = userAnswer === correct || userAnswer.includes(correct) || correct.includes(userAnswer);
+
+    if (isCorrect) quizScore_val++;
+    showFeedback(isCorrect, q);
+  }
+
+  function timeUp() {
+    quizAnswered = true;
+
+    // Disable all inputs
+    quizChoices.querySelectorAll('button, input').forEach(el => el.disabled = true);
+
+    // Reveal correct answer for MC
+    const q = activeQuestions[quizCurrent];
+    if (q.type === 'multiple-choice') {
+      const choiceBtns = quizChoices.querySelectorAll('.fs-quiz-choice-btn');
+      const letters = ['A','B','C','D'];
+      const correctIdx = letters.indexOf((q.answer || '').trim().toUpperCase());
+      if (correctIdx >= 0) choiceBtns[correctIdx]?.classList.add('correct');
+    }
+
+    showFeedback(false, q, true);
+  }
+
+  function showFeedback(isCorrect, q, timedOut = false) {
+    const msg = timedOut
+      ? `⏰ Time's up! The answer is: ${q.answer}${q.explanation ? '. ' + q.explanation : ''}`
+      : isCorrect
+        ? `✓ Correct!${q.explanation ? ' ' + q.explanation : ''}`
+        : `✗ Incorrect. The answer is: ${q.answer}${q.explanation ? '. ' + q.explanation : ''}`;
+
+    quizFeedback.className = 'fs-quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
+    quizFeedback.textContent = msg;
+    quizNextBtn.style.display = 'block';
+  }
+
+  function endQuiz() {
+    quizModal.classList.remove('active');
+    stopTimer();
+
+    const total   = activeQuestions.length;
+    const pct     = total ? Math.round((quizScore_val / total) * 100) : 0;
+    const emoji   = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '📖';
+    const comment = pct >= 80 ? 'Excellent work!' : pct >= 50 ? 'Good effort!' : 'Keep studying!';
+
+    scoreEmoji.textContent = emoji;
+    scoreText.textContent  = `${quizScore_val} / ${total} correct (${pct}%)`;
+    scoreDetail.textContent = comment;
+    quizScore.classList.add('active');
+  }
+
+  // ── Quiz navigation ────────────────────────────────────────
+  if (quizNextBtn) {
+    quizNextBtn.addEventListener('click', () => {
+      quizCurrent++;
+      if (quizCurrent < activeQuestions.length) {
+        showQuestion();
+      } else {
+        endQuiz();
+      }
+    });
+  }
+
+  if (quizRestartBtn) {
+    quizRestartBtn.addEventListener('click', () => {
+      quizScore.classList.remove('active');
+      startQuiz();
+    });
+  }
+
+  if (quizCloseBtn) {
+    quizCloseBtn.addEventListener('click', () => {
+      quizScore.classList.remove('active');
+    });
+  }
+
+  // ── Summary buttons ────────────────────────────────────────
+  if (btnShort)    btnShort.addEventListener('click',    () => requestSummary('short'));
+  if (btnDetailed) btnDetailed.addEventListener('click', () => requestSummary('detailed'));
+  if (btnKey)      btnKey.addEventListener('click',      () => requestSummary('key'));
+  if (btnTerms)    btnTerms.addEventListener('click',    () => requestSummary('terms'));
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      if (summaryEl?.value) {
+        navigator.clipboard.writeText(summaryEl.value)
+          .then(() => setStatus('Copied!'))
+          .catch(() => setStatus('Copy failed.'));
+      }
+    });
+  }
+
+  if (clearBtn) clearBtn.addEventListener('click', clearAll);
 })();

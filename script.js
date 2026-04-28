@@ -231,8 +231,30 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.33';
+const APP_VERSION = '1.5.34';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.34',
+    date: 'April 27, 2026',
+    title: 'Interactive Quiz, Redesigned File Summarizer, Reviewer Page Fix',
+    summary: 'Full overhaul of File Summarizer and Reviewer page. Quiz now runs as an interactive timed session. Reviewer sharing and deletion fixed end-to-end.',
+    changes: [
+      'Quiz: Interactive timed quiz mode — one question at a time, 10-second countdown timer, no answers shown upfront.',
+      'Quiz: Multiple choice questions show 4 buttons; identification shows a text input.',
+      'Quiz: After each answer: correct/wrong feedback revealed with explanation.',
+      'Quiz: Final score screen with emoji and restart button.',
+      'Quiz: Server generates structured JSON quiz — answers never exposed in plain-text output.',
+      'File Summarizer: Mobile-first card layout redesign — clean sections, proper spacing, consistent button grid.',
+      'File Summarizer: Quiz type/count selection uses chip buttons with neon glow for selected state.',
+      'File Summarizer: Shows "Selected: Multiple Choice · 20 items" before starting quiz.',
+      'Reviewer Page: Fixed blank screen — rendering always shows base UI immediately.',
+      'Reviewer Page: Added search bar for filtering by title or contributor.',
+      'Reviewer Page: Delete button shows only for note owner; admin (Marquillero) can delete any reviewer.',
+      'Notepad Sharing: Fixed end-to-end — now correctly inserts into Supabase reviewers table with shared_at timestamp.',
+      'Notepad Sharing: Shows specific error message if reviewers table is missing (migration not run).',
+      'DB: Added migration 010_reviewers_table.sql with proper RLS policies for reviewer sharing.',
+    ]
+  },
   {
     version: '1.5.33',
     date: 'April 27, 2026',

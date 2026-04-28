@@ -573,7 +573,7 @@ body {
    HAMBURGER MENU BUTTON
    ============================================================ */
 #menu-toggle {
-  position: fixed;
+  display: none !important;
   top: max(18px, calc(env(safe-area-inset-top) + 10px));
   left: 18px;
   z-index: 2001;
@@ -5347,17 +5347,6 @@ body.light-mode .home-trending-by { color: #2a4a8a; }
   gap: 12px;
   padding: max(52px, calc(env(safe-area-inset-top) + 14px)) 18px 4px;
 }
-.hd-menu-btn {
-  width: 44px; height: 44px; flex-shrink: 0;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px; cursor: pointer;
-  padding: 0;
-}
-.hd-menu-btn span {
-  display: block; width: 18px; height: 2px;
-  background: rgba(255,255,255,0.85); border-radius: 2px;
-}
 .hd-greet { flex: 1; min-width: 0; }
 .hd-greet h1 {
   font-size: clamp(1rem, 4.5vw, 1.2rem); font-weight: 700; line-height: 1.25;
@@ -5533,8 +5522,6 @@ body.light-mode .home-trending-by { color: #2a4a8a; }
 .hd-gs-row .hd-card { min-height: 88px; }
 
 /* Light mode overrides */
-body.light-mode .hd-menu-btn { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); }
-body.light-mode .hd-menu-btn span { background: rgba(0,0,0,0.7); }
 body.light-mode .hd-greet p { color: rgba(0,0,0,0.55); }
 body.light-mode .hd-notif-btn { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); color: rgba(0,0,0,0.7); }
 body.light-mode .hd-ann-msg { color: rgba(0,0,0,0.6); }

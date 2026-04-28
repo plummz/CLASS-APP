@@ -231,8 +231,25 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.35';
+const APP_VERSION = '1.5.36';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.36',
+    date: 'April 28, 2026',
+    title: 'Phase 1 — Navigation Reorganization & Reviewers View Fix',
+    summary: 'Sidebar menu reorganized into 8 clear labeled sections for easier navigation. Fixed Reviewers "View" button that did nothing on click.',
+    changes: [
+      'Nav: Sidebar reorganized into labeled sections — Main, Learning, My Classes, Community, Tools, Games, System.',
+      'Nav: Section divider lines added between groups for visual clarity.',
+      'Nav: Nav item padding reduced for less vertical crowding — more items visible without scrolling.',
+      'Nav: Learning section groups File Summarizer, Reviewers, AI Assistants, Coding Lessons, Code Lab, Output-AI together.',
+      'Nav: Community section groups Chat, Users, and Social Media Pages together.',
+      'Nav: Tools section groups Personal Tools, Calendar, Music, Events, and Random Pictures together.',
+      'Bug Fix: Reviewers "View" button now correctly opens the reviewer modal — fixed strict type equality mismatch (string vs number id).',
+      'Bug Fix: Reviewers "Save to My Notes" button now correctly finds the reviewer — same type mismatch fix applied.',
+      'Bug Fix: Reviewers openViewer() now shows a toast instead of browser alert() when a reviewer is not found.',
+    ]
+  },
   {
     version: '1.5.35',
     date: 'April 28, 2026',

@@ -116,59 +116,46 @@
       <label class="notif-pref-row"><input type="checkbox" id="pref-dm"    onchange="saveNotifPrefs()"> DM badges</label>
     </div>
 
-    <div class="nav-section-title">Main</div>
-    <!-- Lobby sits above all year groups -->
+    <!-- ── MAIN ─────────────────────────────────── -->
+    <div class="nav-section-title nav-section-first">Main</div>
+    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
+      <span class="nav-icon">📢</span>
+      <div class="nav-text"><span class="nav-label">Announcement</span></div>
+    </div>
     <div class="nav-item" data-page="lobby" role="button" tabindex="0">
       <span class="nav-icon">🏫</span>
       <div class="nav-text"><span class="nav-label">Lobby</span></div>
     </div>
 
-    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
-      <span class="nav-icon">📢</span>
-      <div class="nav-text"><span class="nav-label">ANNOUNCEMENT</span></div>
-    </div>
-
-    <!-- Social Media Pages — below Lobby -->
-
-    <div class="nav-item" data-page="witfb" role="button" tabindex="0">
-      <span class="nav-icon">📘</span>
-      <div class="nav-text"><span class="nav-label">Social Media Pages</span></div>
-    </div>
-
-    <!-- File Summarizer Page -->
+    <!-- ── LEARNING ──────────────────────────────── -->
+    <div class="nav-section-title">Learning</div>
     <div class="nav-item" data-page="file-summarizer" role="button" tabindex="0">
       <span class="nav-icon">📝</span>
       <div class="nav-text"><span class="nav-label">File Summarizer</span></div>
     </div>
-    
-    <!-- Public Reviewers Page -->
     <div class="nav-item" data-page="reviewers" role="button" tabindex="0">
       <span class="nav-icon">📄</span>
-      <div class="nav-text"><span class="nav-label">REVIEWERS</span></div>
+      <div class="nav-text"><span class="nav-label">Reviewers</span></div>
     </div>
-
-    <div class="nav-item" data-page="outputai" role="button" tabindex="0">
-      <span class="nav-icon">🧾</span>
-      <div class="nav-text"><span class="nav-label">OUTPUT-AI</span></div>
-    </div>
-
-    <div class="nav-item" data-page="codelab" role="button" tabindex="0">
-      <span class="nav-icon">⌨️</span>
-      <div class="nav-text"><span class="nav-label">CODE LAB</span></div>
-    </div>
-
-    <div class="nav-item" data-page="coding-educational" role="button" tabindex="0">
-      <span class="nav-icon">📚</span>
-      <div class="nav-text"><span class="nav-label">CODING LESSONS</span></div>
-    </div>
-
-    <div class="nav-section-title">AI & Classes</div>
-    <!-- AI Assistants -->
     <div class="nav-item" data-page="ai" role="button" tabindex="0">
       <span class="nav-icon">🤖</span>
       <div class="nav-text"><span class="nav-label">AI Assistants</span></div>
     </div>
+    <div class="nav-item" data-page="coding-educational" role="button" tabindex="0">
+      <span class="nav-icon">📚</span>
+      <div class="nav-text"><span class="nav-label">Coding Lessons</span></div>
+    </div>
+    <div class="nav-item" data-page="codelab" role="button" tabindex="0">
+      <span class="nav-icon">⌨️</span>
+      <div class="nav-text"><span class="nav-label">Code Lab</span></div>
+    </div>
+    <div class="nav-item" data-page="outputai" role="button" tabindex="0">
+      <span class="nav-icon">🧾</span>
+      <div class="nav-text"><span class="nav-label">Output-AI</span></div>
+    </div>
 
+    <!-- ── MY CLASSES ───────────────────────────── -->
+    <div class="nav-section-title">My Classes</div>
     <div class="nav-dropdown-group year-1-theme">
       <div class="nav-dropdown-header" data-year="year1" role="button" tabindex="0">
         <span class="nav-icon">🎓</span>
@@ -186,7 +173,6 @@
         </div>
       </div>
     </div>
-
     <div class="nav-dropdown-group year-2-theme">
       <div class="nav-dropdown-header" data-year="year2" role="button" tabindex="0">
         <span class="nav-icon">🏛️</span>
@@ -204,7 +190,6 @@
         </div>
       </div>
     </div>
-
     <div class="nav-dropdown-group year-3-theme">
       <div class="nav-dropdown-header" data-year="year3" role="button" tabindex="0">
         <span class="nav-icon">🚀</span>
@@ -222,7 +207,6 @@
         </div>
       </div>
     </div>
-
     <div class="nav-dropdown-group year-4-theme">
       <div class="nav-dropdown-header" data-year="year4" role="button" tabindex="0">
         <span class="nav-icon">🏆</span>
@@ -241,63 +225,67 @@
       </div>
     </div>
 
-    <div class="nav-section-title">Media & Tools</div>
-    <div class="nav-item" data-page="personal-tools" role="button" tabindex="0">
-      <span class="nav-icon">🔧</span>
-      <div class="nav-text"><span class="nav-label">Personal Tools</span></div>
-    </div>
-
-    <div class="nav-item" data-page="events" role="button" tabindex="0">
-      <span class="nav-icon">🛩️</span>
-      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
-    </div>
- 
-    <div class="nav-item" data-page="random" role="button" tabindex="0">
-      <span class="nav-icon">🌌</span>
-      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
-    </div>
- 
+    <!-- ── COMMUNITY ─────────────────────────────── -->
+    <div class="nav-section-title">Community</div>
     <div class="nav-item" data-page="chat" role="button" tabindex="0">
       <span class="nav-icon" style="position: relative;">💬<span id="chat-notif-dot" class="notif-dot hidden"></span></span>
       <div class="nav-text"><span class="nav-label">Chat</span></div>
     </div>
- 
     <div class="nav-item" data-page="users" role="button" tabindex="0">
       <span class="nav-icon">👥</span>
       <div class="nav-text"><span class="nav-label">Users</span></div>
     </div>
-
-    <div class="nav-item" data-page="diagnostics" role="button" tabindex="0">
-      <span class="nav-icon">🩺</span>
-      <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
+    <div class="nav-item" data-page="witfb" role="button" tabindex="0">
+      <span class="nav-icon">📘</span>
+      <div class="nav-text"><span class="nav-label">Social Media Pages</span></div>
     </div>
 
-    <div class="nav-item admin-only hidden" data-page="admin" role="button" tabindex="0">
-      <span class="nav-icon">🛡️</span>
-      <div class="nav-text"><span class="nav-label">Admin</span></div>
+    <!-- ── TOOLS ─────────────────────────────────── -->
+    <div class="nav-section-title">Tools</div>
+    <div class="nav-item" data-page="personal-tools" role="button" tabindex="0">
+      <span class="nav-icon">🔧</span>
+      <div class="nav-text"><span class="nav-label">Personal Tools</span></div>
     </div>
- 
     <div class="nav-item" data-page="calendar" role="button" tabindex="0">
       <span class="nav-icon">📅</span>
       <div class="nav-text"><span class="nav-label">Calendar</span></div>
     </div>
- 
     <div class="nav-item" data-page="music" role="button" tabindex="0">
       <span class="nav-icon">🎵</span>
       <div class="nav-text"><span class="nav-label">Music</span></div>
     </div>
+    <div class="nav-item" data-page="events" role="button" tabindex="0">
+      <span class="nav-icon">🛩️</span>
+      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
+    </div>
+    <div class="nav-item" data-page="random" role="button" tabindex="0">
+      <span class="nav-icon">🌌</span>
+      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
+    </div>
 
-    <!-- Games hub — direct link to game selection page -->
+    <!-- ── GAMES ─────────────────────────────────── -->
+    <div class="nav-section-title">Games</div>
     <div class="nav-item" data-page="games" role="button" tabindex="0">
       <span class="nav-icon">🎮</span>
       <div class="nav-text"><span class="nav-label">Games</span></div>
+    </div>
+
+    <!-- ── SYSTEM ────────────────────────────────── -->
+    <div class="nav-section-title">System</div>
+    <div class="nav-item" data-page="diagnostics" role="button" tabindex="0">
+      <span class="nav-icon">🩺</span>
+      <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
+    </div>
+    <div class="nav-item admin-only hidden" data-page="admin" role="button" tabindex="0">
+      <span class="nav-icon">🛡️</span>
+      <div class="nav-text"><span class="nav-label">Admin</span></div>
     </div>
 
     <div class="nav-item" id="nav-logout" role="button" tabindex="0" style="display: none;">
       <span class="nav-icon">🚪</span>
       <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
     </div>
-    
+
     <div class="sidebar-footer" id="sidebar-footer-year">School Portfolio &nbsp;·&nbsp; 2025–2026</div>
   </nav>
  
@@ -1507,7 +1495,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=77"></script>
+  <script src="script.js?v=78"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1534,7 +1522,7 @@
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
   <script src="features/file-summarizer/file-summarizer.js?v=6" defer></script>
-  <script src="features/reviewers/reviewers.js?v=5" defer></script>
+  <script src="features/reviewers/reviewers.js?v=6" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

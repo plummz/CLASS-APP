@@ -131,15 +131,20 @@ window.reviewersModule = {
   },
 
   openViewer: async function(id) {
-    let rev = this.sharedReviewers.find(r => r.id === id);
+    let rev = this.sharedReviewers.find(r => String(r.id) === String(id));
     if (!rev) {
       const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
       if (client) {
-        const { data } = await client.from('reviewers').select('*').eq('id', id).single();
-        if (data) rev = data;
+        try {
+          const { data } = await client.from('reviewers').select('*').eq('id', id).single();
+          if (data) rev = data;
+        } catch (_) {}
       }
     }
-    if (!rev) { alert('Reviewer not found.'); return; }
+    if (!rev) {
+      window.showToast ? showToast('Reviewer not found.', 'error') : alert('Reviewer not found.');
+      return;
+    }
 
     let overlay = document.getElementById('reviewer-viewer-modal');
     if (!overlay) {
@@ -213,7 +218,7 @@ window.reviewersModule = {
   },
 
   saveToNotepad: function(id) {
-    const rev = this.sharedReviewers.find(r => r.id === id);
+    const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
     if (!rev) return;
 
     try {

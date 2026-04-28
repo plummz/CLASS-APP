@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -119,8 +119,8 @@
     <!-- ── MAIN ─────────────────────────────────── -->
     <div class="nav-section-title nav-section-first">Main</div>
     <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
-      <span class="nav-icon">📢</span>
-      <div class="nav-text"><span class="nav-label">Announcement</span></div>
+      <span class="nav-icon">🏠</span>
+      <div class="nav-text"><span class="nav-label">Home</span></div>
     </div>
     <div class="nav-item" data-page="lobby" role="button" tabindex="0">
       <span class="nav-icon">🏫</span>
@@ -1126,13 +1126,63 @@
     </div>
   </div>
 
-  <!-- ── ANNOUNCEMENT ────────────────────────────────────── -->
+  <!-- ── ANNOUNCEMENT / HOME ────────────────────────────────────── -->
   <div class="page active" id="page-announcement">
+    <!-- ── STUDY DASHBOARD SECTION ──────────────────────────────────── -->
+    <div class="home-dashboard">
+      <!-- Welcome Banner -->
+      <div class="home-welcome-banner">
+        <div class="home-welcome-left">
+          <h1 class="home-welcome-title">Welcome back, <span id="home-welcome-name">Student</span>! 👋</h1>
+          <p class="home-welcome-time" id="home-welcome-time"></p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="home-quick-actions">
+        <button class="home-action-card" onclick="goToPage('file-summarizer')">
+          <span class="home-action-icon">📄</span>
+          <span class="home-action-text">Summarize a File</span>
+        </button>
+        <button class="home-action-card" onclick="goToPage('notepad')">
+          <span class="home-action-icon">📝</span>
+          <span class="home-action-text">Open Notepad</span>
+        </button>
+        <button class="home-action-card" onclick="goToPage('reviewers')">
+          <span class="home-action-icon">📖</span>
+          <span class="home-action-text">Browse Reviewers</span>
+        </button>
+        <button class="home-action-card" onclick="goToPage('file-summarizer')">
+          <span class="home-action-icon">❓</span>
+          <span class="home-action-text">Generate Quiz</span>
+        </button>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="home-section">
+        <h2 class="home-section-title">📌 Recent Activity</h2>
+        <div class="home-recent-activity" id="home-recent-activity">
+          <div class="home-activity-empty">No recent activity yet. Start by summarizing a file!</div>
+        </div>
+      </div>
+
+      <!-- Trending Reviewers -->
+      <div class="home-section">
+        <h2 class="home-section-title">⭐ Trending Shared Notes</h2>
+        <div class="home-trending" id="home-trending">
+          <div class="home-trending-loading">Loading trending notes…</div>
+        </div>
+      </div>
+
+      <hr class="home-divider">
+    </div>
+
+    <!-- ── CLASS ANNOUNCEMENTS ──────────────────────────────────── -->
     <div class="shared-board announcement-board">
       <div class="shared-board-header">
         <div>
           <div class="shared-board-kicker">Public Board</div>
-          <h1 class="shared-board-title">ANNOUNCEMENT</h1>
+          <h1 class="shared-board-title">📢 Class Announcements</h1>
           <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
         </div>
         <div class="board-toolbar">
@@ -1511,7 +1561,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=81"></script>
+  <script src="script.js?v=82"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

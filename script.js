@@ -253,8 +253,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.38';
+const APP_VERSION = '1.5.39';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.39',
+    date: 'April 28, 2026',
+    title: 'Phase 2 — Home Dashboard + YouTube Error Handling',
+    summary: 'Announcement page transformed into Home Dashboard with welcome banner, quick actions, recent activity tracking, and trending shared notes. YouTube player now gracefully handles blocked videos.',
+    changes: [
+      'Feature: Home Dashboard section on Announcement/Home page with welcome banner showing username and time-of-day greeting.',
+      'Feature: Quick action cards for "Summarize a File", "Open Notepad", "Browse Reviewers", "Generate Quiz" — one-tap access to core tools.',
+      'Feature: Recent Activity section showing last 3 saved notes and last completed quiz with score.',
+      'Feature: Trending Shared Notes section loading top 3 most recent shared reviewers from Supabase.',
+      'Feature: YouTube embedded player now detects Error 153 (video unavailable) and shows "Open on YouTube →" fallback link.',
+      'UX: Announcement page nav label changed from "Announcement" to "🏠 Home" to reflect its new role as default landing page.',
+      'UX: Quiz completion stores score + date to localStorage for Recent Activity tracking on Home Dashboard.',
+      'UX: YouTube error handling prevents confusing blank player — users see clear error with direct YouTube link.',
+    ]
+  },
   {
     version: '1.5.38',
     date: 'April 28, 2026',
@@ -1955,6 +1971,17 @@ function loadYouTubeIframe(videoId, title) {
     const iframe = document.getElementById('yt-iframe');
     const placeholder = document.getElementById('yt-placeholder');
     if (!iframe) return;
+
+    // Set up error handler before loading — detects when YouTube blocks the video
+    const errorCheckTimer = setTimeout(() => {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc?.body?.innerHTML?.includes('Error 153') ||
+            iframeDoc?.body?.innerHTML?.includes('Video player configuration') ||
+            iframeDoc?.body?.textContent?.includes('playable')) {
+            showYouTubeError(videoId, title);
+        }
+    }, 3000);
+
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     iframe.classList.remove('hidden');
     if (placeholder) placeholder.style.display = 'none';
@@ -1964,6 +1991,25 @@ function loadYouTubeIframe(videoId, title) {
     // Hide results list once a track is chosen
     const res = document.getElementById('yt-results');
     if (res) res.classList.add('hidden');
+
+    // Store the timer so we can clear it if user stops the player
+    iframe._errorCheckTimer = errorCheckTimer;
+}
+
+function showYouTubeError(videoId, title) {
+    const placeholder = document.getElementById('yt-placeholder');
+    if (placeholder) {
+        placeholder.style.display = '';
+        placeholder.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #ff6b6b;">
+                <div style="font-size: 32px; margin-bottom: 10px;">⚠️</div>
+                <div style="font-size: 14px; margin-bottom: 5px;"><strong>Watch video on YouTube</strong></div>
+                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 15px;">Video not available in embedded player</div>
+                <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" style="display: inline-block; background: #ff0000; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;">Open on YouTube →</a>
+            </div>
+        `;
+    }
+    ytActive = true;
 }
 
 function extractYouTubeId(val) {
@@ -2141,8 +2187,16 @@ window.searchYouTube = window.handleYtInput;
 window.stopYouTubePlayer = function() {
     const iframe = document.getElementById('yt-iframe');
     const placeholder = document.getElementById('yt-placeholder');
-    if (iframe) { iframe.src = ''; iframe.classList.add('hidden'); }
-    if (placeholder) placeholder.style.display = '';
+    if (iframe) {
+        iframe.src = '';
+        iframe.classList.add('hidden');
+        // Clear error check timer if it exists
+        if (iframe._errorCheckTimer) clearTimeout(iframe._errorCheckTimer);
+    }
+    if (placeholder) {
+        placeholder.style.display = '';
+        placeholder.innerHTML = '<span style="font-size:36px;">▶️</span><p>Search for a song or paste a YouTube URL</p>';
+    }
     ytActive = false;
     const mini = document.getElementById('yt-mini-player');
     if (mini) mini.classList.add('hidden');
@@ -6071,3 +6125,139 @@ window.shareAIMessage = async function(provider, index) {
   showToast('Shared to OUTPUT-AI.');
   fetchSharedAIOutputs();
 };
+
+/* ── STUDY DASHBOARD (Phase 2) ──────────────────────────── */
+/* ── HOME DASHBOARD (Phase 2) ──────────────────────────── */
+function initHomeDashboard() {
+  // Set username in welcome banner
+  const username = currentUser?.username || 'Student';
+  const welcomeName = document.getElementById('home-welcome-name');
+  if (welcomeName) welcomeName.textContent = username;
+
+  // Set welcome time message
+  const hour = new Date().getHours();
+  const timeMsg = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const welcomeTime = document.getElementById('home-welcome-time');
+  if (welcomeTime) welcomeTime.textContent = `${timeMsg} — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
+
+  // Load recent activity (last 3 Notepad notes)
+  loadRecentActivity();
+
+  // Load trending reviewers from Supabase
+  loadTrendingReviewers();
+}
+
+function loadRecentActivity() {
+  try {
+    const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
+    const activityContainer = document.getElementById('home-recent-activity');
+    
+    if (!activityContainer) return;
+
+    const activities = [];
+
+    // Add last quiz
+    if (quizHistory.length > 0) {
+      const lastQuiz = quizHistory[quizHistory.length - 1];
+      activities.push({
+        type: 'quiz',
+        title: `Completed "${lastQuiz.file}" quiz`,
+        meta: `${lastQuiz.score}/${lastQuiz.count} correct · ${new Date(lastQuiz.date).toLocaleDateString()}`,
+        score: lastQuiz.score
+      });
+    }
+
+    // Add last 3 notes
+    notes.slice(-3).reverse().forEach(note => {
+      activities.push({
+        type: 'note',
+        title: note.title,
+        meta: new Date(note.date).toLocaleDateString()
+      });
+    });
+
+    // Display activities (limit to 4)
+    if (activities.length === 0) {
+      activityContainer.innerHTML = '<div class="home-activity-empty">No recent activity yet. Start by summarizing a file!</div>';
+      return;
+    }
+
+    activityContainer.innerHTML = activities.slice(0, 4).map(a => `
+      <div class="home-activity-item">
+        <div class="home-activity-title">${a.type === 'quiz' ? '❓' : '📝'} ${escapeHTML(a.title)}</div>
+        <div class="home-activity-meta">${escapeHTML(a.meta)}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('[Home Dashboard] Error loading recent activity:', e);
+  }
+}
+
+function loadTrendingReviewers() {
+  const trendingContainer = document.getElementById('home-trending');
+  if (!trendingContainer) return;
+
+  // Load from Supabase
+  if (!sb) {
+    trendingContainer.innerHTML = '<div class="home-trending-loading">Supabase not ready</div>';
+    return;
+  }
+
+  sb.from('reviewers')
+    .select('*')
+    .eq('is_shared', true)
+    .order('shared_at', { ascending: false })
+    .limit(3)
+    .then(({ data, error }) => {
+      if (error || !data || data.length === 0) {
+        trendingContainer.innerHTML = '<div class="home-trending-loading">No shared notes yet</div>';
+        return;
+      }
+
+      trendingContainer.innerHTML = data.map(r => `
+        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer('${String(r.id).replace(/'/g, '\\'')}')">
+          <div class="home-trending-title">${escapeHTML(r.title || 'Untitled')}</div>
+          <div class="home-trending-by">By ${escapeHTML(r.contributor_name || 'Anonymous')}</div>
+        </div>
+      `).join('');
+    })
+    .catch(e => {
+      console.error('[Home Dashboard] Error loading trending:', e);
+      trendingContainer.innerHTML = '<div class="home-trending-loading">Error loading trends</div>';
+    });
+}
+
+// Initialize on announcement page load
+const pageConfigAnnouncement = pageConfig['announcement'] || {};
+const originalAnnouncementInit = window.announcementInit;
+window.announcementInit = function() {
+  if (originalAnnouncementInit) originalAnnouncementInit();
+  setTimeout(initHomeDashboard, 50);
+};
+
+// Also initialize on page navigation to announcement
+document.addEventListener('goToPageEvent', (e) => {
+  if (e.detail?.page === 'announcement') {
+    setTimeout(initHomeDashboard, 100);
+  }
+});
+
+// Hook into goToPage for announcement
+const originalGoToPageAnnounce = window.goToPage;
+if (typeof originalGoToPageAnnounce === 'function') {
+  window.goToPage = function(pageName) {
+    const result = originalGoToPageAnnounce.call(this, pageName);
+    if (pageName === 'announcement') {
+      setTimeout(initHomeDashboard, 100);
+    }
+    return result;
+  };
+}
+
+// Initialize on page load if already on announcement
+if (currentPage === 'announcement') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initHomeDashboard, 200);
+  });
+}

@@ -253,8 +253,27 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.45';
+const APP_VERSION = '1.5.46';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.46',
+    date: 'April 28, 2026',
+    title: 'UI/UX Fixes — Overlaps, Text Readability, YouTube Error Handling',
+    summary: 'Fixed top section overlaps with status bar, repositioned chat bubble above bottom nav, improved page title readability with reduced glow, and enhanced YouTube error handling with thumbnail fallback.',
+    changes: [
+      'Fix: Phase 2 — Page padding now uses env(safe-area-inset-top) and safe-area-inset-bottom — elements no longer overlap status bar on notched devices.',
+      'Fix: Phase 2 — Personalize button (custom-bg-btn) z-index increased to 1001 to prevent overlap with page headers.',
+      'Fix: Phase 2 — Page titles now have subtle dark background (rgba(0,0,0,0.35)) with padding for better readability on small screens.',
+      'Fix: Phase 4 — Page title text-shadow reduced from 40px glow to 20px dark shadow + 8px color glow — less visual noise, better contrast.',
+      'Fix: Phase 3 — YouTube mini-player repositioned ABOVE bottom nav bar with margin — no longer overlaps navigation buttons.',
+      'Fix: Phase 3 — Chat bubble (yt-mini-player) respects safe-area-inset-bottom for devices with home gesture area.',
+      'Enhancement: Phase 5 — YouTube error detection now catches "blocked", "unavailable", "restricted" keywords in addition to Error 153.',
+      'Enhancement: Phase 5 — YouTube error fallback UI shows video thumbnail, title, and "Open on YouTube" button instead of plain error.',
+      'Enhancement: Phase 5 — extractYouTubeId() now supports YouTube Shorts URLs (youtube.com/shorts/ID).',
+      'Enhancement: Phase 5 — Added CORS error handling in iframe load check — assumes block if cross-origin error occurs.',
+      'Improvement: Error check timeout increased from 3s to 4s for better detection of deferred blocks.',
+    ]
+  },
   {
     version: '1.5.45',
     date: 'April 28, 2026',
@@ -2071,15 +2090,28 @@ function loadYouTubeIframe(videoId, title) {
     const placeholder = document.getElementById('yt-placeholder');
     if (!iframe) return;
 
-    // Set up error handler before loading — detects when YouTube blocks the video
+    // Clear any previous error timer
+    if (iframe._errorCheckTimer) clearTimeout(iframe._errorCheckTimer);
+
+    // Set up error handler — detects when YouTube blocks the video
     const errorCheckTimer = setTimeout(() => {
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (iframeDoc?.body?.innerHTML?.includes('Error 153') ||
-            iframeDoc?.body?.innerHTML?.includes('Video player configuration') ||
-            iframeDoc?.body?.textContent?.includes('playable')) {
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            const bodyHTML = iframeDoc?.body?.innerHTML || '';
+            const bodyText = iframeDoc?.body?.textContent || '';
+            if (bodyHTML.includes('Error 153') ||
+                bodyHTML.includes('Video player configuration') ||
+                bodyHTML.includes('blocked') ||
+                bodyText.includes('playable') ||
+                bodyText.includes('unavailable') ||
+                bodyText.includes('restricted')) {
+                showYouTubeError(videoId, title);
+            }
+        } catch (e) {
+            // CORS error or iframe not ready — may indicate blocking
             showYouTubeError(videoId, title);
         }
-    }, 3000);
+    }, 4000);
 
     iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     iframe.classList.remove('hidden');
@@ -2097,14 +2129,21 @@ function loadYouTubeIframe(videoId, title) {
 
 function showYouTubeError(videoId, title) {
     const placeholder = document.getElementById('yt-placeholder');
+    const iframe = document.getElementById('yt-iframe');
+    if (iframe) {
+        iframe.classList.add('hidden');
+        iframe.src = '';
+    }
     if (placeholder) {
         placeholder.style.display = '';
+        const thumbUrl = `https://i.ytimg.com/vi/${videoId}/sddefault.jpg`;
         placeholder.innerHTML = `
             <div style="padding: 20px; text-align: center; color: #ff6b6b;">
+                <img src="${thumbUrl}" style="width: 100%; max-width: 280px; height: auto; border-radius: 8px; margin-bottom: 16px; object-fit: cover;" onerror="this.style.display='none'">
                 <div style="font-size: 32px; margin-bottom: 10px;">⚠️</div>
-                <div style="font-size: 14px; margin-bottom: 5px;"><strong>Watch video on YouTube</strong></div>
-                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 15px;">Video not available in embedded player</div>
-                <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" style="display: inline-block; background: #ff0000; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;">Open on YouTube →</a>
+                <div style="font-size: 14px; margin-bottom: 5px; font-weight: 600; color: #fff;">${title ? escapeHTML(title) : 'Watch on YouTube'}</div>
+                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 16px;">Video unavailable in embedded player. Open on YouTube to watch.</div>
+                <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" style="display: inline-block; background: #ff0000; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#cc0000'" onmouseout="this.style.background='#ff0000'">▶ Open on YouTube</a>
             </div>
         `;
     }
@@ -2112,9 +2151,17 @@ function showYouTubeError(videoId, title) {
 }
 
 function extractYouTubeId(val) {
+    // Standard formats: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID, youtube.com/v/ID
     const match = val.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/);
     if (match) return match[1];
+
+    // YouTube Shorts: youtube.com/shorts/ID
+    const shortsMatch = val.match(/youtube\.com\/shorts\/([^"&?/\s]{11})/);
+    if (shortsMatch) return shortsMatch[1];
+
+    // Direct video ID (11 alphanumeric chars)
     if (/^[a-zA-Z0-9_-]{11}$/.test(val.trim())) return val.trim();
+
     return null;
 }
 

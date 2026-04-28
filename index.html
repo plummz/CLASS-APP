@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=35">
+  <link rel="stylesheet" href="style.css?v=36">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -118,9 +118,13 @@
 
     <!-- ── MAIN ─────────────────────────────────── -->
     <div class="nav-section-title nav-section-first">Main</div>
-    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
+    <div class="nav-item active" data-page="home" role="button" tabindex="0">
       <span class="nav-icon">🏠</span>
       <div class="nav-text"><span class="nav-label">Home</span></div>
+    </div>
+    <div class="nav-item" data-page="announcement" role="button" tabindex="0">
+      <span class="nav-icon">📢</span>
+      <div class="nav-text"><span class="nav-label">Announcements</span></div>
     </div>
     <div class="nav-item" data-page="lobby" role="button" tabindex="0">
       <span class="nav-icon">🏫</span>
@@ -1126,8 +1130,204 @@
     </div>
   </div>
 
+  <!-- ── HOME DASHBOARD (default landing page) ────────────────── -->
+  <div class="page active" id="page-home">
+    <div class="hd-wrap">
+
+      <!-- Header -->
+      <div class="hd-header">
+        <button class="hd-menu-btn" onclick="toggleMenu()" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="hd-greet">
+          <h1 id="hd-greeting">Good Morning, <em id="hd-name">Student</em>! 👋</h1>
+          <p id="hd-subtitle">Let's make today productive.</p>
+        </div>
+        <div class="hd-header-right">
+          <button class="hd-notif-btn" onclick="goToPage('announcement')" aria-label="Notifications">
+            <svg width="18" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="hd-notif-dot hidden" id="hd-notif-dot"></span>
+          </button>
+          <button class="hd-avatar" onclick="goToPage('users')" aria-label="Profile" id="hd-avatar-btn">👤</button>
+        </div>
+      </div>
+
+      <!-- Announcement Card -->
+      <div class="hd-ann-card" onclick="goToPage('announcement')">
+        <div class="hd-ann-icon">📣</div>
+        <div class="hd-ann-body">
+          <div class="hd-ann-row">
+            <span class="hd-ann-label">ANNOUNCEMENT</span>
+            <span class="hd-ann-badge" id="hd-ann-badge">NEW</span>
+          </div>
+          <p class="hd-ann-msg" id="hd-ann-msg">Tap to view latest announcements.</p>
+          <p class="hd-ann-tap">Tap to view full announcement</p>
+        </div>
+        <div class="hd-ann-arrow">›</div>
+      </div>
+
+      <!-- Quick Settings -->
+      <div class="hd-qs-row">
+        <button class="hd-qs-card" id="hd-qs-dm" onclick="toggleTheme()">
+          <span class="hd-qs-ico" id="hd-qs-dm-ico">🌙</span>
+          <span class="hd-qs-lbl">Dark Mode</span>
+          <span class="hd-qs-val hd-qs-on" id="hd-qs-dm-val">On</span>
+        </button>
+        <button class="hd-qs-card" onclick="document.getElementById('accent-picker').click()">
+          <span class="hd-qs-ico">🎨</span>
+          <span class="hd-qs-lbl">Accent</span>
+          <span class="hd-qs-val hd-qs-purple">Custom</span>
+        </button>
+        <button class="hd-qs-card" onclick="toggleNotifPrefsPanel()">
+          <span class="hd-qs-ico">🔔</span>
+          <span class="hd-qs-lbl">Notifications</span>
+          <span class="hd-qs-val hd-qs-on">On</span>
+        </button>
+        <button class="hd-qs-card" onclick="goToPage('updates')">
+          <span class="hd-qs-ico">❕</span>
+          <span class="hd-qs-lbl">Updates</span>
+          <span class="hd-qs-val hd-qs-muted">Tap to check</span>
+        </button>
+      </div>
+
+      <!-- MAIN -->
+      <div class="hd-section">
+        <div class="hd-sec-title">Main</div>
+        <div class="hd-grid2">
+          <button class="hd-card hd-gp" onclick="goToPage('announcement')">
+            <span class="hd-card-ico">🏠</span>
+            <div><div class="hd-card-name">Home</div><div class="hd-card-desc">Announcements &amp; feed</div></div>
+          </button>
+          <button class="hd-card hd-gb" onclick="goToPage('lobby')">
+            <span class="hd-card-ico">🏫</span>
+            <div><div class="hd-card-name">Lobby</div><div class="hd-card-desc">Enter Lobby</div></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- LEARNING -->
+      <div class="hd-section">
+        <div class="hd-sec-title">Learning</div>
+        <div class="hd-grid2">
+          <button class="hd-card hd-gt" onclick="goToPage('file-summarizer')">
+            <span class="hd-card-ico">📄</span>
+            <div><div class="hd-card-name">File Summarizer</div><div class="hd-card-desc">Summarize any file</div></div>
+          </button>
+          <button class="hd-card hd-gi" onclick="goToPage('reviewers')">
+            <span class="hd-card-ico">📋</span>
+            <div><div class="hd-card-name">Reviewers</div><div class="hd-card-desc">Study &amp; review</div></div>
+          </button>
+          <button class="hd-card hd-gc" onclick="goToPage('ai')">
+            <span class="hd-card-ico">🤖</span>
+            <div><div class="hd-card-name">AI Assistants</div><div class="hd-card-desc">Smart AI help</div></div>
+          </button>
+          <button class="hd-card hd-gr" onclick="goToPage('coding-educational')">
+            <span class="hd-card-ico">📚</span>
+            <div><div class="hd-card-name">Coding Lessons</div><div class="hd-card-desc">Learn to code</div></div>
+          </button>
+          <button class="hd-card hd-gd" onclick="goToPage('codelab')">
+            <span class="hd-card-ico">⌨️</span>
+            <div><div class="hd-card-name">Code Lab</div><div class="hd-card-desc">Practice coding</div></div>
+          </button>
+          <button class="hd-card hd-ga" onclick="goToPage('outputai')">
+            <span class="hd-card-ico">🖨️</span>
+            <div><div class="hd-card-name">Output-AI</div><div class="hd-card-desc">AI generated output</div></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- MY CLASSES -->
+      <div class="hd-section">
+        <div class="hd-sec-title">My Classes</div>
+        <div class="hd-grid4">
+          <button class="hd-cc hd-cc1" onclick="goToPage('first')">
+            <span class="hd-cc-ico">🎓</span>
+            <div class="hd-cc-name">First Year</div>
+            <div class="hd-cc-sub">Subjects</div>
+          </button>
+          <button class="hd-cc hd-cc2" onclick="goToPage('y2first')">
+            <span class="hd-cc-ico">🏛️</span>
+            <div class="hd-cc-name">Second Year</div>
+            <div class="hd-cc-sub">Subjects</div>
+          </button>
+          <button class="hd-cc hd-cc3" onclick="goToPage('y3first')">
+            <span class="hd-cc-ico">🚀</span>
+            <div class="hd-cc-name">Third Year</div>
+            <div class="hd-cc-sub">Subjects</div>
+          </button>
+          <button class="hd-cc hd-cc4" onclick="goToPage('y4first')">
+            <span class="hd-cc-ico">🏆</span>
+            <div class="hd-cc-name">Fourth Year</div>
+            <div class="hd-cc-sub">Subjects</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- COMMUNITY -->
+      <div class="hd-section">
+        <div class="hd-sec-title">Community</div>
+        <div class="hd-grid2">
+          <button class="hd-card hd-gp" onclick="goToPage('chat')">
+            <span class="hd-card-ico">💬</span>
+            <div><div class="hd-card-name">Chat</div><div class="hd-card-desc">Join conversations</div></div>
+          </button>
+          <button class="hd-card hd-gb" onclick="goToPage('users')">
+            <span class="hd-card-ico">👥</span>
+            <div><div class="hd-card-name">Users</div><div class="hd-card-desc">Connect with users</div></div>
+          </button>
+          <button class="hd-card hd-gt hd-span2" onclick="goToPage('witfb')">
+            <span class="hd-card-ico">📱</span>
+            <div><div class="hd-card-name">Social Media Pages</div><div class="hd-card-desc">Official pages</div></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- TOOLS -->
+      <div class="hd-section">
+        <div class="hd-sec-title">Tools</div>
+        <div class="hd-tools-scroll">
+          <button class="hd-tc" onclick="goToPage('personal-tools')"><span class="hd-tc-ico">🔧</span><span class="hd-tc-lbl">Personal Tools</span><span class="hd-tc-desc">Useful utilities</span></button>
+          <button class="hd-tc" onclick="goToPage('calendar')"><span class="hd-tc-ico">📅</span><span class="hd-tc-lbl">Calendar</span><span class="hd-tc-desc">Schedule &amp; events</span></button>
+          <button class="hd-tc" onclick="goToPage('music')"><span class="hd-tc-ico">🎵</span><span class="hd-tc-lbl">Music</span><span class="hd-tc-desc">Listen &amp; relax</span></button>
+          <button class="hd-tc" onclick="goToPage('events')"><span class="hd-tc-ico">📷</span><span class="hd-tc-lbl">Event Pictures</span><span class="hd-tc-desc">Event memories</span></button>
+          <button class="hd-tc" onclick="goToPage('random')"><span class="hd-tc-ico">🖼️</span><span class="hd-tc-lbl">Random Pictures</span><span class="hd-tc-desc">Surprise images</span></button>
+        </div>
+      </div>
+
+      <!-- GAMES + SYSTEM -->
+      <div class="hd-gs-row">
+        <div class="hd-section">
+          <div class="hd-sec-title">Games</div>
+          <button class="hd-card hd-gg" onclick="goToPage('games')">
+            <span class="hd-card-ico">🎮</span>
+            <div><div class="hd-card-name">Games</div><div class="hd-card-desc">Play &amp; enjoy</div></div>
+          </button>
+        </div>
+        <div class="hd-section">
+          <div class="hd-sec-title">System</div>
+          <div class="hd-grid2">
+            <button class="hd-card hd-gd" onclick="goToPage('diagnostics')">
+              <span class="hd-card-ico">🩺</span>
+              <div><div class="hd-card-name">Diagnostics</div><div class="hd-card-desc">System check</div></div>
+            </button>
+            <button class="hd-card hd-gi admin-only hidden" onclick="goToPage('admin')">
+              <span class="hd-card-ico">🛡️</span>
+              <div><div class="hd-card-name">Admin</div><div class="hd-card-desc">Admin panel</div></div>
+            </button>
+            <button class="hd-card hd-logout hd-span2" onclick="confirmLogout ? confirmLogout() : goToPage('logout')">
+              <span class="hd-card-ico">🚪</span>
+              <div><div class="hd-card-name">Log Out</div><div class="hd-card-desc">Sign out</div></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:20px"></div>
+    </div>
+  </div>
+
   <!-- ── ANNOUNCEMENT / HOME ────────────────────────────────────── -->
-  <div class="page active" id="page-announcement">
+  <div class="page" id="page-announcement">
     <!-- ── STUDY DASHBOARD SECTION ──────────────────────────────────── -->
     <div class="home-dashboard">
       <!-- Welcome Banner -->
@@ -1564,7 +1764,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=85"></script>
+  <script src="script.js?v=86"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1602,6 +1802,34 @@
       <button class="yt-mini-btn" onclick="stopYouTubePlayer()" title="Stop">✕</button>
     </div>
   </div>
+
+  <!-- ── BOTTOM NAV BAR ────────────────────────────────────────── -->
+  <nav id="bottom-nav" aria-label="Main navigation">
+    <div class="bnav-inner">
+      <button class="bnav-item active" id="bnav-home" onclick="goToPage('home'); setBottomNav('home')">
+        <span class="bnav-ico">🏠</span>
+        <span class="bnav-lbl">Home</span>
+      </button>
+      <button class="bnav-item" id="bnav-notepad" onclick="goToPage('notepad'); setBottomNav('notepad')">
+        <span class="bnav-ico">📓</span>
+        <span class="bnav-lbl">Notepad</span>
+      </button>
+      <button class="bnav-center" onclick="goToPage('ai'); setBottomNav('ai')">
+        <div class="bnav-center-btn" id="bnav-ai">
+          <span>🤖</span>
+        </div>
+        <span class="bnav-center-lbl">AI Chat</span>
+      </button>
+      <button class="bnav-item" id="bnav-classes" onclick="goToPage('first'); setBottomNav('classes')">
+        <span class="bnav-ico">🎓</span>
+        <span class="bnav-lbl">Classes</span>
+      </button>
+      <button class="bnav-item" id="bnav-profile" onclick="goToPage('users'); setBottomNav('profile')">
+        <span class="bnav-ico">👤</span>
+        <span class="bnav-lbl">Profile</span>
+      </button>
+    </div>
+  </nav>
 
 </body>
 </html>

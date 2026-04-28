@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.38-20260428-phase6-semester';
+const CACHE_VERSION = 'v1.5.38-20260428-folder-error-fix';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -24,10 +24,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=3',
   '/features/reviewers/reviewers.css?v=3',
-  '/script.js?v=80',
+  '/script.js?v=81',
   '/features/file-summarizer/file-summarizer.js?v=7',
   '/features/file-summarizer/file-summarizer.css?v=4',
-  '/features/reviewers/reviewers.js?v=6',
+  '/features/reviewers/reviewers.js?v=7',
   '/features/reviewers/reviewers.css?v=3',
   '/features/personal-tools/notepad.js?v=4',
   '/features/ai/ai.js?v=1',

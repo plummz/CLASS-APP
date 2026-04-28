@@ -1527,6 +1527,74 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
   return res.status(400).json({ error: 'Invalid request. Please upload a file to summarize.' });
 });
 
+/* ── Quiz Generation Endpoint ────────────────────────────── */
+app.post('/api/quiz', express.json(), async (req, res) => {
+  const { text, quizType, count } = req.body || {};
+  if (!text || !quizType || !count) {
+    return res.status(400).json({ error: 'text, quizType, and count are required.' });
+  }
+
+  const n = parseInt(count);
+  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1–100.' });
+
+  const typeDescriptions = {
+    'identification': `${n} identification/fill-in-the-blank questions. For each question, ask students to identify a term, person, place, or concept. The answer should be a short word or phrase.`,
+    'multiple-choice': `${n} multiple choice questions, each with exactly 4 choices labeled A, B, C, D. Indicate the correct answer letter.`,
+    'both': `${Math.ceil(n/2)} identification questions and ${Math.floor(n/2)} multiple choice questions (4 choices each, labeled A-D).`,
+  };
+
+  const typeDesc = typeDescriptions[quizType];
+  if (!typeDesc) return res.status(400).json({ error: 'Invalid quizType.' });
+
+  const prompt = `You are a quiz generator. Generate ${typeDesc} based on the provided text.
+
+IMPORTANT: Return ONLY valid JSON — no explanation, no markdown, no code fences. The JSON must follow this exact schema:
+{
+  "questions": [
+    {
+      "id": 1,
+      "type": "multiple-choice",
+      "text": "What is...?",
+      "choices": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
+      "answer": "A",
+      "explanation": "Brief explanation why this is correct."
+    },
+    {
+      "id": 2,
+      "type": "identification",
+      "text": "___ is responsible for...",
+      "answer": "Short Answer",
+      "explanation": "Brief explanation."
+    }
+  ]
+}
+
+Rules:
+- For identification questions, omit "choices" field entirely.
+- For multiple-choice, "answer" must be just the letter: A, B, C, or D.
+- Make questions directly about the provided text content.
+- Generate exactly ${n} questions total.`;
+
+  try {
+    const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text.slice(0, 30000)}` }];
+    const result = await tryWithFallback('gemini', messages);
+
+    // Extract JSON from AI response — strip any markdown/text wrapping
+    let raw = result.text.trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI did not return valid JSON.');
+
+    const quizData = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(quizData.questions)) throw new Error('Invalid quiz structure from AI.');
+
+    console.log(`[Quiz] Generated ${quizData.questions.length} questions | type: ${quizType}`);
+    return res.json({ questions: quizData.questions });
+  } catch (err) {
+    console.error('[Quiz] Error:', err.message);
+    return res.status(500).json({ error: 'Failed to generate quiz. Please try again.' });
+  }
+});
+
 /* ── AI Endpoints ────────────────────────────────────────── */
 app.post('/api/gemini', express.json(), async (req, res) => {
   const { messages } = req.body || {};

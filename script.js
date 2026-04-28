@@ -253,29 +253,55 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.45';
+const APP_VERSION = '1.5.47';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.47',
+    date: 'April 28, 2026',
+    title: 'Revert Home Dashboard + Bottom Nav — Announcement board only, sidebar as primary nav',
+    summary: 'Removed page-home card grid, bottom navigation bar, and all related JS/CSS. App opens directly to the Announcement board. Sidebar menu is the sole navigation. Conflicts resolved.',
+    changes: [
+      'Removed: page-home card-grid dashboard and bottom navigation bar.',
+      'Removed: initHomeDashboard, setBottomNav, and pageConfig.home from script.js.',
+      'Restored: Announcement page as the active landing page (currentPage = announcement).',
+      'Restored: Sidebar as primary navigation — hamburger menu, nav items, all working.',
+      'Kept: Lobby Navigation Restore and all other stable changes from v1.5.46.',
+    ]
+  },
+  {
+    version: '1.5.46',
+    date: 'April 28, 2026',
+    title: 'Lobby Navigation Restore + Cache Refresh',
+    summary: 'Restored the compact lobby controls, kept the hamburger menu accessible over the lobby view, and refreshed the asset cache versions so the latest UI ships cleanly.',
+    changes: [
+      'Lobby: Replaced the larger dashboard cards with compact header actions for app opens, contributions, and updates.',
+      'Navigation: Kept the hamburger menu visible over the lobby so connected pages continue to open without trapping the user.',
+      'Cache: Bumped index, script, style, and service worker cache versions together so fresh assets replace stale PWA bundles immediately.'
+    ]
+  },
   {
     version: '1.5.45',
     date: 'April 28, 2026',
     title: 'Reverted Home Dashboard — Announcement page restored to clean board view',
-    summary: 'Removed the Home Dashboard entirely. The Announcement page is now just the announcement board — no welcome banner, quick actions, activity feed, or trending section. Cleaner, faster, no extra bugs.',
+    summary: 'Removed the Home Dashboard. The Announcement page is now just the announcement board.',
     changes: [
       'Removed: Home Dashboard (welcome banner, engagement metrics, quick actions, recent activity, trending notes).',
-      'Removed: All dashboard JS functions (initHomeDashboard, loadRecentActivity, loadTrendingReviewers, calculateStudyStreak, trackAppVisit, calculateQuizTrend, updateEngagementMetrics).',
-      'Removed: Associated CSS (~220 lines of home-dashboard styles).',
-      'Removed: goToPage wrapper that re-ran the dashboard on every navigation.',
-      'Result: Announcement page is the announcement board only — straightforward and stable.',
+      'Removed: All dashboard JS functions and associated CSS (~220 lines).',
     ]
   },
   {
     version: '1.5.44',
     date: 'April 28, 2026',
-    title: 'Critical Fix — Button Crash + Announcement Layout Reorganized',
-    summary: 'Fixed a JavaScript syntax error that crashed ALL buttons (including the menu).',
+    title: 'Mobile UI Fixes + Light Mode + Reviewer Content Improvements',
+    summary: 'Fixed mobile header overlap with status bar, responsive font sizes, broken light mode glows, reviewer card layout, and added auto-bolding of key terms in reviewer content.',
     changes: [
-      'Bug Fix: Critical — JS syntax error in loadTrendingReviewers() broke the entire app (menu + all buttons unresponsive).',
-      'Layout: Announcement board moved to the top of the Home page.',
+      'Fix: Added env(safe-area-inset-top) to menu button, page indicator, and page padding — headers no longer overlap phone status bar.',
+      'Fix: Responsive font sizes with clamp() for headings on 360–430px screens — text scales properly on small devices.',
+      'Fix: Light mode — removed blinding text-shadow on page titles and buttons. All text readable on light backgrounds.',
+      'Fix: Light mode — comprehensive contrast overrides for notepad, reviewer cards, home dashboard, sidebar, and feature pages.',
+      'Fix: Reviewer cards now show 150-char preview with proper top padding to avoid badge overlap.',
+      'Feature: Reviewer content view auto-bolds key terms (ALL CAPS acronyms, **markdown**, Definition:/Formula: labels).',
+      'Fix: Dark mode page-title glow reduced at ≤430px for less visual noise on small screens.',
     ]
   },
   {
@@ -3459,7 +3485,6 @@ pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: 
 pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🎨 Personalization' };
 pageConfig.reviewers       = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📄 REVIEWERS' };
 pageConfig['file-summarizer'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 File Summarizer' };
-
 let currentPage = 'announcement';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 window.customPageBgs = customPageBgs; // expose for personalizationModule

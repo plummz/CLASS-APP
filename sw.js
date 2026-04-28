@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'v1.5.35-20260428-ux-sweep';
+const CACHE_VERSION = 'v1.5.36-20260428-phase1-nav';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=83',
-  '/style.css?v=30',
+  '/index.html?v=84',
+  '/style.css?v=31',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -24,10 +24,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=3',
   '/features/reviewers/reviewers.css?v=3',
-  '/script.js?v=77',
+  '/script.js?v=78',
   '/features/file-summarizer/file-summarizer.js?v=6',
   '/features/file-summarizer/file-summarizer.css?v=3',
-  '/features/reviewers/reviewers.js?v=5',
+  '/features/reviewers/reviewers.js?v=6',
   '/features/reviewers/reviewers.css?v=3',
   '/features/personal-tools/notepad.js?v=4',
   '/features/ai/ai.js?v=1',

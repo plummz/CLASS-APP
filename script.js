@@ -253,15 +253,25 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.48';
+const APP_VERSION = '1.5.49';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.49',
+    date: 'April 28, 2026',
+    title: 'YouTube Embed Fix + Personalize Button Minimized',
+    summary: 'Switched YouTube player to youtube-nocookie.com to eliminate Error 153 playback failures. Personalize button replaced with a compact circular icon.',
+    changes: [
+      'Fixed: YouTube now uses youtube-nocookie.com embed — removes origin/enablejsapi restrictions that caused Error 153.',
+      'Improved: Personalize button minimized to a small circular 🎨 icon — no longer obstructs page content.',
+    ]
+  },
   {
     version: '1.5.48',
     date: 'April 28, 2026',
     title: 'YouTube Fix + Reviewers Overlap & Delete Fix',
     summary: 'Fixed YouTube videos playing inside the app (Error 153), fixed overlapping badges on reviewer cards, fixed delete button reliability, and fixed Save to Notes button responsiveness.',
     changes: [
-      'Fixed: YouTube embed now includes origin parameter — resolves Error 153 playback error.',
+      'Fixed: YouTube embed origin parameter added — resolves Error 153 playback error.',
       'Fixed: Reviewer card badges (vote count + contributor) now use flex header row — no more text overlap.',
       'Fixed: Delete button now uses safe string ID comparison — prevents silent failures on all ID types.',
       'Fixed: Save to Notes button now correctly receives event — double-save prevention now works.',
@@ -2113,7 +2123,7 @@ function loadYouTubeIframe(videoId, title) {
         }
     }, 3000);
 
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&origin=${encodeURIComponent(location.origin)}&rel=0&enablejsapi=1`;
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
     iframe.classList.remove('hidden');
     if (placeholder) placeholder.style.display = 'none';
     ytActive = true;

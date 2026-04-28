@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.48-20260428-youtube-fix-reviewers-fix';
+const CACHE_VERSION = 'v1.5.49-20260428-youtube-nocookie-personalize-icon';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=89',
-  '/style.css?v=38',
+  '/index.html?v=90',
+  '/style.css?v=39',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=7',
-  '/script.js?v=89',
+  '/script.js?v=90',
   '/features/reviewers/reviewers.js?v=11',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
@@ -118,7 +118,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html?v=89'))
+        .catch(() => caches.match('/') || caches.match('/index.html?v=90'))
     );
     return;
   }

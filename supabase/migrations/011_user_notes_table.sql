@@ -28,26 +28,26 @@ DROP POLICY IF EXISTS "Users can view their own notes" ON user_notes;
 CREATE POLICY "Users can view their own notes"
   ON user_notes
   FOR SELECT
-  USING (user_id = (SELECT username FROM auth.users WHERE id = auth.uid() LIMIT 1));
+  USING (user_id = public.class_app_username());
 
 -- RLS Policy: Users can insert their own notes
 DROP POLICY IF EXISTS "Users can create their own notes" ON user_notes;
 CREATE POLICY "Users can create their own notes"
   ON user_notes
   FOR INSERT
-  WITH CHECK (user_id = (SELECT username FROM auth.users WHERE id = auth.uid() LIMIT 1));
+  WITH CHECK (user_id = public.class_app_username());
 
 -- RLS Policy: Users can update their own notes
 DROP POLICY IF EXISTS "Users can update their own notes" ON user_notes;
 CREATE POLICY "Users can update their own notes"
   ON user_notes
   FOR UPDATE
-  USING (user_id = (SELECT username FROM auth.users WHERE id = auth.uid() LIMIT 1))
-  WITH CHECK (user_id = (SELECT username FROM auth.users WHERE id = auth.uid() LIMIT 1));
+  USING (user_id = public.class_app_username())
+  WITH CHECK (user_id = public.class_app_username());
 
 -- RLS Policy: Users can delete their own notes
 DROP POLICY IF EXISTS "Users can delete their own notes" ON user_notes;
 CREATE POLICY "Users can delete their own notes"
   ON user_notes
   FOR DELETE
-  USING (user_id = (SELECT username FROM auth.users WHERE id = auth.uid() LIMIT 1));
+  USING (user_id = public.class_app_username());

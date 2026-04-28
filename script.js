@@ -258,15 +258,16 @@ const APP_CHANGELOG = [
   {
     version: '1.5.44',
     date: 'April 28, 2026',
-    title: 'Critical Fix — Button Crash + Announcement Layout Reorganized',
-    summary: 'Fixed a JavaScript syntax error that crashed ALL buttons (including the menu). Announcement page now shows the board first for instant info access. iOS tap improvements on Quick Action cards.',
+    title: 'Mobile UI Fixes + Light Mode + Reviewer Content Improvements',
+    summary: 'Fixed mobile header overlap with status bar, responsive font sizes, broken light mode glows, reviewer card layout, and added auto-bolding of key terms in reviewer content.',
     changes: [
-      'Bug Fix: Critical — JS syntax error in loadTrendingReviewers() broke the entire app (menu + all buttons unresponsive).',
-      'Layout: Announcement board now appears at the TOP of the Home page for immediate visibility.',
-      'Layout: Study Dashboard (quick actions, recent activity, trending notes) moved below the board.',
-      'iOS: Added touch-action: manipulation to Quick Action cards for reliable tap response on iOS/Safari.',
-      'Code: Removed dead goToPageEvent listener and redundant announcementInit wrapper.',
-      'Code: Cleaned up top-level variable pollution (unused pageConfigAnnouncement).',
+      'Fix: Added env(safe-area-inset-top) to menu button, page indicator, and page padding — headers no longer overlap phone status bar.',
+      'Fix: Responsive font sizes with clamp() for headings on 360–430px screens — text scales properly on small devices.',
+      'Fix: Light mode — removed blinding text-shadow on page titles and buttons. All text readable on light backgrounds.',
+      'Fix: Light mode — comprehensive contrast overrides for notepad, reviewer cards, home dashboard, sidebar, and feature pages.',
+      'Fix: Reviewer cards now show 150-char preview with proper top padding to avoid badge overlap.',
+      'Feature: Reviewer content view auto-bolds key terms (ALL CAPS acronyms, **markdown**, Definition:/Formula: labels).',
+      'Fix: Dark mode page-title glow reduced at ≤430px for less visual noise on small screens.',
     ]
   },
   {

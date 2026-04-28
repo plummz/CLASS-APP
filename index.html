@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
-  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=3">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
   <link rel="stylesheet" href="features/reviewers/reviewers.css?v=3">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
@@ -383,7 +383,10 @@
     <div class="fs-quiz-modal" id="fs-quiz-modal">
       <div class="fs-quiz-modal-inner">
         <div class="fs-quiz-modal-header">
-          <span class="fs-quiz-progress" id="fs-quiz-progress">Q 1 / 10</span>
+          <div class="fs-quiz-header-left">
+            <span class="fs-quiz-progress" id="fs-quiz-progress">Q 1 / 10</span>
+            <span class="fs-quiz-source" id="fs-quiz-source"></span>
+          </div>
           <div class="fs-quiz-timer" id="fs-quiz-timer">10</div>
         </div>
         <div class="fs-quiz-question-text" id="fs-quiz-question-text"></div>
@@ -399,8 +402,21 @@
         <div class="fs-quiz-score-emoji" id="fs-quiz-score-emoji">🎉</div>
         <div class="fs-quiz-score-text" id="fs-quiz-score-text"></div>
         <div class="fs-quiz-score-detail" id="fs-quiz-score-detail"></div>
+        <button class="fs-quiz-review-btn" id="fs-quiz-review-btn">📋 Review Answers</button>
         <button class="fs-quiz-start-btn" id="fs-quiz-restart-btn">↩ Restart Quiz</button>
         <button class="fs-outline-btn" id="fs-quiz-close-btn">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Quiz Review Screen -->
+    <div class="fs-quiz-review" id="fs-quiz-review">
+      <div class="fs-quiz-review-inner">
+        <div class="fs-quiz-review-header">
+          <h3 class="fs-quiz-review-title">📋 Answer Review</h3>
+          <button class="fs-quiz-review-close" id="fs-quiz-review-close">✕ Close</button>
+        </div>
+        <div class="fs-quiz-review-list" id="fs-quiz-review-list"></div>
+        <button class="fs-quiz-start-btn" id="fs-quiz-review-retake">↩ Retake Quiz</button>
       </div>
     </div>
   </div>
@@ -1495,7 +1511,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=78"></script>
+  <script src="script.js?v=79"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1521,7 +1537,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=6" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=7" defer></script>
   <script src="features/reviewers/reviewers.js?v=6" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

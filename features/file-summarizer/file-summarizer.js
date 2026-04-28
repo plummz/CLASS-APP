@@ -38,6 +38,14 @@
   const scoreDetail    = document.getElementById('fs-quiz-score-detail');
   const quizRestartBtn = document.getElementById('fs-quiz-restart-btn');
   const quizCloseBtn   = document.getElementById('fs-quiz-close-btn');
+  const quizReviewBtn  = document.getElementById('fs-quiz-review-btn');
+  const quizSource     = document.getElementById('fs-quiz-source');
+
+  // Review screen refs
+  const quizReview       = document.getElementById('fs-quiz-review');
+  const quizReviewList   = document.getElementById('fs-quiz-review-list');
+  const quizReviewClose  = document.getElementById('fs-quiz-review-close');
+  const quizReviewRetake = document.getElementById('fs-quiz-review-retake');
 
   if (!fileInput) return;
 
@@ -53,6 +61,8 @@
   let quizTimerID     = null;
   let quizTimeLeft    = 10;
   let quizAnswered    = false;
+  let userAnswers     = [];
+  let quizSourceFile  = '';
 
   // ── Helpers ────────────────────────────────────────────────
   function setError(msg) {
@@ -124,6 +134,10 @@
 
     selectedFile  = file;
     extractedText = '';
+    quizSettings = { type: null, count: null };
+    try { localStorage.removeItem('fs-quiz-settings'); } catch(_) {}
+    quizTypeChips.forEach(c => c.classList.remove('selected'));
+    quizCountChips.forEach(c => c.classList.remove('selected'));
     const sizeMB = (file.size / 1024 / 1024).toFixed(2);
     if (uploadLabel) {
       uploadLabel.querySelector('.fs-upload-main').textContent = `✅ ${file.name}`;
@@ -296,9 +310,12 @@
 
   // ── Quiz Engine ────────────────────────────────────────────
   function startQuiz() {
-    quizCurrent   = 0;
-    quizScore_val = 0;
-    quizAnswered  = false;
+    quizCurrent    = 0;
+    quizScore_val  = 0;
+    quizAnswered   = false;
+    userAnswers    = [];
+    quizSourceFile = selectedFile?.name || '';
+    if (quizSource) quizSource.textContent = quizSourceFile ? `📄 ${quizSourceFile}` : '';
     quizModal.classList.add('active');
     showQuestion();
   }
@@ -312,12 +329,13 @@
     stopTimer();
     quizTimeLeft = 10;
     quizTimer.textContent = quizTimeLeft;
-    quizTimer.classList.remove('urgent');
+    quizTimer.classList.remove('urgent', 'urgent-critical');
 
     quizTimerID = setInterval(() => {
       quizTimeLeft--;
       quizTimer.textContent = quizTimeLeft;
-      if (quizTimeLeft <= 3) quizTimer.classList.add('urgent');
+      if (quizTimeLeft <= 5) quizTimer.classList.add('urgent');
+      if (quizTimeLeft <= 2) quizTimer.classList.add('urgent-critical');
       if (quizTimeLeft <= 0) {
         stopTimer();
         if (!quizAnswered) timeUp();
@@ -334,7 +352,7 @@
     quizFeedback.textContent = '';
     quizNextBtn.style.display = 'none';
     quizChoices.innerHTML = '';
-    quizTimer.classList.remove('urgent');
+    quizTimer.classList.remove('urgent', 'urgent-critical');
 
     quizProgress.textContent = `Q ${quizCurrent + 1} / ${activeQuestions.length}`;
     quizQText.textContent = q.text;
@@ -386,6 +404,16 @@
     const isCorrect = choiceIndex === correctIdx;
     if (isCorrect) quizScore_val++;
 
+    userAnswers.push({
+      question: q.text,
+      type: 'multiple-choice',
+      userChoice: q.choices?.[choiceIndex] || '',
+      correctAnswer: q.answer,
+      correctChoice: correctIdx >= 0 ? (q.choices?.[correctIdx] || q.answer) : q.answer,
+      explanation: q.explanation || '',
+      isCorrect
+    });
+
     choiceBtns[choiceIndex].classList.add(isCorrect ? 'correct' : 'wrong');
     if (!isCorrect && correctIdx >= 0) choiceBtns[correctIdx].classList.add('correct');
 
@@ -405,6 +433,17 @@
     const isCorrect  = userAnswer === correct || userAnswer.includes(correct) || correct.includes(userAnswer);
 
     if (isCorrect) quizScore_val++;
+
+    userAnswers.push({
+      question: q.text,
+      type: 'identification',
+      userChoice: value.trim(),
+      correctAnswer: q.answer,
+      correctChoice: q.answer,
+      explanation: q.explanation || '',
+      isCorrect
+    });
+
     showFeedback(isCorrect, q);
   }
 
@@ -416,12 +455,25 @@
 
     // Reveal correct answer for MC
     const q = activeQuestions[quizCurrent];
+    const letters = ['A','B','C','D'];
     if (q.type === 'multiple-choice') {
       const choiceBtns = quizChoices.querySelectorAll('.fs-quiz-choice-btn');
-      const letters = ['A','B','C','D'];
       const correctIdx = letters.indexOf((q.answer || '').trim().toUpperCase());
       if (correctIdx >= 0) choiceBtns[correctIdx]?.classList.add('correct');
     }
+
+    userAnswers.push({
+      question: q.text,
+      type: q.type,
+      userChoice: '',
+      correctAnswer: q.answer,
+      correctChoice: q.type === 'multiple-choice' && q.choices
+        ? (q.choices[letters.indexOf((q.answer || '').trim().toUpperCase())] || q.answer)
+        : q.answer,
+      explanation: q.explanation || '',
+      isCorrect: false,
+      timedOut: true
+    });
 
     showFeedback(false, q, true);
   }
@@ -447,10 +499,17 @@
     const emoji   = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '📖';
     const comment = pct >= 80 ? 'Excellent work!' : pct >= 50 ? 'Good effort!' : 'Keep studying!';
 
-    scoreEmoji.textContent = emoji;
-    scoreText.textContent  = `${quizScore_val} / ${total} correct (${pct}%)`;
+    scoreEmoji.textContent  = emoji;
+    scoreText.textContent   = `${quizScore_val} / ${total} correct (${pct}%)`;
     scoreDetail.textContent = comment;
     quizScore.classList.add('active');
+
+    try {
+      const history = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
+      history.unshift({ file: quizSourceFile, type: quizSettings.type, count: total, score: quizScore_val, pct, date: new Date().toISOString() });
+      if (history.length > 20) history.length = 20;
+      localStorage.setItem('fs-quiz-history', JSON.stringify(history));
+    } catch(_) {}
   }
 
   // ── Quiz navigation ────────────────────────────────────────
@@ -475,6 +534,54 @@
   if (quizCloseBtn) {
     quizCloseBtn.addEventListener('click', () => {
       quizScore.classList.remove('active');
+    });
+  }
+
+  // ── Quiz Review Screen ─────────────────────────────────────
+  function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str || '');
+    return div.innerHTML;
+  }
+
+  function showReview() {
+    if (!quizReview || !quizReviewList) return;
+    quizReviewList.innerHTML = userAnswers.map((a, i) => {
+      const statusIcon  = a.isCorrect ? '✓' : (a.timedOut ? '⏰' : '✗');
+      const statusClass = a.isCorrect ? 'correct' : 'wrong';
+      return `
+        <div class="fs-review-item ${statusClass}">
+          <div class="fs-review-item-header">
+            <span class="fs-review-status ${statusClass}">${statusIcon}</span>
+            <span class="fs-review-qnum">Q${i + 1}</span>
+          </div>
+          <div class="fs-review-question">${escHtml(a.question)}</div>
+          <div class="fs-review-your-answer ${statusClass}">
+            Your answer: ${a.timedOut ? '<em>Time\'s up</em>' : escHtml(a.userChoice || '(no answer)')}
+          </div>
+          ${!a.isCorrect ? `<div class="fs-review-correct-answer">Correct: ${escHtml(a.correctChoice || a.correctAnswer)}</div>` : ''}
+          ${a.explanation ? `<div class="fs-review-explanation">💡 ${escHtml(a.explanation)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+    quizReview.classList.add('active');
+  }
+
+  if (quizReviewBtn) {
+    quizReviewBtn.addEventListener('click', showReview);
+  }
+
+  if (quizReviewClose) {
+    quizReviewClose.addEventListener('click', () => {
+      quizReview.classList.remove('active');
+    });
+  }
+
+  if (quizReviewRetake) {
+    quizReviewRetake.addEventListener('click', () => {
+      quizReview.classList.remove('active');
+      quizScore.classList.remove('active');
+      startQuiz();
     });
   }
 

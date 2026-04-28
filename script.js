@@ -231,8 +231,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.36';
+const APP_VERSION = '1.5.37';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.37',
+    date: 'April 28, 2026',
+    title: 'Phase 5 — Quiz Learning Improvements',
+    summary: 'Quiz transformed into a real learning tool: post-quiz answer review screen, quiz history tracking, better timer urgency, and quiz settings auto-reset on new file.',
+    changes: [
+      'Feature: "Review Answers" button on score screen — shows every Q&A with your answer, correct answer, and AI explanation.',
+      'Feature: Quiz history saved to localStorage after every quiz (file, type, count, score, date) — used by future dashboard.',
+      'Feature: Quiz source filename shown in modal header so you always know which file the quiz is from.',
+      'UX: Timer pulses at ≤5 seconds remaining and shakes at ≤2 seconds for urgent visual feedback.',
+      'Bug Fix: Quiz type/count chips now reset when a new file is selected — prevents stale settings from a previous file carrying over.',
+    ]
+  },
   {
     version: '1.5.36',
     date: 'April 28, 2026',

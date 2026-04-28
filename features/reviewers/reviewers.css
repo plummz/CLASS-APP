@@ -33,6 +33,7 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .reviewer-card:hover {
@@ -40,6 +41,28 @@
   border-color: rgba(0, 255, 184, 0.5);
   box-shadow: 0 4px 12px rgba(0, 255, 184, 0.1);
   transform: translateY(-2px);
+}
+
+.reviewer-card-content {
+  flex-grow: 1;
+  cursor: pointer;
+}
+
+.reviewer-delete-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 74, 107, 0.2);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.reviewer-delete-btn:hover {
+  background: rgba(255, 74, 107, 0.4);
 }
 
 .reviewer-card-title {

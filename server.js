@@ -1496,7 +1496,7 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
 
   // ── PATH 2: Text → AI summary ─────────────────────────────
   if (hasText) {
-    const { text, type } = req.body;
+    const { text, type, customPrompt } = req.body;
     console.log(`[FileSummarizer] Summarize | type: "${type}" | text: ${text ? text.length : 0} chars`);
 
     if (!text || !text.trim()) return res.status(400).json({ error: 'No text provided to summarize.' });
@@ -1508,7 +1508,8 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
       terms:    'Extract a list of important terms or vocabulary from the following text, along with short definitions:',
       quiz:     'Generate 5 multiple-choice quiz questions based on the following text to test comprehension. Include answers at the bottom:',
     };
-    const prompt = prompts[type];
+
+    let prompt = customPrompt || prompts[type];
     if (!prompt) return res.status(400).json({ error: 'Invalid summary type. Must be: short, detailed, key, terms, or quiz.' });
 
     try {

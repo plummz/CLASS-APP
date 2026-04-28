@@ -60,18 +60,25 @@ window.reviewersModule = {
       return;
     }
 
+    const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+    const currentUserId = user?.username || null;
+
     grid.innerHTML = this.sharedReviewers.map((rev) => {
       const date = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const isOwner = currentUserId && rev.user_id === currentUserId;
 
       return \`
-        <div class="reviewer-card" onclick="window.reviewersModule.openViewer('\${rev.id}')">
-          <div class="reviewer-card-title">\${this.escapeHtml(rev.title)}</div>
-          <div class="reviewer-card-preview">\${this.escapeHtml(rev.summary_content)}</div>
-          <div class="reviewer-card-footer">
-            <span>By: \${this.escapeHtml(rev.contributor_name)}</span>
-            <span>\${dateStr}</span>
+        <div class="reviewer-card">
+          <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('\${rev.id}')">
+            <div class="reviewer-card-title">\${this.escapeHtml(rev.title)}</div>
+            <div class="reviewer-card-preview">\${this.escapeHtml(rev.summary_content)}</div>
+            <div class="reviewer-card-footer">
+              <span>By: \${this.escapeHtml(rev.contributor_name)}</span>
+              <span>\${dateStr}</span>
+            </div>
           </div>
+          \${isOwner ? \`<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteSharedNote('\${rev.id}', event)">🗑️</button>\` : ''}
         </div>
       \`;
     }).join('');
@@ -132,6 +139,29 @@ window.reviewersModule = {
     if (overlay) {
       overlay.classList.remove('active');
       setTimeout(() => overlay.remove(), 300);
+    }
+  },
+
+  deleteSharedNote: async function(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this shared note?')) return;
+
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client) return;
+
+    try {
+      const { error } = await client.from('reviewers').delete().eq('id', id);
+      if (error) {
+        console.error('[Reviewers] Delete error:', error);
+        alert('Failed to delete note.');
+      } else {
+        console.log('[Reviewers] Note deleted:', id);
+        this.sharedReviewers = this.sharedReviewers.filter(r => r.id !== id);
+        this.renderGrid();
+      }
+    } catch (ex) {
+      console.error('[Reviewers] Delete exception:', ex);
+      alert('Failed to delete note.');
     }
   },
 

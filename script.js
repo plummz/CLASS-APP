@@ -253,8 +253,25 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.41';
+const APP_VERSION = '1.5.42';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.42',
+    date: 'April 28, 2026',
+    title: 'Phase 4 — Reviewers Quality Control (Upvoting + Trending)',
+    summary: 'Reviewers transformed from chronological dump into community-driven discovery tool. Upvote button on each card, three sorting modes (Trending, Newest, By Author), and persistent sort preference.',
+    changes: [
+      'Feature: Upvote button (👍) on each reviewer card — one click to upvote/unvote.',
+      'Feature: Vote count badge shows total upvotes on each card (top-right corner).',
+      'Feature: Sort dropdown with three options — "🔥 Trending" (default, by votes), "📅 Newest", "👤 By Author".',
+      'Feature: Sort preference persists in localStorage — your choice is remembered.',
+      'Feature: Voted cards show highlighted vote button state for visual feedback.',
+      'Feature: Users can only upvote when logged in and online — offline upvoting is blocked.',
+      'Backend: Added migration 012_reviewer_votes_table.sql with unique constraint (reviewer_id, user_id).',
+      'UX: Trending sort shows most-upvoted content first — community-driven discovery.',
+      'UX: Vote button prevents double-voting; unvoting removes your upvote.',
+    ]
+  },
   {
     version: '1.5.41',
     date: 'April 28, 2026',

@@ -1,13 +1,17 @@
 // ═══════════════════════════════════════════════════════════
-// PUBLIC REVIEWERS - Module  v1.5.34
+// PUBLIC REVIEWERS - Module (Upvoting + Trending) v1.5.42
 // ═══════════════════════════════════════════════════════════
 
 window.reviewersModule = {
   sharedReviewers: [],
   filtered: [],
   searchQuery: '',
+  sortBy: 'trending',
+  voteCounts: {},
+  userVotes: {},
 
   init: function() {
+    this.sortBy = localStorage.getItem('reviewers-sort-by') || 'trending';
     this.render();
   },
 
@@ -39,6 +43,39 @@ window.reviewersModule = {
     }
     this.sharedReviewers = data || [];
     console.log('[Reviewers] Loaded:', this.sharedReviewers.length, 'items');
+
+    await this.loadVoteCounts();
+  },
+
+  loadVoteCounts: async function() {
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client) return;
+
+    try {
+      const { data, error } = await client
+        .from('reviewer_votes')
+        .select('reviewer_id, user_id');
+
+      if (error) {
+        console.warn('[Reviewers] Vote load error:', error);
+        return;
+      }
+
+      this.voteCounts = {};
+      this.userVotes = {};
+      const me = this.currentUsername();
+
+      (data || []).forEach(vote => {
+        this.voteCounts[vote.reviewer_id] = (this.voteCounts[vote.reviewer_id] || 0) + 1;
+        if (me && vote.user_id === me) {
+          this.userVotes[vote.reviewer_id] = true;
+        }
+      });
+
+      console.log('[Reviewers] Vote counts loaded');
+    } catch (ex) {
+      console.error('[Reviewers] Vote load exception:', ex);
+    }
   },
 
   render: async function() {
@@ -50,8 +87,15 @@ window.reviewersModule = {
       <div class="reviewers-wrap">
         <div class="reviewers-header">
           <h1 class="reviewers-title">📄 Shared Reviewers</h1>
-          <input type="search" class="reviewers-search" id="reviewers-search"
-            placeholder="Search by title or contributor…">
+          <div class="reviewers-controls">
+            <input type="search" class="reviewers-search" id="reviewers-search"
+              placeholder="Search by title or contributor…">
+            <select class="reviewers-sort" id="reviewers-sort">
+              <option value="trending">🔥 Trending</option>
+              <option value="newest">📅 Newest</option>
+              <option value="author">👤 By Author</option>
+            </select>
+          </div>
         </div>
         <div class="reviewers-grid" id="reviewers-grid">
           <div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>
@@ -60,6 +104,18 @@ window.reviewersModule = {
     `;
 
     const searchEl = document.getElementById('reviewers-search');
+    const sortEl = document.getElementById('reviewers-sort');
+
+    if (sortEl) {
+      sortEl.value = this.sortBy;
+      sortEl.addEventListener('change', (e) => {
+        this.sortBy = e.target.value;
+        localStorage.setItem('reviewers-sort-by', this.sortBy);
+        this.applyFilter();
+        this.renderGrid();
+      });
+    }
+
     if (searchEl) {
       let searchDebounce = null;
       searchEl.addEventListener('input', (e) => {
@@ -83,14 +139,24 @@ window.reviewersModule = {
   },
 
   applyFilter: function() {
-    if (!this.searchQuery) {
-      this.filtered = this.sharedReviewers;
-      return;
+    let result = this.sharedReviewers;
+
+    if (this.searchQuery) {
+      result = result.filter(r =>
+        (r.title || '').toLowerCase().includes(this.searchQuery) ||
+        (r.contributor_name || '').toLowerCase().includes(this.searchQuery)
+      );
     }
-    this.filtered = this.sharedReviewers.filter(r =>
-      (r.title || '').toLowerCase().includes(this.searchQuery) ||
-      (r.contributor_name || '').toLowerCase().includes(this.searchQuery)
-    );
+
+    if (this.sortBy === 'trending') {
+      result.sort((a, b) => (this.voteCounts[b.id] || 0) - (this.voteCounts[a.id] || 0));
+    } else if (this.sortBy === 'newest') {
+      result.sort((a, b) => new Date(b.shared_at || b.created_at) - new Date(a.shared_at || a.created_at));
+    } else if (this.sortBy === 'author') {
+      result.sort((a, b) => (a.contributor_name || '').localeCompare(b.contributor_name || ''));
+    }
+
+    this.filtered = result;
   },
 
   renderGrid: function() {
@@ -112,8 +178,12 @@ window.reviewersModule = {
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const preview = (rev.summary_content || '').slice(0, 100).trim();
       const canDel  = isAdmin || (me && rev.user_id === me);
+      const voteCount = this.voteCounts[rev.id] || 0;
+      const hasVoted = this.userVotes[rev.id] || false;
+      const voteClass = hasVoted ? 'voted' : '';
 
       return `<div class="reviewer-card">
+        <div class="reviewer-card-badge">👍 ${voteCount}</div>
         <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 100 ? '…' : ''}</div>
@@ -123,6 +193,7 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
+          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
           <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
           ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${rev.id}, event)">Delete</button>` : ''}
         </div>
@@ -215,6 +286,61 @@ window.reviewersModule = {
       return;
     }
     if (confirm(`Delete "${rev?.title || 'this reviewer'}"?`)) doDelete();
+  },
+
+  toggleVote: async function(reviewerId, event) {
+    event.stopPropagation();
+
+    const me = this.currentUsername();
+    if (!me) {
+      window.showToast ? showToast('Log in to upvote.', 'info') : alert('Log in to upvote.');
+      return;
+    }
+
+    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client || !navigator.onLine) {
+      window.showToast ? showToast('You\'re offline.', 'info') : alert('You\'re offline.');
+      return;
+    }
+
+    try {
+      const hasVoted = this.userVotes[reviewerId];
+
+      if (hasVoted) {
+        const { error } = await client
+          .from('reviewer_votes')
+          .delete()
+          .match({ reviewer_id: reviewerId, user_id: me });
+
+        if (error) {
+          console.error('[Reviewers] Unvote error:', error);
+          return;
+        }
+
+        this.voteCounts[reviewerId] = Math.max(0, (this.voteCounts[reviewerId] || 0) - 1);
+        delete this.userVotes[reviewerId];
+      } else {
+        const { error } = await client
+          .from('reviewer_votes')
+          .insert([{ reviewer_id: reviewerId, user_id: me }]);
+
+        if (error) {
+          console.error('[Reviewers] Vote error:', error);
+          if (error.code === '23505') {
+            this.userVotes[reviewerId] = true;
+          }
+          return;
+        }
+
+        this.voteCounts[reviewerId] = (this.voteCounts[reviewerId] || 0) + 1;
+        this.userVotes[reviewerId] = true;
+      }
+
+      this.applyFilter();
+      this.renderGrid();
+    } catch (ex) {
+      console.error('[Reviewers] Vote exception:', ex);
+    }
   },
 
   saveToNotepad: function(id) {

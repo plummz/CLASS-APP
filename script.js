@@ -253,8 +253,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.44';
+const APP_VERSION = '1.5.45';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.45',
+    date: 'April 28, 2026',
+    title: 'Home Dashboard + Bottom Navigation Bar',
+    summary: 'Replaced sidebar-as-primary-nav with a card-based home dashboard and fixed bottom navigation bar. The app now opens to a full card grid (like a mobile app) instead of the announcement page.',
+    changes: [
+      'Feature: New Home Dashboard page — card grid showing all sections (Learning, Classes, Community, Tools, Games, System).',
+      'Feature: Fixed bottom navigation bar with Home, Notepad, AI Chat (glowing center), Classes, Profile.',
+      'Feature: Announcement preview card on Home Dashboard with live latest message.',
+      'Feature: Quick Settings row on Home Dashboard (Dark Mode, Accent, Notifications, Updates).',
+      'Improvement: Sidebar is now a secondary overlay menu (hamburger), not the primary navigation.',
+      'Improvement: Default landing page after login is now the Home Dashboard instead of Announcements.',
+      'Fix: Bottom nav respects safe-area-inset-bottom for devices with home bar.',
+    ]
+  },
   {
     version: '1.5.44',
     date: 'April 28, 2026',
@@ -3451,8 +3466,9 @@ pageConfig.calculator = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: 
 pageConfig.personalization = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🎨 Personalization' };
 pageConfig.reviewers       = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📄 REVIEWERS' };
 pageConfig['file-summarizer'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 File Summarizer' };
+pageConfig.home = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🏠 Home' };
 
-let currentPage = 'announcement';
+let currentPage = 'home';
 let customPageBgs = JSON.parse(localStorage.getItem('customPageBgs')) || {};
 window.customPageBgs = customPageBgs; // expose for personalizationModule
 let calendarNotes = {};
@@ -3692,6 +3708,7 @@ window.goToPage = function(pageName) {
   // Event Pictures & Random Pictures: reset and render year cards
   if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
   if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
+  if (pageName === 'home') window.initHomeDashboard?.();
   if (pageName === 'announcement') fetchSharedAnnouncements();
   if (pageName === 'witfb') closeSocialPage();
   if (pageName === 'outputai') fetchSharedAIOutputs();
@@ -3954,6 +3971,37 @@ function drawRoyalePreviewCanvas() {
 
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
 window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
+
+/* Bottom nav active state */
+window.setBottomNav = function(tab) {
+  ['home','notepad','classes','profile'].forEach(id => {
+    document.getElementById('bnav-' + id)?.classList.remove('active');
+  });
+  document.getElementById('bnav-' + tab)?.classList.add('active');
+  document.getElementById('bnav-ai')?.classList.toggle('active', tab === 'ai');
+};
+
+/* Home dashboard greeting + announcement preview */
+window.initHomeDashboard = function() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greetEl = document.getElementById('hd-greeting');
+  const nameEl  = document.getElementById('hd-name');
+  if (greetEl && nameEl) {
+    greetEl.childNodes[0].textContent = g + ', ';
+    if (currentUser?.display_name || currentUser?.username) {
+      nameEl.textContent = currentUser.display_name || currentUser.username;
+    }
+  }
+  sb.from('shared_announcements').select('content').order('created_at', { ascending: false }).limit(1)
+    .then(({ data }) => {
+      const msg = document.getElementById('hd-ann-msg');
+      if (msg && data?.[0]?.content) {
+        const txt = data[0].content;
+        msg.textContent = txt.slice(0, 80) + (txt.length > 80 ? '…' : '');
+      }
+    }).catch(() => {});
+};
 
 /* ============================================================
    CALENDAR LOGIC (CLOUD BASED)

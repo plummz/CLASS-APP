@@ -4,7 +4,7 @@
 
 -- Create user_notes table for Notepad cloud sync
 CREATE TABLE IF NOT EXISTS user_notes (
-  id BIGINT PRIMARY KEY DEFAULT (gen_random_bigint()),
+  id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL,
   title TEXT NOT NULL DEFAULT 'Untitled',
   content TEXT NOT NULL DEFAULT '',

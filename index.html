@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -55,6 +55,7 @@
 
   <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
   <button type="button" class="custom-bg-btn" onclick="window.goToPage('personalization')">🎨 Personalize</button>
+  <input type="file" id="profile-avatar-upload" accept="image/*" style="display: none;">
  
   <div class="aurora" id="aurora"></div>
  
@@ -1080,24 +1081,21 @@
         <h2 class="lobby-title">🏫 School Lobby</h2>
         <div class="lobby-count-stack">
           <span class="lobby-online" id="lobby-online-count">0 online</span>
+          <div class="lobby-mini-actions">
+            <button class="lobby-open-count-btn" id="app-open-count-btn" type="button" onclick="openAppOpenTallyModal()">
+              <span>App Opens</span>
+              <strong id="lobby-dash-open-count">0</strong>
+            </button>
+            <button class="lobby-open-count-btn" id="contribution-tally-btn" type="button" onclick="openContributionTallyModal()">
+              <span>Contributions</span>
+              <strong id="lobby-dash-contribution-count">0</strong>
+            </button>
+            <button class="lobby-open-count-btn" type="button" onclick="openChangelogModal()">
+              <span>View Updates</span>
+              <strong id="lobby-dash-update-version">1.5.1</strong>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="lobby-dashboard">
-        <button class="lobby-dash-card" type="button" onclick="openAppOpenTallyModal()">
-          <span>App Opens</span>
-          <strong id="lobby-dash-open-count">0</strong>
-          <small>Class launch tally</small>
-        </button>
-        <button class="lobby-dash-card" type="button" onclick="openContributionTallyModal()">
-          <span>Contributions</span>
-          <strong id="lobby-dash-contribution-count">0</strong>
-          <small>Original uploads only</small>
-        </button>
-        <button class="lobby-dash-card" type="button" onclick="openChangelogModal()">
-          <span>Latest Update</span>
-          <strong id="lobby-dash-update-version">1.5.25</strong>
-          <small>View changelog</small>
-        </button>
       </div>
       <div class="lobby-presence-board">
         <div class="lobby-open-board-head">
@@ -1747,7 +1745,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=86"></script>
+  <script src="script.js?v=87"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

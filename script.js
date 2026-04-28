@@ -253,8 +253,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.45';
+const APP_VERSION = '1.5.46';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.46',
+    date: 'April 28, 2026',
+    title: 'Lobby Navigation Restore + Cache Refresh',
+    summary: 'Restored the compact lobby controls, kept the hamburger menu accessible over the lobby view, and refreshed the asset cache versions so the latest UI ships cleanly.',
+    changes: [
+      'Lobby: Replaced the larger dashboard cards with compact header actions for app opens, contributions, and updates.',
+      'Navigation: Kept the hamburger menu visible over the lobby so connected pages continue to open without trapping the user.',
+      'Cache: Bumped index, script, style, and service worker cache versions together so fresh assets replace stale PWA bundles immediately.'
+    ]
+  },
   {
     version: '1.5.45',
     date: 'April 28, 2026',

@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.44-20260428-fix-buttons-layout';
+const CACHE_VERSION = 'v1.5.45-20260428-revert-home-dashboard';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=86',
-  '/style.css?v=35',
+  '/index.html?v=87',
+  '/style.css?v=36',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=7',
-  '/script.js?v=85',
+  '/script.js?v=86',
   '/features/reviewers/reviewers.js?v=9',
   '/features/reviewers/reviewers.css?v=5',
   '/features/personal-tools/notepad.js?v=6',

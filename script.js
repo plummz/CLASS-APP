@@ -253,20 +253,29 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.44';
+const APP_VERSION = '1.5.45';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.45',
+    date: 'April 28, 2026',
+    title: 'Reverted Home Dashboard — Announcement page restored to clean board view',
+    summary: 'Removed the Home Dashboard entirely. The Announcement page is now just the announcement board — no welcome banner, quick actions, activity feed, or trending section. Cleaner, faster, no extra bugs.',
+    changes: [
+      'Removed: Home Dashboard (welcome banner, engagement metrics, quick actions, recent activity, trending notes).',
+      'Removed: All dashboard JS functions (initHomeDashboard, loadRecentActivity, loadTrendingReviewers, calculateStudyStreak, trackAppVisit, calculateQuizTrend, updateEngagementMetrics).',
+      'Removed: Associated CSS (~220 lines of home-dashboard styles).',
+      'Removed: goToPage wrapper that re-ran the dashboard on every navigation.',
+      'Result: Announcement page is the announcement board only — straightforward and stable.',
+    ]
+  },
   {
     version: '1.5.44',
     date: 'April 28, 2026',
     title: 'Critical Fix — Button Crash + Announcement Layout Reorganized',
-    summary: 'Fixed a JavaScript syntax error that crashed ALL buttons (including the menu). Announcement page now shows the board first for instant info access. iOS tap improvements on Quick Action cards.',
+    summary: 'Fixed a JavaScript syntax error that crashed ALL buttons (including the menu).',
     changes: [
       'Bug Fix: Critical — JS syntax error in loadTrendingReviewers() broke the entire app (menu + all buttons unresponsive).',
-      'Layout: Announcement board now appears at the TOP of the Home page for immediate visibility.',
-      'Layout: Study Dashboard (quick actions, recent activity, trending notes) moved below the board.',
-      'iOS: Added touch-action: manipulation to Quick Action cards for reliable tap response on iOS/Safari.',
-      'Code: Removed dead goToPageEvent listener and redundant announcementInit wrapper.',
-      'Code: Cleaned up top-level variable pollution (unused pageConfigAnnouncement).',
+      'Layout: Announcement board moved to the top of the Home page.',
     ]
   },
   {
@@ -6208,218 +6217,6 @@ window.shareAIMessage = async function(provider, index) {
   showToast('Shared to OUTPUT-AI.');
   fetchSharedAIOutputs();
 };
-
-/* ── STUDY DASHBOARD (Phase 2) ──────────────────────────── */
-/* ── HOME DASHBOARD (Phase 2) ──────────────────────────── */
-function calculateStudyStreak() {
-  try {
-    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
-    if (visitDates.length === 0) return 0;
-
-    const today = new Date().toDateString();
-    let streak = 0;
-    let currentDate = new Date();
-
-    for (let i = visitDates.length - 1; i >= 0; i--) {
-      const visitDate = new Date(visitDates[i]).toDateString();
-      const expectedDate = new Date(currentDate).toDateString();
-
-      if (visitDate === expectedDate) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streak;
-  } catch (e) {
-    return 0;
-  }
-}
-
-function trackAppVisit() {
-  try {
-    const visitDates = JSON.parse(localStorage.getItem('app-visit-dates') || '[]');
-    const today = new Date().toDateString();
-
-    if (!visitDates.includes(today)) {
-      visitDates.push(today);
-      if (visitDates.length > 365) visitDates.shift();
-      localStorage.setItem('app-visit-dates', JSON.stringify(visitDates));
-    }
-  } catch (e) {
-    console.error('[Dashboard] Error tracking visit:', e);
-  }
-}
-
-function calculateQuizTrend() {
-  try {
-    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
-    if (quizHistory.length < 3) return null;
-
-    const recent = quizHistory.slice(-3);
-    const avgRecent = recent.reduce((sum, q) => sum + (q.score / q.count), 0) / recent.length;
-
-    if (recent.length >= 2) {
-      const latest = recent[recent.length - 1].score / recent[recent.length - 1].count;
-      const prev = recent[recent.length - 2].score / recent[recent.length - 2].count;
-
-      if (latest > prev + 0.1) return 'improving';
-      if (latest < prev - 0.1) return 'declining';
-    }
-
-    return 'consistent';
-  } catch (e) {
-    return null;
-  }
-}
-
-function updateEngagementMetrics() {
-  const metricsContainer = document.getElementById('home-engagement-metrics');
-  if (!metricsContainer) return;
-
-  const streak = calculateStudyStreak();
-  const quizTrend = calculateQuizTrend();
-
-  let html = '';
-
-  if (streak > 0) {
-    html += `<div class="engagement-metric"><span class="metric-icon">🔥</span><span class="metric-text">${streak}-day streak!</span></div>`;
-  }
-
-  if (quizTrend === 'improving') {
-    html += `<div class="engagement-metric"><span class="metric-icon">↑</span><span class="metric-text">Quiz scores improving!</span></div>`;
-  } else if (quizTrend === 'consistent') {
-    html += `<div class="engagement-metric"><span class="metric-icon">→</span><span class="metric-text">Consistent performance</span></div>`;
-  }
-
-  if (html) {
-    metricsContainer.innerHTML = html;
-    metricsContainer.style.display = 'flex';
-  } else {
-    metricsContainer.style.display = 'none';
-  }
-}
-
-function initHomeDashboard() {
-  // Set username in welcome banner
-  const username = currentUser?.username || 'Student';
-  const welcomeName = document.getElementById('home-welcome-name');
-  if (welcomeName) welcomeName.textContent = username;
-
-  // Set welcome time message
-  const hour = new Date().getHours();
-  const timeMsg = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const welcomeTime = document.getElementById('home-welcome-time');
-  if (welcomeTime) welcomeTime.textContent = `${timeMsg} — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`;
-
-  // Update engagement metrics
-  updateEngagementMetrics();
-
-  // Load recent activity (last 3 Notepad notes)
-  loadRecentActivity();
-
-  // Load trending reviewers from Supabase
-  loadTrendingReviewers();
-
-  // Track app visit for study streak
-  trackAppVisit();
-}
-
-function loadRecentActivity() {
-  try {
-    const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-    const quizHistory = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
-    const activityContainer = document.getElementById('home-recent-activity');
-    
-    if (!activityContainer) return;
-
-    const activities = [];
-
-    // Add last quiz
-    if (quizHistory.length > 0) {
-      const lastQuiz = quizHistory[quizHistory.length - 1];
-      activities.push({
-        type: 'quiz',
-        title: `Completed "${lastQuiz.file}" quiz`,
-        meta: `${lastQuiz.score}/${lastQuiz.count} correct · ${new Date(lastQuiz.date).toLocaleDateString()}`,
-        score: lastQuiz.score
-      });
-    }
-
-    // Add last 3 notes
-    notes.slice(-3).reverse().forEach(note => {
-      activities.push({
-        type: 'note',
-        title: note.title,
-        meta: new Date(note.date).toLocaleDateString()
-      });
-    });
-
-    // Display activities (limit to 4)
-    if (activities.length === 0) {
-      activityContainer.innerHTML = '<div class="home-activity-empty">No recent activity yet. Start by summarizing a file!</div>';
-      return;
-    }
-
-    activityContainer.innerHTML = activities.slice(0, 4).map(a => `
-      <div class="home-activity-item">
-        <div class="home-activity-title">${a.type === 'quiz' ? '❓' : '📝'} ${escapeHTML(a.title)}</div>
-        <div class="home-activity-meta">${escapeHTML(a.meta)}</div>
-      </div>
-    `).join('');
-  } catch (e) {
-    console.error('[Home Dashboard] Error loading recent activity:', e);
-  }
-}
-
-function loadTrendingReviewers() {
-  const trendingContainer = document.getElementById('home-trending');
-  if (!trendingContainer) return;
-
-  // Load from Supabase
-  if (!sb) {
-    trendingContainer.innerHTML = '<div class="home-trending-loading">Supabase not ready</div>';
-    return;
-  }
-
-  sb.from('reviewers')
-    .select('*')
-    .eq('is_shared', true)
-    .order('shared_at', { ascending: false })
-    .limit(3)
-    .then(({ data, error }) => {
-      if (error || !data || data.length === 0) {
-        trendingContainer.innerHTML = '<div class="home-trending-loading">No shared notes yet</div>';
-        return;
-      }
-
-      trendingContainer.innerHTML = data.map(r => `
-        <div class="home-trending-card" onclick="window.reviewersModule && window.reviewersModule.openViewer(${JSON.stringify(String(r.id))})">
-          <div class="home-trending-title">${escapeHTML(r.title || 'Untitled')}</div>
-          <div class="home-trending-by">By ${escapeHTML(r.contributor_name || 'Anonymous')}</div>
-        </div>
-      `).join('');
-    })
-    .catch(e => {
-      console.error('[Home Dashboard] Error loading trending:', e);
-      trendingContainer.innerHTML = '<div class="home-trending-loading">Error loading trends</div>';
-    });
-}
-
-// Re-init dashboard whenever user navigates to announcement page
-const _origGoToPageForDash = window.goToPage;
-window.goToPage = function(pageName) {
-  const result = _origGoToPageForDash.call(this, pageName);
-  if (pageName === 'announcement') setTimeout(initHomeDashboard, 100);
-  return result;
-};
-
-// Also init on first load if already on announcement
-document.addEventListener('DOMContentLoaded', () => {
-  if (currentPage === 'announcement') setTimeout(initHomeDashboard, 200);
-});
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */
 

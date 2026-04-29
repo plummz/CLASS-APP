@@ -628,9 +628,10 @@
       <div class="yt-player-container" id="yt-player-container">
         <div class="yt-placeholder" id="yt-placeholder">
           <span style="font-size:36px;">▶️</span>
-          <p>Search for a song or paste a YouTube URL</p>
+          <p>Search for a song or paste a YouTube link</p>
         </div>
-        <iframe id="yt-iframe" class="yt-iframe hidden" frameborder="0"
+        <iframe id="yt-iframe" class="yt-iframe hidden" title="YouTube player" frameborder="0"
+          referrerpolicy="strict-origin-when-cross-origin"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowfullscreen></iframe>
       </div>
@@ -1511,7 +1512,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=90"></script>
+  <script src="script.js?v=91"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1538,7 +1539,7 @@
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
   <script src="features/file-summarizer/file-summarizer.js?v=7" defer></script>
-  <script src="features/reviewers/reviewers.js?v=11" defer></script>
+  <script src="features/reviewers/reviewers.js?v=12" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.49-20260428-youtube-nocookie-personalize-icon';
+const CACHE_VERSION = 'v1.5.50-20260429-reviewers-youtube-fixes';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=90',
+  '/index.html?v=91',
   '/style.css?v=39',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -43,10 +43,10 @@ const ASSETS = [
   '/features/royale/royale.css?v=17',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
-  '/features/file-summarizer/file-summarizer.css?v=5',
+  '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=7',
-  '/script.js?v=90',
-  '/features/reviewers/reviewers.js?v=11',
+  '/script.js?v=91',
+  '/features/reviewers/reviewers.js?v=12',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
   '/features/personal-tools/notepad.css?v=6',

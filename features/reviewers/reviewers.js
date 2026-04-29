@@ -31,6 +31,21 @@ window.reviewersModule = {
     return u?.username || null;
   },
 
+  idsMatch: function(a, b) {
+    return String(a) === String(b);
+  },
+
+  findReviewerById: function(id) {
+    return this.sharedReviewers.find(r => this.idsMatch(r.id, id)) || null;
+  },
+
+  restoreReviewer: function(rev) {
+    if (!rev || this.findReviewerById(rev.id)) return;
+    this.sharedReviewers.push(rev);
+    this.applyFilter();
+    this.renderGrid();
+  },
+
   loadReviewers: async function() {
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     if (!client) {
@@ -230,7 +245,7 @@ window.reviewersModule = {
         <div class="reviewer-card-actions">
           <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
           <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
-          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${rev.id}, event)">Delete</button>` : ''}
+          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${JSON.stringify(String(rev.id))}, event)">Delete</button>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -243,7 +258,7 @@ window.reviewersModule = {
   },
 
   openViewer: async function(id) {
-    let rev = this.sharedReviewers.find(r => String(r.id) === String(id));
+    let rev = this.findReviewerById(id);
     if (!rev) {
       const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
       if (client) {
@@ -295,9 +310,9 @@ window.reviewersModule = {
   },
 
   deleteReviewer: async function(id, event) {
-    event.stopPropagation();
+    event?.stopPropagation?.();
 
-    const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
+    const rev = this.findReviewerById(id);
     const me  = this.currentUsername();
 
     if (!rev) {
@@ -305,16 +320,17 @@ window.reviewersModule = {
       return;
     }
 
-    if (!this.isAdmin() && (!me || rev.user_id !== me)) {
+    if (!this.isAdmin() && (!me || String(rev.user_id) !== String(me))) {
       window.customAlert ? customAlert('You can only delete your own shared reviewers.') : alert('You can only delete your own shared reviewers.');
       return;
     }
 
     const title = rev.title || 'Reviewer';
+    const doDelete = async () => {
     const key = `delete-${id}-${Date.now()}`;
 
     this.pendingDeletes[key] = { id, rev };
-    this.sharedReviewers = this.sharedReviewers.filter(r => String(r.id) !== String(id));
+    this.sharedReviewers = this.sharedReviewers.filter(r => !this.idsMatch(r.id, id));
     this.applyFilter();
     this.renderGrid();
 
@@ -335,9 +351,13 @@ window.reviewersModule = {
         const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
         if (!client) return;
 
-        const { error } = await client.from('reviewers').delete().eq('id', id);
+        const { error } = await client.from('reviewers').delete().eq('id', rev.id);
         if (error) {
           console.error('[Reviewers] Delete error:', error);
+          this.restoreReviewer(rev);
+          if (window.showToast) {
+            showToast(`Could not delete '${title}'.`, 'error');
+          }
         }
       }, 5000);
     };
@@ -346,6 +366,18 @@ window.reviewersModule = {
       showToast(`Deleted '${title}'`, 'info');
     }
     showUndoToast();
+    };
+
+    if (window.customConfirm) {
+      customConfirm(`Delete '${title}' from the shared reviewers page?`, doDelete);
+      return;
+    }
+
+    if (!window.confirm(`Delete '${title}' from the shared reviewers page?`)) {
+      return;
+    }
+
+    await doDelete();
   },
 
   undoDelete: async function(key) {
@@ -356,9 +388,7 @@ window.reviewersModule = {
     delete this.pendingDeletes[key];
     delete this.pendingDeleteTimeouts[key];
 
-    this.sharedReviewers.push(pending.rev);
-    this.applyFilter();
-    this.renderGrid();
+    this.restoreReviewer(pending.rev);
 
     if (window.showToast) {
       showToast('✅ Restored!', 'success');
@@ -428,7 +458,7 @@ window.reviewersModule = {
     }
 
     try {
-      const rev = this.sharedReviewers.find(r => String(r.id) === String(id));
+      const rev = this.findReviewerById(id);
       if (!rev) {
         if (btn) btn.disabled = false;
         return;

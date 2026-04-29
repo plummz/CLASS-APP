@@ -2108,22 +2108,69 @@ const YT_INSTANCES = [
     'https://invidious.perennialte.ch',
 ];
 
+function ensureYouTubeIframe() {
+    const container = document.getElementById('yt-player-container');
+    if (!container) return null;
+
+    let iframe = document.getElementById('yt-iframe');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'yt-iframe';
+        iframe.className = 'yt-iframe hidden';
+        iframe.setAttribute('title', 'YouTube player');
+        iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        container.appendChild(iframe);
+    }
+
+    return iframe;
+}
+
+function getYouTubeEmbedUrl(videoId) {
+    const params = new URLSearchParams({
+        autoplay: '1',
+        playsinline: '1',
+        rel: '0',
+    });
+
+    if (window.location?.origin && /^https?:/i.test(window.location.origin)) {
+        params.set('origin', window.location.origin);
+    }
+
+    if (window.location?.href && /^https?:/i.test(window.location.href)) {
+        params.set('widget_referrer', window.location.href);
+    }
+
+    params.set('modestbranding', '1');
+    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${params.toString()}`;
+}
+
 function loadYouTubeIframe(videoId, title) {
-    const iframe = document.getElementById('yt-iframe');
+    const iframe = ensureYouTubeIframe();
     const placeholder = document.getElementById('yt-placeholder');
     if (!iframe) return;
 
+    if (iframe._errorCheckTimer) clearTimeout(iframe._errorCheckTimer);
+    iframe.onerror = () => showYouTubeError(videoId, title);
+
     // Set up error handler before loading — detects when YouTube blocks the video
     const errorCheckTimer = setTimeout(() => {
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (iframeDoc?.body?.innerHTML?.includes('Error 153') ||
-            iframeDoc?.body?.innerHTML?.includes('Video player configuration') ||
-            iframeDoc?.body?.textContent?.includes('playable')) {
-            showYouTubeError(videoId, title);
+        try {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc?.body?.innerHTML?.includes('Error 153') ||
+                iframeDoc?.body?.innerHTML?.includes('Video player configuration') ||
+                iframeDoc?.body?.textContent?.includes('playable')) {
+                showYouTubeError(videoId, title);
+            }
+        } catch (_) {
+            // Cross-origin embeds cannot be inspected; rely on the embed URL parameters
+            // plus YouTube's own fallback screen when a video cannot be embedded.
         }
     }, 3000);
 
-    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+    iframe.src = getYouTubeEmbedUrl(videoId);
     iframe.classList.remove('hidden');
     if (placeholder) placeholder.style.display = 'none';
     ytActive = true;
@@ -2138,7 +2185,13 @@ function loadYouTubeIframe(videoId, title) {
 }
 
 function showYouTubeError(videoId, title) {
+    const iframe = document.getElementById('yt-iframe');
     const placeholder = document.getElementById('yt-placeholder');
+    if (iframe) {
+        iframe.src = '';
+        iframe.classList.add('hidden');
+        if (iframe._errorCheckTimer) clearTimeout(iframe._errorCheckTimer);
+    }
     if (placeholder) {
         placeholder.style.display = '';
         placeholder.innerHTML = `
@@ -2326,7 +2379,7 @@ window.handleYtInput = async function() {
 window.searchYouTube = window.handleYtInput;
 
 window.stopYouTubePlayer = function() {
-    const iframe = document.getElementById('yt-iframe');
+    const iframe = ensureYouTubeIframe();
     const placeholder = document.getElementById('yt-placeholder');
     if (iframe) {
         iframe.src = '';

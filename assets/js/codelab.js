@@ -159,8 +159,19 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  function codeLabStartDateKey() {
+    const storageKey = 'classAppCodeLabStartDate';
+    let stored = localStorage.getItem(storageKey);
+    if (!stored) {
+      stored = codeLabTodayKey();
+      localStorage.setItem(storageKey, stored);
+    }
+    return stored;
+  }
+
   function codeLabDayIndex(date = new Date()) {
-    const start = new Date(2026, 0, 1);
+    const [year, month, day] = codeLabStartDateKey().split('-').map((value) => Number(value) || 0);
+    const start = new Date(year || date.getFullYear(), Math.max((month || 1) - 1, 0), day || 1);
     const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     return Math.max(1, Math.floor((today - start) / 86400000) + 1);
   }
@@ -181,9 +192,12 @@
   function getDailyCodeLabChallenge() {
     const list = challengesForCurrentEnvironment();
     const day = codeLabDayIndex();
-    const seed = `${codeLabTodayKey()}-${codeLabEnvironment}`.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-    const base = list[seed % list.length];
-    const variant = day + (codeLabEnvironment === 'java' ? 5000 : 0);
+    const activeUser = user();
+    const rotationSeed = `${activeUser?.username || 'guest'}-${codeLabStartDateKey()}-${codeLabEnvironment}`
+      .split('')
+      .reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+    const base = list[(Math.max(day - 1, 0) + rotationSeed) % list.length];
+    const variant = day + rotationSeed + (codeLabEnvironment === 'java' ? 5000 : 0);
     const files = cloneFiles(base.files);
     const accent = ['#22c55e', '#06b6d4', '#f59e0b', '#a855f7', '#ef4444'][variant % 5];
     const label = `Day ${day}`;

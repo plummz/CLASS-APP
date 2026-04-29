@@ -708,8 +708,13 @@
             setTimeout(() => {
               const t = document.createElement('div');
               t.className = 'app-toast app-toast-info';
-              t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" onclick="window.goToPage&&goToPage(\'reviewers\')">View Reviewers →</span>';
+              t.innerHTML = '📄 <button type="button" class="fs-toast-link-btn" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">View Reviewers →</button>';
               document.body.appendChild(t);
+              t.querySelector('.fs-toast-link-btn')?.addEventListener('click', () => {
+                if (typeof window.goToPage === 'function') window.goToPage('reviewers');
+                t.classList.remove('show');
+                setTimeout(() => t.remove(), 220);
+              });
               requestAnimationFrame(() => t.classList.add('show'));
               setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);
             }, 400);

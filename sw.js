@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.61-20260429-fix-post-login-navigation';
+const CACHE_VERSION = 'v1.5.62-20260430-fix-mobile-button-handlers';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=106',
+  '/index.html?v=107',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -44,8 +44,8 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
-  '/features/file-summarizer/file-summarizer.js?v=9',
-  '/script.js?v=106',
+  '/features/file-summarizer/file-summarizer.js?v=10',
+  '/script.js?v=107',
   '/features/reviewers/reviewers.js?v=14',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
@@ -63,7 +63,7 @@ const ASSETS = [
   '/features/updates/updates.js?v=1',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
-  '/assets/js/codelab.js?v=7',
+  '/assets/js/codelab.js?v=8',
   '/coding-educational/coding-educational-data.js?v=10',
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',

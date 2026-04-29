@@ -1090,15 +1090,15 @@
         <div class="lobby-count-stack">
           <span class="lobby-online" id="lobby-online-count">0 online</span>
           <div class="lobby-mini-actions">
-            <button class="lobby-open-count-btn" id="app-open-count-btn" type="button" onclick="openAppOpenTallyModal()">
+                <button class="lobby-open-count-btn" id="app-open-count-btn" type="button">
               <span>App Opens</span>
               <strong id="lobby-dash-open-count">0</strong>
             </button>
-            <button class="lobby-open-count-btn" id="contribution-tally-btn" type="button" onclick="openContributionTallyModal()">
+                <button class="lobby-open-count-btn" id="contribution-tally-btn" type="button">
               <span>Contributions</span>
               <strong id="lobby-dash-contribution-count">0</strong>
             </button>
-            <button class="lobby-open-count-btn" type="button" onclick="openChangelogModal()">
+                <button class="lobby-open-count-btn" type="button" id="lobby-header-updates-btn">
               <span>View Updates</span>
               <strong id="lobby-dash-update-version">1.5.1</strong>
             </button>
@@ -1108,7 +1108,7 @@
       <div class="lobby-presence-board">
         <div class="lobby-open-board-head">
           <span>Live Presence</span>
-          <button type="button" onclick="openChangelogModal()">View Updates</button>
+            <button id="lobby-view-updates-btn" type="button">View Updates</button>
         </div>
         <div class="lobby-presence-list" id="lobby-presence-list">
           <p class="lobby-open-empty">Open the lobby to see active users.</p>
@@ -1165,7 +1165,7 @@
           <div class="shared-board-kicker">Shared AI Whiteboard</div>
           <h1 class="shared-board-title">OUTPUT-AI</h1>
         </div>
-        <button class="board-refresh-btn" onclick="fetchSharedAIOutputs()">Refresh</button>
+          <button id="output-ai-refresh-btn" class="board-refresh-btn" type="button">Refresh</button>
       </div>
       <div class="shared-board-feed" id="output-ai-feed"></div>
     </div>
@@ -1395,9 +1395,9 @@
 
   <div id="folder-explorer-modal" class="custom-modal-overlay">
     <div class="custom-modal-box">
-      <button class="modal-close-btn" onclick="closeFolderModal('folder-explorer-modal')">&times;</button>
+      <button id="folder-explorer-close-btn" class="modal-close-btn" type="button">&times;</button>
       <h2 id="folder-explorer-title" class="modal-title text-green">Subject Folders</h2>
-      <button class="btn-primary btn-create-folder" onclick="createFolderAPI()">+ New Folder</button>
+      <button id="folder-create-btn" class="btn-primary btn-create-folder" type="button">+ New Folder</button>
       <div id="folder-grid-modal" class="folder-modal-grid"></div>
       <div id="subject-ann-container"></div>
     </div>
@@ -1405,21 +1405,21 @@
 
   <div id="file-explorer-modal" class="custom-modal-overlay">
     <div class="custom-modal-box">
-      <button class="modal-close-btn" onclick="closeFolderModal('file-explorer-modal')">&times;</button>
+      <button id="file-explorer-close-btn" class="modal-close-btn" type="button">&times;</button>
       <button class="modal-back-btn" id="file-explorer-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
       <h2 id="file-explorer-title" class="modal-title text-blue text-center spaced">Folder Name</h2>
       <!-- Sub-folder section (visible when folder has/can have subfolders) -->
       <div id="subfolder-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">📂 Sub-folders</span>
-          <button class="btn-primary" style="padding:4px 12px;font-size:12px;" onclick="createSubFolderAPI()">+ New Sub-folder</button>
+          <button id="subfolder-create-btn" class="btn-primary" style="padding:4px 12px;font-size:12px;" type="button">+ New Sub-folder</button>
         </div>
         <div id="subfolder-grid-modal" class="folder-modal-grid" style="margin-bottom:16px;"></div>
         <hr style="border-color:rgba(255,255,255,0.1);margin-bottom:14px;">
       </div>
       <div class="file-upload-area">
          <input type="file" id="file-upload-input" class="file-upload-input" multiple>
-         <button class="btn-blue" onclick="uploadFileToFolderAPI()">Upload Files</button>
+         <button id="file-upload-btn" class="btn-blue" type="button">Upload Files</button>
          <div id="file-upload-status" class="upload-status-text"></div>
       </div>
       <div id="file-list-container" class="file-list-container"></div>
@@ -1527,7 +1527,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=106"></script>
+  <script src="script.js?v=107"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1540,7 +1540,7 @@
   <script src="features/updates/updates.js?v=1" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>
-  <script src="assets/js/codelab.js?v=7" defer></script>
+  <script src="assets/js/codelab.js?v=8" defer></script>
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
   <script src="features/pokemon/pokemon.js?v=3"></script>
@@ -1553,7 +1553,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-<script src="features/file-summarizer/file-summarizer.js?v=9" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=10" defer></script>
   <script src="features/reviewers/reviewers.js?v=14" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

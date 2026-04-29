@@ -404,8 +404,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.61';
+const APP_VERSION = '1.5.62';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.62',
+    date: 'April 30, 2026',
+    title: 'Fix dead buttons across folders, AI, and Code Lab',
+    summary: 'Rewired the most brittle mobile click paths so folder actions, AI assistant buttons, Reviewers handoff, and OUTPUT-AI controls stop failing silently after login.',
+    changes: [
+      'Improved: Folder and sub-folder cards now use delegated mobile-safe handlers for open, rename, permissions, delete, upload, and close actions instead of relying on fragile inline modal clicks.',
+      'Improved: AI Assistants now use delegated button handlers for model selection, back, send, clear, and share actions so the model cards respond reliably on mobile.',
+      'Fixed: File Summarizer now shows a working “View Reviewers” action after sharing, and OUTPUT-AI refresh/delete controls now degrade cleanly when the shared board is unavailable.',
+      'Fixed: Code Lab daily tasks now count from the user’s first day using Code Lab instead of showing an inflated calendar day number like Day 119, and the daily task rotation now changes per day instead of feeling stuck on the same challenge.'
+    ],
+  },
   {
     version: '1.5.61',
     date: 'April 29, 2026',
@@ -1758,7 +1770,7 @@ function fetchAndRenderFolders() {
             const safeName = escapeJS(f.name);
             grid.innerHTML += `
             <div class="folder-card-modern">
-                <div onclick="window.openFileExplorer('${safeId}', '${safeName}')" class="folder-card-main">
+                <div class="folder-card-main" role="button" tabindex="0" data-folder-open="${safeId}" data-folder-name="${safeName}">
                     <div class="folder-card-icon">📁</div>
                     <div class="folder-card-title">${escapeHTML(f.name)}</div>
                     <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
@@ -1766,9 +1778,9 @@ function fetchAndRenderFolders() {
                 </div>
                 ${canManage ? `
                 <div class="folder-card-actions">
-                    <button onclick="window.renameFolderAPI('${safeId}', '${safeName}')" class="mini-action-btn">Rename</button>
-                    <button onclick="window.openFolderPermissions('${safeId}')" class="mini-action-btn">Permissions</button>
-                    <button onclick="window.deleteFolderAPI('${safeId}')" class="mini-action-btn danger">Delete</button>
+                    <button type="button" class="mini-action-btn" data-folder-rename="${safeId}" data-folder-name="${safeName}">Rename</button>
+                    <button type="button" class="mini-action-btn" data-folder-permissions="${safeId}">Permissions</button>
+                    <button type="button" class="mini-action-btn danger" data-folder-delete="${safeId}">Delete</button>
                 </div>
                 ` : ''}
             </div>
@@ -2007,7 +2019,7 @@ function fetchAndRenderSubFolders() {
             const safeName = escapeJS(f.name);
             grid.innerHTML += `
             <div class="folder-card-modern compact">
-                <div onclick="window.openFileExplorer('${safeId}','${safeName}','${escapeJS(parentId)}')" class="folder-card-main">
+                <div class="folder-card-main" role="button" tabindex="0" data-folder-open="${safeId}" data-folder-name="${safeName}">
                     <div class="folder-card-icon">📂</div>
                     <div class="folder-card-title">${escapeHTML(f.name)}</div>
                     <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
@@ -2015,9 +2027,9 @@ function fetchAndRenderSubFolders() {
                 </div>
                 ${canManage ? `
                 <div class="folder-card-actions">
-                    <button onclick="window.renameFolderAPI('${safeId}','${safeName}',true)" class="mini-action-btn">Rename</button>
-                    <button onclick="window.openFolderPermissions('${safeId}')" class="mini-action-btn">Permissions</button>
-                    <button onclick="window.deleteSubFolderAPI('${safeId}')" class="mini-action-btn danger">Delete</button>
+                    <button type="button" class="mini-action-btn" data-subfolder-rename="${safeId}" data-folder-name="${safeName}">Rename</button>
+                    <button type="button" class="mini-action-btn" data-folder-permissions="${safeId}">Permissions</button>
+                    <button type="button" class="mini-action-btn danger" data-subfolder-delete="${safeId}">Delete</button>
                 </div>` : ''}
             </div>`;
         });
@@ -2176,6 +2188,7 @@ function removeDynamicModal(id) {
     const existing = document.getElementById(id);
     if (existing) existing.remove();
 }
+window.removeDynamicModal = removeDynamicModal;
 
 window.openFolderPermissions = async function(folderId) {
     if (!currentUser) return customAlert('Please log in.');
@@ -5170,6 +5183,133 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.loadDiagnostics();
     });
   }
+  const lobbyAppOpensBtn = document.getElementById('app-open-count-btn');
+  if (lobbyAppOpensBtn) {
+    lobbyAppOpensBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.openAppOpenTallyModal?.();
+    });
+  }
+  const lobbyContributionBtn = document.getElementById('contribution-tally-btn');
+  if (lobbyContributionBtn) {
+    lobbyContributionBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.openContributionTallyModal?.();
+    });
+  }
+  const lobbyUpdatesBtn = document.getElementById('lobby-view-updates-btn');
+  if (lobbyUpdatesBtn) {
+    lobbyUpdatesBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.openChangelogModal?.();
+    });
+  }
+  const lobbyHeaderUpdatesBtn = document.getElementById('lobby-header-updates-btn');
+  if (lobbyHeaderUpdatesBtn) {
+    lobbyHeaderUpdatesBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.openChangelogModal?.();
+    });
+  }
+  const outputAiRefreshBtn = document.getElementById('output-ai-refresh-btn');
+  if (outputAiRefreshBtn) {
+    outputAiRefreshBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.fetchSharedAIOutputs?.();
+    });
+  }
+  const folderExplorerCloseBtn = document.getElementById('folder-explorer-close-btn');
+  if (folderExplorerCloseBtn) {
+    folderExplorerCloseBtn.addEventListener('click', () => window.closeFolderModal?.('folder-explorer-modal'));
+  }
+  const createFolderBtn = document.getElementById('folder-create-btn');
+  if (createFolderBtn) {
+    createFolderBtn.addEventListener('click', () => window.createFolderAPI?.());
+  }
+  const fileExplorerCloseBtn = document.getElementById('file-explorer-close-btn');
+  if (fileExplorerCloseBtn) {
+    fileExplorerCloseBtn.addEventListener('click', () => window.closeFolderModal?.('file-explorer-modal'));
+  }
+  const createSubFolderBtn = document.getElementById('subfolder-create-btn');
+  if (createSubFolderBtn) {
+    createSubFolderBtn.addEventListener('click', () => window.createSubFolderAPI?.());
+  }
+  const uploadFolderFilesBtn = document.getElementById('file-upload-btn');
+  if (uploadFolderFilesBtn) {
+    uploadFolderFilesBtn.addEventListener('click', () => window.uploadFileToFolderAPI?.());
+  }
+  const bindFolderGrid = (grid, isSubfolder = false) => {
+    if (!grid) return;
+    grid.addEventListener('click', (event) => {
+      const openCard = event.target.closest('.folder-card-main[data-folder-open]');
+      if (openCard) {
+        event.preventDefault();
+        window.openFileExplorer?.(openCard.dataset.folderOpen, openCard.dataset.folderName || '');
+        return;
+      }
+      const renameBtn = event.target.closest(isSubfolder ? '[data-subfolder-rename]' : '[data-folder-rename]');
+      if (renameBtn) {
+        event.preventDefault();
+        window.renameFolderAPI?.(
+          renameBtn.dataset.subfolderRename || renameBtn.dataset.folderRename,
+          renameBtn.dataset.folderName || '',
+          isSubfolder
+        );
+        return;
+      }
+      const permissionBtn = event.target.closest('[data-folder-permissions]');
+      if (permissionBtn) {
+        event.preventDefault();
+        window.openFolderPermissions?.(permissionBtn.dataset.folderPermissions);
+        return;
+      }
+      const deleteBtn = event.target.closest(isSubfolder ? '[data-subfolder-delete]' : '[data-folder-delete]');
+      if (deleteBtn) {
+        event.preventDefault();
+        const targetId = deleteBtn.dataset.subfolderDelete || deleteBtn.dataset.folderDelete;
+        if (isSubfolder) window.deleteSubFolderAPI?.(targetId);
+        else window.deleteFolderAPI?.(targetId);
+      }
+    });
+    grid.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const openCard = event.target.closest('.folder-card-main[data-folder-open]');
+      if (!openCard) return;
+      event.preventDefault();
+      window.openFileExplorer?.(openCard.dataset.folderOpen, openCard.dataset.folderName || '');
+    });
+  };
+  bindFolderGrid(document.getElementById('folder-grid-modal'));
+  bindFolderGrid(document.getElementById('subfolder-grid-modal'), true);
+  const outputAiFeed = document.getElementById('output-ai-feed');
+  if (outputAiFeed) {
+    outputAiFeed.addEventListener('click', (event) => {
+      const deleteBtn = event.target.closest('[data-output-delete]');
+      if (!deleteBtn) return;
+      event.preventDefault();
+      window.deleteSharedAIOutput?.(deleteBtn.dataset.outputDelete);
+    });
+  }
+  const aiPage = document.getElementById('page-ai');
+  if (aiPage) {
+    aiPage.addEventListener('click', (event) => {
+      const actionEl = event.target.closest('[data-ai-action]');
+      if (!actionEl) return;
+      event.preventDefault();
+      const { aiAction, aiProvider, aiIndex } = actionEl.dataset;
+      if (aiAction === 'hub') window.aiGoHub?.();
+      else if (aiAction === 'open-chat' && aiProvider) window.aiOpenChat?.(aiProvider);
+      else if (aiAction === 'clear-chat' && aiProvider) window.aiClearChat?.(aiProvider);
+      else if (aiAction === 'send' && aiProvider) window.aiSend?.(aiProvider);
+      else if (aiAction === 'share-message' && aiProvider) window.shareAIMessage?.(aiProvider, Number(aiIndex || 0));
+    });
+    aiPage.addEventListener('keydown', (event) => {
+      const input = event.target.closest('#ai-input[data-ai-provider]');
+      if (!input || event.key !== 'Enter' || event.shiftKey) return;
+      event.preventDefault();
+      window.aiSend?.(input.dataset.aiProvider);
+    });
+  }
 
   /* ── Sidebar nav: unified click + keyboard handler ────────────
      Replaces inline onclick attributes for iOS Safari compatibility.
@@ -6722,6 +6862,10 @@ window.closeSocialPage = function() {
 
 async function fetchSharedAIOutputs() {
   const feed = document.getElementById('output-ai-feed');
+  if (!sb) {
+    if (feed) feed.innerHTML = '<p class="empty-state-text">Shared OUTPUT-AI is unavailable right now. Please refresh the app.</p>';
+    return;
+  }
   if (feed) feed.innerHTML = createInlineLoader('Loading shared AI output...');
   const { data, error } = await sb.from('shared_ai_outputs').select('*').order('created_at', { ascending: false }).limit(80);
   if (error) {
@@ -6747,13 +6891,14 @@ function renderSharedAIOutputs() {
         <span>${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
         <span>${escapeHTML(item.provider || 'AI')}</span>
-        ${canDelete ? `<button class="board-delete-btn" onclick="deleteSharedAIOutput('${escapeJS(item.id)}')">Delete</button>` : ''}
+        ${canDelete ? `<button type="button" class="board-delete-btn" data-output-delete="${escapeJS(item.id)}">Delete</button>` : ''}
       </div>
       ${item.prompt ? `<div class="board-section"><h4>Prompt</h4><p>${aiFormat(item.prompt)}</p></div>` : ''}
       ${item.output ? `<div class="board-section"><h4>Output</h4><p>${aiFormat(item.output)}</p></div>` : ''}
     </article>`;
   }).join('');
 }
+window.fetchSharedAIOutputs = fetchSharedAIOutputs;
 
 window.deleteSharedAIOutput = function(id) {
   if (!currentUser) return customAlert('Please log in.');
@@ -6783,6 +6928,7 @@ async function fetchSharedAnnouncements() {
   sharedAnnouncements = data || [];
   renderSharedAnnouncements();
 }
+window.fetchSharedAnnouncements = fetchSharedAnnouncements;
 
 function renderSharedAnnouncements() {
   const feed = document.getElementById('announcement-feed');
@@ -6927,6 +7073,9 @@ function aiClearChat(p)      {
     aiChats[p] = []; aiTyping = false; renderAIChat(document.getElementById('ai-view'), p);
   });
 }
+window.aiGoHub = aiGoHub;
+window.aiOpenChat = aiOpenChat;
+window.aiClearChat = aiClearChat;
 
 function renderAI() {
   const view = document.getElementById('ai-view');
@@ -6939,7 +7088,7 @@ function renderAI() {
   } else {
     const p = AI_PROVIDERS[aiView];
     bc.innerHTML = `
-      <span class="ai-bc ai-bc-link" onclick="aiGoHub()">🤖 AI Assistants</span>
+      <button type="button" class="ai-bc ai-bc-link" data-ai-action="hub" style="background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;">🤖 AI Assistants</button>
       <span class="ai-bc-sep">›</span>
       <span class="ai-bc ai-bc-active">${p.icon} ${p.name}</span>`;
     renderAIChat(view, aiView);
@@ -6955,7 +7104,7 @@ function renderAIHub(view) {
       </div>
       <div class="ai-cards">
         ${Object.entries(AI_PROVIDERS).map(([key, p]) => `
-          <div class="ai-card" style="--ai-accent:${p.accent};background:${p.bg}" onclick="aiOpenChat('${key}')">
+          <button type="button" class="ai-card" style="--ai-accent:${p.accent};background:${p.bg};border:0;padding:0;width:100%;text-align:left;" data-ai-action="open-chat" data-ai-provider="${key}">
             <div class="ai-card-glow"></div>
             <div class="ai-card-top">
               <span class="ai-card-icon">${p.icon}</span>
@@ -6965,7 +7114,7 @@ function renderAIHub(view) {
             <div class="ai-card-model">${p.model}</div>
             <div class="ai-card-desc">${p.desc}</div>
             <div class="ai-card-btn">Open Chat →</div>
-          </div>`).join('')}
+          </button>`).join('')}
       </div>
     </div>`;
 }
@@ -6979,7 +7128,7 @@ function renderAIChat(view, provider) {
       ${m.role !== 'user' ? `<div class="ai-msg-av">${p.icon}</div>` : ''}
       <div class="ai-bubble-wrap">
         <div class="ai-bubble">${aiFormat(m.content)}</div>
-        <button class="share-everyone-btn" onclick="shareAIMessage('${provider}', ${index})">Share to Everyone</button>
+        <button type="button" class="share-everyone-btn" data-ai-action="share-message" data-ai-provider="${provider}" data-ai-index="${index}">Share to Everyone</button>
       </div>
       ${m.role === 'user' ? `<div class="ai-msg-av">👤</div>` : ''}
     </div>`).join('');
@@ -6987,13 +7136,13 @@ function renderAIChat(view, provider) {
   view.innerHTML = `
     <div class="ai-chat-wrap">
       <div class="ai-chat-head" style="--ai-accent:${p.accent}">
-        <button class="ai-back-btn" onclick="aiGoHub()">← Back</button>
+        <button type="button" class="ai-back-btn" data-ai-action="hub">← Back</button>
         <span class="ai-head-icon">${p.icon}</span>
         <div class="ai-head-info">
           <div class="ai-head-name">${p.name}</div>
           <div class="ai-head-sub">${p.tag} · ${p.model}</div>
         </div>
-        ${msgs.length ? `<button class="ai-clear-btn" onclick="aiClearChat('${provider}')">Clear</button>` : ''}
+        ${msgs.length ? `<button type="button" class="ai-clear-btn" data-ai-action="clear-chat" data-ai-provider="${provider}">Clear</button>` : ''}
       </div>
 
       <div class="ai-messages" id="ai-messages">
@@ -7013,9 +7162,9 @@ function renderAIChat(view, provider) {
         <div class="ai-input-row">
           <textarea id="ai-input" class="ai-textarea" rows="1"
             placeholder="${p.placeholder}"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend('${provider}');}"
+            data-ai-provider="${provider}"
             oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,130)+'px'"></textarea>
-          <button class="ai-send-btn" style="--ai-accent:${p.accent}" onclick="aiSend('${provider}')">↑</button>
+          <button type="button" class="ai-send-btn" style="--ai-accent:${p.accent}" data-ai-action="send" data-ai-provider="${provider}">↑</button>
         </div>
         <div class="ai-hint">Enter to send · Shift+Enter for new line</div>
       </div>
@@ -7064,6 +7213,7 @@ async function aiSend(provider) {
   aiTyping = false;
   renderAIChat(document.getElementById('ai-view'), provider);
 }
+window.aiSend = aiSend;
 
 window.shareAIMessage = async function(provider, index) {
   if (!currentUser) return customAlert('Please log in to share AI output.');

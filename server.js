@@ -219,7 +219,7 @@ const aiLimiter = rateLimit({
 });
 const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
 const ALLOWED_CHATS = new Set(['group', 'todo']);
-const SUPABASE_AUTH_SELECT = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
+const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
 
 function hashPassword(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');

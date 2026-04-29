@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.54-20260429-royale-crate-storm-fix';
+const CACHE_VERSION = 'v1.5.55-20260429-royale-crate-map-markers';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=95',
+  '/index.html?v=96',
   '/style.css?v=40',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=8',
-  '/script.js?v=95',
+  '/script.js?v=96',
   '/features/reviewers/reviewers.js?v=13',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
@@ -68,7 +68,7 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=25',
+  '/features/royale/royale.js?v=26',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=10',
   '/assets/images/code-web-card.svg',

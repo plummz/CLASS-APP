@@ -275,8 +275,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.50';
+const APP_VERSION = '1.5.51';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.51',
+    date: 'April 29, 2026',
+    title: 'Battle Royale Crate Map Markers',
+    summary: 'Battle Royale crates now appear on the minimap as orange dots so players can quickly spot supply targets while moving around the zone.',
+    changes: [
+      'New: Unclaimed crates now show as orange minimap dots so players can navigate toward supply drops more easily.',
+      'Improved: Special crates use a brighter orange marker so they stand out from regular crate supplies.',
+      'Fixed: Crate markers disappear once the crate has been fully claimed, keeping the minimap accurate.'
+    ]
+  },
   {
     version: '1.5.50',
     date: 'April 29, 2026',

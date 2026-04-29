@@ -1956,6 +1956,15 @@ window.royaleModule = (function () {
     ctx.strokeStyle='rgba(0,120,255,0.7)'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.arc(zmx,zmy,Math.max(zmr,1),0,Math.PI*2); ctx.stroke();
 
+    // Crate dots on minimap
+    for (const cr of crates) {
+      if ((cr.lootLeft || 0) <= 0) continue;
+      ctx.fillStyle = cr.special ? '#ffb347' : '#ff8c32';
+      ctx.beginPath();
+      ctx.arc(mx + cr.x * mmScale, my + cr.y * mmScale, cr.special ? 2.4 : 2.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // Bot dots on minimap
     for (const bt of bots) {
       if (!bt.alive) continue;

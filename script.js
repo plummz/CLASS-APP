@@ -404,8 +404,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.60';
+const APP_VERSION = '1.5.61';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.61',
+    date: 'April 29, 2026',
+    title: 'Fix post-login navigation and diagnostics',
+    summary: 'Post-login pages now fail gracefully instead of going silent when a shared fetch or realtime hook breaks, and diagnostics/users show clear states instead of looking dead.',
+    changes: [
+      'Fixed: User Directory now loads through an authenticated fallback path and shows loading, empty, and error states instead of silently rendering nothing.',
+      'Fixed: Diagnostics now handles admin-only access with a clear message instead of showing a raw 403 failure.',
+      'Fixed: Realtime bootstrap and page navigation now guard failing page actions so one runtime error does not make later buttons and pages appear unresponsive.',
+    ],
+  },
   {
     version: '1.5.60',
     date: 'April 29, 2026',
@@ -3056,6 +3067,7 @@ let livePresenceUsers = new Set();
 let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 let authBindingsReady = false;
+let usersLoadState = { loading: false, error: '' };
 
 function syncAuthState() {
   isAuthenticated = Boolean(currentUser?.username);
@@ -3090,6 +3102,17 @@ function renderAppState() {
 function setInitializing(nextValue) {
   isInitializing = Boolean(nextValue);
   renderAppState();
+}
+
+function runSafeUiAction(label, action, onError) {
+  try {
+    return action();
+  } catch (error) {
+    console.error(`[ui] ${label} failed:`, error);
+    if (typeof onError === 'function') onError(error);
+    else showToast(`${label} is unavailable right now.`, 'error');
+    return null;
+  }
 }
 
 function waitForSplashDismissal() {
@@ -3602,20 +3625,57 @@ function getUploaderAvatarHTML(uploaderUsername) {
   return `<span class="file-uploader-avatar"><span>${escapeHTML(getInitials(u)[0] || '?')}</span></span>`;
 }
 
-function fetchUsers() {
-  if (!sb) return;
-  sb.from('profiles').select(PROFILE_PUBLIC_FIELDS)
-    .then(({data}) => {
-      users = data || [];
-      renderUserDirectory();
-      renderChatUsersList();
-    }).catch((err) => console.warn(err.message));
+async function fetchUsers() {
+  usersLoadState = { loading: true, error: '' };
+  renderUserDirectory();
+  renderChatUsersList();
+
+  let loadedUsers = [];
+  let lastError = null;
+
+  if (sb) {
+    try {
+      const { data, error } = await sb.from('profiles').select(PROFILE_PUBLIC_FIELDS);
+      if (error) throw error;
+      loadedUsers = data || [];
+    } catch (error) {
+      lastError = error;
+      console.warn('[users] Supabase directory fetch failed:', error.message || error);
+    }
+  }
+
+  if (!loadedUsers.length) {
+    try {
+      const response = await authFetch('/api/users', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Users failed (${response.status})`);
+      loadedUsers = await response.json();
+    } catch (error) {
+      lastError = error;
+      console.warn('[users] Authenticated directory fetch failed:', error.message || error);
+    }
+  }
+
+  users = Array.isArray(loadedUsers) ? loadedUsers : [];
+  usersLoadState = {
+    loading: false,
+    error: users.length ? '' : (lastError?.message || ''),
+  };
+  renderUserDirectory();
+  renderChatUsersList();
 }
 
 function renderUserDirectory() {
   const grid = document.getElementById('user-grid');
   if (!grid) return;
   grid.innerHTML = '';
+  if (usersLoadState.loading) {
+    grid.innerHTML = '<div class="user-empty-state">Loading users...</div>';
+    return;
+  }
+  if (usersLoadState.error && !users.length) {
+    grid.innerHTML = `<div class="user-empty-state">${escapeHTML(usersLoadState.error)}</div>`;
+    return;
+  }
   const term = (document.getElementById('user-search-input')?.value || '').trim().toLowerCase();
   const statusFilter = document.getElementById('user-filter-select')?.value || 'all';
   const sortMode = document.getElementById('user-sort-select')?.value || 'online';
@@ -3641,7 +3701,7 @@ function renderUserDirectory() {
     });
 
   if (!visibleUsers.length) {
-    grid.innerHTML = '<div class="user-empty-state">No users match this search.</div>';
+    grid.innerHTML = `<div class="user-empty-state">${users.length ? 'No users match this search.' : 'No users available right now.'}</div>`;
     return;
   }
 
@@ -3997,14 +4057,18 @@ function initSupabaseRealtimeChat() {
         }).subscribe();
 
     const notesChannel = getSupabaseChannel('public:calendar_notes');
-    notesChannel
-        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, () => { fetchCalendarNotes(); })
+    if (notesChannel) {
+      notesChannel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, () => { fetchCalendarNotes(); })
         .subscribe();
+    }
 
     const profilesChannel = getSupabaseChannel('public:profiles_presence');
-    profilesChannel
-        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsers(); })
+    if (profilesChannel) {
+      profilesChannel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsers(); })
         .subscribe();
+    }
 }
 
 function showChatSkeleton() {
@@ -4402,33 +4466,35 @@ window.goToPage = function(pageName) {
   closeMenu();
 
   // Lobby: start canvas after page is visible
-  if (pageName === 'lobby') { _ensureSocket(); lobbyModule.init(); }
+  if (pageName === 'lobby') {
+    runSafeUiAction('Lobby', () => { _ensureSocket(); lobbyModule.init(); });
+  }
   // Pokemon: start after page is visible
-  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.init();
+  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
   // Royale: start after page is visible
-  if (pageName === 'royale' && typeof royaleModule !== 'undefined') royaleModule.init();
-  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.init();
-  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') candyModule.init();
-  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') personalToolsModule.init();
-  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.init();
-  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') notepadModule.init();
-  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') calculatorModule.init();
-  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') personalizationModule.init();
-  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') reviewersModule.init();
-  if (pageName === 'diagnostics') loadDiagnostics();
+  if (pageName === 'royale' && typeof royaleModule !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
+  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
+  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
+  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
+  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
+  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());
+  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') runSafeUiAction('Calculator', () => calculatorModule.init());
+  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') runSafeUiAction('Personalization', () => personalizationModule.init());
+  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') runSafeUiAction('Reviewers', () => reviewersModule.init());
+  if (pageName === 'diagnostics') runSafeUiAction('Diagnostics', () => loadDiagnostics());
   // Games hub: draw royale preview canvas
-  if (pageName === 'games') drawRoyalePreviewCanvas();
+  if (pageName === 'games') runSafeUiAction('Games', () => drawRoyalePreviewCanvas());
   // Event Pictures & Random Pictures: reset and render year cards
-  if (pageName === 'events') { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); }
-  if (pageName === 'random') { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); }
-  if (pageName === 'announcement') fetchSharedAnnouncements();
-  if (pageName === 'witfb') closeSocialPage();
-  if (pageName === 'outputai') fetchSharedAIOutputs();
-  if (pageName === 'codelab') window.initCodeLab?.();
-  if (pageName === 'coding-educational') window.initCodingEducational?.();
+  if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
+  if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
+  if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
+  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
+  if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
+  if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
+  if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
   // AI Assistants hub
-  if (pageName === 'ai') { aiView = 'hub'; renderAI(); }
-  if (pageName === 'admin') loadAdminDashboard();
+  if (pageName === 'ai') runSafeUiAction('AI Assistants', () => { aiView = 'hub'; renderAI(); });
+  if (pageName === 'admin') runSafeUiAction('Admin', () => loadAdminDashboard());
 };
 
 let backgroundPickerTab = 'coded';
@@ -4547,6 +4613,14 @@ window.loadDiagnostics = async function() {
   summary.innerHTML = '';
   try {
     const response = await authFetch('/api/diagnostics', { cache: 'no-store' });
+    if (response.status === 403) {
+      summary.innerHTML = [
+        ['App', APP_VERSION],
+        ['Access', 'Signed-in user'],
+      ].map(([label, value]) => `<div class="diagnostics-pill"><span>${escapeHTML(label)}</span><strong>${escapeHTML(value)}</strong></div>`).join('');
+      grid.innerHTML = `<div class="diagnostics-card warn"><span>LIMITED</span><strong>Admin access required</strong>${renderDiagnosticRows([{ label: 'Message', value: 'Diagnostics is limited to admin sessions for safety. Your login is working, but this page needs an admin-approved account.' }])}</div>`;
+      return;
+    }
     if (!response.ok) throw new Error(`Diagnostics failed (${response.status})`);
     const data = await response.json();
     const staticOk = (data.staticAssets || []).every((asset) => asset.exists);
@@ -5069,6 +5143,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.toggleTheme();
+    });
+  }
+  const accentPicker = document.getElementById('accent-picker');
+  if (accentPicker) {
+    accentPicker.addEventListener('input', (event) => {
+      window.setAccentColor(event.target.value);
+    });
+  }
+  const notifPrefsBtn = document.getElementById('notif-prefs-btn');
+  if (notifPrefsBtn) {
+    notifPrefsBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.toggleNotifPrefsPanel?.();
+    });
+  }
+  const diagnosticsRefreshBtn = document.querySelector('#page-diagnostics .btn-primary');
+  if (diagnosticsRefreshBtn) {
+    diagnosticsRefreshBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.loadDiagnostics();
+    });
+  }
 
   /* ── Sidebar nav: unified click + keyboard handler ────────────
      Replaces inline onclick attributes for iOS Safari compatibility.

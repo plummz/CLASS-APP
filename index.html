@@ -105,10 +105,10 @@
     <div class="sidebar-title">My Portfolio</div>
 
     <div class="sidebar-controls">
-      <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
-      <input type="color" id="accent-picker" class="accent-picker" value="#00d4ff" title="Pick Accent Color" oninput="setAccentColor(this.value)">
+      <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Dark/Light Mode">🌙</button>
+      <input type="color" id="accent-picker" class="accent-picker" value="#00d4ff" title="Pick Accent Color">
       <span class="accent-label">Accent</span>
-      <button id="notif-prefs-btn" class="theme-toggle-btn" onclick="toggleNotifPrefsPanel()" title="Notification preferences">🔔</button>
+      <button id="notif-prefs-btn" class="theme-toggle-btn" title="Notification preferences">🔔</button>
     </div>
     <div id="notif-prefs-panel" class="notif-prefs-panel hidden">
       <div class="notif-prefs-title">Notifications</div>
@@ -504,7 +504,7 @@
           <h2>System Status</h2>
           <p>Safe runtime checks for the current deployment. No secrets are displayed.</p>
         </div>
-        <button class="btn-primary" onclick="loadDiagnostics()">Refresh Checks</button>
+        <button class="btn-primary" type="button">Refresh Checks</button>
       </div>
       <div id="diagnostics-summary" class="diagnostics-summary"></div>
       <div id="diagnostics-grid" class="diagnostics-grid">
@@ -1527,7 +1527,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=105"></script>
+<script src="script.js?v=106"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

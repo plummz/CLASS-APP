@@ -221,6 +221,7 @@ const aiLimiter = rateLimit({
 const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
 const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
+const SUPABASE_PUBLIC_PROFILE_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 function hashPassword(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
@@ -270,6 +271,26 @@ async function fetchSupabaseProfile(username) {
   }
   const rows = await response.json();
   return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function fetchSupabasePublicProfiles() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  const url = new URL('/rest/v1/profiles', SUPABASE_URL);
+  url.searchParams.set('select', SUPABASE_PUBLIC_PROFILE_SELECT);
+  url.searchParams.set('order', 'display_name.asc.nullslast,username.asc');
+  const response = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase users lookup failed (${response.status}): ${text.slice(0, 160)}`);
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function resolveAuthProfile(username) {
@@ -831,6 +852,23 @@ function safeUsers() {
   }));
 }
 
+function safeDirectoryUsersFromProfiles(rows = []) {
+  return rows.map((row) => ({
+    username: row.username || '',
+    display_name: row.display_name || row.displayName || row.username || '',
+    birthday: row.birthday || 'Unknown',
+    address: row.address || 'Unknown',
+    github: row.github || '',
+    email: row.email || '',
+    note: row.note || '',
+    online: Boolean(row.online),
+    avatar: row.avatar || '',
+    last_seen_at: row.last_seen_at || null,
+    username_last_changed_at: row.username_last_changed_at || null,
+    updated_at: row.updated_at || null,
+  }));
+}
+
 function getPrivateKey(userA, userB) {
   return [userA, userB].sort().join('||');
 }
@@ -1174,8 +1212,14 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
   res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
 }));
 
-app.get('/api/users', wrap((req, res) => {
-  res.json(safeUsers());
+app.get('/api/users', requireAuth, wrap(async (req, res) => {
+  try {
+    const rows = await fetchSupabasePublicProfiles();
+    if (rows.length) return res.json(safeDirectoryUsersFromProfiles(rows));
+  } catch (error) {
+    console.warn('[users] Falling back to local state:', error.message);
+  }
+  res.json(safeDirectoryUsersFromProfiles(safeUsers()));
 }));
 
 app.put('/api/users/:username', ...requireSelf('username'), async (req, res) => {

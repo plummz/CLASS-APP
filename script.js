@@ -404,8 +404,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.64';
+const APP_VERSION = '1.5.65';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.65',
+    date: 'April 30, 2026',
+    title: 'Repair reviewer votes fallback',
+    summary: 'Shared Reviewers now degrades cleanly when the reviewer votes table is missing, and the repo now includes a repair migration to restore voting on the live database.',
+    changes: [
+      'Improved: Reviewers now shows a clear voting-unavailable message instead of failing noisily when reviewer_votes has not been deployed.',
+      'Fixed: Vote buttons are disabled safely until the reviewer votes migration is applied, preventing dead or misleading taps.',
+      'Backend: Added migration 014_reviewer_votes_repair.sql so the live Supabase project can create reviewer_votes and restore upvote tracking safely.'
+    ],
+  },
   {
     version: '1.5.64',
     date: 'April 30, 2026',

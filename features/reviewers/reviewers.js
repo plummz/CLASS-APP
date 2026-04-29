@@ -10,6 +10,8 @@ window.reviewersModule = {
   sortBy: 'trending',
   voteCounts: {},
   userVotes: {},
+  votesAvailable: true,
+  voteStatusMessage: '',
   pendingDeletes: {},
   pendingDeleteTimeouts: {},
   pageSize: 20,
@@ -79,7 +81,15 @@ window.reviewersModule = {
 
       if (voteError) {
         console.warn('[Reviewers] Vote load error:', voteError);
+        if (voteError.code === 'PGRST205' || /reviewer_votes/i.test(voteError.message || '')) {
+          this.votesAvailable = false;
+          this.voteStatusMessage = 'Voting is temporarily unavailable until the reviewer votes table is applied on the server.';
+          this.voteCounts = {};
+          this.userVotes = {};
+        }
       } else {
+        this.votesAvailable = true;
+        this.voteStatusMessage = '';
         this.voteCounts = {};
         this.userVotes = {};
         const me = this.currentUsername();
@@ -102,6 +112,8 @@ window.reviewersModule = {
       console.log('[Reviewers] Vote counts and contributor stats loaded');
     } catch (ex) {
       console.error('[Reviewers] Vote load exception:', ex);
+      this.votesAvailable = false;
+      this.voteStatusMessage = 'Voting is temporarily unavailable right now.';
     }
   },
 
@@ -124,6 +136,7 @@ window.reviewersModule = {
             </select>
           </div>
         </div>
+        <div class="reviewers-status" id="reviewers-status"></div>
         <div class="reviewers-grid" id="reviewers-grid">
           <div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>
         </div>
@@ -159,10 +172,23 @@ window.reviewersModule = {
       await this.loadReviewers();
       this.applyFilter();
       this.renderGrid();
+      this.renderStatus();
     } catch (e) {
       const grid = document.getElementById('reviewers-grid');
       if (grid) grid.innerHTML = '<div class="reviewer-empty"><p>Failed to load shared content. Please refresh.</p></div>';
     }
+  },
+
+  renderStatus: function() {
+    const status = document.getElementById('reviewers-status');
+    if (!status) return;
+    if (!this.voteStatusMessage) {
+      status.style.display = 'none';
+      status.innerHTML = '';
+      return;
+    }
+    status.style.display = 'block';
+    status.innerHTML = `<div class="reviewer-empty" style="margin:0 0 14px 0;padding:12px 14px;"><p>${this.esc(this.voteStatusMessage)}</p></div>`;
   },
 
   applyFilter: function() {
@@ -256,6 +282,13 @@ window.reviewersModule = {
     }
 
     grid.innerHTML = html;
+    if (!this.votesAvailable) {
+      grid.querySelectorAll('.reviewer-vote-btn').forEach((btn) => {
+        btn.disabled = true;
+        btn.title = 'Voting unavailable until reviewer votes migration is applied.';
+      });
+    }
+    this.renderStatus();
   },
 
   openViewer: async function(id) {
@@ -402,6 +435,10 @@ window.reviewersModule = {
     const me = this.currentUsername();
     if (!me) {
       window.showToast ? showToast('Log in to upvote.', 'info') : alert('Log in to upvote.');
+      return;
+    }
+    if (!this.votesAvailable) {
+      window.showToast ? showToast('Voting is temporarily unavailable until the reviewer votes table is applied.', 'info') : alert('Voting is temporarily unavailable.');
       return;
     }
 

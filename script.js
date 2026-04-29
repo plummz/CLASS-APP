@@ -404,8 +404,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.59';
+const APP_VERSION = '1.5.60';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.60',
+    date: 'April 29, 2026',
+    title: 'Fix legacy password setup flow',
+    summary: 'Legacy accounts without a saved password hash now get a real one-time password setup path instead of the dead-end “contact an admin” error.',
+    changes: [
+      'New: The server now returns a short-lived legacy password setup token so older accounts can create a password and finish signing in safely.',
+      'Improved: Sign In now opens a clear one-time password setup prompt for legacy users instead of depending on a fragile logged-out Supabase write.',
+      'Bug Fix: Existing accounts with a missing password hash no longer stop at “Password setup required. Please contact an admin or try registering.”',
+    ],
+  },
   {
     version: '1.5.59',
     date: 'April 29, 2026',
@@ -3292,6 +3303,9 @@ async function requestServerSession(endpoint, payload) {
     const error = new Error(data.error || `Request failed (${response.status})`);
     error.status = response.status;
     error.code = data.code || '';
+    error.profile = data.profile || null;
+    error.setupToken = data.setupToken || '';
+    error.payload = data;
     throw error;
   }
   return data;
@@ -3323,25 +3337,25 @@ async function finalizeLogin(profile, serverSession) {
   }
 }
 
-function promptLegacyPasswordSetup(profile) {
-  setAuthInfo('This account needs a password before it can sign in.');
+function promptLegacyPasswordSetup(profile, setupToken) {
+  if (!profile?.username || !setupToken) {
+    setAuthError('Password setup is not ready yet. Please try signing in again.');
+    return;
+  }
+  setAuthInfo('This account needs a one-time password setup before it can sign in.');
   window.customPrompt('Create a new password (min 8 characters)', async function(newPassword) {
     if (!newPassword || newPassword.length < 8) {
       customAlert('Password must be at least 8 characters.');
-      promptLegacyPasswordSetup(profile);
+      promptLegacyPasswordSetup(profile, setupToken);
       return;
     }
     try {
-      if (!await waitForSupabaseClient()) {
-        setAuthError('Connection error. Please refresh the page.');
-        return;
-      }
-      const passwordHash = await hashPassword(newPassword);
-      const { error } = await sb.from('profiles').update({ password_hash: passwordHash }).eq('username', profile.username);
-      if (error) throw error;
-      const refreshedProfile = { ...profile, password_hash: passwordHash };
       setAuthInfo('Saving your new password...');
-      const serverSession = await requestServerSession('/api/register', { username: profile.username, password: newPassword });
+      const serverSession = await requestServerSession('/api/password-setup', {
+        token: setupToken,
+        password: newPassword,
+      });
+      const refreshedProfile = serverSession.profile || { ...profile };
       await finalizeLogin(refreshedProfile, serverSession);
       setAuthSuccess('Password created. Loading your portal...');
       showToast('Password created. You are now signed in.');
@@ -3380,12 +3394,11 @@ window.login = async function() {
     } catch (serverError) {
       console.error('[auth] Login failed:', serverError);
       if (serverError.status === 428) {
-        if (await waitForSupabaseClient()) {
-          const { data: profile } = await sb.from('profiles')
-            .select(PROFILE_SELECT_FIELDS).eq('username', username).single();
-          if (profile) { promptLegacyPasswordSetup(profile); return; }
+        if (serverError.profile?.username && serverError.setupToken) {
+          promptLegacyPasswordSetup(serverError.profile, serverError.setupToken);
+          return;
         }
-        setAuthError('Password setup required. Please contact an admin or try registering.');
+        setAuthError('Password setup is required for this account. Please try signing in again.');
         return;
       }
       setAuthError(serverError.message || 'Could not sign in.');

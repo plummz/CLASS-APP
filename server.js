@@ -15,6 +15,7 @@ const ffmpegPath = require('ffmpeg-static');
 const { Server } = require('socket.io');
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const bcrypt   = require('bcryptjs');
+const crypto   = require('crypto');
 const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const helmet   = require('helmet');
@@ -294,6 +295,74 @@ async function resolveAuthProfile(username) {
 
 function issueToken(username, isAdminUser) {
   return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+function issueLegacyPasswordSetupToken(username) {
+  return jwt.sign({ username, purpose: 'legacy-password-setup' }, JWT_SECRET, { expiresIn: '10m' });
+}
+
+function sanitizeAuthProfile(profile = {}) {
+  return {
+    username: profile.username || '',
+    display_name: profile.display_name || profile.displayName || profile.username || '',
+    birthday: profile.birthday || 'Unknown',
+    address: profile.address || 'Unknown',
+    github: profile.github || '',
+    email: profile.email || '',
+    note: profile.note || '',
+    online: Boolean(profile.online),
+    avatar: profile.avatar || '',
+    last_seen_at: profile.last_seen_at || null,
+    username_last_changed_at: profile.username_last_changed_at || null,
+  };
+}
+
+async function updateAuthProfilePasswordHash(username, passwordHash) {
+  if (!username) throw new Error('Username is required for password setup.');
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    const url = new URL('/rest/v1/profiles', SUPABASE_URL);
+    url.searchParams.set('username', `eq.${username}`);
+    url.searchParams.set('select', SUPABASE_AUTH_SELECT);
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+        'x-class-username': username,
+      },
+      body: JSON.stringify({ password_hash: passwordHash }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Supabase password update failed (${response.status}): ${text.slice(0, 160)}`);
+    }
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows[0] || null : null;
+  }
+
+  let user = findUser(username);
+  if (!user) {
+    user = createUser(username, { username }, passwordHash);
+  } else {
+    user.passwordHash = passwordHash;
+    await saveData(state);
+  }
+  return {
+    username: user.username,
+    display_name: user.displayName,
+    birthday: user.birthday,
+    address: user.address,
+    github: user.github,
+    email: user.email,
+    note: user.note,
+    online: user.online,
+    avatar: user.avatar,
+    last_seen_at: null,
+    password_hash: passwordHash,
+  };
 }
 
 function requireAuth(req, res, next) {
@@ -1001,7 +1070,12 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
     return res.status(404).json({ error: 'User not found. Please register.' });
   }
   if (!authProfile.password_hash) {
-    return res.status(428).json({ error: 'Password setup required', code: 'PASSWORD_SETUP_REQUIRED' });
+    return res.status(428).json({
+      error: 'Password setup required',
+      code: 'PASSWORD_SETUP_REQUIRED',
+      setupToken: issueLegacyPasswordSetupToken(normalizedUsername),
+      profile: sanitizeAuthProfile(authProfile),
+    });
   }
   if (hashPassword(password) !== authProfile.password_hash) {
     return res.status(401).json({ error: 'Invalid password' });
@@ -1016,6 +1090,56 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
   res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
+}));
+
+app.post('/api/password-setup', loginLimiter, wrap(async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) {
+    return res.status(400).json({ error: 'token and password are required' });
+  }
+  if (!isPasswordLongEnough(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  }
+
+  let setupPayload;
+  try {
+    setupPayload = jwt.verify(String(token), JWT_SECRET);
+  } catch (_) {
+    return res.status(401).json({ error: 'Password setup request expired. Please try signing in again.' });
+  }
+  if (setupPayload?.purpose !== 'legacy-password-setup' || !setupPayload.username) {
+    return res.status(403).json({ error: 'Invalid password setup request.' });
+  }
+
+  const normalizedUsername = String(setupPayload.username).trim();
+  const authProfile = await resolveAuthProfile(normalizedUsername);
+  if (!authProfile) {
+    return res.status(404).json({ error: 'User not found. Please register.' });
+  }
+  if (authProfile.password_hash) {
+    return res.status(409).json({ error: 'This account already has a password. Please sign in normally.' });
+  }
+
+  const passwordHash = hashPassword(password);
+  const updatedProfile = await updateAuthProfilePasswordHash(normalizedUsername, passwordHash);
+  const finalProfile = updatedProfile || { ...authProfile, password_hash: passwordHash };
+
+  let user = findUser(normalizedUsername);
+  if (!user) user = createUser(normalizedUsername, finalProfile, passwordHash);
+  else syncStateUserFromProfile(user, finalProfile, passwordHash);
+  user.passwordHash = passwordHash;
+  user.online = true;
+  await saveData(state);
+  io.emit('users', safeUsers());
+
+  const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
+  const sessionToken = issueToken(user.username, isAdminUser);
+  res.json({
+    user: safeUsers().find((item) => item.username === user.username),
+    isAdmin: isAdminUser,
+    token: sessionToken,
+    profile: sanitizeAuthProfile({ ...finalProfile, password_hash: passwordHash }),
+  });
 }));
 
 app.post('/api/register', loginLimiter, wrap(async (req, res) => {

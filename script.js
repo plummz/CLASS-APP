@@ -11,11 +11,20 @@ const PROFILE_SELECT_FIELDS = 'id,username,display_name,birthday,address,github,
 const PROFILE_PUBLIC_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 async function initSupabase() {
-  try {
-    const cfg = await fetch('/api/config').then(r => r.json());
-    SUPABASE_URL = cfg.supabaseUrl || '';
-    SUPABASE_KEY = cfg.supabaseKey || '';
-  } catch (_) {}
+  // Retry up to 5 times with backoff — Render free tier can take 30s+ to cold-start.
+  // Without retrying, a cold-start returns an empty config, sb gets empty credentials,
+  // and every Supabase query fails silently while waitForSupabaseClient() still returns true.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const cfg = await fetch('/api/config').then(r => r.json());
+      if (cfg.supabaseUrl && cfg.supabaseKey) {
+        SUPABASE_URL = cfg.supabaseUrl;
+        SUPABASE_KEY = cfg.supabaseKey;
+        break;
+      }
+    } catch (_) {}
+    if (attempt < 4) await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+  }
   const { createClient } = window.supabase;
   sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
     global: {
@@ -155,12 +164,16 @@ window.authFetch = function(url, options = {}) {
 };
 
 async function waitForSupabaseClient() {
-  if (!sb) {
-    console.warn('[sb] Supabase not ready yet. Retrying in 500ms...');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  // Wait up to 3s for initSupabase to complete (covers slow page loads).
+  // Also verify credentials are non-empty — sb is always non-null after init
+  // even when credentials failed to load, so checking !sb alone is not enough.
+  const deadline = Date.now() + 3000;
+  while (!sb || !SUPABASE_URL) {
+    if (Date.now() >= deadline) break;
+    await new Promise(r => setTimeout(r, 200));
   }
-  if (!sb) {
-    console.error('[sb] Supabase client unavailable.');
+  if (!sb || !SUPABASE_URL) {
+    console.error('[sb] Supabase client unavailable or missing credentials.');
     return false;
   }
   return true;
@@ -338,15 +351,17 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.54';
+const APP_VERSION = '1.5.55';
 const APP_CHANGELOG = [
   {
-    version: '1.5.54',
+    version: '1.5.55',
     date: 'April 29, 2026',
-    title: 'Fix sign-in frozen state',
-    summary: 'Sign In and Create Account now surface connection problems immediately instead of appearing frozen when Supabase is slow or unavailable.',
+    title: 'Fix sign-in stuck on cold server start',
+    summary: 'Sign-in was silently broken when the server was cold-starting — /api/config returned empty credentials, Supabase was initialized with a blank URL, and every login attempt failed without any visible error.',
     changes: [
-      'Fixed: Sign In and Create Account buttons now show a loading state, display a visible error if Supabase is unavailable, and time out after 10 seconds instead of hanging indefinitely.'
+      'Fixed: initSupabase now retries /api/config up to 5 times with backoff so a cold Render start no longer leaves the Supabase client with empty credentials.',
+      'Fixed: waitForSupabaseClient now checks that credentials are actually loaded (not just that the client object exists) and waits up to 3 seconds for a slow init to complete.',
+      'Fixed: Sign In and Create Account buttons show a loading state and surface a visible error instead of appearing frozen.'
     ]
   },
   {

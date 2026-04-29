@@ -166,7 +166,7 @@ const randomCount = 10;
 /* ============================================================
    BUILD SUBJECT CARDS (Opens Folders)
    ============================================================ */
-function buildSubjectCards(gridId, subjects) {
+function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
   const grid = document.getElementById(gridId);
   if (!grid) return;
   grid.innerHTML = '';
@@ -183,6 +183,8 @@ function buildSubjectCards(gridId, subjects) {
         <button class="semester-empty-btn" onclick="goToPage('file-summarizer')">📄 Go to File Summarizer →</button>
       </div>
     `;
+    grid.querySelector('.semester-empty-sub')?.remove();
+    grid.querySelector('.semester-empty-btn')?.remove();
     return;
   }
 
@@ -191,11 +193,15 @@ function buildSubjectCards(gridId, subjects) {
   // Quick action bar at the top of the grid
   const bar = document.createElement('div');
   bar.className = 'semester-shortcut';
+  const safeFolderRoot = escapeJS(folderRootLabel);
   bar.innerHTML = `
     <span class="semester-shortcut-label">Quick Actions</span>
+    ${folderRootLabel ? `<button class="semester-shortcut-btn" onclick="openFolderExplorer('${safeFolderRoot}')">📂 Browse Modules →</button>` : ''}
     <button class="semester-shortcut-btn" onclick="goToPage('file-summarizer')">📄 Summarize a File →</button>
   `;
   grid.appendChild(bar);
+  bar.querySelector("button[onclick*='file-summarizer']")?.remove();
+  if (!bar.querySelector('button')) bar.remove();
 
   subjects.forEach((subject) => {
     const safeCode = subject.code.replace(/'/g, "\\'");
@@ -212,6 +218,7 @@ function buildSubjectCards(gridId, subjects) {
         <button class="card-action-btn card-action-summarize" onclick="event.stopPropagation(); goToPage('file-summarizer')">📄 Summarize</button>
       </div>
     `;
+    card.querySelector('.card-action-summarize')?.remove();
     grid.appendChild(card);
   });
 }
@@ -1624,6 +1631,51 @@ function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
+const SUMMARIZABLE_FILE_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx']);
+
+function isSummarizableFileName(fileName) {
+    const ext = String(fileName || '').split('.').pop().toLowerCase();
+    return SUMMARIZABLE_FILE_EXTENSIONS.has(ext);
+}
+
+function getFileActionIcon(kind) {
+    if (kind === 'transfer') {
+        return `
+        <svg class="file-action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 8h12"></path>
+            <path d="m12 4 4 4-4 4"></path>
+            <path d="M20 16H8"></path>
+            <path d="m12 12-4 4 4 4"></path>
+        </svg>`;
+    }
+    return `
+    <svg class="file-action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="8.5"></circle>
+        <path d="m9 9 6 6"></path>
+        <path d="m15 9-6 6"></path>
+    </svg>`;
+}
+
+window.openFileSummarizerForStoredFile = async function(fileUrl, fileName, fileType = '') {
+    if (!isSummarizableFileName(fileName)) {
+        return customAlert('Only PDF, DOC, DOCX, PPT, and PPTX files can be summarized.');
+    }
+    if (!window.fileSummarizerModule?.loadRemoteFile) {
+        return customAlert('File Summarizer is still loading. Please try again.');
+    }
+    goToPage('file-summarizer');
+    try {
+        await window.fileSummarizerModule.loadRemoteFile({
+            url: fileUrl,
+            name: fileName,
+            type: fileType,
+        });
+        showToast('File loaded into the summarizer.', 'success');
+    } catch (error) {
+        customAlert(error?.message || 'Could not load this file into the summarizer.');
+    }
+};
+
 function fetchAndRenderFiles() {
     if (!currentFolderContext || !canViewFolder(currentFolderContext)) {
         const list = document.getElementById('file-list-container');
@@ -1653,9 +1705,11 @@ function fetchAndRenderFiles() {
         }
         files.forEach(f => {
             const canModifyFile = allowEdit || (currentUser && (f.uploader === currentUser.username || isAdmin));
+            const canSummarizeFile = isSummarizableFileName(f.name);
             const safeName = escapeJS(f.name);
             const safeId = escapeJS(f.id);
             const safeUrl = escapeJS(f.url);
+            const safeType = escapeJS(f.type || '');
             list.innerHTML += `
             <div class="file-row-modern">
                 <div class="file-row-meta">
@@ -1664,8 +1718,9 @@ function fetchAndRenderFiles() {
                 </div>
                 <div class="file-row-actions">
                     <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}', false, '${escapeJS(currentFolderContext.id)}')" class="file-action primary">Open</button>
-                    ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action">Copy & Move To</button>` : ''}
-                    ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger">Delete</button>` : ''}
+                    ${canSummarizeFile ? `<button onclick="window.openFileSummarizerForStoredFile('${safeUrl}', '${safeName}', '${safeType}')" class="file-action summarize">Summarize</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action icon-only" aria-label="Copy and move file" title="Copy & Move To">${getFileActionIcon('transfer')}</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger icon-only" aria-label="Delete file" title="Delete">${getFileActionIcon('delete')}</button>` : ''}
                 </div>
             </div>
             `;
@@ -1830,15 +1885,24 @@ window.uploadFileToFolderAPI = async function() {
     fetchAndRenderFiles();
 };
 
-window.deleteFileAPI = function(fileId) {
-    if (!currentFolderContext || !canEditFolder(currentFolderContext)) return customAlert('You do not have permission to delete files here.');
-    customConfirm("Delete this file?", function() {
-        sb.from('files').delete().eq('id', fileId)
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            fetchAndRenderFiles();
-            showToast('File deleted.', 'warning');
-        });
+window.deleteFileAPI = async function(fileId) {
+    if (!currentUser) return customAlert('Please log in.');
+    let file;
+    try {
+        const { data, error } = await sb.from('files').select('*').eq('id', fileId).single();
+        if (error) throw error;
+        file = data;
+    } catch (error) {
+        return customAlert(error.message || 'Could not find that file.');
+    }
+    const canDeleteFile = !!(currentFolderContext && canEditFolder(currentFolderContext))
+        || !!(currentUser && (file?.uploader === currentUser.username || isAdmin));
+    if (!canDeleteFile) return customAlert('You do not have permission to delete this file.');
+    customConfirm("Delete this file?", async function() {
+        const { error } = await sb.from('files').delete().eq('id', fileId);
+        if (error) return customAlert(error.message);
+        fetchAndRenderFiles();
+        showToast('File deleted.', 'warning');
     });
 };
 
@@ -4503,14 +4567,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  buildSubjectCards('grid-first',   firstSem);
-  buildSubjectCards('grid-second',  secondSem);
-  buildSubjectCards('grid-y2first',  y2firstSem);
-  buildSubjectCards('grid-y2second', y2secondSem);
-  buildSubjectCards('grid-y3first',  y3firstSem);
-  buildSubjectCards('grid-y3second', y3secondSem);
-  buildSubjectCards('grid-y4first',  y4firstSem);
-  buildSubjectCards('grid-y4second', y4secondSem);
+  buildSubjectCards('grid-first',   firstSem,   'First Semester');
+  buildSubjectCards('grid-second',  secondSem,  'Second Semester');
+  buildSubjectCards('grid-y2first',  y2firstSem,  '2nd Year · First Semester');
+  buildSubjectCards('grid-y2second', y2secondSem, '2nd Year · Second Semester');
+  buildSubjectCards('grid-y3first',  y3firstSem,  '3rd Year · First Semester');
+  buildSubjectCards('grid-y3second', y3secondSem, '3rd Year · Second Semester');
+  buildSubjectCards('grid-y4first',  y4firstSem,  '4th Year · First Semester');
+  buildSubjectCards('grid-y4second', y4secondSem, '4th Year · Second Semester');
   // Event Pictures + Random Pictures handled by gallery system (renderGallery on page nav)
   fetchCalendarNotes(); updateClock();
 

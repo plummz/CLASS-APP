@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.50-20260429-reviewers-youtube-fixes';
+const CACHE_VERSION = 'v1.5.52-20260429-file-action-icons';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=91',
-  '/style.css?v=39',
+  '/index.html?v=93',
+  '/style.css?v=40',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -44,9 +44,9 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
-  '/features/file-summarizer/file-summarizer.js?v=7',
-  '/script.js?v=91',
-  '/features/reviewers/reviewers.js?v=12',
+  '/features/file-summarizer/file-summarizer.js?v=8',
+  '/script.js?v=93',
+  '/features/reviewers/reviewers.js?v=13',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
   '/features/personal-tools/notepad.css?v=6',

@@ -63,6 +63,7 @@
   let quizAnswered    = false;
   let userAnswers     = [];
   let quizSourceFile  = '';
+  const allowedExtensions = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx']);
 
   // ── Helpers ────────────────────────────────────────────────
   function setError(msg) {
@@ -78,6 +79,28 @@
     if (btnQuiz) btnQuiz.disabled = disabled || !quizSettings.type || !quizSettings.count;
   }
 
+  function getFileExtension(fileName) {
+    return String(fileName || '').split('.').pop().toLowerCase();
+  }
+
+  function validateSelectedFile(file) {
+    const ext = getFileExtension(file?.name);
+    if (!allowedExtensions.has(ext)) {
+      return 'Unsupported file. Only PDF, DOC, DOCX, PPT, PPTX allowed.';
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      return `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB.`;
+    }
+    return '';
+  }
+
+  function resetQuizSettings() {
+    quizSettings = { type: null, count: null };
+    try { localStorage.removeItem('fs-quiz-settings'); } catch(_) {}
+    quizTypeChips.forEach(c => c.classList.remove('selected'));
+    quizCountChips.forEach(c => c.classList.remove('selected'));
+  }
+
   function clearAll() {
     selectedFile  = null;
     extractedText = '';
@@ -91,6 +114,36 @@
       uploadLabel.querySelector('.fs-upload-main').textContent = 'Tap to upload a file';
       uploadLabel.querySelector('.fs-upload-sub').textContent  = 'PDF · DOCX · PPTX — max 8 MB';
     }
+  }
+
+  function applySelectedFile(file) {
+    if (!file) { clearAll(); return false; }
+
+    const validationError = validateSelectedFile(file);
+    if (validationError) {
+      setError(validationError);
+      if (fileInput) fileInput.value = '';
+      selectedFile = null;
+      setSummaryBtnsDisabled(true);
+      return false;
+    }
+
+    selectedFile  = file;
+    extractedText = '';
+    resetQuizSettings();
+    const ext = getFileExtension(file.name);
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+    if (uploadLabel) {
+      uploadLabel.querySelector('.fs-upload-main').textContent = `Selected: ${file.name}`;
+      uploadLabel.querySelector('.fs-upload-sub').textContent  = `${sizeMB} MB | .${ext.toUpperCase()}`;
+    }
+    setStatus('');
+    setError('');
+    if (summaryEl) summaryEl.value = '';
+    if (summarySection) summarySection.style.display = 'none';
+    setSummaryBtnsDisabled(false);
+    updateQuizSelection();
+    return true;
   }
 
   function updateQuizSelection() {
@@ -113,6 +166,8 @@
   // ── File selection ─────────────────────────────────────────
   fileInput.addEventListener('change', function (e) {
     const file = e.target.files && e.target.files[0];
+    applySelectedFile(file);
+    return;
     if (!file) { clearAll(); return; }
 
     const ext = file.name.split('.').pop().toLowerCase();
@@ -662,4 +717,24 @@
       }
     });
   }
+
+  window.fileSummarizerModule = Object.assign(window.fileSummarizerModule || {}, {
+    async loadRemoteFile({ url, name, type }) {
+      if (!url) throw new Error('Missing file URL.');
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Could not fetch that file for summarizing.');
+      const blob = await response.blob();
+      const remoteName = String(name || url.split('/').pop() || 'study-file').split('?')[0];
+      const file = new File([blob], remoteName, {
+        type: type || blob.type || 'application/octet-stream',
+        lastModified: Date.now(),
+      });
+      const didLoad = applySelectedFile(file);
+      if (!didLoad) {
+        throw new Error(errorBox?.textContent || 'Could not load that file.');
+      }
+      setStatus(`Loaded ${remoteName}. Choose a summary type.`);
+      return file;
+    },
+  });
 })();

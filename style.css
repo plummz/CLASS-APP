@@ -3771,6 +3771,27 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
 .file-action.danger,
 .ep-photo-actions .danger { color: #ff8b8b; border-color: rgba(255,107,107,0.35); }
 .file-action.primary { color: #00140d; background: #00ff88; border-color: transparent; }
+.file-action.summarize { color: var(--accent, #00d4ff); border-color: rgba(0,212,255,0.28); }
+.file-action.icon-only {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  aspect-ratio: 1;
+}
+.file-action-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 .file-row-modern {
   display: flex;
@@ -3792,7 +3813,7 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
 }
 .file-row-sub { color: rgba(255,255,255,0.42); font-size: 11px; margin-top: 4px; }
 .file-row-sub span { color: #00ff88; font-weight: 800; }
-.file-row-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.file-row-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
 .file-row-sub .avatar-xxs,
 .folder-card-owner .avatar-xxs,
 .profile-folder-owner .avatar-xxs,
@@ -4513,7 +4534,8 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
     align-items: stretch;
   }
   .file-row-actions { justify-content: stretch; }
-  .file-action { flex: 1; }
+  .file-action { flex: 1 1 120px; }
+  .file-action.icon-only { flex: 0 0 40px; }
   .shared-board, .social-pages-wrap { padding: 18px 12px 52px; }
   .shared-board-feed, .social-card-grid { grid-template-columns: 1fr; }
   .permission-quick-actions { grid-template-columns: 1fr; }

@@ -222,7 +222,8 @@ window.reviewersModule = {
       const date    = rev.shared_at ? new Date(rev.shared_at) : new Date(rev.created_at);
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const preview = (rev.summary_content || '').slice(0, 150).trim();
-      const canDel  = isAdmin || (me && rev.user_id === me);
+      const canDel  = isAdmin || (me && String(rev.user_id) === String(me));
+      const safeId = String(rev.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
       const voteCount = this.voteCounts[rev.id] || 0;
       const hasVoted = this.userVotes[rev.id] || false;
       const voteClass = hasVoted ? 'voted' : '';
@@ -245,7 +246,7 @@ window.reviewersModule = {
         <div class="reviewer-card-actions">
           <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
           <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
-          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer(${JSON.stringify(String(rev.id))}, event)">Delete</button>` : ''}
+          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer('${safeId}', event)">Delete</button>` : ''}
         </div>
       </div>`;
     }).join('');

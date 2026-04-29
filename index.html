@@ -1378,7 +1378,7 @@
 
     <div class="social-embed-wrap hidden" id="social-embed-view">
       <div class="social-embed-toolbar">
-        <button class="social-back-btn" type="button" onclick="closeSocialPage()">&larr; Back</button>
+            <button class="social-back-btn" type="button" onclick="closeSocialPage()">&larr; Back</button>
         <div>
           <div class="shared-board-kicker">Embedded Page</div>
           <h2 id="social-embed-title">Social Media Pages</h2>
@@ -1430,7 +1430,7 @@
     <div class="custom-modal-box small-box border-red">
       <h3 class="modal-title text-red">Notice</h3>
       <p id="alert-text" class="modal-text"></p>
-      <button class="btn-red" onclick="closeFolderModal('custom-alert-modal')">OK</button>
+      <button class="btn-red" type="button" data-close-modal-id="custom-alert-modal" onclick="closeFolderModal('custom-alert-modal')">OK</button>
     </div>
   </div>
 
@@ -1440,7 +1440,7 @@
       <input type="text" id="prompt-input" class="modal-input" autocomplete="off">
       <div class="modal-btn-group">
         <button id="prompt-submit" class="btn-blue flex-1">Submit</button>
-        <button class="btn-outline-red flex-1" onclick="closeFolderModal('custom-prompt-modal')">Cancel</button>
+      <button class="btn-outline-red flex-1" type="button" data-close-modal-id="custom-prompt-modal" onclick="closeFolderModal('custom-prompt-modal')">Cancel</button>
       </div>
     </div>
   </div>
@@ -1527,7 +1527,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=107"></script>
+  <script src="script.js?v=108"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

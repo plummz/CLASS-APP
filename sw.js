@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.62-20260430-fix-mobile-button-handlers';
+const CACHE_VERSION = 'v1.5.63-20260430-fix-modal-close-buttons';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=107',
+  '/index.html?v=108',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=10',
-  '/script.js?v=107',
+  '/script.js?v=108',
   '/features/reviewers/reviewers.js?v=14',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',

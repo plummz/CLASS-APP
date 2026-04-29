@@ -404,8 +404,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.62';
+const APP_VERSION = '1.5.63';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.63',
+    date: 'April 30, 2026',
+    title: 'Fix close buttons across modals',
+    summary: 'Added a shared close-handler fallback so modal close buttons keep working even when inline handlers fail on mobile or stale cached markup.',
+    changes: [
+      'Improved: Modal close controls now have a shared delegated fallback instead of depending only on inline onclick handlers.',
+      'Fixed: Folder, prompt, alert, changelog, and dynamic modal close buttons now resolve their overlay reliably and dismiss it on mobile.',
+      'Fixed: Static close/cancel buttons now carry explicit close targets so the app can dismiss the right modal even if older cached HTML is still around.'
+    ],
+  },
   {
     version: '1.5.62',
     date: 'April 30, 2026',
@@ -1721,6 +1732,23 @@ window.closeFolderModal = function(modalId) {
     if(modal) modal.style.display = 'none';
 };
 
+function closeOverlayElement(overlay) {
+    if (!overlay) return;
+    const modalId = overlay.id || '';
+    if (modalId && typeof window.closeFolderModal === 'function' && [
+        'custom-alert-modal',
+        'custom-prompt-modal',
+        'custom-confirm-modal',
+        'folder-explorer-modal',
+        'file-explorer-modal',
+    ].includes(modalId)) {
+        window.closeFolderModal(modalId);
+        return;
+    }
+    overlay.remove();
+}
+window.closeOverlayElement = closeOverlayElement;
+
 window.openFolderModalObj = function(modalId) {
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'flex';
@@ -2225,7 +2253,7 @@ window.openFolderPermissions = async function(folderId) {
             </button>
           </div>
           <div class="modal-btn-group">
-            <button class="btn-outline-red flex-1" onclick="removeDynamicModal('folder-permission-modal')">Close</button>
+          <button class="btn-outline-red flex-1" type="button" data-close-modal-id="folder-permission-modal">Close</button>
           </div>
         </div>
       </div>
@@ -5360,6 +5388,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (overlay) {
     overlay.addEventListener('click', window.closeMenu);
   }
+  document.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-close-modal-id], .modal-close-btn, .changelog-close-action, .close-profile, .social-back-btn');
+    if (!trigger) return;
+    if (trigger.classList.contains('close-profile')) {
+      event.preventDefault();
+      window.closeProfile?.();
+      return;
+    }
+    if (trigger.classList.contains('social-back-btn')) {
+      event.preventDefault();
+      window.closeSocialPage?.();
+      return;
+    }
+    const explicitId = trigger.dataset.closeModalId;
+    if (explicitId) {
+      event.preventDefault();
+      closeOverlayElement(document.getElementById(explicitId));
+      return;
+    }
+    if (trigger.classList.contains('modal-close-btn') || trigger.classList.contains('changelog-close-action')) {
+      event.preventDefault();
+      const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
+      closeOverlayElement(overlayEl);
+    }
+  });
 
   if (currentUser) {
     try {

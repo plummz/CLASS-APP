@@ -7,8 +7,8 @@ let SUPABASE_URL = '';
 let SUPABASE_KEY = '';
 let sb = null;
 let serverAuthToken = localStorage.getItem('classAppToken') || '';
-const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at,updated_at';
-const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
+const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
+const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at';
 
 async function initSupabase() {
   try {
@@ -404,8 +404,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.63';
+const APP_VERSION = '1.5.64';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.64',
+    date: 'April 30, 2026',
+    title: 'Restore live button handlers and trim failed queries',
+    summary: 'Restored legacy click-path compatibility under the current CSP and removed two broken Supabase queries that were slowing the app after login.',
+    changes: [
+      'Improved: Legacy inline button handlers now execute again under the deployed CSP while the remaining pages continue moving toward delegated listeners.',
+      'Fixed: User Directory profile reads no longer request the missing profiles.updated_at column, so post-login users loading stops throwing repeated 400 errors.',
+      'Fixed: App open tally now uses direct table reads and writes instead of the broken Supabase RPC path that was returning ambiguous username errors and slowing page boot.'
+    ],
+  },
   {
     version: '1.5.63',
     date: 'April 30, 2026',
@@ -3737,7 +3748,7 @@ function renderUserDirectory() {
     })
     .sort((a, b) => {
       if (sortMode === 'name') return String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
-      if (sortMode === 'recent') return new Date(b.updated_at || b.last_seen_at || 0) - new Date(a.updated_at || a.last_seen_at || 0);
+      if (sortMode === 'recent') return new Date(b.last_seen_at || b.username_last_changed_at || 0) - new Date(a.last_seen_at || a.username_last_changed_at || 0);
       return Number(isUserLiveOnline(b)) - Number(isUserLiveOnline(a)) || String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
     });
 
@@ -4938,7 +4949,12 @@ function renderAppOpenRows(rows = []) {
 }
 
 async function fetchSupabaseAppOpenRows() {
-  const { data, error } = await sb.rpc('class_app_app_open_tally');
+  if (!sb) throw new Error('Supabase unavailable');
+  const { data, error } = await sb
+    .from('app_open_counts')
+    .select('username,count,last_opened_at,updated_at')
+    .order('count', { ascending: false })
+    .order('username', { ascending: true });
   if (error) throw error;
   return normalizeAppOpenRows(data || []);
 }
@@ -5088,36 +5104,25 @@ async function recordAppOpen() {
   const localCount = incrementLocalAppOpenTally(currentUser.username);
   
   try {
-    const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
-    if (error) throw error;
-    
+    const nowIso = new Date().toISOString();
+    const { error: upsertErr } = await sb.from('app_open_counts').upsert({
+      username: currentUser.username,
+      count: localCount,
+      last_opened_at: nowIso,
+      updated_at: nowIso,
+    }, { onConflict: 'username' });
+
+    if (upsertErr) throw upsertErr;
+
     sessionStorage.setItem('appOpenRecorded', 'true');
-    console.log('[AppOpen] Recorded via Supabase RPC.');
-    
+    console.log('[AppOpen] Recorded via direct table upsert.');
+
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
-  } catch (err) {
-    console.warn('[AppOpen] RPC failed:', err?.message || err);
-    try {
-      const { error: upsertErr } = await sb.from('app_open_counts').upsert({
-        username: currentUser.username,
-        count: localCount,
-        last_opened_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'username' });
-      
-      if (upsertErr) throw upsertErr;
-      
-      sessionStorage.setItem('appOpenRecorded', 'true');
-      console.log('[AppOpen] Recorded via direct table upsert.');
-      
-      const rows = await fetchSupabaseAppOpenRows();
-      renderAppOpenRows(rows);
-    } catch (upsertFail) {
-      console.warn('[AppOpen] Direct upsert also failed:', upsertFail?.message || upsertFail);
-      sessionStorage.setItem('appOpenRecorded', 'true');
-      renderAppOpenRows(localAppOpenRows());
-    }
+  } catch (upsertFail) {
+    console.warn('[AppOpen] Direct upsert failed:', upsertFail?.message || upsertFail);
+    sessionStorage.setItem('appOpenRecorded', 'true');
+    renderAppOpenRows(localAppOpenRows());
   }
 }
 

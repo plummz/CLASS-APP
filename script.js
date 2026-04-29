@@ -20,21 +20,50 @@ async function initSupabase() {
     clearTimeout(timer);
     SUPABASE_URL = cfg.supabaseUrl || '';
     SUPABASE_KEY = cfg.supabaseKey || '';
-  } catch (_) {}
-  const { createClient } = window.supabase;
-  sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    global: {
-      fetch: (url, options = {}) => {
-        const headers = new Headers(options.headers || {});
-        try {
-          const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
-          if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
-        } catch (_) {}
-        return fetch(url, { ...options, headers });
+  } catch (error) {
+    console.error('[auth] Failed to load Supabase config:', error);
+  }
+  if (!window.supabase?.createClient || !SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('[auth] Supabase client could not be initialized.');
+    sb = null;
+    window.sb = null;
+    return false;
+  }
+  try {
+    const { createClient } = window.supabase;
+    sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: {
+        fetch: (url, options = {}) => {
+          const headers = new Headers(options.headers || {});
+          try {
+            const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+            if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+          } catch (_) {}
+          return fetch(url, { ...options, headers });
+        },
       },
-    },
-  });
-  window.sb = sb;
+    });
+    window.sb = sb;
+    return true;
+  } catch (error) {
+    console.error('[auth] Supabase createClient failed:', error);
+    sb = null;
+    window.sb = null;
+    return false;
+  }
+}
+
+function getSupabaseChannel(channelName, config) {
+  if (!sb || typeof sb.channel !== 'function') {
+    console.warn(`[auth] Supabase channel unavailable for ${channelName}.`);
+    return null;
+  }
+  try {
+    return sb.channel(channelName, config);
+  } catch (error) {
+    console.error(`[auth] Failed to create Supabase channel ${channelName}:`, error);
+    return null;
+  }
 }
 
 // Legacy: pre-R2 files were served from this origin. New uploads use
@@ -375,8 +404,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.57';
+const APP_VERSION = '1.5.58';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.58',
+    date: 'April 29, 2026',
+    title: 'Fix login session handoff',
+    summary: 'The sign-in flow now fails visibly when Supabase is unavailable, blocks duplicate auth clicks, and waits for the session bootstrap to finish before revealing the portal.',
+    changes: [
+      'Improved: The login and registration flow now uses a single initialization state so the portal shell stays hidden until auth setup is fully complete.',
+      'Improved: Supabase channel setup, presence tracking, and session restore now guard against null clients and log useful auth bootstrap failures instead of failing silently.',
+      'Fixed: Sign In now shows visible auth errors when profile lookup, session restore, or the server login handoff fails, instead of appearing to do nothing.',
+      'Fixed: The dashboard no longer appears behind the auth/loading state while initialization is still in progress.'
+    ]
+  },
   {
     version: '1.5.57',
     date: 'April 29, 2026',
@@ -2984,12 +3025,50 @@ window.toggleRepeat = function() {
 let users = [];
 let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
 let isAdmin = Boolean(currentUser?.isAdmin);
+let isInitializing = true;
+let isAuthenticated = Boolean(currentUser?.username);
+let authRequestInFlight = false;
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();
 let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 
+function syncAuthState() {
+  isAuthenticated = Boolean(currentUser?.username);
+}
+
+function renderAppState() {
+  const showShell = !isInitializing && isAuthenticated;
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) authModal.style.display = showShell ? 'none' : 'flex';
+
+  const shellNodes = [
+    document.getElementById('sidebar'),
+    document.getElementById('menu-toggle'),
+    document.getElementById('overlay'),
+    document.getElementById('live-clock'),
+    document.getElementById('page-indicator'),
+  ];
+  shellNodes.forEach((node) => {
+    if (!node) return;
+    node.style.visibility = showShell ? '' : 'hidden';
+    node.style.pointerEvents = showShell ? '' : 'none';
+  });
+
+  document.querySelectorAll('.page').forEach((page) => {
+    page.style.visibility = showShell ? '' : 'hidden';
+    if (!showShell) page.style.pointerEvents = 'none';
+    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
+  });
+}
+
+function setInitializing(nextValue) {
+  isInitializing = Boolean(nextValue);
+  renderAppState();
+}
+
 function saveSession() {
+  syncAuthState();
   if (currentUser) {
     localStorage.setItem('classAppUser', JSON.stringify(currentUser));
   } else {
@@ -3036,7 +3115,7 @@ function getUserActivityLabel(user) {
 }
 
 async function persistLastSeen({ online = true, force = false } = {}) {
-  if (!currentUser?.username) return;
+  if (!currentUser?.username || !sb) return;
   const now = Date.now();
   if (!force && now - lastSeenWriteAt < 45000) return;
   lastSeenWriteAt = now;
@@ -3070,9 +3149,11 @@ function stopLastSeenHeartbeat() {
 
 function initAppPresence() {
   if (!currentUser?.username || appPresenceChannel) return;
-  appPresenceChannel = sb.channel('class-app-active-users', {
+  const channel = getSupabaseChannel('class-app-active-users', {
     config: { presence: { key: currentUser.username } },
   });
+  if (!channel) return;
+  appPresenceChannel = channel;
   appPresenceChannel
     .on('presence', { event: 'sync' }, () => {
       const state = appPresenceChannel.presenceState() || {};
@@ -3094,7 +3175,7 @@ function initAppPresence() {
 function destroyAppPresence() {
   if (!appPresenceChannel) return;
   try { appPresenceChannel.untrack(); } catch (_) {}
-  try { sb.removeChannel(appPresenceChannel); } catch (_) {}
+  try { sb?.removeChannel?.(appPresenceChannel); } catch (_) {}
   appPresenceChannel = null;
   livePresenceUsers = new Set();
 }
@@ -3119,11 +3200,11 @@ function toSessionUser(profile, serverSession = {}) {
 }
 
 async function requestServerSession(endpoint, payload) {
-  const response = await fetch(endpoint, {
+  const response = await withAuthTimeout(fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  });
+  }), 'Sign-in request timed out. Please try again.');
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(data.error || `Request failed (${response.status})`);
@@ -3137,13 +3218,27 @@ async function requestServerSession(endpoint, payload) {
 async function finalizeLogin(profile, serverSession) {
   currentUser = toSessionUser(profile, serverSession);
   isAdmin = Boolean(serverSession.isAdmin);
+  syncAuthState();
   setServerAuthToken(serverSession.token || '');
   if (isAdmin) revealAdminNav();
   saveSession();
-  await persistLastSeen({ online: true, force: true });
-  establishSession();
-  logActivity('login');
-  recordAppOpen();
+  try {
+    await persistLastSeen({ online: true, force: true });
+    await establishSession();
+    logActivity('login');
+    await recordAppOpen();
+    setInitializing(false);
+  } catch (error) {
+    console.error('[auth] finalizeLogin failed:', error);
+    stopLastSeenHeartbeat();
+    destroyAppPresence();
+    currentUser = null;
+    isAdmin = false;
+    syncAuthState();
+    saveSession();
+    setAuthError('Could not finish signing in. Please refresh and try again.');
+    throw error;
+  }
 }
 
 function promptLegacyPasswordSetup(profile) {
@@ -3155,6 +3250,10 @@ function promptLegacyPasswordSetup(profile) {
       return;
     }
     try {
+      if (!await waitForSupabaseClient()) {
+        setAuthError('Connection error. Please refresh the page.');
+        return;
+      }
       const passwordHash = await hashPassword(newPassword);
       const { error } = await sb.from('profiles').update({ password_hash: passwordHash }).eq('username', profile.username);
       if (error) throw error;
@@ -3169,9 +3268,16 @@ function promptLegacyPasswordSetup(profile) {
 }
 
 window.login = async function() {
+  if (authRequestInFlight) return;
+  authRequestInFlight = true;
   const btn = document.getElementById('btn-sign-in');
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
   try {
+    setInitializing(true);
+    if (!await waitForSupabaseClient()) {
+      setAuthError('Connection error. Please refresh the page.');
+      return;
+    }
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     if (!username) { customAlert('Enter username'); return; }
@@ -3186,8 +3292,8 @@ window.login = async function() {
         'Sign-in timed out. Check your connection.'
       );
     } catch (serverError) {
+      console.error('[auth] Login failed:', serverError);
       if (serverError.status === 428) {
-        // Password not yet set — guide user through one-time setup
         if (await waitForSupabaseClient()) {
           const { data: profile } = await sb.from('profiles')
             .select(PROFILE_SELECT_FIELDS).eq('username', username).single();
@@ -3223,14 +3329,19 @@ window.login = async function() {
     }
     await finalizeLogin(profile, serverSession);
   } finally {
+    authRequestInFlight = false;
+    if (!isAuthenticated) setInitializing(false);
     if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
   }
 };
 
 window.register = async function() {
+  if (authRequestInFlight) return;
+  authRequestInFlight = true;
   const btn = document.getElementById('btn-create-account');
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating account...'; }
   try {
+    setInitializing(true);
     if (!await waitForSupabaseClient()) {
       setAuthError('Connection error. Please refresh the page.');
       return;
@@ -3286,9 +3397,12 @@ window.register = async function() {
       const serverSession = await requestServerSession('/api/register', { username, password });
       await finalizeLogin(insertResult.data, serverSession);
     } catch (serverError) {
+      console.error('[auth] Registration failed:', serverError);
       setAuthError(serverError.message || 'Could not finish registration.');
     }
   } finally {
+    authRequestInFlight = false;
+    if (!isAuthenticated) setInitializing(false);
     if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
   }
 };
@@ -3306,8 +3420,10 @@ window.handleLogout = async function() {
     }
     currentUser = null;
     isAdmin = false;
+    syncAuthState();
     sessionStorage.removeItem('recordedAppOpenFor');
     saveSession();
+    setInitializing(false);
     location.reload();
 };
 
@@ -3338,9 +3454,12 @@ document.addEventListener('visibilitychange', () => {
   else persistLastSeen({ online: true, force: true });
 });
 
-function establishSession() {
-  const authModal = document.getElementById('auth-modal');
-  if(authModal) authModal.style.display = 'none';
+async function establishSession() {
+  if (!await waitForSupabaseClient()) {
+    throw new Error('Connection error. Please refresh the page.');
+  }
+  syncAuthState();
+  renderAppState();
   const navLogout = document.getElementById('nav-logout');
   if(navLogout) navLogout.style.display = 'flex';
 
@@ -3732,7 +3851,9 @@ window.openChat = function(type, target = null) {
 
 function initSupabaseRealtimeChat() {
     if (realtimeSubscription) return;
-    realtimeSubscription = sb.channel('public:messages')
+    const messagesChannel = getSupabaseChannel('public:messages');
+    if (!messagesChannel) return;
+    realtimeSubscription = messagesChannel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
             if (payload.eventType === 'INSERT') {
                 const m = payload.new;
@@ -3770,12 +3891,15 @@ function initSupabaseRealtimeChat() {
             } 
             if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') fetchMessages(currentChat.type, currentChat.target);
         }).subscribe();
-        
-    sb.channel('public:calendar_notes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, payload => { fetchCalendarNotes(); }).subscribe();
 
-    sb.channel('public:profiles_presence')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsers(); })
+    const notesChannel = getSupabaseChannel('public:calendar_notes');
+    notesChannel
+        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_notes' }, () => { fetchCalendarNotes(); })
+        .subscribe();
+
+    const profilesChannel = getSupabaseChannel('public:profiles_presence');
+    profilesChannel
+        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { fetchUsers(); })
         .subscribe();
 }
 
@@ -4463,6 +4587,7 @@ let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
 async function fetchCalendarNotes() {
+    if (!sb) return;
     const { data, error } = await sb.from('calendar_notes').select('*');
     if (!error && data) {
         calendarNotes = {}; data.forEach(row => { calendarNotes[row.date_key] = row.note; });
@@ -4730,7 +4855,7 @@ window.refreshAppOpenCount = async function() {
 };
 
 async function recordAppOpen() {
-  if (!currentUser?.username) {
+  if (!currentUser?.username || !sb) {
     console.log('[AppOpen] Skipped — no user logged in');
     return window.refreshAppOpenCount();
   }
@@ -4779,9 +4904,11 @@ async function recordAppOpen() {
 
 let appOpenRealtimeReady = false;
 function initAppOpenRealtime() {
-  if (appOpenRealtimeReady || !sb) return;
+  if (appOpenRealtimeReady) return;
+  const channel = getSupabaseChannel('public:app_open_counts');
+  if (!channel) return;
   appOpenRealtimeReady = true;
-  sb.channel('public:app_open_counts')
+  channel
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_open_counts' }, () => {
       window.refreshAppOpenCount();
     })
@@ -4795,6 +4922,7 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
    INITIALIZATION
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
+  renderAppState();
   await initSupabase();
   if (currentUser && !getServerAuthToken()) {
     currentUser = null;
@@ -4810,8 +4938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAppOpenRealtime();
   const dashVersion = document.getElementById('lobby-dash-update-version');
   if (dashVersion) dashVersion.textContent = APP_VERSION;
-  if (currentUser) recordAppOpen();
-  else window.refreshAppOpenCount();
   fetchSharedAnnouncements();
   refreshContributionTally();
 
@@ -4888,8 +5014,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     overlay.addEventListener('click', window.closeMenu);
   }
 
-  if (currentUser) { if (isAdmin) revealAdminNav(); establishSession(); }
-  else { const modal = document.getElementById('auth-modal'); if(modal) modal.style.display = 'flex'; }
+  if (currentUser) {
+    try {
+      if (isAdmin) revealAdminNav();
+      await establishSession();
+      await recordAppOpen();
+    } catch (error) {
+      console.error('[auth] Session restore failed:', error);
+      stopLastSeenHeartbeat();
+      destroyAppPresence();
+      currentUser = null;
+      isAdmin = false;
+      syncAuthState();
+      saveSession();
+      setAuthError('Your saved session expired or failed to load. Please sign in again.');
+      window.refreshAppOpenCount();
+    }
+  } else {
+    window.refreshAppOpenCount();
+  }
+  setInitializing(false);
 
   // Push chat input above the soft keyboard on mobile
   if ('visualViewport' in window) {
@@ -5296,7 +5440,9 @@ async function toggleReaction(messageId, emoji) {
 
 function initReactionsRealtime() {
   if (!sb) return;
-  sb.channel('public:message_reactions')
+  const channel = getSupabaseChannel('public:message_reactions');
+  if (!channel) return;
+  channel
     .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, async () => {
       const history = getCurrentHistory();
       if (history.length) {
@@ -6512,8 +6658,11 @@ window.shareWeeklyAnnouncement = function() {
 
 function initSharedRealtime() {
   if (sharedRealtimeReady) return;
+  const boardsChannel = getSupabaseChannel('public:shared_boards');
+  const tallyChannel = getSupabaseChannel('public:contribution_tally');
+  if (!boardsChannel || !tallyChannel) return;
   sharedRealtimeReady = true;
-  sb.channel('public:shared_boards')
+  boardsChannel
     .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_ai_outputs' }, () => {
       if (currentPage === 'outputai') fetchSharedAIOutputs();
     })
@@ -6522,7 +6671,7 @@ function initSharedRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_updates' }, () => fetchAppUpdates())
     .subscribe();
-  sb.channel('public:contribution_tally')
+  tallyChannel
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'files' }, (payload) => {
       if (payload?.new?.is_original_upload !== false) refreshContributionTally();
     })

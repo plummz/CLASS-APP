@@ -11,20 +11,16 @@ const PROFILE_SELECT_FIELDS = 'id,username,display_name,birthday,address,github,
 const PROFILE_PUBLIC_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 async function initSupabase() {
-  // Retry up to 5 times with backoff — Render free tier can take 30s+ to cold-start.
-  // Without retrying, a cold-start returns an empty config, sb gets empty credentials,
-  // and every Supabase query fails silently while waitForSupabaseClient() still returns true.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const cfg = await fetch('/api/config').then(r => r.json());
-      if (cfg.supabaseUrl && cfg.supabaseKey) {
-        SUPABASE_URL = cfg.supabaseUrl;
-        SUPABASE_KEY = cfg.supabaseKey;
-        break;
-      }
-    } catch (_) {}
-    if (attempt < 4) await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
-  }
+  try {
+    // 5s hard timeout — if the server is still cold-starting the page shouldn't block.
+    // waitForSupabaseClient() retries once on login if credentials are still empty.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
+    clearTimeout(timer);
+    SUPABASE_URL = cfg.supabaseUrl || '';
+    SUPABASE_KEY = cfg.supabaseKey || '';
+  } catch (_) {}
   const { createClient } = window.supabase;
   sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
     global: {
@@ -167,10 +163,38 @@ async function waitForSupabaseClient() {
   // Wait up to 3s for initSupabase to complete (covers slow page loads).
   // Also verify credentials are non-empty — sb is always non-null after init
   // even when credentials failed to load, so checking !sb alone is not enough.
-  const deadline = Date.now() + 3000;
+  // Give initSupabase up to 2s to finish if it's still running
+  const deadline = Date.now() + 2000;
   while (!sb || !SUPABASE_URL) {
     if (Date.now() >= deadline) break;
     await new Promise(r => setTimeout(r, 200));
+  }
+  // If credentials are still missing, the server may have been cold-starting during
+  // page load. Try /api/config once more now that the server should be awake.
+  if (!SUPABASE_URL) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
+      clearTimeout(timer);
+      if (cfg.supabaseUrl && cfg.supabaseKey) {
+        SUPABASE_URL = cfg.supabaseUrl;
+        SUPABASE_KEY = cfg.supabaseKey;
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          global: {
+            fetch: (url, options = {}) => {
+              const headers = new Headers(options.headers || {});
+              try {
+                const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+                if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+              } catch (_) {}
+              return fetch(url, { ...options, headers });
+            },
+          },
+        });
+        window.sb = sb;
+      }
+    } catch (_) {}
   }
   if (!sb || !SUPABASE_URL) {
     console.error('[sb] Supabase client unavailable or missing credentials.');
@@ -351,17 +375,18 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.55';
+const APP_VERSION = '1.5.56';
 const APP_CHANGELOG = [
   {
-    version: '1.5.55',
+    version: '1.5.56',
     date: 'April 29, 2026',
-    title: 'Fix sign-in stuck on cold server start',
-    summary: 'Sign-in was silently broken when the server was cold-starting — /api/config returned empty credentials, Supabase was initialized with a blank URL, and every login attempt failed without any visible error.',
+    title: 'Fix app load delay and sign-in broken by bad retry logic',
+    summary: 'Previous fix accidentally blocked page load for up to 20+ seconds by retrying /api/config inside DOMContentLoaded. Reverted to a single fast attempt with a 5s timeout; retry now only happens on demand when Sign In is clicked.',
     changes: [
-      'Fixed: initSupabase now retries /api/config up to 5 times with backoff so a cold Render start no longer leaves the Supabase client with empty credentials.',
-      'Fixed: waitForSupabaseClient now checks that credentials are actually loaded (not just that the client object exists) and waits up to 3 seconds for a slow init to complete.',
-      'Fixed: Sign In and Create Account buttons show a loading state and surface a visible error instead of appearing frozen.'
+      'Fixed: initSupabase no longer retries inside DOMContentLoaded — a retry loop there blocked the entire page from loading.',
+      'Fixed: /api/config fetch now has a 5-second AbortController timeout so a hung server never freezes the page.',
+      'Fixed: waitForSupabaseClient re-fetches /api/config once on login if credentials are still empty, covering the case where the server was cold-starting during initial page load.',
+      'Fixed: initAppOpenRealtime and fetchSharedAnnouncements now guard against null Supabase client instead of crashing when called before init completes.'
     ]
   },
   {
@@ -4734,7 +4759,7 @@ async function recordAppOpen() {
 
 let appOpenRealtimeReady = false;
 function initAppOpenRealtime() {
-  if (appOpenRealtimeReady || typeof sb === 'undefined') return;
+  if (appOpenRealtimeReady || !sb) return;
   appOpenRealtimeReady = true;
   sb.channel('public:app_open_counts')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_open_counts' }, () => {
@@ -6366,6 +6391,7 @@ window.deleteSharedAIOutput = function(id) {
 
 async function fetchSharedAnnouncements() {
   const feed = document.getElementById('announcement-feed');
+  if (!sb) { if (feed) feed.innerHTML = ''; return; }
   if (feed) feed.innerHTML = createInlineLoader('Loading announcements...');
   const { data, error } = await sb.from('shared_announcements').select('*').order('created_at', { ascending: false }).limit(80);
   if (error) {

@@ -7,8 +7,8 @@ let SUPABASE_URL = '';
 let SUPABASE_KEY = '';
 let sb = null;
 let serverAuthToken = localStorage.getItem('classAppToken') || '';
-const PROFILE_SELECT_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at,updated_at';
-const PROFILE_PUBLIC_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
+const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at,updated_at';
+const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 async function initSupabase() {
   try {
@@ -375,8 +375,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.56';
+const APP_VERSION = '1.5.57';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.57',
+    date: 'April 29, 2026',
+    title: 'Fix sign-in: remove non-existent id column and server-first login',
+    summary: 'Sign-in was silently failing because every Supabase profile fetch included a non-existent "id" column (profiles use username as primary key). Login is now server-first so admin accounts always work via the server fast-path even when a Supabase password is not yet set.',
+    changes: [
+      'Fixed: Removed "id" from PROFILE_SELECT_FIELDS and PROFILE_PUBLIC_FIELDS — profiles table uses username as primary key, not id, causing all profile fetches to fail.',
+      'Fixed: Removed "id" from SUPABASE_AUTH_SELECT in server.js for the same reason.',
+      'Fixed: Login is now server-first — credentials are verified by the server (including admin fast-path) before any Supabase profile fetch, so admin can sign in with their env-var password even when Supabase password_hash is NULL.',
+      'Fixed: If server returns 428 (password setup required), the legacy password setup prompt now appears instead of a silent failure.',
+      'Fixed: Profile fetch after login has a 4-second timeout and falls back to a minimal profile object, so login completes even when Supabase is slow.'
+    ]
+  },
   {
     version: '1.5.56',
     date: 'April 29, 2026',
@@ -3159,49 +3172,56 @@ window.login = async function() {
   const btn = document.getElementById('btn-sign-in');
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
   try {
-    if (!await waitForSupabaseClient()) {
-      setAuthError('Connection error. Please refresh the page.');
-      return;
-    }
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     if (!username) { customAlert('Enter username'); return; }
     if (!password) { customAlert('Enter password'); return; }
-
     setAuthError('');
-    const fetchPromise = sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single();
-    let profile, error;
-    try {
-      ({ data: profile, error } = await withAuthTimeout(fetchPromise));
-    } catch (err) {
-      setAuthError(err.message);
-      return;
-    }
-    if (error || !profile) {
-      setAuthError('User not found. Please register.');
-      return;
-    }
-    if (!profile.password_hash) {
-      promptLegacyPasswordSetup(profile);
-      return;
-    }
 
-    const passwordHash = await hashPassword(password);
-    if (passwordHash !== profile.password_hash) {
-      setAuthError('Invalid password');
-      return;
-    }
-
+    // Server-first: admin fast-path works even when Supabase password_hash is NULL
+    let serverSession;
     try {
-      const serverSession = await requestServerSession('/api/login', { username, password });
-      await finalizeLogin(profile, serverSession);
+      serverSession = await withAuthTimeout(
+        requestServerSession('/api/login', { username, password }),
+        'Sign-in timed out. Check your connection.'
+      );
     } catch (serverError) {
-      if (serverError.code === 'PASSWORD_SETUP_REQUIRED') {
-        promptLegacyPasswordSetup(profile);
+      if (serverError.status === 428) {
+        // Password not yet set — guide user through one-time setup
+        if (await waitForSupabaseClient()) {
+          const { data: profile } = await sb.from('profiles')
+            .select(PROFILE_SELECT_FIELDS).eq('username', username).single();
+          if (profile) { promptLegacyPasswordSetup(profile); return; }
+        }
+        setAuthError('Password setup required. Please contact an admin or try registering.');
         return;
       }
       setAuthError(serverError.message || 'Could not sign in.');
+      return;
     }
+
+    // Fetch full profile for session data; fall back to minimal object if Supabase unavailable
+    let profile = null;
+    if (sb && SUPABASE_URL) {
+      try {
+        const result = await Promise.race([
+          sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
+        ]);
+        profile = result.data || null;
+      } catch (_) { /* fall through */ }
+    }
+    if (!profile) {
+      const su = serverSession.user || {};
+      profile = {
+        username: su.username || username,
+        display_name: su.displayName || su.display_name || su.username || username,
+        avatar: su.avatar || null,
+        online: true,
+        last_seen_at: new Date().toISOString(),
+      };
+    }
+    await finalizeLogin(profile, serverSession);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
   }

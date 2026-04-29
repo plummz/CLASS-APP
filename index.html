@@ -302,8 +302,8 @@
         <input type="password" id="password" class="modal-input" placeholder="Password">
       </div>
       <div class="modal-btn-group">
-        <button class="btn-primary flex-1" onclick="login()">Sign In</button>
-        <button class="btn-primary flex-1" onclick="register()">Create Account</button>
+        <button id="btn-sign-in" class="btn-primary flex-1" onclick="login()">Sign In</button>
+        <button id="btn-create-account" class="btn-primary flex-1" onclick="register()">Create Account</button>
       </div>
       <p id="errorMessage" class="error-msg"></p>
     </div>
@@ -1523,7 +1523,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=98"></script>
+<script src="script.js?v=99"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

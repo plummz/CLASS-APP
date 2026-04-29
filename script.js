@@ -338,18 +338,15 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.53';
+const APP_VERSION = '1.5.54';
 const APP_CHANGELOG = [
   {
-    version: '1.5.53',
+    version: '1.5.54',
     date: 'April 29, 2026',
-    title: 'Fix Login — Supabase RLS Migration Corrected',
-    summary: 'Fixes a broken database migration that enabled Row Level Security on the profiles table without a valid SELECT policy, blocking all sign-ins.',
+    title: 'Fix sign-in frozen state',
+    summary: 'Sign In and Create Account now surface connection problems immediately instead of appearing frozen when Supabase is slow or unavailable.',
     changes: [
-      'Fixed: Migration 013 no longer enables RLS on the profiles table. The previous migration incorrectly used auth.uid() and a non-existent id column, which caused Supabase to reject all profile reads and lock every user out of sign-in.',
-      'Fixed: Lobby socket re-identify now sends the correct { username, token } payload when the socket reconnects inside the lobby, preventing identity loss after a disconnect.',
-      'Fixed: Music search results and error messages are now escaped with escapeHTML before being written to innerHTML, closing two remaining XSS vectors.',
-      'Fixed: Admin login password comparison now routes both sides through hashPassword() instead of a direct plain-text string comparison, preventing timing attacks on the admin account.'
+      'Fixed: Sign In and Create Account buttons now show a loading state, display a visible error if Supabase is unavailable, and time out after 10 seconds instead of hanging indefinitely.'
     ]
   },
   {
@@ -3056,6 +3053,13 @@ function setAuthError(message = '') {
   errBox.style.display = message ? 'block' : 'none';
 }
 
+function withAuthTimeout(promise, message = 'Request timed out. Check your connection.') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), 10000)),
+  ]);
+}
+
 function toSessionUser(profile, serverSession = {}) {
   const { password_hash, ...safeProfile } = profile || {};
   return { ...safeProfile, isAdmin: Boolean(serverSession.isAdmin) };
@@ -3112,80 +3116,120 @@ function promptLegacyPasswordSetup(profile) {
 }
 
 window.login = async function() {
-  if (!await waitForSupabaseClient()) return;
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
-  if (!username) return customAlert('Enter username');
-  if (!password) return customAlert('Enter password');
-
-  setAuthError('');
-  const { data: profile, error } = await sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single();
-  if (error || !profile) {
-    setAuthError('User not found. Please register.');
-    return;
-  }
-  if (!profile.password_hash) {
-    promptLegacyPasswordSetup(profile);
-    return;
-  }
-
-  const passwordHash = await hashPassword(password);
-  if (passwordHash !== profile.password_hash) {
-    setAuthError('Invalid password');
-    return;
-  }
-
+  const btn = document.getElementById('btn-sign-in');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
   try {
-    const serverSession = await requestServerSession('/api/login', { username, password });
-    await finalizeLogin(profile, serverSession);
-  } catch (serverError) {
-    if (serverError.code === 'PASSWORD_SETUP_REQUIRED') {
+    if (!await waitForSupabaseClient()) {
+      setAuthError('Connection error. Please refresh the page.');
+      return;
+    }
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username) { customAlert('Enter username'); return; }
+    if (!password) { customAlert('Enter password'); return; }
+
+    setAuthError('');
+    const fetchPromise = sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single();
+    let profile, error;
+    try {
+      ({ data: profile, error } = await withAuthTimeout(fetchPromise));
+    } catch (err) {
+      setAuthError(err.message);
+      return;
+    }
+    if (error || !profile) {
+      setAuthError('User not found. Please register.');
+      return;
+    }
+    if (!profile.password_hash) {
       promptLegacyPasswordSetup(profile);
       return;
     }
-    setAuthError(serverError.message || 'Could not sign in.');
+
+    const passwordHash = await hashPassword(password);
+    if (passwordHash !== profile.password_hash) {
+      setAuthError('Invalid password');
+      return;
+    }
+
+    try {
+      const serverSession = await requestServerSession('/api/login', { username, password });
+      await finalizeLogin(profile, serverSession);
+    } catch (serverError) {
+      if (serverError.code === 'PASSWORD_SETUP_REQUIRED') {
+        promptLegacyPasswordSetup(profile);
+        return;
+      }
+      setAuthError(serverError.message || 'Could not sign in.');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
   }
 };
 
 window.register = async function() {
-  if (!await waitForSupabaseClient()) return;
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
-  if (!username) return customAlert('Enter username');
-  if (!password) return customAlert('Enter password');
-  if (password.length < 8) return customAlert('Password must be at least 8 characters.');
-  const formatError = validateUsernameFormat(username);
-  if (formatError) return customAlert(formatError);
+  const btn = document.getElementById('btn-create-account');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
+  try {
+    if (!await waitForSupabaseClient()) {
+      setAuthError('Connection error. Please refresh the page.');
+      return;
+    }
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username) { customAlert('Enter username'); return; }
+    if (!password) { customAlert('Enter password'); return; }
+    if (password.length < 8) { customAlert('Password must be at least 8 characters.'); return; }
+    const formatError = validateUsernameFormat(username);
+    if (formatError) { customAlert(formatError); return; }
 
-  setAuthError('');
-  const passwordHash = await hashPassword(password);
-  const insertPayload = {
-    username,
-    display_name: username,
-    online: true,
-    password_hash: passwordHash,
-    last_seen_at: new Date().toISOString(),
-  };
-
-  let insertResult = await sb.from('profiles').insert([insertPayload]).select(PROFILE_SELECT_FIELDS).single();
-  if (insertResult.error && /last_seen_at/i.test(insertResult.error.message || '')) {
-    insertResult = await sb.from('profiles').insert([{
+    setAuthError('');
+    const passwordHash = await hashPassword(password);
+    const insertPayload = {
       username,
       display_name: username,
       online: true,
       password_hash: passwordHash,
-    }]).select(PROFILE_SELECT_FIELDS).single();
-  }
-  if (insertResult.error) {
-    setAuthError('Username taken or error occurred.');
-    return;
-  }
+      last_seen_at: new Date().toISOString(),
+    };
 
-  try {
-    const serverSession = await requestServerSession('/api/register', { username, password });
-    await finalizeLogin(insertResult.data, serverSession);
-  } catch (serverError) {
-    setAuthError(serverError.message || 'Could not finish registration.');
+    let insertResult;
+    try {
+      insertResult = await withAuthTimeout(
+        sb.from('profiles').insert([insertPayload]).select(PROFILE_SELECT_FIELDS).single()
+      );
+    } catch (err) {
+      setAuthError(err.message);
+      return;
+    }
+    if (insertResult.error && /last_seen_at/i.test(insertResult.error.message || '')) {
+      try {
+        insertResult = await withAuthTimeout(
+          sb.from('profiles').insert([{
+            username,
+            display_name: username,
+            online: true,
+            password_hash: passwordHash,
+          }]).select(PROFILE_SELECT_FIELDS).single()
+        );
+      } catch (err) {
+        setAuthError(err.message);
+        return;
+      }
+    }
+    if (insertResult.error) {
+      setAuthError('Username taken or error occurred.');
+      return;
+    }
+
+    try {
+      const serverSession = await requestServerSession('/api/register', { username, password });
+      await finalizeLogin(insertResult.data, serverSession);
+    } catch (serverError) {
+      setAuthError(serverError.message || 'Could not finish registration.');
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
   }
 };
 

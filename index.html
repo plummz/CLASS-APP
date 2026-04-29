@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=40">
+<link rel="stylesheet" href="style.css?v=41">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -292,7 +292,7 @@
  
   <div id="overlay"></div>
  
-  <div id="auth-modal" class="custom-modal-overlay high-z pointer-auto">
+  <div id="auth-modal" class="custom-modal-overlay high-z pointer-auto" style="display:none;">
     <div class="custom-modal-box small-box auth-modal-box">
       <h2 class="modal-title text-white">CLASS APP PORTAL</h2>
       <div class="input-group">
@@ -302,8 +302,8 @@
         <input type="password" id="password" class="modal-input" placeholder="Password" autocomplete="current-password">
       </div>
       <div class="modal-btn-group">
-        <button id="btn-sign-in" type="button" class="btn-primary flex-1" onclick="login()">Sign In</button>
-        <button id="btn-create-account" type="button" class="btn-primary flex-1" onclick="register()">Create Account</button>
+        <button id="btn-sign-in" type="button" class="btn-primary flex-1">Sign In</button>
+        <button id="btn-create-account" type="button" class="btn-primary flex-1">Create Account</button>
       </div>
       <p id="errorMessage" class="error-msg"></p>
     </div>
@@ -1513,7 +1513,11 @@
       const splash = document.getElementById('splash-screen');
       if (!splash) return;
       splash.classList.add('splash-out');
-      setTimeout(() => { splash.remove(); cancelAnimationFrame(raf); }, 650);
+      setTimeout(() => {
+        splash.remove();
+        cancelAnimationFrame(raf);
+        window.dispatchEvent(new Event('classapp:splash-dismissed'));
+      }, 650);
     }
     setTimeout(dismissSplash, 2800);
     // Also dismiss on tap for impatient users
@@ -1523,7 +1527,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=103"></script>
+<script src="script.js?v=104"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

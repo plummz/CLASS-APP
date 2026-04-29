@@ -404,8 +404,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.58';
+const APP_VERSION = '1.5.59';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.59',
+    date: 'April 29, 2026',
+    title: 'Fix auth portal boot and dead buttons',
+    summary: 'The auth portal now waits for the splash boot to finish, binds its buttons explicitly after DOM load, and gives visible status feedback for sign-in, registration, and legacy password setup.',
+    changes: [
+      'New: Auth portal buttons now bind explicit click and Enter-key handlers after DOM load so Sign In and Create Account still work even if inline handlers are stale or blocked.',
+      'Improved: The auth portal now stays hidden until the splash boot sequence is complete, preventing the portal from appearing over the loading screen.',
+      'Improved: The auth status box now shows info, success, and error states so users can see when sign-in is in progress, when legacy password setup is required, and when a failure occurs.',
+      'Fixed: A newly activated service worker now forces one safe refresh when the app version changes, preventing stale cached login code from lingering after deploy.'
+    ]
+  },
   {
     version: '1.5.58',
     date: 'April 29, 2026',
@@ -3032,6 +3044,7 @@ let appPresenceChannel = null;
 let livePresenceUsers = new Set();
 let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
+let authBindingsReady = false;
 
 function syncAuthState() {
   isAuthenticated = Boolean(currentUser?.username);
@@ -3039,8 +3052,9 @@ function syncAuthState() {
 
 function renderAppState() {
   const showShell = !isInitializing && isAuthenticated;
+  const showAuthModal = !isInitializing && !isAuthenticated;
   const authModal = document.getElementById('auth-modal');
-  if (authModal) authModal.style.display = showShell ? 'none' : 'flex';
+  if (authModal) authModal.style.display = showAuthModal ? 'flex' : 'none';
 
   const shellNodes = [
     document.getElementById('sidebar'),
@@ -3065,6 +3079,26 @@ function renderAppState() {
 function setInitializing(nextValue) {
   isInitializing = Boolean(nextValue);
   renderAppState();
+}
+
+function waitForSplashDismissal() {
+  if (!document.getElementById('splash-screen')) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      observer.disconnect();
+      resolve();
+    };
+    const timer = setTimeout(finish, 4500);
+    const observer = new MutationObserver(() => {
+      if (!document.getElementById('splash-screen')) finish();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('classapp:splash-dismissed', finish, { once: true });
+  });
 }
 
 function saveSession() {
@@ -3180,11 +3214,25 @@ function destroyAppPresence() {
   livePresenceUsers = new Set();
 }
 
-function setAuthError(message = '') {
+function setAuthMessage(message = '', type = 'error') {
   const errBox = document.getElementById('errorMessage');
   if (!errBox) return;
   errBox.innerText = message;
+  if (message) errBox.dataset.state = type;
+  else errBox.removeAttribute('data-state');
   errBox.style.display = message ? 'block' : 'none';
+}
+
+function setAuthError(message = '') {
+  setAuthMessage(message, 'error');
+}
+
+function setAuthInfo(message = '') {
+  setAuthMessage(message, 'info');
+}
+
+function setAuthSuccess(message = '') {
+  setAuthMessage(message, 'success');
 }
 
 function withAuthTimeout(promise, message = 'Request timed out. Check your connection.') {
@@ -3192,6 +3240,40 @@ function withAuthTimeout(promise, message = 'Request timed out. Check your conne
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(message)), 10000)),
   ]);
+}
+
+function bindAuthPortalHandlers() {
+  if (authBindingsReady) return;
+  const signInBtn = document.getElementById('btn-sign-in');
+  const createBtn = document.getElementById('btn-create-account');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  if (!signInBtn || !createBtn || !usernameInput || !passwordInput) {
+    console.error('[auth] Portal controls missing from DOM.');
+    return;
+  }
+  signInBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.login();
+  });
+  createBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.register();
+  });
+  usernameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      window.login();
+    }
+  });
+  passwordInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      window.login();
+    }
+  });
+  authBindingsReady = true;
+  console.info('[auth] Portal button handlers attached.');
 }
 
 function toSessionUser(profile, serverSession = {}) {
@@ -3223,11 +3305,11 @@ async function finalizeLogin(profile, serverSession) {
   if (isAdmin) revealAdminNav();
   saveSession();
   try {
+    setAuthSuccess('Signed in. Loading your portal...');
     await persistLastSeen({ online: true, force: true });
     await establishSession();
     logActivity('login');
     await recordAppOpen();
-    setInitializing(false);
   } catch (error) {
     console.error('[auth] finalizeLogin failed:', error);
     stopLastSeenHeartbeat();
@@ -3242,7 +3324,7 @@ async function finalizeLogin(profile, serverSession) {
 }
 
 function promptLegacyPasswordSetup(profile) {
-  customAlert('This account needs a password before it can sign in.');
+  setAuthInfo('This account needs a password before it can sign in.');
   window.customPrompt('Create a new password (min 8 characters)', async function(newPassword) {
     if (!newPassword || newPassword.length < 8) {
       customAlert('Password must be at least 8 characters.');
@@ -3258,10 +3340,13 @@ function promptLegacyPasswordSetup(profile) {
       const { error } = await sb.from('profiles').update({ password_hash: passwordHash }).eq('username', profile.username);
       if (error) throw error;
       const refreshedProfile = { ...profile, password_hash: passwordHash };
+      setAuthInfo('Saving your new password...');
       const serverSession = await requestServerSession('/api/register', { username: profile.username, password: newPassword });
       await finalizeLogin(refreshedProfile, serverSession);
+      setAuthSuccess('Password created. Loading your portal...');
       showToast('Password created. You are now signed in.');
     } catch (error) {
+      console.error('[auth] Legacy password setup failed:', error);
       setAuthError(error.message || 'Could not save your password yet.');
     }
   }, '', { type: 'password' });
@@ -3273,7 +3358,8 @@ window.login = async function() {
   const btn = document.getElementById('btn-sign-in');
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
   try {
-    setInitializing(true);
+    console.info('[auth] Sign-in requested.');
+    setAuthInfo('Signing in...');
     if (!await waitForSupabaseClient()) {
       setAuthError('Connection error. Please refresh the page.');
       return;
@@ -3282,7 +3368,7 @@ window.login = async function() {
     const password = document.getElementById('password').value;
     if (!username) { customAlert('Enter username'); return; }
     if (!password) { customAlert('Enter password'); return; }
-    setAuthError('');
+    setAuthInfo('Signing in...');
 
     // Server-first: admin fast-path works even when Supabase password_hash is NULL
     let serverSession;
@@ -3328,9 +3414,11 @@ window.login = async function() {
       };
     }
     await finalizeLogin(profile, serverSession);
+  } catch (error) {
+    console.error('[auth] Unexpected login error:', error);
+    setAuthError(error?.message || 'Could not sign in.');
   } finally {
     authRequestInFlight = false;
-    if (!isAuthenticated) setInitializing(false);
     if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
   }
 };
@@ -3341,7 +3429,8 @@ window.register = async function() {
   const btn = document.getElementById('btn-create-account');
   if (btn) { btn.disabled = true; btn.textContent = 'Creating account...'; }
   try {
-    setInitializing(true);
+    console.info('[auth] Registration requested.');
+    setAuthInfo('Creating your account...');
     if (!await waitForSupabaseClient()) {
       setAuthError('Connection error. Please refresh the page.');
       return;
@@ -3354,7 +3443,7 @@ window.register = async function() {
     const formatError = validateUsernameFormat(username);
     if (formatError) { customAlert(formatError); return; }
 
-    setAuthError('');
+    setAuthInfo('Creating your account...');
     const passwordHash = await hashPassword(password);
     const insertPayload = {
       username,
@@ -3400,9 +3489,11 @@ window.register = async function() {
       console.error('[auth] Registration failed:', serverError);
       setAuthError(serverError.message || 'Could not finish registration.');
     }
+  } catch (error) {
+    console.error('[auth] Unexpected registration error:', error);
+    setAuthError(error?.message || 'Could not finish registration.');
   } finally {
     authRequestInFlight = false;
-    if (!isAuthenticated) setInitializing(false);
     if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
   }
 };
@@ -4923,6 +5014,8 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
   renderAppState();
+  bindAuthPortalHandlers();
+  const splashReady = waitForSplashDismissal();
   await initSupabase();
   if (currentUser && !getServerAuthToken()) {
     currentUser = null;
@@ -5033,6 +5126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     window.refreshAppOpenCount();
   }
+  await splashReady;
   setInitializing(false);
 
   // Push chat input above the soft keyboard on mobile
@@ -5161,6 +5255,14 @@ function handleNotificationDeepLink() {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'APP_CACHE_UPDATED' && event.data.version && event.data.version !== APP_VERSION) {
+      const cacheReloadKey = 'classAppCacheReloadedVersion';
+      if (sessionStorage.getItem(cacheReloadKey) !== event.data.version) {
+        sessionStorage.setItem(cacheReloadKey, event.data.version);
+        window.location.reload();
+      }
+      return;
+    }
     if (event.data?.type === 'OPEN_PRIVATE_CHAT' && event.data.sender) {
       openChat('private', event.data.sender);
     }

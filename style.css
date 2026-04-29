@@ -1557,6 +1557,14 @@ body {
   padding: 8px;
   border-radius: 5px;
 }
+.error-msg[data-state="info"] {
+  color: #8fe8ff;
+  background: rgba(36, 166, 255, 0.12);
+}
+.error-msg[data-state="success"] {
+  color: #9dffbf;
+  background: rgba(0, 255, 136, 0.12);
+}
 
 /* ============================================================
    CHAT SYSTEM

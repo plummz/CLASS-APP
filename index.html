@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="features/folders/folders.css?v=1">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
-  <link rel="stylesheet" href="features/royale/royale.css?v=17">
+<link rel="stylesheet" href="features/royale/royale.css?v=18">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
@@ -989,6 +989,17 @@
       <button id="rl-early-drop-btn" class="rl-early-drop-btn hidden" type="button" aria-label="Drop early from parachute">DROP</button>
       <!-- Special crate countdown badge -->
       <div id="rl-crate-badge" aria-live="polite"></div>
+      <div id="rl-crate-panel" class="rl-crate-panel hidden" aria-live="polite">
+        <div class="rl-crate-panel-head">
+          <strong id="rl-crate-title">Nearby Crate</strong>
+          <button id="rl-crate-close" class="rl-crate-close" type="button" aria-label="Close crate panel">Close</button>
+        </div>
+        <p id="rl-crate-copy" class="rl-crate-copy">Move closer to a crate to open it.</p>
+        <div id="rl-crate-actions" class="rl-crate-actions">
+          <button id="rl-crate-open" class="rl-crate-open" type="button">Open Crate</button>
+        </div>
+        <div id="rl-crate-choices" class="rl-crate-choices"></div>
+      </div>
       <!-- Blood skin picker button (top-right, subtle) -->
       <button id="rl-blood-btn" onclick="window.royaleModule?.openBloodSkinMenu()" title="Blood Effect Skins"
         style="position:absolute;top:10px;right:80px;z-index:100;background:rgba(0,0,0,0.55);border:1px solid rgba(180,0,0,0.5);border-radius:999px;padding:0 10px;height:36px;color:rgba(255,100,100,0.9);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;letter-spacing:0.04em;">
@@ -1512,7 +1523,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=94"></script>
+<script src="script.js?v=95"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1529,7 +1540,7 @@
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
   <script src="features/pokemon/pokemon.js?v=3"></script>
-  <script src="features/royale/royale.js?v=24"></script>
+  <script src="features/royale/royale.js?v=25"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>

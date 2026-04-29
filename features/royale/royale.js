@@ -443,6 +443,7 @@ window.royaleModule = (function () {
   let damageIndicator = { life: 0, angle: 0 };
   let pickupBanner = { text: '', life: 0 };
   let throwAim = { active:false, x:0, y:0, sx:0, sy:0, pointerId:null };
+  let crateUi = { nearby:null, active:null };
   let landscapeReady = true;
   let rotatedLandscapeShell = false;
   let stepTimer = 0; // footstep audio timer
@@ -472,6 +473,7 @@ window.royaleModule = (function () {
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
     damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};
+    crateUi={nearby:null,active:null};
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
@@ -660,6 +662,7 @@ window.royaleModule = (function () {
 
     bindTapButton('rl-crouch-btn', () => { stance = stance === 'crouch' ? 'stand' : 'crouch'; });
     bindTapButton('rl-jump-btn', () => { if (stance !== 'prone') jumpBoost = Math.max(jumpBoost, 0.22); });
+    bindCratePanelButtons();
     bindEndActionButtons();
 
     hideLoading();
@@ -691,6 +694,7 @@ window.royaleModule = (function () {
     document.body.classList.remove('rl-force-landscape-shell', 'rl-portrait-blocked');
     shootPressed = false; shootJustDown = false;
     hideEndActionButtons();
+    closeCratePanel(true);
     destroyMultiplayer();
   }
 
@@ -794,6 +798,11 @@ window.royaleModule = (function () {
     if (e.type === 'keydown') {
       keysJustDown.add(e.code);
       if (e.code === 'Space' && gamePhase === 'parachute' && !paraDeployed) paraDeployed = true;
+      if (e.code === 'KeyF' && gamePhase === 'playing') {
+        updateCratePanel();
+        if (crateUi.nearby) openNearbyCrate();
+      }
+      if (e.code === 'Escape' && crateUi.active) closeCratePanel(true);
     }
   }
 
@@ -2149,12 +2158,16 @@ window.royaleModule = (function () {
 
   // - Right aim joystick -
   const aimJoy = { active:false, id:-1, sx:0, sy:0, cx:0, cy:0, dx:0, dy:0 };
+  const CRATE_INTERACT_RADIUS = 54;
+  const CRATE_UI_RELEASE_RADIUS = 78;
+  const ZONE_DAMAGE_BY_PHASE = [1, 3, 5, 7];
 
   // - Loot & crate spawning -
   const LOOT_POOL = ['pistol','smg','ar','shotgun','sniper','revolver','battlerifle','grenade','molotov','rpg'];
   const WEAPON_RARITY = ['pistol','pistol','smg','smg','ar','ar','shotgun','revolver','battlerifle','sniper','grenade','grenade','molotov','molotov','rpg'];
   // medkit appears 3- for ~38% medkit rate among supplies
   const SUPPLY_POOL = ['medkit','medkit','medkit','armor_light','armor_heavy','ammo_box'];
+  const CRATE_WEAPON_POOL = ['smg','ar','shotgun','revolver','battlerifle','sniper','grenade','molotov'];
 
   function spawnLoot() {
     loot = []; crates = [];
@@ -2277,6 +2290,7 @@ window.royaleModule = (function () {
     zone.nextCx = MAP_PX/2; zone.nextCy = MAP_PX/2;
     zone.nextR = ZONE_PHASES[0].toR;
     zone.phase = 0; zone.timer = 0; zone.shrinking = false;
+    zone.dmgTick = 0;
   }
 
   // - Shooting -
@@ -2690,10 +2704,18 @@ window.royaleModule = (function () {
     }
     // Out-of-zone damage
     zone.dmgTick += dt;
-    if (zone.dmgTick >= 0.5) {
-      zone.dmgTick = 0;
+    while (zone.dmgTick >= 1) {
+      zone.dmgTick -= 1;
+      const zoneTickDamage = ZONE_DAMAGE_BY_PHASE[Math.min(zone.phase, ZONE_DAMAGE_BY_PHASE.length - 1)];
       const d=Math.sqrt((player.x-zone.cx)**2+(player.y-zone.cy)**2);
-      if (d > zone.r) applyDamageToPlayer(4*(1+zone.phase*0.5));
+      if (d > zone.r) applyDamageToPlayer(zoneTickDamage);
+      for (const bt of bots) {
+        if (!bt.alive) continue;
+        const zd = Math.sqrt((bt.x-zone.cx)**2 + (bt.y-zone.cy)**2);
+        if (zd > zone.r) {
+          damageBot(bt, zoneTickDamage, 'storm zone', { credit:false, message:`${bt.name} was lost in the storm` });
+        }
+      }
     }
   }
 
@@ -2722,30 +2744,224 @@ window.royaleModule = (function () {
     }
   }
 
+  function lootMeta(key) {
+    const weapon = WEAPONS[key];
+    const label = weapon ? weapon.name : key.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase());
+    const detail = weapon
+      ? weapon.crateOnly ? 'Crate-exclusive weapon' : weapon.pellets === 0 ? 'Throwable weapon' : 'Weapon pickup'
+      : key === 'medkit' ? 'Restore health later'
+      : key === 'ammo_box' ? 'Ammo refill'
+      : key === 'armor_light' ? 'Armor +50'
+      : key === 'armor_heavy' ? 'Armor +100'
+      : 'Supply pickup';
+    return { label, detail, special: !!weapon?.crateOnly };
+  }
+
+  function crateItemFromKey(key) {
+    if (!WEAPONS[key]) return { key, ammo:0, supply:true };
+    if (key === 'grenade' || key === 'molotov') return { key, ammo:1, supply:false };
+    return { key, ammo:WEAPONS[key].ammo, supply:false };
+  }
+
+  function pickUniqueFromList(list, taken) {
+    const available = list.filter((key) => !taken.has(key));
+    if (!available.length) return null;
+    const key = available[Math.floor(Math.random() * available.length)];
+    taken.add(key);
+    return key;
+  }
+
+  function pickUniqueSpecialLoot(taken) {
+    for (let tries = 0; tries < 20; tries++) {
+      const key = rollSpecialCrateLoot();
+      if (!taken.has(key)) {
+        taken.add(key);
+        return key;
+      }
+    }
+    return pickUniqueFromList(SPECIAL_CRATE_LOOT.map((entry) => entry.key), taken);
+  }
+
+  function createCrateContents(cr) {
+    const taken = new Set();
+    const contents = [];
+    const targetCount = Math.max(1, cr.lootLeft || 1);
+    if (cr.special) {
+      for (const guaranteed of ['gatling', 'rocket']) {
+        if (contents.length >= targetCount) break;
+        if (!taken.has(guaranteed)) {
+          taken.add(guaranteed);
+          contents.push(guaranteed);
+        }
+      }
+      while (contents.length < targetCount) {
+        const key = pickUniqueSpecialLoot(taken);
+        if (!key) break;
+        contents.push(key);
+      }
+      return contents;
+    }
+    if (cr.airdrop) {
+      while (contents.length < targetCount) {
+        const source = contents.length < 2 ? CRATE_WEAPON_POOL : SUPPLY_POOL;
+        const key = pickUniqueFromList(source, taken);
+        if (!key) break;
+        contents.push(key);
+      }
+      return contents;
+    }
+    while (contents.length < targetCount) {
+      const source = contents.length < 2 ? SUPPLY_POOL : CRATE_WEAPON_POOL;
+      const key = pickUniqueFromList(source, taken);
+      if (!key) break;
+      contents.push(key);
+    }
+    return contents;
+  }
+
+  function findNearbyCrate(radius = CRATE_INTERACT_RADIUS) {
+    let nearest = null;
+    let bestDist = radius;
+    for (const cr of crates) {
+      if ((cr.lootLeft || 0) <= 0) continue;
+      const dist = Math.hypot(player.x - cr.x, player.y - cr.y);
+      if (dist <= bestDist) {
+        bestDist = dist;
+        nearest = cr;
+      }
+    }
+    return nearest;
+  }
+
+  function closeCratePanel(force = false) {
+    if (force) crateUi = { nearby:null, active:null };
+    else crateUi.active = null;
+    renderCratePanel();
+  }
+
+  function openNearbyCrate() {
+    const crate = crateUi.nearby || findNearbyCrate();
+    if (!crate) return;
+    crateUi.active = crate;
+    crate.open = true;
+    if (!Array.isArray(crate.contents) || !crate.contents.length) crate.contents = createCrateContents(crate);
+    renderCratePanel();
+  }
+
+  function collectCrateChoice(index) {
+    const crate = crateUi.active;
+    if (!crate || !Array.isArray(crate.contents) || index < 0 || index >= crate.contents.length) return;
+    const key = crate.contents.splice(index, 1)[0];
+    crate.lootLeft = Math.max(0, (crate.lootLeft || 0) - 1);
+    pickupLoot(crateItemFromKey(key));
+    const meta = lootMeta(key);
+    showPickup(`${meta.label} collected`);
+    royaleAudio.pickup();
+    if (crate.lootLeft <= 0 || !crate.contents.length) {
+      crate.contents = [];
+      if (crateUi.nearby === crate) crateUi.nearby = null;
+      crateUi.active = null;
+    }
+    renderCratePanel();
+  }
+
+  function bindCratePanelButtons() {
+    const openBtn = document.getElementById('rl-crate-open');
+    if (openBtn && !openBtn.dataset.rlCrateOpenBound) {
+      openBtn.dataset.rlCrateOpenBound = '1';
+      openBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openNearbyCrate();
+      });
+    }
+    const closeBtn = document.getElementById('rl-crate-close');
+    if (closeBtn && !closeBtn.dataset.rlCrateCloseBound) {
+      closeBtn.dataset.rlCrateCloseBound = '1';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeCratePanel();
+      });
+    }
+    const choices = document.getElementById('rl-crate-choices');
+    if (choices && !choices.dataset.rlCrateChoiceBound) {
+      choices.dataset.rlCrateChoiceBound = '1';
+      choices.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-crate-choice]');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        collectCrateChoice(Number(btn.dataset.crateChoice));
+      });
+    }
+  }
+
+  function renderCratePanel() {
+    const panel = document.getElementById('rl-crate-panel');
+    const title = document.getElementById('rl-crate-title');
+    const copy = document.getElementById('rl-crate-copy');
+    const actions = document.getElementById('rl-crate-actions');
+    const openBtn = document.getElementById('rl-crate-open');
+    const closeBtn = document.getElementById('rl-crate-close');
+    const choices = document.getElementById('rl-crate-choices');
+    if (!panel || !title || !copy || !actions || !openBtn || !closeBtn || !choices) return;
+
+    const active = crateUi.active && crateUi.active.lootLeft > 0 ? crateUi.active : null;
+    const nearby = crateUi.nearby || active;
+    crateUi.active = active;
+
+    if (gamePhase !== 'playing' || !player.alive || !nearby) {
+      panel.classList.add('hidden');
+      choices.innerHTML = '';
+      return;
+    }
+
+    const current = active || nearby;
+    title.textContent = current.special ? 'Special Crate' : current.airdrop ? 'Airdrop Crate' : 'Supply Crate';
+    panel.classList.remove('hidden');
+
+    if (!active) {
+      copy.textContent = 'Move in and tap Open Crate or press F to reveal the supplies.';
+      actions.style.display = 'flex';
+      openBtn.disabled = false;
+      closeBtn.style.visibility = 'hidden';
+      choices.innerHTML = '';
+      return;
+    }
+
+    copy.textContent = `${Math.max(0, active.lootLeft || 0)} item${(active.lootLeft || 0) === 1 ? '' : 's'} left. Choose your pickup.`;
+    actions.style.display = 'none';
+    closeBtn.style.visibility = 'visible';
+    choices.innerHTML = (active.contents || []).map((key, index) => {
+      const meta = lootMeta(key);
+      return `<button type="button" class="rl-crate-choice${meta.special ? ' special' : ''}" data-crate-choice="${index}"><strong>${meta.label}</strong><span>${meta.detail}</span></button>`;
+    }).join('');
+  }
+
+  function updateCratePanel() {
+    if (gamePhase !== 'playing' || !player.alive) {
+      crateUi.nearby = null;
+      crateUi.active = null;
+      renderCratePanel();
+      return;
+    }
+    crateUi.nearby = findNearbyCrate();
+    if (crateUi.active) {
+      const dist = Math.hypot(player.x - crateUi.active.x, player.y - crateUi.active.y);
+      if ((crateUi.active.lootLeft || 0) <= 0 || dist > CRATE_UI_RELEASE_RADIUS) crateUi.active = null;
+      else if (!crateUi.nearby) crateUi.nearby = crateUi.active;
+    }
+    renderCratePanel();
+  }
+
   function updatePickups() {
     for (let i=loot.length-1;i>=0;i--) {
       const it=loot[i];
       const dx=player.x-it.x, dy=player.y-it.y;
       if (Math.sqrt(dx*dx+dy*dy)<30) { pickupLoot(it); loot.splice(i,1); }
     }
-    for (const cr of crates) {
-      if (cr.open) continue;
-      const dx=player.x-cr.x, dy=player.y-cr.y;
-      if (Math.sqrt(dx*dx+dy*dy)<40 && keys['KeyF']) {
-        cr.open=true;
-        for (let i=0;i<cr.lootLeft;i++) {
-          let key;
-          if (cr.special) {
-            key = rollSpecialCrateLoot();
-          } else {
-            key = LOOT_POOL[Math.floor(Math.random()*LOOT_POOL.length)];
-          }
-          const w = WEAPONS[key];
-          if (w) loot.push({x:cr.x+(Math.random()-0.5)*60,y:cr.y+(Math.random()-0.5)*60,key,ammo:w.ammo,supply:!w.pellets&&w.spd===0});
-        }
-        royaleAudio.pickup();
-      }
-    }
+    updateCratePanel();
   }
 
   function updateReload() {
@@ -3547,24 +3763,42 @@ window.royaleModule = (function () {
       // Zone flee - move toward zone center if outside
       const dz=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
       if (dz > Math.max(zone.r*0.85, 50)) {
-        let az=Math.atan2(zone.cy-bt.y, zone.cx-bt.x);
-        // Anti-stuck fallback logic
-        bt._stuckT = bt._stuckT || 0;
-        if (bt._lastX !== undefined && Math.abs(bt.x - bt._lastX) < 0.5 && Math.abs(bt.y - bt._lastY) < 0.5) {
-           bt._stuckT += dt;
-        } else {
-           bt._stuckT = 0;
+        const moveBot = (angle, speed) => {
+          const beforeX = bt.x;
+          const beforeY = bt.y;
+          bt.x += Math.cos(angle) * speed * dt;
+          bt.y += Math.sin(angle) * speed * dt;
+          bt.angle = angle;
+          bt.x = Math.max(PLAYER_R, Math.min(MAP_PX - PLAYER_R, bt.x));
+          bt.y = Math.max(PLAYER_R, Math.min(MAP_PX - PLAYER_R, bt.y));
+          resolveObstacleCollision(bt, PLAYER_R, false);
+          resolveBuildingWallCollision(bt, PLAYER_R);
+          resolveInteriorCollision(bt, PLAYER_R);
+          return Math.hypot(bt.x - beforeX, bt.y - beforeY);
+        };
+        const az = Math.atan2(zone.cy - bt.y, zone.cx - bt.x);
+        let moved = moveBot(az, 136);
+        bt._stuckT = moved < Math.max(5 * dt, 1.8) ? (bt._stuckT || 0) + dt : 0;
+        if (bt._stuckT > 0.3) {
+          const side = bt.id.charCodeAt(0) % 2 === 0 ? 1 : -1;
+          const offsets = [0.52, -0.52, 0.24, -0.24];
+          for (const mul of offsets) {
+            moved = moveBot(az + side * Math.PI * mul, 156);
+            if (moved >= Math.max(8 * dt, 3)) break;
+          }
         }
-        bt._lastX = bt.x; bt._lastY = bt.y;
-        if (bt._stuckT > 0.25) az += (bt.id.charCodeAt(0) % 2 === 0 ? 1 : -1) * Math.PI * 0.45;
-
-        bt.x+=Math.cos(az)*125*dt; bt.y+=Math.sin(az)*125*dt;
-        bt.angle=az;
-        bt.x=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.x));
-        bt.y=Math.max(PLAYER_R,Math.min(MAP_PX-PLAYER_R,bt.y));
-        resolveObstacleCollision(bt, PLAYER_R, false);
-        resolveBuildingWallCollision(bt, PLAYER_R);
-        resolveInteriorCollision(bt, PLAYER_R);
+        if (bt._stuckT > 1.05) {
+          const sidestep = (bt.id.charCodeAt(1) % 2 === 0 ? 12 : -12);
+          bt.x += Math.cos(az) * 26;
+          bt.y += Math.sin(az) * 26;
+          bt.x += Math.cos(az + Math.PI * 0.5) * sidestep;
+          bt.y += Math.sin(az + Math.PI * 0.5) * sidestep;
+          bt.x = Math.max(PLAYER_R, Math.min(MAP_PX - PLAYER_R, bt.x));
+          bt.y = Math.max(PLAYER_R, Math.min(MAP_PX - PLAYER_R, bt.y));
+          resolveObstacleCollision(bt, PLAYER_R, false);
+          resolveBuildingWallCollision(bt, PLAYER_R);
+          resolveInteriorCollision(bt, PLAYER_R);
+        }
         continue;
       }
 
@@ -3650,9 +3884,6 @@ window.royaleModule = (function () {
       resolveObstacleCollision(bt, PLAYER_R, false);
       resolveBuildingWallCollision(bt, PLAYER_R);
       resolveInteriorCollision(bt, PLAYER_R);
-
-      const zd=Math.sqrt((bt.x-zone.cx)**2+(bt.y-zone.cy)**2);
-      if (zd>zone.r) damageBot(bt, 4*dt, 'storm zone', { credit:false, message:`${bt.name} was lost in the storm` });
     }
   }
 
@@ -3665,12 +3896,14 @@ window.royaleModule = (function () {
     stance='stand'; shakeAmt=0; shakeX=0; shakeY=0; muzzleFlash=0;
     moveVel={x:0,y:0}; adsActive=false; jumpBoost=0; recoilKick=0; healCharges=0;
     damageIndicator={life:0,angle:0}; pickupBanner={text:'',life:0};
+    crateUi={nearby:null,active:null};
     dmgNumbers=[]; hitMarker=0; spectateTarget=null; spectateCam={x:player.x,y:player.y};
     cam.x=player.x; cam.y=player.y;
     inventory=[]; ammoCache={}; activeSlot=0; reloading=false;
     bullets=[]; throwables=[]; fires=[]; explosions=[]; killFeed=[];
     bloodSplatters=[]; trailParticles=[];
     hideEndActionButtons();
+    closeCratePanel(true);
     updateSwitchWeaponButton();
     airdrop=null; airdropTimer=0; broadcastThrottle=0;
     spawnLoot(); spawnBots(); initZone(); destroyMultiplayer(); initMultiplayer();

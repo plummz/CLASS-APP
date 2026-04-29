@@ -275,8 +275,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.49';
+const APP_VERSION = '1.5.50';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.50',
+    date: 'April 29, 2026',
+    title: 'Battle Royale Crate Selection + Storm Damage Balancing',
+    summary: 'Battle Royale crates now open through a touch-safe selection panel, special crates expose their exclusive gear correctly, and storm damage now hits bots and players with the intended per-phase scaling.',
+    changes: [
+      'New: Nearby crates now show a tap-friendly selection panel so players can open a crate and choose its contents without relying on hover-only interaction.',
+      'Improved: Special crates now surface their crate-exclusive rewards, including the Gatling Gun and Rocket Launcher, as direct selectable options.',
+      'Fixed: Storm damage now ticks once per second using the requested phase scaling of 1, 3, 5, and 7 HP, and bots now take the same shrinking-circle damage as players.',
+      'Fixed: Zone-escape bot movement now uses a stronger unstuck fallback so bots are less likely to pin themselves against walls outside the circle.'
+    ]
+  },
   {
     version: '1.5.49',
     date: 'April 28, 2026',

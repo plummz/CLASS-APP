@@ -600,6 +600,150 @@ body.rl-portrait-blocked #rl-weapon-panel {
   to   { box-shadow: 0 0 28px rgba(255,80,0,0.9); border-color: rgba(255,200,0,0.9); }
 }
 
+#rl-crate-panel {
+  position: absolute;
+  left: 50%;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 92px));
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 176px));
+  z-index: 96;
+  padding: 12px 12px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: linear-gradient(180deg, rgba(10,18,34,0.88), rgba(6,10,22,0.82));
+  color: #f5f8ff;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  pointer-events: auto;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#rl-crate-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(12px);
+}
+
+.rl-crate-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#rl-crate-title {
+  font: 900 13px/1.2 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rl-crate-close,
+.rl-crate-open,
+.rl-crate-choice {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rl-crate-close {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.86);
+  font: 800 11px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.rl-crate-copy {
+  margin: 8px 0 10px;
+  color: rgba(236,241,255,0.84);
+  font: 700 11px/1.45 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.rl-crate-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.rl-crate-open {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,214,92,0.4);
+  background: linear-gradient(135deg, rgba(255,184,68,0.92), rgba(204,120,24,0.96));
+  color: #140d00;
+  font: 900 12px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 22px rgba(255,136,0,0.24);
+  cursor: pointer;
+}
+
+.rl-crate-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rl-crate-choice {
+  min-height: 54px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rl-crate-choice strong,
+.rl-crate-choice span {
+  display: block;
+}
+
+.rl-crate-choice strong {
+  font: 800 12px/1.2 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.rl-crate-choice span {
+  margin-top: 3px;
+  color: rgba(219,231,255,0.72);
+  font: 700 10px/1.35 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rl-crate-choice.special {
+  border-color: rgba(255,220,0,0.32);
+  background: linear-gradient(180deg, rgba(255,220,0,0.14), rgba(255,255,255,0.06));
+}
+
+.rl-crate-close:active,
+.rl-crate-open:active,
+.rl-crate-choice:active {
+  transform: scale(0.97);
+}
+
+.rl-wrapper.end-active #rl-crate-panel,
+body.rl-portrait-blocked #rl-crate-panel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 780px) {
+  #rl-crate-panel {
+    width: min(320px, calc(100vw - 136px));
+    bottom: max(100px, calc(env(safe-area-inset-bottom) + 80px));
+  }
+}
+
 /* === Blood Skin Modal (#rl-blood-skin-modal) === */
 #rl-blood-skin-modal { font-family: 'Rajdhani', monospace; }
 #rl-blood-skin-modal > div {

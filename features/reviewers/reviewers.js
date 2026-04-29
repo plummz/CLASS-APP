@@ -500,13 +500,16 @@ window.reviewersModule = {
 
   smartBold: function(text) {
     if (!text) return '';
-    // Escape HTML first
+    // Safety note: escape the full user string first, then add only fixed
+    // <strong> wrappers around already-escaped text. None of the capture
+    // groups reintroduce raw user HTML into the DOM.
     const escaped = this.esc(text);
 
     // Bold patterns:
     // 1. **term** markdown → <strong>term</strong>
     // 2. ALL CAPS words (3+ chars, not common stop words)
     // 3. Terms that come after "Definition:", "Formula:", "Note:", "Important:", "Key:", etc.
+    // Each replacement injects only literal <strong> tags around escaped text.
     return escaped
       .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\b([A-Z]{3,})\b/g, (m) => {

@@ -6,6 +6,9 @@
 let SUPABASE_URL = '';
 let SUPABASE_KEY = '';
 let sb = null;
+let serverAuthToken = localStorage.getItem('classAppToken') || '';
+const PROFILE_SELECT_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at,updated_at';
+const PROFILE_PUBLIC_FIELDS = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 async function initSupabase() {
   try {
@@ -26,10 +29,12 @@ async function initSupabase() {
       },
     },
   });
+  window.sb = sb;
 }
 
-// Kept purely so any old files you uploaded to Render can still open without breaking
-const SERVER_BASE = 'https://class-app-1.onrender.com';
+// Legacy: pre-R2 files were served from this origin. New uploads use
+// relative /uploads/ paths resolved against the current host.
+const SERVER_BASE = window.location.origin;
 
 function normalizeStoredFileUrl(url) {
     const raw = String(url || '').trim();
@@ -56,14 +61,17 @@ window.customAlert = function(text) {
     if (modal) modal.style.display = 'flex';
 };
 
-window.customPrompt = function(title, callback, defaultValue = '') {
+window.customPrompt = function(title, callback, defaultValue = '', options = {}) {
     const modal = document.getElementById('custom-prompt-modal');
     const inputEl = document.getElementById('prompt-input');
     const titleEl = document.getElementById('prompt-title');
     const submitBtn = document.getElementById('prompt-submit');
     
     if (titleEl) titleEl.innerText = title;
-    if (inputEl) inputEl.value = defaultValue;
+    if (inputEl) {
+      inputEl.value = defaultValue;
+      inputEl.type = options.type || 'text';
+    }
     if (modal) modal.style.display = 'flex';
     if (inputEl) inputEl.focus();
 
@@ -73,19 +81,35 @@ window.customPrompt = function(title, callback, defaultValue = '') {
             callback(inputEl.value.trim());
         };
     }
+    if (inputEl) {
+      inputEl.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          modal.style.display = 'none';
+          callback(inputEl.value.trim());
+        }
+      };
+    }
 };
 
-window.customConfirm = function(text, callback) {
+window.customConfirm = function(text, onConfirm, onCancel) {
     const confirmBox = document.getElementById('confirm-text');
     if (confirmBox) confirmBox.innerText = text;
     const modal = document.getElementById('custom-confirm-modal');
     if (modal) modal.style.display = 'flex';
     
     const yesBtn = document.getElementById('confirm-yes');
+    const noBtn = document.getElementById('confirm-no');
     if (yesBtn) {
         yesBtn.onclick = function() {
             modal.style.display = 'none';
-            callback();
+            if (typeof onConfirm === 'function') onConfirm();
+        };
+    }
+    if (noBtn) {
+        noBtn.onclick = function() {
+            modal.style.display = 'none';
+            if (typeof onCancel === 'function') onCancel();
         };
     }
 };
@@ -101,6 +125,45 @@ function escapeHTML(value) {
 
 function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
+}
+
+async function hashPassword(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(pw || '')));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function setServerAuthToken(token) {
+  serverAuthToken = token || '';
+  if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
+  else localStorage.removeItem('classAppToken');
+}
+
+function getServerAuthToken() {
+  return serverAuthToken || localStorage.getItem('classAppToken') || '';
+}
+
+function getAuthHeaders(extraHeaders = {}) {
+  const headers = new Headers(extraHeaders || {});
+  const token = getServerAuthToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return headers;
+}
+
+window.getAuthToken = getServerAuthToken;
+window.authFetch = function(url, options = {}) {
+  return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
+};
+
+async function waitForSupabaseClient() {
+  if (!sb) {
+    console.warn('[sb] Supabase not ready yet. Retrying in 500ms...');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (!sb) {
+    console.error('[sb] Supabase client unavailable.');
+    return false;
+  }
+  return true;
 }
 
 function showToast(message, type = 'success') {
@@ -275,8 +338,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.51';
+const APP_VERSION = '1.5.52';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.52',
+    date: 'April 29, 2026',
+    title: 'Security Hardening + Password Authentication',
+    summary: 'Password authentication now works end to end, protected server routes require verified bearer tokens, and several chat, cache, and modal edge cases were hardened without changing the app flow.',
+    changes: [
+      'New: Login and registration now use the password field properly, store SHA-256 password hashes, and guide legacy accounts through a one-time password setup.',
+      'Improved: Uploads, AI tools, push notifications, diagnostics, and authenticated socket actions now require a signed server token instead of trusting anonymous or user-supplied identities.',
+      'Fixed: Chat sender rendering is now escaped before innerHTML output, profile updates use strict allowlists, and message history loads only the latest batch instead of the full backlog.',
+      'Fixed: Confirm modals now support a working No callback, prompt inputs submit on Enter, Code Lab postMessage no longer uses a wildcard origin, and the offline shell fallback now tracks the current cached index version.'
+    ]
+  },
   {
     version: '1.5.51',
     date: 'April 29, 2026',
@@ -1875,7 +1950,7 @@ window.uploadFileToFolderAPI = async function() {
           // Large media → Cloudflare R2 (10 GB free, no egress fees)
           const fd = new FormData();
           fd.append('file', file);
-          const r = await fetch('/api/upload', { method: 'POST', body: fd });
+          const r = await authFetch('/api/upload', { method: 'POST', body: fd });
           if (!r.ok) throw new Error(`R2: ${(await r.json()).error || r.status}`);
           const rData = await r.json();
           fileUrl = rData.url;
@@ -2846,15 +2921,19 @@ window.toggleRepeat = function() {
    ============================================================ */
 let users = [];
 let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
-let isAdmin = currentUser?.username === 'Marquillero';
+let isAdmin = Boolean(currentUser?.isAdmin);
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();
 let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 
 function saveSession() {
-  if (currentUser) { localStorage.setItem('classAppUser', JSON.stringify(currentUser)); } 
-  else { localStorage.removeItem('classAppUser'); }
+  if (currentUser) {
+    localStorage.setItem('classAppUser', JSON.stringify(currentUser));
+  } else {
+    localStorage.removeItem('classAppUser');
+    setServerAuthToken('');
+  }
 }
 
 function isUserLiveOnline(user) {
@@ -2958,56 +3037,148 @@ function destroyAppPresence() {
   livePresenceUsers = new Set();
 }
 
-window.login = async function() {
-  const username = document.getElementById('username').value.trim();
-  if (!username) return customAlert('Enter username');
-  
+function setAuthError(message = '') {
   const errBox = document.getElementById('errorMessage');
-  if (errBox) errBox.style.display = 'none';
+  if (!errBox) return;
+  errBox.innerText = message;
+  errBox.style.display = message ? 'block' : 'none';
+}
 
-  const { data: profile, error } = await sb.from('profiles').select('*').eq('username', username).single();
-  if (error || !profile) {
-      if (errBox) {
-          errBox.innerText = "User not found. Please register.";
-          errBox.style.display = 'block';
-      }
-      return;
+function toSessionUser(profile, serverSession = {}) {
+  const { password_hash, ...safeProfile } = profile || {};
+  return { ...safeProfile, isAdmin: Boolean(serverSession.isAdmin) };
+}
+
+async function requestServerSession(endpoint, payload) {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    error.code = data.code || '';
+    throw error;
   }
-  
-  currentUser = profile;
-  isAdmin = (profile.username === 'Marquillero');
+  return data;
+}
+
+async function finalizeLogin(profile, serverSession) {
+  currentUser = toSessionUser(profile, serverSession);
+  isAdmin = Boolean(serverSession.isAdmin);
+  setServerAuthToken(serverSession.token || '');
   if (isAdmin) revealAdminNav();
   saveSession();
   await persistLastSeen({ online: true, force: true });
   establishSession();
   logActivity('login');
   recordAppOpen();
+}
+
+function promptLegacyPasswordSetup(profile) {
+  customAlert('This account needs a password before it can sign in.');
+  window.customPrompt('Create a new password (min 8 characters)', async function(newPassword) {
+    if (!newPassword || newPassword.length < 8) {
+      customAlert('Password must be at least 8 characters.');
+      promptLegacyPasswordSetup(profile);
+      return;
+    }
+    try {
+      const passwordHash = await hashPassword(newPassword);
+      const { error } = await sb.from('profiles').update({ password_hash: passwordHash }).eq('username', profile.username);
+      if (error) throw error;
+      const refreshedProfile = { ...profile, password_hash: passwordHash };
+      const serverSession = await requestServerSession('/api/register', { username: profile.username, password: newPassword });
+      await finalizeLogin(refreshedProfile, serverSession);
+      showToast('Password created. You are now signed in.');
+    } catch (error) {
+      setAuthError(error.message || 'Could not save your password yet.');
+    }
+  }, '', { type: 'password' });
+}
+
+window.login = async function() {
+  if (!await waitForSupabaseClient()) return;
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username) return customAlert('Enter username');
+  if (!password) return customAlert('Enter password');
+
+  setAuthError('');
+  const { data: profile, error } = await sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single();
+  if (error || !profile) {
+    setAuthError('User not found. Please register.');
+    return;
+  }
+  if (!profile.password_hash) {
+    promptLegacyPasswordSetup(profile);
+    return;
+  }
+
+  const passwordHash = await hashPassword(password);
+  if (passwordHash !== profile.password_hash) {
+    setAuthError('Invalid password');
+    return;
+  }
+
+  try {
+    const serverSession = await requestServerSession('/api/login', { username, password });
+    await finalizeLogin(profile, serverSession);
+  } catch (serverError) {
+    if (serverError.code === 'PASSWORD_SETUP_REQUIRED') {
+      promptLegacyPasswordSetup(profile);
+      return;
+    }
+    setAuthError(serverError.message || 'Could not sign in.');
+  }
 };
 
 window.register = async function() {
+  if (!await waitForSupabaseClient()) return;
   const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
   if (!username) return customAlert('Enter username');
+  if (!password) return customAlert('Enter password');
+  if (password.length < 8) return customAlert('Password must be at least 8 characters.');
   const formatError = validateUsernameFormat(username);
   if (formatError) return customAlert(formatError);
-  
-  const errBox = document.getElementById('errorMessage');
-  if (errBox) errBox.style.display = 'none';
 
-  let { error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true, last_seen_at: new Date().toISOString() }]);
-  if (error && /last_seen_at/i.test(error.message || '')) {
-      ({ error } = await sb.from('profiles').insert([{ username: username, display_name: username, online: true }]));
+  setAuthError('');
+  const passwordHash = await hashPassword(password);
+  const insertPayload = {
+    username,
+    display_name: username,
+    online: true,
+    password_hash: passwordHash,
+    last_seen_at: new Date().toISOString(),
+  };
+
+  let insertResult = await sb.from('profiles').insert([insertPayload]).select(PROFILE_SELECT_FIELDS).single();
+  if (insertResult.error && /last_seen_at/i.test(insertResult.error.message || '')) {
+    insertResult = await sb.from('profiles').insert([{
+      username,
+      display_name: username,
+      online: true,
+      password_hash: passwordHash,
+    }]).select(PROFILE_SELECT_FIELDS).single();
   }
-  if (error) {
-      if (errBox) {
-          errBox.innerText = "Username taken or Error occurred.";
-          errBox.style.display = 'block';
-      }
-  } else {
-      window.login();
+  if (insertResult.error) {
+    setAuthError('Username taken or error occurred.');
+    return;
+  }
+
+  try {
+    const serverSession = await requestServerSession('/api/register', { username, password });
+    await finalizeLogin(insertResult.data, serverSession);
+  } catch (serverError) {
+    setAuthError(serverError.message || 'Could not finish registration.');
   }
 };
 
 window.handleLogout = async function() {
+    if (!await waitForSupabaseClient()) return;
     await persistLastSeen({ online: false, force: true });
     stopLastSeenHeartbeat();
     destroyAppPresence();
@@ -3018,6 +3189,7 @@ window.handleLogout = async function() {
         }
     }
     currentUser = null;
+    isAdmin = false;
     sessionStorage.removeItem('recordedAppOpenFor');
     saveSession();
     location.reload();
@@ -3092,7 +3264,8 @@ function getUploaderAvatarHTML(uploaderUsername) {
 }
 
 function fetchUsers() {
-  sb.from('profiles').select('*')
+  if (!sb) return;
+  sb.from('profiles').select(PROFILE_PUBLIC_FIELDS)
     .then(({data}) => {
       users = data || [];
       renderUserDirectory();
@@ -3369,7 +3542,7 @@ window.saveProfileEdits = async function(username) {
     const fd = new FormData();
     fd.append('file', avatarFile);
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const res = await authFetch('/api/upload', { method: 'POST', body: fd });
       if (!res.ok) throw new Error('Upload failed');
       const uploadData = await res.json();
       avatarUrl = uploadData.url || avatarUrl;
@@ -3390,11 +3563,10 @@ window.saveProfileEdits = async function(username) {
   };
   if (usernameChanged) payload.username_last_changed_at = new Date().toISOString();
 
-  const { data, error } = await sb.from('profiles').update(payload).eq('username', username).select('*').single();
+  const { data, error } = await sb.from('profiles').update(payload).eq('username', username).select(PROFILE_PUBLIC_FIELDS).single();
   if (error) return customAlert(error.message);
   if (usernameChanged) await replaceUsernameReferences(username, newUsername);
-  currentUser = data;
-  isAdmin = (currentUser.username === 'Marquillero');
+  currentUser = { ...data, isAdmin };
   saveSession();
   users = users.map((user) => user.username === username ? data : user);
   fetchUsers();
@@ -3498,17 +3670,19 @@ function showChatSkeleton() {
 }
 
 async function fetchMessages(chatType, target = null) {
+  if (!await waitForSupabaseClient()) return;
   if (!chatType) return;
   showChatSkeleton();
   let query = sb.from('messages').select('*');
   if (chatType === 'private') query = query.eq('chat_type', 'private').or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
   else query = query.eq('chat_type', chatType);
 
-  const { data: messages, error } = await query.order('created_at', { ascending: true });
+  const { data: messages, error } = await query.order('created_at', { ascending: false }).limit(50);
   if (error) return console.warn(error);
 
-  const formattedMessages = messages.map(m => ({
+  const formattedMessages = [...(messages || [])].reverse().map(m => ({
       id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
+      pinned: Boolean(m.pinned), edited: Boolean(m.edited), deletedFor: m.deleted_for || m.deletedFor || [], type: m.type || 'message',
       time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
   }));
 
@@ -3545,7 +3719,7 @@ function renderMessages() {
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-message${message.pinned ? ' message-pinned' : ''}`;
     const senderLine = document.createElement('div');
-    senderLine.innerHTML = `<span class="chat-sender">${message.sender}</span><span class="chat-time">${message.time}</span>${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}`;
+    senderLine.innerHTML = `<span class="chat-sender">${escapeHTML(message.sender || '')}</span><span class="chat-time">${escapeHTML(message.time || '')}</span>${message.edited ? '<span class="chat-edited">(edited)</span>' : ''}`;
     msgDiv.appendChild(senderLine);
     const textLine = document.createElement('div');
     textLine.className = 'chat-text'; textLine.textContent = message.text;
@@ -3554,7 +3728,7 @@ function renderMessages() {
     if (message.attachment) {
       const attach = document.createElement('div'); attach.className = 'chat-attachment';
       const info = document.createElement('div'); info.textContent = `Attachment: ${message.attachment.name}`; attach.appendChild(info);
-      const fullUrl = message.attachment.url.startsWith('http') ? message.attachment.url : SERVER_BASE + message.attachment.url;
+      const fullUrl = normalizeStoredFileUrl(message.attachment.url);
       if (message.attachment.type.startsWith('image/')) { const img = document.createElement('img'); img.src = fullUrl; img.style.maxWidth = '200px'; attach.appendChild(img); }
       else if (message.attachment.type.startsWith('video/')) { const video = document.createElement('video'); video.src = fullUrl; video.controls = true; video.style.maxWidth = '250px'; attach.appendChild(video); }
       else { const link = document.createElement('a'); link.className = 'chat-attachment-link'; link.href = fullUrl; link.target = '_blank'; link.textContent = `Download`; attach.appendChild(link); }
@@ -4028,7 +4202,7 @@ window.loadDiagnostics = async function() {
   grid.innerHTML = '<div class="diagnostics-card loading">Loading diagnostics...</div>';
   summary.innerHTML = '';
   try {
-    const response = await fetch('/api/diagnostics', { cache: 'no-store' });
+    const response = await authFetch('/api/diagnostics', { cache: 'no-store' });
     if (!response.ok) throw new Error(`Diagnostics failed (${response.status})`);
     const data = await response.json();
     const staticOk = (data.staticAssets || []).every((asset) => asset.exists);
@@ -4506,6 +4680,12 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
   await initSupabase();
+  if (currentUser && !getServerAuthToken()) {
+    currentUser = null;
+    isAdmin = false;
+    saveSession();
+    showToast('Please sign in again to refresh your secure session.', 'info');
+  }
 
   const installBtn = document.getElementById('install-btn');
   if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
@@ -4683,7 +4863,7 @@ async function registerPushSubscription(interactive = false) {
         applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
       });
     }
-    await fetch('/api/push/subscribe', {
+    await authFetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser.username, subscription }),
@@ -4698,7 +4878,7 @@ async function registerPushSubscription(interactive = false) {
 
 async function notifyPrivateMessagePush(message) {
   if (!currentUser || currentChat.type !== 'private' || !currentChat.target) return;
-  await fetch('/api/push/private-message', {
+  await authFetch('/api/push/private-message', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -5263,7 +5443,7 @@ function _ensureSocket() {
   if (_socket) return _socket;
   _socket = io();
   _socket.on('connect', () => {
-    if (currentUser) _socket.emit('identify', currentUser);
+    if (currentUser) _socket.emit('identify', { username: currentUser.username, token: getServerAuthToken() });
     lobbyModule.setupSocket(_socket);
   });
   _socket.on('appOpenCount', (payload) => {
@@ -5272,7 +5452,7 @@ function _ensureSocket() {
   // If connected immediately (reconnect case), setup at once
   if (_socket.connected) {
     lobbyModule.setupSocket(_socket);
-    if (currentUser) _socket.emit('identify', currentUser);
+    if (currentUser) _socket.emit('identify', { username: currentUser.username, token: getServerAuthToken() });
   }
   return _socket;
 }
@@ -5960,7 +6140,7 @@ async function gUploadFiles(pfx, fileList, folderId, inputEl) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const r = await fetch('/api/upload', { method:'POST', body:fd });
+      const r = await authFetch('/api/upload', { method:'POST', body:fd });
       if (!r.ok) throw new Error('Upload failed');
       const data = await r.json();
       const { error } = await insertFileRecord({
@@ -6387,7 +6567,7 @@ async function aiSend(provider) {
   renderAIChat(document.getElementById('ai-view'), provider);
 
   try {
-    const res  = await fetch(AI_PROVIDERS[provider].endpoint, {
+    const res  = await authFetch(AI_PROVIDERS[provider].endpoint, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ messages: aiChats[provider] }),

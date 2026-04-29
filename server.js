@@ -31,7 +31,7 @@ try {
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// ── Cloudflare R2 client ──────────────────────────────────
+// â”€â”€ Cloudflare R2 client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const r2 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -42,12 +42,18 @@ const r2 = new S3Client({
 });
 const R2_BUCKET = process.env.R2_BUCKET || 'class-app-storage';
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'Marquillero';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '120524';
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === 'production') console.warn('[security] JWT_SECRET not set — using insecure default');
-  return 'dev-secret-change-in-production';
-})();
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+  console.error('[security] ADMIN_USERNAME and ADMIN_PASSWORD must be set in env. Admin login disabled.');
+}
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('[fatal] JWT_SECRET must be set in production. Refusing to start.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+  if (process.env.NODE_ENV !== 'production' && !process.env.JWT_SECRET) console.warn('[security] JWT_SECRET not set - using insecure default for local development');
 const DATA_PATH = process.env.DATA_PATH_OVERRIDE || path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
@@ -86,6 +92,7 @@ function loadData() {
       sentPushMessageIds: [],
       appOpenCount: 0,
       appOpenCounts: {},
+      lobbyScores: {},
     }, null, 2));
   }
   try {
@@ -96,6 +103,7 @@ function loadData() {
     if (!data.sentPushMessageIds) data.sentPushMessageIds = [];
     if (typeof data.appOpenCount !== 'number') data.appOpenCount = 0;
     if (!data.appOpenCounts || typeof data.appOpenCounts !== 'object' || Array.isArray(data.appOpenCounts)) data.appOpenCounts = {};
+    if (!data.lobbyScores || typeof data.lobbyScores !== 'object' || Array.isArray(data.lobbyScores)) data.lobbyScores = {};
     return data;
   } catch (error) {
     console.error('Error loading data.json:', error);
@@ -108,29 +116,46 @@ function loadData() {
       sentPushMessageIds: [],
       appOpenCount: 0,
       appOpenCounts: {},
+      lobbyScores: {},
     };
   }
 }
 
+let _saveQueue = Promise.resolve();
 function saveData(data) {
-  try {
-    fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('[saveData] Failed to write data.json:', err.message);
-  }
+  _saveQueue = _saveQueue
+    .then(() => fs.promises.writeFile(DATA_PATH, JSON.stringify(data, null, 2)))
+    .catch((err) => console.error('[saveData] Failed:', err.message));
+  return _saveQueue;
 }
 
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
-if (ALLOWED_ORIGIN === '*' && process.env.NODE_ENV === 'production') {
-  console.warn('[security] CORS open to all origins — set ALLOWED_ORIGIN in env');
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '';
+if (!ALLOWED_ORIGIN && process.env.NODE_ENV === 'production') {
+  console.error('[security] ALLOWED_ORIGIN is not set. CORS will reject all cross-origin requests.');
 }
 
+const RESOLVED_CORS_ORIGIN = ALLOWED_ORIGIN || false;
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: ALLOWED_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+const io = new Server(server, { cors: { origin: RESOLVED_CORS_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
 
-// Security headers — CSP disabled to avoid breaking inline scripts (tighten in later phase)
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+// Security headers â€” CSP disabled to avoid breaking inline scripts (tighten in later phase)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.socket.io', 'https://www.youtube.com', 'https://www.gstatic.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      connectSrc: ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co', 'https://pipedapi.kavin.rocks', 'https://pipedapi.tokhmi.xyz', 'https://piped-api.garudalinux.org', 'https://pipedapi.adminforge.de', 'https://www.googleapis.com'],
+      mediaSrc: ["'self'", 'blob:', 'https:'],
+      workerSrc: ["'self'", 'blob:'],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 const STATIC_CACHE_OPTIONS = {
   maxAge: '1y',
   immutable: true,
@@ -173,13 +198,13 @@ function formatUptime(seconds) {
   return `${minutes}m`;
 }
 
-app.use(cors({ origin: ALLOWED_ORIGIN }));
+app.use(cors({ origin: RESOLVED_CORS_ORIGIN }));
 app.use(express.json());
 
 // Wraps sync/async route handlers so any thrown error reaches the global error handler
 const wrap = fn => (req, res, next) => { try { const r = fn(req, res, next); if (r && typeof r.catch === 'function') r.catch(next); } catch (e) { next(e); } };
 
-// ── Auth helpers ──────────────────────────────────────────
+// â”€â”€ Auth helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -187,6 +212,85 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many login attempts, try again later.' },
 });
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many AI requests. Please wait a minute.' },
+});
+const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
+const ALLOWED_CHATS = new Set(['group', 'todo']);
+const SUPABASE_AUTH_SELECT = 'id,username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
+
+function hashPassword(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function isPasswordLongEnough(value) {
+  return typeof value === 'string' && value.length >= 8;
+}
+
+function applyAllowedProfileFields(target, source = {}) {
+  for (const field of ALLOWED_PROFILE_FIELDS) {
+    if (source[field] !== undefined) target[field] = source[field];
+  }
+}
+
+function toStateUserProfile(profile = {}, passwordHash = '') {
+  return {
+    username: profile.username,
+    displayName: profile.display_name || profile.displayName || profile.username,
+    birthday: profile.birthday || 'Unknown',
+    address: profile.address || 'Unknown',
+    github: profile.github || '',
+    email: profile.email || '',
+    note: profile.note || 'New user profile',
+    online: Boolean(profile.online),
+    avatar: profile.avatar || '',
+    passwordHash: passwordHash || profile.password_hash || profile.passwordHash || '',
+  };
+}
+
+async function fetchSupabaseProfile(username) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  const url = new URL('/rest/v1/profiles', SUPABASE_URL);
+  url.searchParams.set('select', SUPABASE_AUTH_SELECT);
+  url.searchParams.set('username', `eq.${username}`);
+  url.searchParams.set('limit', '1');
+  const response = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase profile lookup failed (${response.status}): ${text.slice(0, 160)}`);
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function resolveAuthProfile(username) {
+  if (!username) return null;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    return fetchSupabaseProfile(username);
+  }
+  const localUser = findUser(username);
+  if (!localUser) return null;
+  return {
+    username: localUser.username,
+    display_name: localUser.displayName,
+    birthday: localUser.birthday,
+    address: localUser.address,
+    github: localUser.github,
+    email: localUser.email,
+    note: localUser.note,
+    online: localUser.online,
+    avatar: localUser.avatar,
+    password_hash: localUser.passwordHash || '',
+  };
+}
 
 function issueToken(username, isAdminUser) {
   return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '7d' });
@@ -204,6 +308,11 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
+
 // Middleware: requireAuth + must be the resource owner or admin
 function requireSelf(paramField) {
   return [requireAuth, (req, res, next) => {
@@ -215,7 +324,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_O
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
 app.use(express.static(path.join(__dirname)));
-// Serve uploads — local disk fallback then R2 (supports /uploads/filename and subfolders)
+// Serve uploads â€” local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
   const filename = req.params[0]; // everything after /uploads/
   // Local fallback (old files before migration)
@@ -257,13 +366,13 @@ app.get('/api/static-check', (req, res) => {
   });
 });
 
-app.get('/api/diagnostics', async (req, res) => {
+app.get('/api/diagnostics', requireAuth, requireAdmin, async (req, res) => {
   const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
   let cacheVersion = 'unknown';
   try {
     const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
     cacheVersion = sw.match(/CACHE_VERSION\s*=\s*['"`]([^'"`]+)/)?.[1] || cacheVersion;
-  } catch (_e) { /* sw.js unreadable — use default */ }
+  } catch (_e) { /* sw.js unreadable â€” use default */ }
 
   let java = { available: false, message: 'Java status not checked.' };
   try {
@@ -312,16 +421,16 @@ app.get('/api/diagnostics', async (req, res) => {
 });
 
 // Redirect old PWA installs that used /CLASS-APP/ as start_url.
-// Users who installed before the manifest fix open to /CLASS-APP/ — redirect
+// Users who installed before the manifest fix open to /CLASS-APP/ â€” redirect
 // them to / so the app loads normally without requiring a reinstall.
 app.get('/CLASS-APP', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 
-/* ── Wake-up ping (keeps Render free tier warm) ─────────── */
+/* â”€â”€ Wake-up ping (keeps Render free tier warm) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
-/* ── Client config — serves non-secret public keys to frontend ── */
+/* â”€â”€ Client config â€” serves non-secret public keys to frontend â”€â”€ */
 app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL || '',
@@ -352,7 +461,7 @@ app.post('/api/app-open-count', wrap((req, res) => {
   res.json(payload);
 }));
 
-/* ── Search diagnostics — visit /api/search-test?q=test to debug ─────── */
+/* â”€â”€ Search diagnostics â€” visit /api/search-test?q=test to debug â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/search-test', (req, res) => {
   const q = (req.query.q || 'test').trim();
   const report = { q, ytApi: null, piped: null, scrape: null };
@@ -414,10 +523,10 @@ app.get('/api/search-test', (req, res) => {
   scrapeReq.setTimeout(10000, () => { scrapeReq.destroy(); report.scrape = { status: 'TIMEOUT' }; finish(); });
 });
 
-/* ── YouTube search proxy ──────────────────────────────────
-   Key stays on the server — the browser never sees it.
+/* â”€â”€ YouTube search proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Key stays on the server â€” the browser never sees it.
    Usage: GET /api/yt-search?q=despacito
-   ──────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/yt-search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
@@ -465,9 +574,9 @@ app.get('/api/yt-search', async (req, res) => {
   });
 });
 
-/* ── Piped search proxy (no API key needed, avoids browser CORS blocks) ────
+/* â”€â”€ Piped search proxy (no API key needed, avoids browser CORS blocks) â”€â”€â”€â”€
    Usage: GET /api/piped-search?q=despacito
-   ─────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const PIPED_HOSTS = [
   'pipedapi.kavin.rocks',
   'pipedapi.tokhmi.xyz',
@@ -497,7 +606,7 @@ function pipedSearchRequest(host, q, resolve) {
           })).filter(v => v.videoId);
           if (items.length) return resolve({ items });
         }
-      } catch (_e) { /* unparseable response — try next host */ }
+      } catch (_e) { /* unparseable response â€” try next host */ }
       resolve(null);
     });
   });
@@ -529,19 +638,19 @@ app.get('/api/piped-search', (req, res) => {
   tryNext();
 });
 
-/* ── YouTube InnerTube search (no API key — uses YouTube's own internal API) ─
+/* â”€â”€ YouTube InnerTube search (no API key â€” uses YouTube's own internal API) â”€
    The InnerTube API is what youtube.com and the YouTube app use internally.
    All major YouTube scraping libraries (ytsr, youtube-sr) call this same
-   endpoint under the hood. Returns structured JSON — no HTML parsing.
+   endpoint under the hood. Returns structured JSON â€” no HTML parsing.
    Usage: GET /api/yt-scrape?q=payphone
-   ─────────────────────────────────────────────────────────────────────── */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/yt-scrape', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   console.log('[innertube] Searching for:', q);
 
-  // Use MWEB client — simpler JSON structure, less bot-detection than WEB
+  // Use MWEB client â€” simpler JSON structure, less bot-detection than WEB
   const body = JSON.stringify({
     context: {
       client: {
@@ -612,7 +721,7 @@ app.get('/api/yt-scrape', (req, res) => {
         if (!items.length) {
           const structureKeys = Object.keys(data?.contents || {}).join(',') || 'none';
           console.warn('[innertube] No video results for:', q, '| HTTP:', ytRes.statusCode, '| top-level keys:', structureKeys);
-          return res.status(404).json({ error: 'No results — structure: ' + structureKeys });
+          return res.status(404).json({ error: 'No results â€” structure: ' + structureKeys });
         }
         console.log('[innertube] OK, returned', items.length, 'results for:', q);
         res.json({ items });
@@ -671,18 +780,21 @@ function findUser(username) {
   return state.users.find((user) => user.username.toLowerCase() === username.toLowerCase());
 }
 
-function createUser(username) {
-  const user = {
-    username,
-    displayName: username,
-    birthday: 'Unknown',
-    address: 'Unknown',
-    github: '',
-    email: '',
-    note: 'New user profile',
-    online: false,
-    avatar: '',
-  };
+function syncStateUserFromProfile(user, profile = {}, passwordHash = '') {
+  const next = toStateUserProfile(profile, passwordHash);
+  user.displayName = next.displayName;
+  user.birthday = next.birthday;
+  user.address = next.address;
+  user.github = next.github;
+  user.email = next.email;
+  user.note = next.note;
+  user.avatar = next.avatar;
+  if (passwordHash || next.passwordHash) user.passwordHash = passwordHash || next.passwordHash;
+  return user;
+}
+
+function createUser(username, profile = {}, passwordHash = '') {
+  const user = toStateUserProfile({ username, ...profile }, passwordHash);
   state.users.push(user);
   saveData(state);
   return user;
@@ -720,7 +832,7 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
   if (!subscriptions.length) {
     state.sentPushMessageIds.push(messageId);
     pruneSentPushIds();
-    saveData(state);
+    await saveData(state);
     return { sent: 0 };
   }
 
@@ -752,7 +864,7 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
   state.pushSubscriptions[target] = keep;
   state.sentPushMessageIds.push(messageId);
   pruneSentPushIds();
-  saveData(state);
+  await saveData(state);
   return { sent };
 }
 
@@ -760,31 +872,34 @@ app.get('/api/push/public-key', (req, res) => {
   res.json({ enabled: PUSH_READY, publicKey: VAPID_PUBLIC_KEY });
 });
 
-app.post('/api/push/subscribe', (req, res) => {
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
   const { username, subscription } = req.body || {};
   if (!username || !subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'username and subscription are required' });
   }
+  if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
   const existing = state.pushSubscriptions[username].find((sub) => sub.endpoint === subscription.endpoint);
   if (!existing) state.pushSubscriptions[username].push(subscription);
-  saveData(state);
+  await saveData(state);
   res.json({ success: true, enabled: PUSH_READY });
 });
 
-app.post('/api/push/unsubscribe', (req, res) => {
+app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
   const { username, endpoint } = req.body || {};
   if (!username || !endpoint) return res.status(400).json({ error: 'username and endpoint are required' });
+  if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((sub) => sub.endpoint !== endpoint);
-  saveData(state);
+  await saveData(state);
   res.json({ success: true });
 });
 
-app.post('/api/push/private-message', async (req, res) => {
+app.post('/api/push/private-message', requireAuth, async (req, res) => {
   const { sender, target, text, messageId } = req.body || {};
   if (!sender || !target || !messageId) {
     return res.status(400).json({ error: 'sender, target, and messageId are required' });
   }
+  if (sender !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   if (sender === target) return res.status(400).json({ error: 'Cannot notify self' });
   try {
     const result = await sendPrivatePushNotification({ sender, target, text, messageId });
@@ -801,10 +916,10 @@ app.get('/api/folders', wrap((req, res) => {
   res.json(state.folders.filter(f => f.parent === parent));
 }));
 
-app.post('/api/folders', wrap((req, res) => {
-  const folder = { id: Date.now().toString(), parent: req.body.parent, name: req.body.name, owner: req.body.owner };
+app.post('/api/folders', requireAuth, wrap(async (req, res) => {
+  const folder = { id: Date.now().toString(), parent: req.body.parent, name: req.body.name, owner: req.user.username };
   state.folders.push(folder);
-  saveData(state);
+  await saveData(state);
   res.json(folder);
 }));
 
@@ -831,10 +946,20 @@ app.get('/api/files', wrap((req, res) => {
   res.json(state.files.filter(f => f.folderId === req.query.folderId));
 }));
 
-app.post('/api/files', wrap((req, res) => {
-  const file = { id: Date.now().toString(), ...req.body };
+app.post('/api/files', requireAuth, wrap(async (req, res) => {
+  const file = {
+    id: Date.now().toString(),
+    folderId: req.body.folderId,
+    name: req.body.name,
+    url: req.body.url,
+    type: req.body.type,
+    size: req.body.size,
+    uploadedBy: req.user.username,
+    owner: req.user.username,
+    attachment: req.body.attachment || null,
+  };
   state.files.push(file);
-  saveData(state);
+  await saveData(state);
   res.json(file);
 }));
 
@@ -848,55 +973,93 @@ app.delete('/api/files/:id', requireAuth, (req, res) => {
 });
 
 // --- AUTH & USERS API ---
-app.post('/api/login', loginLimiter, async (req, res) => {
-  const { username, password } = req.body;
+app.post('/api/login', loginLimiter, wrap(async (req, res) => {
+  const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
   }
-  if (username === ADMIN_USERNAME) {
-    // Support both pre-hashed ($2...) and plain-text ADMIN_PASSWORD for gradual migration
+  const normalizedUsername = String(username).trim();
+  if (ADMIN_USERNAME && ADMIN_PASSWORD && normalizedUsername === ADMIN_USERNAME) {
     const valid = ADMIN_PASSWORD.startsWith('$2')
       ? await bcrypt.compare(password, ADMIN_PASSWORD)
       : password === ADMIN_PASSWORD;
     if (!valid) return res.status(401).json({ error: 'Invalid admin password' });
+    let adminUser = findUser(normalizedUsername);
+    if (!adminUser) adminUser = createUser(normalizedUsername);
+    adminUser.online = true;
+    await saveData(state);
+    io.emit('users', safeUsers());
+    return res.json({
+      user: safeUsers().find((item) => item.username === adminUser.username),
+      isAdmin: true,
+      token: issueToken(adminUser.username, true),
+    });
   }
-  let user = findUser(username);
-  if (!user) user = createUser(username);
+
+  const authProfile = await resolveAuthProfile(normalizedUsername);
+  if (!authProfile) {
+    return res.status(404).json({ error: 'User not found. Please register.' });
+  }
+  if (!authProfile.password_hash) {
+    return res.status(428).json({ error: 'Password setup required', code: 'PASSWORD_SETUP_REQUIRED' });
+  }
+  if (hashPassword(password) !== authProfile.password_hash) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  let user = findUser(normalizedUsername);
+  if (!user) user = createUser(normalizedUsername, authProfile, authProfile.password_hash);
+  else syncStateUserFromProfile(user, authProfile, authProfile.password_hash);
   user.online = true;
-  saveData(state);
+  await saveData(state);
   io.emit('users', safeUsers());
-  const isAdminUser = user.username === ADMIN_USERNAME;
+  const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
   res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
-});
+}));
 
-app.post('/api/register', loginLimiter, (req, res) => {
-  const { username, password } = req.body;
+app.post('/api/register', loginLimiter, wrap(async (req, res) => {
+  const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
   }
-  let user = findUser(username);
-  if (user) {
-    return res.status(400).json({ error: 'Username already exists' });
+  if (!isPasswordLongEnough(password)) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
-  user = createUser(username);
+  const normalizedUsername = String(username).trim();
+  const passwordHash = hashPassword(password);
+  const authProfile = await resolveAuthProfile(normalizedUsername);
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && !authProfile) {
+    return res.status(400).json({ error: 'Profile record not found. Please create the account in the app first.' });
+  }
+  if (authProfile && !authProfile.password_hash) {
+    return res.status(400).json({ error: 'Profile password hash is missing. Please retry registration.' });
+  }
+  if (authProfile && authProfile.password_hash && authProfile.password_hash !== passwordHash) {
+    return res.status(401).json({ error: 'Password does not match the stored profile.' });
+  }
+  let user = findUser(normalizedUsername);
+  if (!user) user = createUser(normalizedUsername, authProfile || { username: normalizedUsername }, passwordHash);
+  else syncStateUserFromProfile(user, authProfile || { username: normalizedUsername }, passwordHash);
+  user.passwordHash = passwordHash;
   user.online = true;
-  saveData(state);
+  await saveData(state);
   io.emit('users', safeUsers());
-  const token = issueToken(user.username, false);
-  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: false, token });
-});
+  const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
+  const token = issueToken(user.username, isAdminUser);
+  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
+}));
 
 app.get('/api/users', wrap((req, res) => {
   res.json(safeUsers());
 }));
 
-app.put('/api/users/:username', ...requireSelf('username'), (req, res) => {
+app.put('/api/users/:username', ...requireSelf('username'), async (req, res) => {
   const username = req.params.username;
   const user = findUser(username);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  Object.assign(user, req.body);
-  saveData(state);
+  applyAllowedProfileFields(user, req.body || {});
+  await saveData(state);
   io.emit('users', safeUsers());
   res.json(user);
 });
@@ -914,17 +1077,25 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
 // --- CHAT & FILE UPLOAD API ---
 app.get('/api/messages', wrap((req, res) => {
   const { chat, target } = req.query;
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
   if (!chat) return res.status(400).json({ error: 'chat query required' });
+  const sliceHistory = (history) => {
+    const end = Math.max(history.length - offset, 0);
+    const start = Math.max(end - limit, 0);
+    return history.slice(start, end);
+  };
   if (chat === 'private') {
     if (!target) return res.status(400).json({ error: 'target required for private chat' });
     const [userA, userB] = target.split('||');
-    return res.json(getHistory('private', { userA, userB }));
+    return res.json(sliceHistory(getHistory('private', { userA, userB })));
   }
-  return res.json(getHistory(chat));
+  return res.json(sliceHistory(getHistory(chat)));
 }));
 
-app.post('/api/messages', wrap((req, res) => {
-  const { chat, sender, text, target, attachment } = req.body;
+app.post('/api/messages', requireAuth, wrap(async (req, res) => {
+  const { chat, text, target, attachment } = req.body || {};
+  const sender = req.user.username;
   if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });
   const message = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -943,7 +1114,7 @@ app.post('/api/messages', wrap((req, res) => {
     const key = getPrivateKey(userA, userB);
     state.chatHistory.private[key] = state.chatHistory.private[key] || [];
     state.chatHistory.private[key].push(message);
-    saveData(state);
+    await saveData(state);
     emitMessage(chat, { userA, userB }, message);
     const recipient = sender === userA ? userB : userA;
     sendPrivatePushNotification({ sender, target: recipient, text: message.text, messageId: message.id })
@@ -952,12 +1123,12 @@ app.post('/api/messages', wrap((req, res) => {
   }
   state.chatHistory[chat] = state.chatHistory[chat] || [];
   state.chatHistory[chat].push(message);
-  saveData(state);
+  await saveData(state);
   emitMessage(chat, null, message);
   res.json(message);
 }));
 
-// ── Compression helpers ───────────────────────────────────
+// â”€â”€ Compression helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
 const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
 
@@ -973,8 +1144,8 @@ async function compressImage(buffer, ext) {
 }
 
 
-// ── Upload endpoint (compress → R2) ───────────────────────
-app.post('/api/upload', upload.single('file'), async (req, res) => {
+// â”€â”€ Upload endpoint (compress â†’ R2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
 
   const ext      = path.extname(req.file.originalname).toLowerCase();
@@ -990,7 +1161,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (isImage) {
       finalBuffer = await compressImage(req.file.buffer, ext);
     }
-    // Videos: skip re-encoding — phone videos are already H.264; FFmpeg pass is too slow
+    // Videos: skip re-encoding â€” phone videos are already H.264; FFmpeg pass is too slow
 
     await r2.send(new PutObjectCommand({
       Bucket:      R2_BUCKET,
@@ -1020,12 +1191,12 @@ function safePracticeUser(value) {
   return String(value || 'guest').trim().replace(/[^a-z0-9_-]/gi, '_').slice(0, 40) || 'guest';
 }
 
-app.post('/api/code-lab/assets', upload.single('file'), async (req, res) => {
+app.post('/api/code-lab/assets', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
   const ext = path.extname(req.file.originalname).toLowerCase();
   const allowed = IMAGE_EXTS.has(ext) || VIDEO_EXTS.has(ext);
   if (!allowed) return res.status(400).json({ error: 'Only image and video practice assets are allowed' });
-  const username = safePracticeUser(req.body?.username);
+  const username = safePracticeUser(req.user.username);
   const key = `practice-assets/${username}/asset-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
   try {
     await r2.send(new PutObjectCommand({
@@ -1422,14 +1593,14 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-/* ── File Summarizer Endpoint ────────────────────────────── */
-app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
+/* â”€â”€ File Summarizer Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;
   const hasText = !!(req.body && req.body.text);
   const ctype   = (req.headers['content-type'] || '').split(';')[0].trim();
   console.log(`[FileSummarizer] HIT | hasFile:${hasFile} hasText:${hasText} ctype:"${ctype}"`);
 
-  // ── PATH 1: File upload → extract text ───────────────────
+  // â”€â”€ PATH 1: File upload â†’ extract text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (hasFile) {
     const fileName  = req.file.originalname || 'unknown';
     const fileSize  = req.file.size || 0;
@@ -1440,7 +1611,7 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
     console.log(`[FileSummarizer] File: "${fileName}" | ${(fileSize/1024).toFixed(1)} KB | mime: ${mimeType} | buffer: ${bufferLen} bytes | ext: "${ext}"`);
 
     if (!req.file.buffer || bufferLen === 0) {
-      console.error('[FileSummarizer] Buffer missing or empty — multer may not have received the file');
+      console.error('[FileSummarizer] Buffer missing or empty â€” multer may not have received the file');
       return res.status(400).json({ error: 'File data was not received by the server. Please try again.' });
     }
 
@@ -1448,17 +1619,17 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
       let extractedText = '';
 
       if (ext === '.pdf') {
-        console.log('[FileSummarizer] Parsing PDF with pdf-parse…');
+        console.log('[FileSummarizer] Parsing PDF with pdf-parseâ€¦');
         const data = await pdfParse(req.file.buffer);
         extractedText = data.text || '';
         console.log(`[FileSummarizer] PDF parsed: ${extractedText.length} chars`);
       } else if (ext === '.docx' || ext === '.doc') {
-        console.log('[FileSummarizer] Parsing DOCX/DOC with mammoth…');
+        console.log('[FileSummarizer] Parsing DOCX/DOC with mammothâ€¦');
         const result = await mammoth.extractRawText({ buffer: req.file.buffer });
         extractedText = result.value || '';
         console.log(`[FileSummarizer] DOCX/DOC parsed: ${extractedText.length} chars`);
       } else if (ext === '.pptx') {
-        console.log('[FileSummarizer] Parsing PPTX with adm-zip…');
+        console.log('[FileSummarizer] Parsing PPTX with adm-zipâ€¦');
         const zip = new AdmZip(req.file.buffer);
         const slideFiles = zip.getEntries().filter(e =>
           e.entryName.startsWith('ppt/slides/slide') && e.entryName.endsWith('.xml')
@@ -1480,11 +1651,11 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
 
       const trimmed = extractedText.trim();
       if (!trimmed) {
-        console.log(`[FileSummarizer] No text found in "${fileName}" — possibly image-based or empty`);
+        console.log(`[FileSummarizer] No text found in "${fileName}" â€” possibly image-based or empty`);
         return res.status(400).json({ error: 'No readable text found in this file. It may be image-based, empty, or password-protected.' });
       }
 
-      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" → ${trimmed.length} chars`);
+      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" â†’ ${trimmed.length} chars`);
       return res.json({ text: trimmed.slice(0, 50000), type: ext });
 
     } catch (parseErr) {
@@ -1494,7 +1665,7 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
     }
   }
 
-  // ── PATH 2: Text → AI summary ─────────────────────────────
+  // â”€â”€ PATH 2: Text â†’ AI summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (hasText) {
     const { text, type, customPrompt } = req.body;
     console.log(`[FileSummarizer] Summarize | type: "${type}" | text: ${text ? text.length : 0} chars`);
@@ -1523,19 +1694,19 @@ app.post('/api/summarize-file', upload.single('file'), async (req, res) => {
     }
   }
 
-  console.log('[FileSummarizer] Invalid request — no file, no text body');
+  console.log('[FileSummarizer] Invalid request â€” no file, no text body');
   return res.status(400).json({ error: 'Invalid request. Please upload a file to summarize.' });
 });
 
-/* ── Quiz Generation Endpoint ────────────────────────────── */
-app.post('/api/quiz', express.json(), async (req, res) => {
+/* â”€â”€ Quiz Generation Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { text, quizType, count } = req.body || {};
   if (!text || !quizType || !count) {
     return res.status(400).json({ error: 'text, quizType, and count are required.' });
   }
 
   const n = parseInt(count);
-  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1–100.' });
+  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1â€“100.' });
 
   const typeDescriptions = {
     'identification': `${n} identification/fill-in-the-blank questions. For each question, ask students to identify a term, person, place, or concept. The answer should be a short word or phrase.`,
@@ -1548,7 +1719,7 @@ app.post('/api/quiz', express.json(), async (req, res) => {
 
   const prompt = `You are a quiz generator. Generate ${typeDesc} based on the provided text.
 
-IMPORTANT: Return ONLY valid JSON — no explanation, no markdown, no code fences. The JSON must follow this exact schema:
+IMPORTANT: Return ONLY valid JSON â€” no explanation, no markdown, no code fences. The JSON must follow this exact schema:
 {
   "questions": [
     {
@@ -1579,7 +1750,7 @@ Rules:
     const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text.slice(0, 30000)}` }];
     const result = await tryWithFallback('gemini', messages);
 
-    // Extract JSON from AI response — strip any markdown/text wrapping
+    // Extract JSON from AI response â€” strip any markdown/text wrapping
     let raw = result.text.trim();
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI did not return valid JSON.');
@@ -1595,8 +1766,8 @@ Rules:
   }
 });
 
-/* ── AI Endpoints ────────────────────────────────────────── */
-app.post('/api/gemini', express.json(), async (req, res) => {
+/* â”€â”€ AI Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.post('/api/gemini', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
   try {
@@ -1606,7 +1777,7 @@ app.post('/api/gemini', express.json(), async (req, res) => {
   }
 });
 
-app.post('/api/groq', express.json(), async (req, res) => {
+app.post('/api/groq', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
   try {
@@ -1616,12 +1787,14 @@ app.post('/api/groq', express.json(), async (req, res) => {
   }
 });
 
-/* ── In-memory lobby player map ─────────────────────────── */
-const lobbyPlayers = new Map(); // socketId → { username, x, y, dir, color, bodyColor, score }
-const lobbyMoveThrottle = new Map(); // socketId → last broadcast timestamp (50ms / 20fps)
+/* â”€â”€ In-memory lobby player map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const lobbyPlayers = new Map(); // socketId â†’ { username, x, y, dir, color, bodyColor, score }
+const lobbyMoveThrottle = new Map(); // socketId â†’ last broadcast timestamp (50ms / 20fps)
 
-/* ── Star Collector mini-game ────────────────────────────── */
-const lobbyScores = {}; // username → score
+/* â”€â”€ Star Collector mini-game â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const lobbyScores = {}; // username â†’ score
+Object.assign(lobbyScores, state.lobbyScores || {});
+state.lobbyScores = lobbyScores;
 let lobbyStar = null;
 
 function spawnStar() {
@@ -1637,26 +1810,44 @@ function spawnStar() {
 spawnStar();
 
 io.on('connection', (socket) => {
-  socket.on('identify', (user) => {
-    socket.data.username = user.username;
+  socket.on('identify', async (payload = {}) => {
+    const username = String(payload.username || '').trim();
+    const token = payload.token || '';
+    if (!username || !token) return;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.username !== username) return;
+      socket.data.username = decoded.username;
+      socket.data.isAdmin = Boolean(decoded.isAdmin);
+    } catch {
+      return;
+    }
     socket.join('group');
     socket.join('todo');
-    if (user.username) {
-      const existing = findUser(user.username);
+    if (socket.data.username) {
+      const existing = findUser(socket.data.username);
       if (existing) {
         existing.online = true;
-        saveData(state);
+        await saveData(state);
       }
       io.emit('users', safeUsers());
     }
   });
 
-  socket.on('joinChat', ({ chat, target, user }) => {
+  socket.on('joinChat', ({ chat, target }) => {
     if (!chat) return;
-    socket.join(chat === 'private' ? getPrivateKey(user.username, target) : chat);
+    if (chat === 'private') {
+      if (!socket.data.username || !target) return;
+      socket.join(getPrivateKey(socket.data.username, target));
+      return;
+    }
+    if (!ALLOWED_CHATS.has(chat)) return;
+    socket.join(chat);
   });
 
-  socket.on('sendMessage', ({ chat, target, sender, text, attachment }) => {
+  socket.on('sendMessage', async ({ chat, target, text, attachment }) => {
+    const sender = socket.data.username;
+    if (!sender || !chat) return;
     const message = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       sender,
@@ -1669,32 +1860,35 @@ io.on('connection', (socket) => {
       type: 'message',
     };
     if (chat === 'private') {
+      if (!target) return;
       const [userA, userB] = target.split('||');
       const key = getPrivateKey(userA, userB);
       state.chatHistory.private[key] = state.chatHistory.private[key] || [];
       state.chatHistory.private[key].push(message);
-      saveData(state);
+      await saveData(state);
       io.to(key).emit('message', { chat, target: { userA, userB }, message });
       const recipient = sender === userA ? userB : userA;
       sendPrivatePushNotification({ sender, target: recipient, text: message.text, messageId: message.id })
         .catch((error) => console.warn('Private push failed:', error.message));
       return;
     }
+    if (!ALLOWED_CHATS.has(chat)) return;
     state.chatHistory[chat] = state.chatHistory[chat] || [];
     state.chatHistory[chat].push(message);
-    saveData(state);
+    await saveData(state);
     io.to(chat).emit('message', { chat, message });
   });
 
-  socket.on('updateProfile', (payload) => {
+  socket.on('updateProfile', async (payload = {}) => {
+    if (!socket.data.username || socket.data.username !== payload.username) return;
     const user = findUser(payload.username);
     if (!user) return;
-    Object.assign(user, payload);
-    saveData(state);
+    applyAllowedProfileFields(user, payload);
+    await saveData(state);
     io.emit('users', safeUsers());
   });
 
-  /* ── Lobby events ──────────────────────────────────────── */
+  /* â”€â”€ Lobby events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   socket.on('lobby:join', (playerData) => {
     const player = {
       username: playerData.username || 'Unknown',
@@ -1751,13 +1945,14 @@ io.on('connection', (socket) => {
     io.to('lobby').emit('lobby:chat', msg);
   });
 
-  socket.on('lobby:collect_star', ({ starId }) => {
+  socket.on('lobby:collect_star', async ({ starId }) => {
     const player = lobbyPlayers.get(socket.id);
     if (!player || !lobbyStar || lobbyStar.id !== starId) return;
     const old = lobbyStar;
     lobbyStar = null; // remove immediately to prevent double-collect
     lobbyScores[player.username] = (lobbyScores[player.username] || 0) + 1;
     player.score = lobbyScores[player.username];
+    await saveData(state);
     io.to('lobby').emit('lobby:star_collected', {
       username: player.username,
       score: player.score,
@@ -1790,7 +1985,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// ── Global Express error handler ─────────────────────────
+// â”€â”€ Global Express error handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('[express error]', err.message || err);
@@ -1798,7 +1993,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ── Process-level safety nets ─────────────────────────────
+// â”€â”€ Process-level safety nets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
@@ -1806,9 +2001,9 @@ process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
 });
 
-// ── Graceful shutdown ─────────────────────────────────────
+// â”€â”€ Graceful shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function shutdown(signal) {
-  console.log(`[shutdown] ${signal} received — closing server`);
+  console.log(`[shutdown] ${signal} received â€” closing server`);
   server.close(() => {
     console.log('[shutdown] HTTP server closed');
     process.exit(0);
@@ -1819,7 +2014,7 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
-// ── Alarm check scheduler ─────────────────────────────────
+// â”€â”€ Alarm check scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ALARM_FUNCTION_URL = process.env.ALARM_FUNCTION_URL ||
   'https://rxpezjhsnqkjydurtayx.supabase.co/functions/v1/check-alarms';
 const ALARM_CHECK_SECRET = process.env.ALARM_CHECK_SECRET || '';
@@ -1839,9 +2034,9 @@ if (ALARM_CHECK_SECRET) {
       console.warn('[alarm-check] failed:', err.message);
     }
   }, 60_000);
-  console.log('[alarm-check] Scheduler started — checking every 60s');
+  console.log('[alarm-check] Scheduler started â€” checking every 60s');
 } else {
-  console.warn('[alarm-check] ALARM_CHECK_SECRET not set — scheduler disabled');
+  console.warn('[alarm-check] ALARM_CHECK_SECRET not set â€” scheduler disabled');
 }
 
 if (require.main === module) {

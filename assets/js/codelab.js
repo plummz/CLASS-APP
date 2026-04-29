@@ -536,7 +536,7 @@
     const js = String(codeLabFiles.javascript || '').replace(/<\/script>/gi, '<\\/script>');
     const harness = `<script>
       (function(){
-        function send(level, message){ parent.postMessage({ type: 'code-lab-console', level: level, message: String(message) }, '*'); }
+        function send(level, message){ parent.postMessage({ type: 'code-lab-console', level: level, message: String(message) }, window.location.origin || '*'); }
         ['log','warn','error'].forEach(function(level){
           var original = console[level];
           console[level] = function(){ send(level, Array.prototype.slice.call(arguments).join(' ')); original.apply(console, arguments); };
@@ -680,7 +680,7 @@
       form.append('file', file);
       form.append('username', user()?.username || 'guest');
       try {
-        const res = await fetch('/api/code-lab/assets', { method: 'POST', body: form });
+        const res = await (window.authFetch ? window.authFetch('/api/code-lab/assets', { method: 'POST', body: form }) : fetch('/api/code-lab/assets', { method: 'POST', body: form }));
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Upload failed');
         codeLabAssets.unshift(data);

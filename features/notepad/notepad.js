@@ -171,7 +171,8 @@ window.notepadModule = {
         if (rev) rev.is_shared = share;
         this.renderReviewers();
       } else {
-        alert('Error sharing: ' + error.message);
+        if (typeof showToast === 'function') showToast('Error sharing: ' + error.message, 'error');
+        else if (typeof customAlert === 'function') customAlert('Error sharing: ' + error.message);
       }
     } catch(e) {
       console.error(e);
@@ -188,7 +189,8 @@ window.notepadModule = {
         this.reviewers = this.reviewers.filter(r => r.id !== id);
         this.renderReviewers();
       } else {
-        alert('Error deleting: ' + error.message);
+        if (typeof showToast === 'function') showToast('Error deleting: ' + error.message, 'error');
+        else if (typeof customAlert === 'function') customAlert('Error deleting: ' + error.message);
       }
     } catch(e) {
       console.error(e);
@@ -225,7 +227,8 @@ window.notepadModule = {
     const content = document.getElementById('note-content').value.trim();
 
     if (!title || !content) {
-      alert('Please fill in both title and content.');
+      if (typeof showToast === 'function') showToast('Please fill in both title and content.', 'error');
+      else if (typeof customAlert === 'function') customAlert('Please fill in both title and content.');
       return;
     }
 

@@ -220,7 +220,7 @@
     fd.append('file', selectedFile);
 
     setStatus(`📤 Uploading… parsing ${selectedFile.name.split('.').pop().toUpperCase()} file`);
-    const res  = await fetch('/api/summarize-file', { method: 'POST', body: fd });
+    const res  = await (window.authFetch ? window.authFetch('/api/summarize-file', { method: 'POST', body: fd }) : fetch('/api/summarize-file', { method: 'POST', body: fd }));
     setStatus('🔍 Extracting text…');
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Extraction failed.');
@@ -244,11 +244,15 @@
       const typeLabels = { short: 'short summary', detailed: 'detailed notes', key: 'key points', terms: 'terms & definitions' };
       setStatus(`🤖 AI generating ${typeLabels[type] || 'summary'}…`);
 
-      const res  = await fetch('/api/summarize-file', {
+      const res  = await (window.authFetch ? window.authFetch('/api/summarize-file', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ text, type }),
-      });
+      }) : fetch('/api/summarize-file', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ text, type }),
+      }));
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Summarization failed.');
 
@@ -341,11 +345,15 @@
         const text = await extractText();
         setStatus(`🤖 AI building ${quizSettings.count}-item ${quizSettings.type} quiz…`);
 
-        const res  = await fetch('/api/quiz', {
+        const res  = await (window.authFetch ? window.authFetch('/api/quiz', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ text, quizType: quizSettings.type, count: quizSettings.count }),
-        });
+        }) : fetch('/api/quiz', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ text, quizType: quizSettings.type, count: quizSettings.count }),
+        }));
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Quiz generation failed.');
         if (!data.questions?.length) throw new Error('No questions returned.');

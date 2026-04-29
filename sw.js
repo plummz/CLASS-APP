@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.55-20260429-royale-crate-map-markers';
+const CACHE_VERSION = 'v1.5.52-20260429-security-auth-hardening';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=96',
+  '/index.html?v=97',
   '/style.css?v=40',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -44,9 +44,9 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
-  '/features/file-summarizer/file-summarizer.js?v=8',
-  '/script.js?v=96',
-  '/features/reviewers/reviewers.js?v=13',
+  '/features/file-summarizer/file-summarizer.js?v=9',
+  '/script.js?v=97',
+  '/features/reviewers/reviewers.js?v=14',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',
   '/features/personal-tools/notepad.css?v=6',
@@ -63,7 +63,7 @@ const ASSETS = [
   '/features/updates/updates.js?v=1',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
-  '/assets/js/codelab.js?v=6',
+  '/assets/js/codelab.js?v=7',
   '/coding-educational/coding-educational-data.js?v=10',
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
@@ -118,7 +118,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/') || caches.match('/index.html?v=90'))
+        .catch(() => caches.match('/') || caches.match(ASSETS[1]))
     );
     return;
   }

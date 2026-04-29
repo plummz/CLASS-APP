@@ -338,8 +338,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.52';
+const APP_VERSION = '1.5.53';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.53',
+    date: 'April 29, 2026',
+    title: 'Fix Login — Supabase RLS Migration Corrected',
+    summary: 'Fixes a broken database migration that enabled Row Level Security on the profiles table without a valid SELECT policy, blocking all sign-ins.',
+    changes: [
+      'Fixed: Migration 013 no longer enables RLS on the profiles table. The previous migration incorrectly used auth.uid() and a non-existent id column, which caused Supabase to reject all profile reads and lock every user out of sign-in.',
+      'Fixed: Lobby socket re-identify now sends the correct { username, token } payload when the socket reconnects inside the lobby, preventing identity loss after a disconnect.',
+      'Fixed: Music search results and error messages are now escaped with escapeHTML before being written to innerHTML, closing two remaining XSS vectors.',
+      'Fixed: Admin login password comparison now routes both sides through hashPassword() instead of a direct plain-text string comparison, preventing timing attacks on the admin account.'
+    ]
+  },
   {
     version: '1.5.52',
     date: 'April 29, 2026',

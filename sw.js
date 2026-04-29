@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.52-20260429-security-auth-hardening';
+const CACHE_VERSION = 'v1.5.53-20260429-fix-login-rls-migration';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=97',
+  '/index.html?v=98',
   '/style.css?v=40',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=9',
-  '/script.js?v=97',
+  '/script.js?v=98',
   '/features/reviewers/reviewers.js?v=14',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',

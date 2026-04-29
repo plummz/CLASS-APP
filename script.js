@@ -31,6 +31,21 @@ async function initSupabase() {
 // Kept purely so any old files you uploaded to Render can still open without breaking
 const SERVER_BASE = 'https://class-app-1.onrender.com';
 
+function normalizeStoredFileUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('/uploads/')) return `${SERVER_BASE}${raw}`;
+    try {
+        const parsed = new URL(raw, window.location.origin);
+        if (parsed.pathname.startsWith('/uploads/')) {
+            return `${SERVER_BASE}${parsed.pathname}`;
+        }
+        return parsed.href;
+    } catch (_) {
+        return raw.startsWith('http') ? raw : `${SERVER_BASE}${raw}`;
+    }
+}
+
 /* ============================================================
    CUSTOM MODALS (Replaces prompt/alert/confirm for PWA support)
    ============================================================ */
@@ -1666,7 +1681,7 @@ window.openFileSummarizerForStoredFile = async function(fileUrl, fileName, fileT
     goToPage('file-summarizer');
     try {
         await window.fileSummarizerModule.loadRemoteFile({
-            url: fileUrl,
+            url: normalizeStoredFileUrl(fileUrl),
             name: fileName,
             type: fileType,
         });
@@ -2129,7 +2144,7 @@ window.copyFileToFolder = async function(fileId, targetFolderId, refreshMode = '
     const { error } = await insertFileRecord({
         folder_id: targetFolderId,
         name: sourceFile.name,
-        url: sourceFile.url,
+        url: normalizeStoredFileUrl(sourceFile.url),
         type: sourceFile.type,
         uploader: currentUser?.username || sourceFile.uploader,
         size: sourceFile.size || null,
@@ -2616,7 +2631,7 @@ async function rebuildQueueFromFolder(folderId, selectedUrl, selectedName) {
 }
 
 window.playOrOpenFileAPI = async function(url, name, skipIndexUpdate = false, folderId = null) {
-    const fullUrl = url.startsWith('http') ? url : SERVER_BASE + url; 
+    const fullUrl = normalizeStoredFileUrl(url);
     const player = document.getElementById('audio-player');
     
     if (isAudioFile({ name, url })) {

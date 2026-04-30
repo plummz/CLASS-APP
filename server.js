@@ -400,6 +400,19 @@ function requireAuth(req, res, next) {
   }
 }
 
+// Validate that x-class-username header matches authenticated user (if present)
+// This prevents header spoofing on authenticated requests
+function validateUsernameHeader(req, res, next) {
+  const headerUsername = (req.headers['x-class-username'] || '').trim();
+  if (headerUsername && req.user?.username && headerUsername !== req.user.username) {
+    return res.status(403).json({
+      error: 'Username header mismatch',
+      details: 'x-class-username header does not match authenticated user'
+    });
+  }
+  next();
+}
+
 function requireAdmin(req, res, next) {
   if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
   next();

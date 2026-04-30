@@ -404,8 +404,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.66';
+const APP_VERSION = '1.5.67';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.67',
+    date: 'April 30, 2026',
+    title: 'Authorization Hardening: Admin Table & RLS Safety',
+    summary: 'Incremental authorization security hardening by introducing a proper admins table and server-side header validation to reduce reliance on hardcoded username checks.',
+    changes: [
+      'Improved: Admin status is now stored in a dedicated admins table instead of checking a single hardcoded username.',
+      'Security: Added server-side middleware to validate x-class-username header matches authenticated user, preventing simple header spoofing.',
+      'New: Migration 015 creates the admins table with proper RLS policies and seeds it with the original admin.',
+      'Note: x-class-username header-based identity model remains unchanged; Phase 3 will migrate to proper JWT-based auth.',
+      'Backward compatible: Existing hardcoded admin check still works during transition period.'
+    ],
+  },
   {
     version: '1.5.66',
     date: 'April 30, 2026',

@@ -430,8 +430,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.71';
+const APP_VERSION = '1.5.72';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.72',
+    date: 'April 30, 2026',
+    title: 'PHASE 7: Codebase Organization - Remove Duplicate Modules',
+    summary: 'Cleaned up codebase by removing dead duplicate feature modules: eliminated 6 files across 3 legacy directories (notepad, alarm, calculator) that duplicated active implementations in personal-tools.',
+    changes: [
+      'Removed: Deleted legacy features/notepad/, features/alarm/, features/calculator/ directories (6 files, 584 lines of dead code).',
+      'Verified: Only active modern implementations in features/personal-tools/ are loaded (notepad.js, alarm-clock.js, calculator.js with cloud sync, notifications, sounds).',
+      'Verified: All module references in script.js use typeof checks, so removal is completely safe with zero functional impact.',
+      'Status: Codebase now cleaner with no duplicate modules, making future maintenance easier.',
+      'Future: script.js remains unified (7.6K lines) — smaller refactors deferred to future phases to maintain stability.'
+    ],
+  },
   {
     version: '1.5.71',
     date: 'April 30, 2026',

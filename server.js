@@ -1020,7 +1020,7 @@ app.post('/api/push/private-message', requireAuth, async (req, res) => {
 });
 
 // --- FOLDERS & FILES API ---
-app.get('/api/folders', wrap((req, res) => {
+app.get('/api/folders', requireAuth, wrap((req, res) => {
   const parent = req.query.parent;
   res.json(state.folders.filter(f => f.parent === parent));
 }));
@@ -1051,7 +1051,7 @@ app.delete('/api/folders/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/files', wrap((req, res) => {
+app.get('/api/files', requireAuth, wrap((req, res) => {
   res.json(state.files.filter(f => f.folderId === req.query.folderId));
 }));
 
@@ -1245,7 +1245,7 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
 });
 
 // --- CHAT & FILE UPLOAD API ---
-app.get('/api/messages', wrap((req, res) => {
+app.get('/api/messages', requireAuth, wrap((req, res) => {
   const { chat, target } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);

@@ -404,8 +404,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.65';
+const APP_VERSION = '1.5.66';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.66',
+    date: 'April 30, 2026',
+    title: 'Security Hotfix: Protect Public Data Exposure',
+    summary: 'Critical security fix: GET /api/messages, GET /api/folders, and GET /api/files endpoints now require authenticated access to prevent unauthorized public data exposure.',
+    changes: [
+      'Security: GET /api/messages endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Security: GET /api/folders endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Security: GET /api/files endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Improved: All three endpoints now return 401 Unauthorized when accessed without a valid authentication token.',
+      'Note: Frontend uses Supabase directly for these operations, so this change has no impact on app functionality.'
+    ],
+  },
   {
     version: '1.5.65',
     date: 'April 30, 2026',

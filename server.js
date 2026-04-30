@@ -364,8 +364,15 @@ function sanitizeAuthProfile(profile = {}) {
   };
 }
 
-async function updateAuthProfilePasswordHash(username, passwordHash) {
+async function updateAuthProfilePasswordHash(username, passwordHash, authenticatedUsername = null) {
   if (!username) throw new Error('Username is required for password setup.');
+  // If called from an authenticated context, validate that the caller is modifying their own password
+  // or is an admin (this would be checked at the route level, but we validate here too)
+  if (authenticatedUsername && authenticatedUsername !== username) {
+    // This should not happen if routes are properly gated, but fail fast if it does
+    throw new Error('Cannot update password for a different user');
+  }
+
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     const url = new URL('/rest/v1/profiles', SUPABASE_URL);
     url.searchParams.set('username', `eq.${username}`);
@@ -435,6 +442,21 @@ function validateUsernameHeader(req, res, next) {
     });
   }
   next();
+}
+
+// Middleware: Ensure username parameter matches authenticated user or is admin
+// Use for routes that update user-specific data
+function requireSelfOrAdmin(paramField) {
+  return [requireAuth, (req, res, next) => {
+    const targetUsername = req.params[paramField] || req.body?.username;
+    if (req.user.isAdmin || req.user.username === targetUsername) {
+      return next();
+    }
+    res.status(403).json({
+      error: 'Forbidden',
+      details: 'Can only modify your own data unless you are an admin'
+    });
+  }];
 }
 
 function requireAdmin(req, res, next) {

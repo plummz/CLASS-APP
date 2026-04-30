@@ -261,7 +261,7 @@ window.reviewersModule = {
           ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : '<div></div>'}
           <div class="reviewer-card-badge">👍 ${voteCount}</div>
         </div>
-        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
+        <div class="reviewer-card-content" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="open-viewer" data-reviewer-id="${safeId}">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 150 ? '…' : ''}</div>
           <div class="reviewer-card-footer">
@@ -270,15 +270,15 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
-          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
-          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
-          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer('${safeId}', event)">Delete</button>` : ''}
+          <button class="reviewer-vote-btn ${voteClass}" type="button" data-action="handleReviewerAction" data-reviewer-action="toggle-vote" data-reviewer-id="${safeId}">👍</button>
+          <button class="reviewer-view-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="open-viewer" data-reviewer-id="${safeId}">View</button>
+          ${canDel ? `<button class="reviewer-delete-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="delete" data-reviewer-id="${safeId}">Delete</button>` : ''}
         </div>
       </div>`;
     }).join('');
 
     if (this.displayed.length < this.filtered.length) {
-      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" onclick="window.reviewersModule.loadMore()">Load More</button></div>`;
+      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="load-more">Load More</button></div>`;
     }
 
     grid.innerHTML = html;
@@ -319,7 +319,7 @@ window.reviewersModule = {
     const safeId = String(rev.id).replace(/[^0-9]/g, '');
     overlay.innerHTML = `
       <div class="reviewer-viewer-paper">
-        <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
+        <button class="reviewer-close-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="close-viewer">×</button>
         <div class="reviewer-paper-title">${this.esc(rev.title)}</div>
         <div class="reviewer-paper-meta">
           Shared by <strong>${this.esc(rev.contributor_name)}</strong>
@@ -328,7 +328,7 @@ window.reviewersModule = {
         </div>
         <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
-          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId}, event)">📝 Save to My Notes</button>
+          <button class="reviewer-save-note-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="save-to-notepad" data-reviewer-id="${safeId}">📝 Save to My Notes</button>
         </div>
       </div>
     `;
@@ -371,7 +371,7 @@ window.reviewersModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted '${this.esc(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.reviewersModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      t.innerHTML = `Deleted '${this.esc(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="undo-delete" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="dismiss-toast">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 

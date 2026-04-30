@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.75-20260430-harden-supabase-identity';
+const CACHE_VERSION = 'v1.5.76-20260430-handler-stability';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=119',
+  '/index.html?v=120',
   '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,10 +45,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=10',
-  '/script.js?v=119',
-  '/features/reviewers/reviewers.js?v=15',
+  '/script.js?v=120',
+  '/features/reviewers/reviewers.js?v=16',
   '/features/reviewers/reviewers.css?v=7',
-  '/features/personal-tools/notepad.js?v=6',
+  '/features/personal-tools/notepad.js?v=7',
   '/features/personal-tools/notepad.css?v=6',
   '/features/ai/ai.js?v=1',
   '/features/academics/academics.js?v=1',

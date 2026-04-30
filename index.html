@@ -452,8 +452,8 @@
     <div class="chat-container">
       <div class="chat-sidebar">
         <div class="chat-list">
-          <div class="chat-item" role="button" tabindex="0" onclick="openChat('group')" onkeydown="if(event.key==='Enter'||event.key===' ')openChat('group')">Group Chat</div>
-          <div class="chat-item" role="button" tabindex="0" onclick="openChat('todo')" onkeydown="if(event.key==='Enter'||event.key===' ')openChat('todo')">To-Do Group</div>
+          <div class="chat-item" role="button" tabindex="0" data-action="handleChatOpenAction" data-chat-type="group">Group Chat</div>
+          <div class="chat-item" role="button" tabindex="0" data-action="handleChatOpenAction" data-chat-type="todo">To-Do Group</div>
           <div class="chat-section-label">Private Contacts</div>
           <div id="chat-user-list" class="chat-user-list"></div>
         </div>
@@ -466,7 +466,7 @@
           <label class="attachment-label" for="attachment-input">Attach</label>
           <input type="file" id="attachment-input" accept="*/*">
           <span class="attachment-selected" id="attachment-selected">No file chosen</span>
-          <button class="btn-primary" onclick="sendMessage()">Send</button>
+          <button class="btn-primary" type="button" data-action="handleSendMessageAction">Send</button>
         </div>
       </div>
     </div>
@@ -476,13 +476,13 @@
     <div class="page-header"><h1 class="page-title">User Directory</h1></div>
     <div class="section-label">Profile cards, online status, and private chat access</div>
     <div class="user-tools">
-      <input id="user-search-input" class="user-search-input" type="search" placeholder="Search users..." oninput="renderUserDirectory()">
-      <select id="user-filter-select" class="user-filter-select" onchange="renderUserDirectory()">
+      <input id="user-search-input" class="user-search-input" type="search" placeholder="Search users...">
+      <select id="user-filter-select" class="user-filter-select">
         <option value="all">All users</option>
         <option value="online">Online only</option>
         <option value="offline">Offline only</option>
       </select>
-      <select id="user-sort-select" class="user-filter-select" onchange="renderUserDirectory()">
+      <select id="user-sort-select" class="user-filter-select">
         <option value="online">Online first</option>
         <option value="name">Name A-Z</option>
         <option value="recent">Recently updated</option>
@@ -533,17 +533,17 @@
     <div class="page-header"><h1 class="page-title">Calendar</h1></div>
     <div class="calendar-container">
       <div class="calendar-header">
-        <button class="btn-secondary" onclick="prevMonth()">Prev</button>
+        <button class="btn-secondary" type="button" data-action="handleCalendarNavAction" data-calendar-nav="prev">Prev</button>
         <h2 id="month-year">April 2026</h2>
-        <button class="btn-secondary" onclick="nextMonth()">Next</button>
+        <button class="btn-secondary" type="button" data-action="handleCalendarNavAction" data-calendar-nav="next">Next</button>
       </div>
       <div class="calendar-grid" id="calendar-grid"></div>
     </div>
     <div class="announcements" style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
       <h3 style="color: #00ff88; margin-bottom: 10px;">Weekly Announcements</h3>
       <textarea id="announcement-note" placeholder="Type your weekly notes here..." style="width: 100%; height: 80px; background: rgba(0,0,0,0.3); color: white; border: 1px solid #00d4ff; border-radius: 8px; padding: 10px; resize: none;"></textarea>
-      <button class="btn-primary" style="margin-top: 10px; width: 100%;" onclick="saveAnnouncement()">Save Announcement</button>
-      <button class="btn-blue" style="margin-top: 10px; width: 100%;" onclick="shareWeeklyAnnouncement()">Share to Everyone</button>
+      <button class="btn-primary" type="button" style="margin-top: 10px; width: 100%;" data-action="handleAnnouncementAction" data-announcement-action="save-weekly">Save Announcement</button>
+      <button class="btn-blue" type="button" style="margin-top: 10px; width: 100%;" data-action="handleAnnouncementAction" data-announcement-action="share-weekly">Share to Everyone</button>
     </div>
   </div>
   
@@ -615,8 +615,8 @@
         <input type="text" id="yt-main-input"
           placeholder="Song name or paste YouTube URL..."
           class="yt-input"
-          onkeydown="if(event.key==='Enter') handleYtInput()">
-        <button class="btn-primary" id="yt-action-btn" onclick="handleYtInput()">Search</button>
+          >
+        <button class="btn-primary" id="yt-action-btn" type="button" data-action="handleMusicAction" data-music-action="youtube-submit">Search</button>
       </div>
       <p class="yt-hint" id="yt-hint-text">
         Type a song name to search · or paste a YouTube URL to play instantly
@@ -642,25 +642,24 @@
       <div class="music-search-row">
         <input type="text" id="music-search-input" class="yt-input music-search-input"
           placeholder="🔍 Search uploaded songs (e.g. Lauv, OPM, Ed Sheeran…)"
-          oninput="musicSearchDebounced()"
-          onkeydown="if(event.key==='Enter') searchMusicFiles()">
-        <button class="btn-primary" onclick="searchMusicFiles()">Search</button>
+          >
+        <button class="btn-primary" type="button" data-action="handleMusicAction" data-music-action="library-search">Search</button>
       </div>
       <div id="music-search-results" class="music-search-results hidden"></div>
     </div>
 
     <div class="music-manage-container" style="margin-top: 16px;">
-        <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
+        <button class="btn-primary btn-large" type="button" data-action="handleMusicAction" data-music-action="open-music-folders">Open Music Folders</button>
     </div>
     <div class="music-player-card">
       <h3 id="now-playing-text" class="music-now-playing">Select a track from a folder to play</h3>
-      <audio id="audio-player" class="full-width" controls crossorigin="anonymous" onplay="startBlockVisualizer(this)"></audio>
+      <audio id="audio-player" class="full-width" controls crossorigin="anonymous"></audio>
       
       <div class="music-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-          <button class="btn-secondary music-control-btn" onclick="playPrevSong()">⏮ Prev</button>
-          <button id="btn-loop" class="btn-secondary music-control-btn" onclick="toggleLoop()" style="color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
-          <button id="btn-repeat" class="btn-secondary music-control-btn" onclick="toggleRepeat()" style="color: white; border-color: white;">🔂 Repeat 1: OFF</button>
-          <button class="btn-secondary music-control-btn" onclick="playNextSong()">Next ⏭</button>
+          <button class="btn-secondary music-control-btn" type="button" data-action="handleMusicAction" data-music-action="prev">⏮ Prev</button>
+          <button id="btn-loop" class="btn-secondary music-control-btn" type="button" data-action="handleMusicAction" data-music-action="loop" style="color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
+          <button id="btn-repeat" class="btn-secondary music-control-btn" type="button" data-action="handleMusicAction" data-music-action="repeat" style="color: white; border-color: white;">🔂 Repeat 1: OFF</button>
+          <button class="btn-secondary music-control-btn" type="button" data-action="handleMusicAction" data-music-action="next">Next ⏭</button>
       </div>
 
       <div id="visualizer-container" class="visualizer-wrapper" style="margin-top: 20px; height: 250px; background: black; border-radius: 12px; overflow: hidden;">
@@ -1128,9 +1127,8 @@
       <div class="lobby-chat-panel">
         <div class="lobby-chat-messages" id="lobby-chat-messages"></div>
         <div class="lobby-chat-input-row">
-          <input type="text" id="lobby-chat-input" placeholder="Say something in the lobby…" maxlength="100"
-            onkeydown="if(event.key==='Enter') sendLobbyChat()">
-          <button class="btn-primary" onclick="sendLobbyChat()">Send</button>
+          <input type="text" id="lobby-chat-input" placeholder="Say something in the lobby…" maxlength="100">
+          <button class="btn-primary" type="button" data-action="handleLobbyChatAction">Send</button>
         </div>
       </div>
     </div>
@@ -1146,8 +1144,8 @@
           <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
         </div>
         <div class="board-toolbar">
-          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
-          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements...">
+          <button class="board-refresh-btn" type="button" data-action="handleAnnouncementAction" data-announcement-action="refresh">Refresh</button>
         </div>
       </div>
       <div class="announcement-stats" id="announcement-stats"></div>
@@ -1527,7 +1525,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js?v=119"></script>
+<script src="script.js?v=120"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1549,12 +1547,12 @@
   <script src="features/candy/candy.js?v=10" defer></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=6" defer></script>
+<script src="features/personal-tools/notepad.js?v=7" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
   <script src="features/file-summarizer/file-summarizer.js?v=10" defer></script>
-<script src="features/reviewers/reviewers.js?v=15" defer></script>
+<script src="features/reviewers/reviewers.js?v=16" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

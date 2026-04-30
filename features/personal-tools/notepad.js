@@ -222,7 +222,7 @@ window.notepadModule = {
     page.innerHTML = `
       ${offlineBanner}
       <div class="tool-page-header">
-        <button class="tool-back-btn" onclick="window.goToPage('personal-tools')">← Back</button>
+        <button class="tool-back-btn" type="button" data-action="handleNotepadAction" data-notepad-action="back">← Back</button>
         <h1 class="tool-page-title">Notepad</h1>
         <div class="notepad-sync-status">${syncIcon}</div>
       </div>
@@ -231,13 +231,13 @@ window.notepadModule = {
         <div class="notepad-header">
           <h2 style="margin: 0; color: #00d4ff;">My Notes</h2>
           <div class="notepad-controls">
-            <button class="notepad-btn" onclick="notepadModule.showForm()">+ New Note</button>
-            <button class="notepad-btn delete" onclick="notepadModule.clearAll()">Clear All</button>
+            <button class="notepad-btn" type="button" data-action="handleNotepadAction" data-notepad-action="show-form">+ New Note</button>
+            <button class="notepad-btn delete" type="button" data-action="handleNotepadAction" data-notepad-action="clear-all">Clear All</button>
           </div>
         </div>
 
         <input type="search" id="notepad-search" class="notepad-search-input"
-          placeholder="🔍 Search notes…" oninput="notepadModule.onSearch(this.value)"
+          placeholder="🔍 Search notes…"
           value="${this.escapeHtml(this.searchQuery)}">
 
         <div class="notepad-list" id="notepad-list">
@@ -249,14 +249,16 @@ window.notepadModule = {
           <input type="text" id="note-title" placeholder="Note Title" maxlength="100">
           <textarea id="note-content" placeholder="Write your note here..." maxlength="2000"></textarea>
           <div class="notepad-form-buttons">
-            <button onclick="notepadModule.saveNote()">Save Note</button>
-            <button class="cancel" onclick="notepadModule.hideForm()">Cancel</button>
+            <button type="button" data-action="handleNotepadAction" data-notepad-action="save-note">Save Note</button>
+            <button class="cancel" type="button" data-action="handleNotepadAction" data-notepad-action="hide-form">Cancel</button>
           </div>
         </div>
       </div>
     `;
 
     this.renderNotes();
+    const searchEl = document.getElementById('notepad-search');
+    if (searchEl) searchEl.addEventListener('input', (event) => this.onSearch(event.target.value));
   },
 
   onSearch: function(value) {
@@ -305,9 +307,9 @@ window.notepadModule = {
           ${sharedWarning}
           <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
           <div class="notepad-item-actions">
-            <button onclick="notepadModule.editNote(${index})">Edit</button>
-            <button onclick="notepadModule.shareNote(${index})">Share to Reviewers</button>
-            <button class="delete" onclick="notepadModule.deleteNote(${index})">Delete</button>
+            <button type="button" data-action="handleNotepadAction" data-notepad-action="edit" data-note-index="${index}">Edit</button>
+            <button type="button" data-action="handleNotepadAction" data-notepad-action="share" data-note-index="${index}">Share to Reviewers</button>
+            <button class="delete" type="button" data-action="handleNotepadAction" data-notepad-action="delete" data-note-index="${index}">Delete</button>
           </div>
         </div>
       `;
@@ -388,7 +390,7 @@ window.notepadModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted '${this.escapeHtml(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      t.innerHTML = `Deleted '${this.escapeHtml(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="undo-delete" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="dismiss-toast">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 
@@ -447,7 +449,7 @@ window.notepadModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted ${savedNotes.length} note(s) <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoClearAll('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
+      t.innerHTML = `Deleted ${savedNotes.length} note(s) <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="undo-clear-all" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="dismiss-toast">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 
@@ -559,7 +561,7 @@ window.notepadModule = {
           setTimeout(() => {
             const t = document.createElement('div');
             t.className = 'app-toast app-toast-info';
-            t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" onclick="window.goToPage&&goToPage(\'reviewers\')">View Reviewers →</span>';
+            t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="go-reviewers">View Reviewers →</span>';
             document.body.appendChild(t);
             requestAnimationFrame(() => t.classList.add('show'));
             setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);

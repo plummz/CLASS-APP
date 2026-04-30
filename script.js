@@ -455,8 +455,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.75';
+const APP_VERSION = '1.5.76';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.76',
+    date: 'April 30, 2026',
+    title: 'Stabilize high-traffic button handlers and modal interactions',
+    summary: 'Moved core chat, users/profile, notepad, reviewers, folder/file, gallery, calendar, announcement, lobby, and music interactions onto bound listeners and data-driven actions so the app is less dependent on inline handlers.',
+    changes: [
+      'Improved: High-traffic folder/file, reviewer, notepad, gallery, profile, calendar, announcement, lobby, and music actions now work through delegated listeners or direct bindings after render.',
+      'Improved: Injected modals for app opens, contributions, calendar notes, and gallery lightboxes now close through shared modal handlers instead of depending on inline close logic.',
+      'Fixed: Chat entry points, user directory filters, profile actions, announcement search/refresh, and lobby chat/music keyboard actions now have explicit listeners for safer mobile and future CSP behavior.'
+    ],
+  },
   {
     version: '1.5.75',
     date: 'April 30, 2026',
@@ -2237,10 +2248,10 @@ function fetchAndRenderFiles() {
                     <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}${getUploaderAvatarHTML(f.uploader)}${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
                 <div class="file-row-actions">
-                    <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}', false, '${escapeJS(currentFolderContext.id)}')" class="file-action primary">Open</button>
-                    ${canSummarizeFile ? `<button onclick="window.openFileSummarizerForStoredFile('${safeUrl}', '${safeName}', '${safeType}')" class="file-action summarize">Summarize</button>` : ''}
-                    ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action icon-only" aria-label="Copy and move file" title="Copy & Move To">${getFileActionIcon('transfer')}</button>` : ''}
-                    ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger icon-only" aria-label="Delete file" title="Delete">${getFileActionIcon('delete')}</button>` : ''}
+                    <button type="button" data-action="handleFileListAction" data-file-action="open" data-file-url="${safeUrl}" data-file-name="${safeName}" data-folder-id="${escapeJS(currentFolderContext.id)}" class="file-action primary">Open</button>
+                    ${canSummarizeFile ? `<button type="button" data-action="handleFileListAction" data-file-action="summarize" data-file-url="${safeUrl}" data-file-name="${safeName}" data-file-type="${safeType}" class="file-action summarize">Summarize</button>` : ''}
+                    ${canModifyFile ? `<button type="button" data-action="handleFileListAction" data-file-action="copy" data-file-id="${safeId}" data-folder-id="${escapeJS(currentFolderContext.id)}" class="file-action icon-only" aria-label="Copy and move file" title="Copy & Move To">${getFileActionIcon('transfer')}</button>` : ''}
+                    ${canModifyFile ? `<button type="button" data-action="handleFileListAction" data-file-action="delete" data-file-id="${safeId}" class="file-action danger icon-only" aria-label="Delete file" title="Delete">${getFileActionIcon('delete')}</button>` : ''}
                 </div>
             </div>
             `;
@@ -2472,7 +2483,7 @@ window.openFolderPermissions = async function(folderId) {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="folder-permission-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal-box permission-modal-box">
-          <button class="modal-close-btn" onclick="removeDynamicModal('folder-permission-modal')">&times;</button>
+          <button class="modal-close-btn" type="button" data-close-modal-id="folder-permission-modal">&times;</button>
           <h3 class="modal-title text-blue">Folder Permissions</h3>
           <p class="modal-text align-left">Owner: ${escapeHTML(folder.owner)} · Folder: ${escapeHTML(folder.name)}</p>
           <div class="permission-state-card ${isOpen ? 'open' : 'restricted'}">
@@ -2481,11 +2492,11 @@ window.openFolderPermissions = async function(folderId) {
             <p>${statusText}</p>
           </div>
           <div class="permission-quick-actions">
-            <button class="permission-quick-btn danger" onclick="setFolderAccessMode('${escapeJS(folder.id)}','restricted')">
+            <button class="permission-quick-btn danger" type="button" data-action="handleGalleryAction" data-gallery-action="folder-permission-mode" data-folder-id="${escapeJS(folder.id)}" data-folder-mode="restricted">
               <span>Restrict All Access</span>
               <small>Owner only</small>
             </button>
-            <button class="permission-quick-btn success" onclick="setFolderAccessMode('${escapeJS(folder.id)}','edit')">
+            <button class="permission-quick-btn success" type="button" data-action="handleGalleryAction" data-gallery-action="folder-permission-mode" data-folder-id="${escapeJS(folder.id)}" data-folder-mode="edit">
               <span>Allow Everyone Access</span>
               <small>Instant edit access</small>
             </button>
@@ -2531,7 +2542,7 @@ async function renderProfileFolders(username) {
     container.innerHTML = `
       <div class="profile-folder-head">
         <h3>Profile Folders</h3>
-        ${canCreate ? `<button class="btn-primary compact-btn" onclick="createProfileFolder('${escapeJS(username)}')">New Folder</button>` : ''}
+        ${canCreate ? `<button class="btn-primary compact-btn" type="button" data-action="handleGalleryAction" data-gallery-action="create-profile-folder" data-username="${escapeJS(username)}">New Folder</button>` : ''}
       </div>
       <div class="profile-folder-grid">
         ${visible.map((folder) => {
@@ -2539,16 +2550,16 @@ async function renderProfileFolders(username) {
             const safeName = escapeJS(folder.name);
             return `
               <div class="profile-folder-card">
-                <button class="profile-folder-open" onclick="openFileExplorer('${safeId}','${safeName}')">
+                <button class="profile-folder-open" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-open" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">
                   <span class="profile-folder-icon">📁</span>
                   <span class="profile-folder-name">${escapeHTML(folder.name)}</span>
                   <span class="profile-folder-owner">Owner: ${escapeHTML(folder.owner)}</span>
                   <span class="folder-access-pill ${canEditFolder(folder) ? 'editor' : 'viewer'}">${folderAccessLabel(folder)}</span>
                 </button>
                 ${canManageFolder(folder) ? `<div class="folder-card-actions">
-                  <button class="mini-action-btn" onclick="renameFolderAPI('${safeId}','${safeName}')">Rename</button>
-                  <button class="mini-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
-                  <button class="mini-action-btn danger" onclick="deleteFolderAPI('${safeId}')">Delete</button>
+                  <button class="mini-action-btn" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-rename" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">Rename</button>
+                  <button class="mini-action-btn" type="button" data-folder-permissions="${safeId}">Permissions</button>
+                  <button class="mini-action-btn danger" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-delete" data-gallery-folder-id="${safeId}">Delete</button>
                 </div>` : ''}
               </div>`;
         }).join('')}
@@ -2624,7 +2635,7 @@ window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMo
     const targets = folders.filter((folder) => canUseAsCopyMoveDestination(source, folder, folderMap));
     removeDynamicModal('move-file-modal');
     const cards = targets.map((folder) => `
-      <button class="move-target-card" onclick="copyFileToFolder('${escapeJS(fileId)}','${escapeJS(folder.id)}','${escapeJS(refreshMode)}')">
+      <button class="move-target-card" type="button" data-action="handleGalleryAction" data-gallery-action="copy-file-to-folder" data-file-id="${escapeJS(fileId)}" data-gallery-folder-id="${escapeJS(folder.id)}" data-refresh-mode="${escapeJS(refreshMode)}">
         <span class="move-target-icon">📁</span>
         <span class="move-target-title">${escapeHTML(folder.name)}</span>
         <span class="move-target-path">${escapeHTML(buildFolderPath(folder, folderMap))}</span>
@@ -2632,7 +2643,7 @@ window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMo
     document.body.insertAdjacentHTML('beforeend', `
       <div id="move-file-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal-box move-modal-box">
-          <button class="modal-close-btn" onclick="removeDynamicModal('move-file-modal')">&times;</button>
+          <button class="modal-close-btn" type="button" data-close-modal-id="move-file-modal">&times;</button>
           <h3 class="modal-title text-green">Copy & Move To</h3>
           <p class="modal-text align-left">Choose a destination in the same area, or a profile folder from Users. The original file will stay where it is.</p>
           <p class="move-filter-note">Source area: ${escapeHTML(sourceArea.toUpperCase())}</p>
@@ -3303,7 +3314,7 @@ window.searchMusicFiles = async function() {
                 <div class="music-search-item-name">${f.name}</div>
                 <div class="music-search-item-meta">📂 ${folderPath} · by ${f.uploader}</div>
               </div>
-              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}',false,'${escapeJS(f.folder_id)}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
+              ${isAudio ? `<button type="button" data-action="handleMusicAction" data-music-action="play-result" data-music-file-url="${safeUrl}" data-music-file-name="${safeName}" data-music-folder-id="${escapeJS(f.folder_id)}" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
             </div>`;
         }).join('');
     } catch (e) {
@@ -3996,7 +4007,7 @@ function renderUserDirectory() {
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="user-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
-        <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
+        <button class="user-view-btn" type="button" data-action="handleUserProfileAction" data-username="${safeUsername}">Profile</button>
       </div>
       <div class="user-meta">GitHub: ${escapeHTML(user.github || '—')}</div>
       <div class="user-meta">Email: ${escapeHTML(user.email || '—')}</div>
@@ -4025,7 +4036,7 @@ function renderChatUsersList() {
           <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
-        <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
+        <button type="button" data-action="handleChatOpenAction" data-chat-type="private" data-chat-target="${safeUsername}" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
       list.appendChild(item);
     });
@@ -4042,7 +4053,7 @@ window.openUserProfile = function(username) {
   const safeUsername = escapeJS(profile.username);
   const liveOnline = isUserLiveOnline(profile);
   const avatarLarge = profile.avatar
-    ? `<div class="profile-avatar-large"><img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='${escapeHTML(getInitials(profile))}'"></div>`
+    ? `<div class="profile-avatar-large"><img src="${escapeHTML(profile.avatar)}" alt="" data-avatar-fallback="${escapeHTML(getInitials(profile))}"></div>`
     : `<div class="profile-avatar-large">${escapeHTML(getInitials(profile))}</div>`;
   let html = `
     ${avatarLarge}
@@ -4054,11 +4065,11 @@ window.openUserProfile = function(username) {
     <div class="profile-row"><strong>Email:</strong> ${escapeHTML(profile.email || '—')}</div>
     <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${escapeHTML(profile.note || 'No additional note.')}</div>
     <div class="profile-actions modal-btn-group" style="flex-wrap: wrap;">
-      <button class="btn-primary flex-1" onclick="openChat('private', '${safeUsername}')">Message</button>
+      <button class="btn-primary flex-1" type="button" data-action="handleProfileAction" data-profile-action="message" data-username="${safeUsername}">Message</button>
   `;
 
-  if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${safeUsername}')">Edit Profile</button>`;
-  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="adminDeleteUser('${safeUsername}')">Delete User</button>`;
+  if (isMine) html += `<button class="btn-blue flex-1" type="button" data-action="handleProfileAction" data-profile-action="edit" data-username="${safeUsername}">Edit Profile</button>`;
+  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" type="button" data-action="handleProfileAction" data-profile-action="delete-user" data-username="${safeUsername}">Delete User</button>`;
   html += `</div><div id="profile-folders-container" class="profile-folders-container"></div>`;
   details.innerHTML = html;
 
@@ -4096,7 +4107,7 @@ window.editUserProfile = function(username) {
   
   const currentInitials = escapeHTML(getInitials(profile));
   const avatarPreviewContent = profile.avatar
-    ? `<img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none'">`
+    ? `<img src="${escapeHTML(profile.avatar)}" alt="" data-avatar-fallback="${currentInitials}">`
     : currentInitials;
 
   details.innerHTML = `
@@ -4108,7 +4119,7 @@ window.editUserProfile = function(username) {
         <div class="avatar-upload-info">
           <input type="file" id="profile-avatar-file" accept="image/*" style="font-size:12px; color:rgba(255,255,255,0.7); background:none; border:none; padding:0; cursor:pointer;">
           <p class="profile-field-hint" style="margin:0;">Max 5 MB. Square images work best.</p>
-          ${profile.avatar ? `<button class="btn-outline-red" style="padding:4px 10px;font-size:11px;" onclick="window._clearProfileAvatar()">Remove photo</button>` : ''}
+          ${profile.avatar ? `<button class="btn-outline-red" type="button" style="padding:4px 10px;font-size:11px;" data-action="handleProfileAction" data-profile-action="remove-avatar">Remove photo</button>` : ''}
         </div>
       </div>
     </div>
@@ -4128,8 +4139,8 @@ window.editUserProfile = function(username) {
     <div style="margin-bottom: 15px;"><label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
         <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${escapeHTML(profile.note || '')}</textarea></div>
     <div class="profile-actions modal-btn-group">
-      <button class="btn-primary flex-1" onclick="saveProfileEdits('${safeUsername}')">Save</button>
-      <button class="btn-outline-red flex-1" onclick="openUserProfile('${safeUsername}')">Cancel</button>
+      <button class="btn-primary flex-1" type="button" data-action="handleProfileAction" data-profile-action="save" data-username="${safeUsername}">Save</button>
+      <button class="btn-outline-red flex-1" type="button" data-action="handleProfileAction" data-profile-action="cancel" data-username="${safeUsername}">Cancel</button>
     </div>
   `;
 
@@ -4154,6 +4165,12 @@ window.editUserProfile = function(username) {
       reader.readAsDataURL(file);
     });
   }
+  details.querySelectorAll('img[data-avatar-fallback]').forEach((img) => {
+    img.addEventListener('error', () => {
+      const fallback = img.dataset.avatarFallback || currentInitials;
+      if (img.parentElement) img.parentElement.textContent = fallback;
+    }, { once: true });
+  });
 };
 
 function formatRemainingTime(ms) {
@@ -5079,7 +5096,7 @@ function renderCalendar() {
   grid.innerHTML = ''; const firstDay = new Date(currentYear, currentMonth, 1).getDay(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
   for (let day = 1; day <= daysInMonth; day++) {
-    const dayDiv = document.createElement('div'); dayDiv.textContent = day; dayDiv.onclick = () => window.addNote(day);
+    const dayDiv = document.createElement('div'); dayDiv.textContent = day; dayDiv.dataset.calendarDay = String(day); dayDiv.setAttribute('role', 'button'); dayDiv.setAttribute('tabindex', '0');
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
     if (calendarNotes[dateKey]) { const dot = document.createElement('div'); dot.className = 'calendar-note-dot'; dayDiv.appendChild(dot); }
     grid.appendChild(dayDiv);
@@ -5100,24 +5117,29 @@ window.addNote = function(day) {
 
 window.showNoteView = function(dateKey, displayDate, text) {
     let existingModal = document.getElementById('view-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${escapeHTML(displayDate)}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHTML(text)}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="share-note-btn">Share to Everyone</button><button class="btn-blue flex-1" id="edit-note-btn">Edit Note</button></div></div></div>`;
+    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" type="button" data-close-modal-id="view-note-modal">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${escapeHTML(displayDate)}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHTML(text)}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="share-note-btn" type="button">Share to Everyone</button><button class="btn-blue flex-1" id="edit-note-btn" type="button">Edit Note</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('edit-note-btn').onclick = function() { document.getElementById('view-note-modal').remove(); openNotePrompt(dateKey, displayDate, text); };
-    document.getElementById('share-note-btn').onclick = function() { shareCalendarNote(dateKey, displayDate, text); };
+    document.getElementById('edit-note-btn')?.addEventListener('click', function() {
+        document.getElementById('view-note-modal')?.remove();
+        openNotePrompt(dateKey, displayDate, text);
+    });
+    document.getElementById('share-note-btn')?.addEventListener('click', function() {
+        shareCalendarNote(dateKey, displayDate, text);
+    });
 };
 
 window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     let existingModal = document.getElementById('edit-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${escapeHTML(existingNote)}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn">Save</button><button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button></div></div></div>`;
+    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${escapeHTML(existingNote)}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn" type="button">Save</button><button class="btn-outline-red flex-1" type="button" data-close-modal-id="edit-note-modal">Cancel</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const textEl = document.getElementById('note-textarea'); if (textEl) textEl.focus();
-    document.getElementById('save-note-btn').onclick = async function() {
+    document.getElementById('save-note-btn')?.addEventListener('click', async function() {
         const note = document.getElementById('note-textarea').value.trim();
         if(!currentUser) return customAlert("Login to save notes.");
         if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
         else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
         renderCalendar(); document.getElementById('edit-note-modal').remove();
-    };
+    });
 };
 
 function updateClock() { const now = new Date(); const el = document.getElementById('live-clock'); if(el) el.textContent = now.toLocaleTimeString(); }
@@ -5213,7 +5235,7 @@ window.openAppOpenTallyModal = async function() {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="app-open-tally-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
       <div class="custom-modal-box contribution-modal-box border-blue">
-        <button class="modal-close-btn" onclick="removeDynamicModal('app-open-tally-modal')">&times;</button>
+        <button class="modal-close-btn" type="button" data-close-modal-id="app-open-tally-modal">&times;</button>
         <h3 class="modal-title text-blue">App Open Tally</h3>
         <p class="modal-text align-left">Shows every user's saved login/app-open count.</p>
         <div class="lobby-open-list" id="app-open-user-list">${createInlineLoader('Loading app opens...')}</div>
@@ -5305,7 +5327,7 @@ window.openContributionTallyModal = async function() {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="contribution-tally-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
       <div class="custom-modal-box contribution-modal-box border-blue">
-        <button class="modal-close-btn" onclick="removeDynamicModal('contribution-tally-modal')">&times;</button>
+        <button class="modal-close-btn" type="button" data-close-modal-id="contribution-tally-modal">&times;</button>
         <h3 class="modal-title text-blue">Contribution Tally</h3>
         <p class="modal-text align-left">Counts original uploads only. Copied or moved items do not add points.</p>
         <div class="contribution-board-list" id="contribution-board-list">${createInlineLoader('Loading contributions...')}</div>
@@ -5434,7 +5456,61 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (msgInput.value) localStorage.setItem(key, msgInput.value);
       else localStorage.removeItem(key);
     });
+    msgInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.shiftKey) return;
+      event.preventDefault();
+      window.sendMessage?.();
+    });
   }
+  const userSearchInput = document.getElementById('user-search-input');
+  if (userSearchInput) userSearchInput.addEventListener('input', () => renderUserDirectory());
+  const userFilterSelect = document.getElementById('user-filter-select');
+  if (userFilterSelect) userFilterSelect.addEventListener('change', () => renderUserDirectory());
+  const userSortSelect = document.getElementById('user-sort-select');
+  if (userSortSelect) userSortSelect.addEventListener('change', () => renderUserDirectory());
+  const calendarGrid = document.getElementById('calendar-grid');
+  if (calendarGrid) {
+    calendarGrid.addEventListener('click', (event) => {
+      const dayEl = event.target.closest('[data-calendar-day]');
+      if (!dayEl) return;
+      event.preventDefault();
+      window.addNote?.(Number(dayEl.dataset.calendarDay));
+    });
+    calendarGrid.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const dayEl = event.target.closest('[data-calendar-day]');
+      if (!dayEl) return;
+      event.preventDefault();
+      window.addNote?.(Number(dayEl.dataset.calendarDay));
+    });
+  }
+  const ytMainInput = document.getElementById('yt-main-input');
+  if (ytMainInput) {
+    ytMainInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      window.handleYtInput?.();
+    });
+  }
+  const musicSearchInput = document.getElementById('music-search-input');
+  if (musicSearchInput) {
+    musicSearchInput.addEventListener('input', () => window.musicSearchDebounced?.());
+    musicSearchInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      window.searchMusicFiles?.();
+    });
+  }
+  const lobbyChatInput = document.getElementById('lobby-chat-input');
+  if (lobbyChatInput) {
+    lobbyChatInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      window.sendLobbyChat?.();
+    });
+  }
+  const announcementSearchInput = document.getElementById('announcement-search-input');
+  if (announcementSearchInput) announcementSearchInput.addEventListener('input', () => renderSharedAnnouncements());
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
@@ -5731,6 +5807,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn(`[button] Action handler error for "${action}":`, err);
     }
   });
+  document.addEventListener('click', (event) => {
+    const permissionBtn = event.target.closest('[data-folder-permissions]');
+    if (!permissionBtn) return;
+    event.preventDefault();
+    window.openFolderPermissions?.(permissionBtn.dataset.folderPermissions);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    if (target.matches('button, a, input, select, textarea')) return;
+    event.preventDefault();
+    target.click();
+  });
+  document.addEventListener('change', (event) => {
+    const target = event.target.closest('[data-gallery-upload]');
+    if (!target) return;
+    window.handleGalleryAction?.call(target, event);
+  });
 
   if (currentUser) {
     try {
@@ -5776,7 +5871,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   fetchCalendarNotes(); updateClock();
 
   const player = document.getElementById('audio-player');
-  if(player) player.addEventListener('ended', handleAudioEnded);
+  if(player) {
+    player.addEventListener('ended', handleAudioEnded);
+    player.addEventListener('play', () => window.startBlockVisualizer?.(player));
+  }
 
   // Reflect initial toggle states on buttons
   const loopBtn = document.getElementById('btn-loop');
@@ -5805,6 +5903,135 @@ document.getElementById('custom-bg-upload')?.addEventListener('change', function
 });
 
 window.saveAnnouncement = function() { const noteContent = document.getElementById('announcement-note').value; localStorage.setItem('savedWeeklyAnnouncement', noteContent); showToast("Weekly announcement saved."); };
+
+window.handleChatOpenAction = function() {
+  const chatType = this.dataset.chatType;
+  const chatTarget = this.dataset.chatTarget || null;
+  if (!chatType) return;
+  window.openChat?.(chatType, chatTarget);
+};
+
+window.handleSendMessageAction = function() {
+  window.sendMessage?.();
+};
+
+window.handleUserProfileAction = function() {
+  const username = this.dataset.username;
+  if (!username) return;
+  window.openUserProfile?.(username);
+};
+
+window.handleProfileAction = function() {
+  const action = this.dataset.profileAction;
+  const username = this.dataset.username || currentUser?.username || '';
+  if (action === 'message' && username) return window.openChat?.('private', username);
+  if (action === 'edit') return window.editUserProfile?.();
+  if (action === 'delete-user' && username) return window.adminDeleteUser?.(username);
+  if (action === 'remove-avatar') {
+    window._clearProfileAvatar?.();
+    return;
+  }
+  if (action === 'save') return window.saveProfileEdits?.(username);
+  if (action === 'cancel') return window.openUserProfile?.(username);
+};
+
+window.handleFileListAction = function() {
+  const action = this.dataset.fileAction;
+  if (action === 'open') {
+    return window.playOrOpenFileAPI?.(this.dataset.fileUrl, this.dataset.fileName, false, this.dataset.folderId || null);
+  }
+  if (action === 'summarize') {
+    return window.openFileSummarizerForStoredFile?.(this.dataset.fileUrl, this.dataset.fileName, this.dataset.fileType || '');
+  }
+  if (action === 'copy') {
+    return window.openCopyMoveFileModal?.(this.dataset.fileId, this.dataset.folderId, 'folder');
+  }
+  if (action === 'delete') {
+    return window.deleteFileAPI?.(this.dataset.fileId);
+  }
+};
+
+window.handleCalendarNavAction = function() {
+  const action = this.dataset.calendarNav;
+  if (action === 'prev') return window.prevMonth?.();
+  if (action === 'next') return window.nextMonth?.();
+};
+
+window.handleAnnouncementAction = function() {
+  const action = this.dataset.announcementAction;
+  if (action === 'save-weekly') return window.saveAnnouncement?.();
+  if (action === 'share-weekly') return window.shareWeeklyAnnouncement?.();
+  if (action === 'refresh') return window.fetchSharedAnnouncements?.();
+  if (action === 'delete-shared') return window.deleteSharedAnnouncement?.(this.dataset.announcementId);
+};
+
+window.handleMusicAction = function() {
+  const action = this.dataset.musicAction;
+  if (action === 'youtube-submit') return window.handleYtInput?.();
+  if (action === 'library-search') return window.searchMusicFiles?.();
+  if (action === 'open-music-folders') return window.openFolderExplorer?.('Music Hub');
+  if (action === 'prev') return window.playPrevSong?.();
+  if (action === 'loop') return window.toggleLoop?.();
+  if (action === 'repeat') return window.toggleRepeat?.();
+  if (action === 'next') return window.playNextSong?.();
+  if (action === 'play-result') return window.playOrOpenFileAPI?.(this.dataset.musicFileUrl, this.dataset.musicFileName, false, this.dataset.musicFolderId || null);
+};
+
+window.handleLobbyChatAction = function() {
+  window.sendLobbyChat?.();
+};
+
+window.handleReviewerAction = function(event) {
+  const action = this.dataset.reviewerAction;
+  if (action === 'open-viewer') return window.reviewersModule?.openViewer?.(this.dataset.reviewerId);
+  if (action === 'toggle-vote') return window.reviewersModule?.toggleVote?.(this.dataset.reviewerId, event);
+  if (action === 'delete') return window.reviewersModule?.deleteReviewer?.(this.dataset.reviewerId, event);
+  if (action === 'load-more') return window.reviewersModule?.loadMore?.();
+  if (action === 'close-viewer') return window.reviewersModule?.closeViewer?.();
+  if (action === 'save-to-notepad') return window.reviewersModule?.saveToNotepad?.(this.dataset.reviewerId, event);
+  if (action === 'undo-delete') return window.reviewersModule?.undoDelete?.(this.dataset.undoKey);
+  if (action === 'dismiss-toast') return this.closest('.app-toast')?.remove();
+};
+
+window.handleNotepadAction = function() {
+  const action = this.dataset.notepadAction;
+  if (action === 'back') return window.goToPage?.('personal-tools');
+  if (action === 'show-form') return window.notepadModule?.showForm?.();
+  if (action === 'clear-all') return window.notepadModule?.clearAll?.();
+  if (action === 'save-note') return window.notepadModule?.saveNote?.();
+  if (action === 'hide-form') return window.notepadModule?.hideForm?.();
+  if (action === 'edit') return window.notepadModule?.editNote?.(Number(this.dataset.noteIndex));
+  if (action === 'share') return window.notepadModule?.shareNote?.(Number(this.dataset.noteIndex));
+  if (action === 'delete') return window.notepadModule?.deleteNote?.(Number(this.dataset.noteIndex));
+  if (action === 'undo-delete') return window.notepadModule?.undoDelete?.(this.dataset.undoKey);
+  if (action === 'undo-clear-all') return window.notepadModule?.undoClearAll?.(this.dataset.undoKey);
+  if (action === 'go-reviewers') return window.goToPage?.('reviewers');
+  if (action === 'dismiss-toast') return this.closest('.app-toast')?.remove();
+};
+
+window.handleGalleryAction = function(event) {
+  const action = this.dataset.galleryAction;
+  const prefix = this.dataset.galleryPrefix;
+  if (action === 'breadcrumb' && prefix) return window.gBcClick?.(prefix, this.dataset.galleryLevel);
+  if (action === 'select-year' && prefix) return window.gSelectYear?.(prefix, this.dataset.galleryYear);
+  if (action === 'select-sem' && prefix) return window.gSelectSem?.(prefix, this.dataset.gallerySem);
+  if (action === 'select-folder' && prefix) return window.gSelectFolder?.(prefix, this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
+  if (action === 'create-folder' && prefix) return window.gCreateFolder?.(prefix, this.dataset.galleryParentKey);
+  if (action === 'rename-folder' && prefix) return window.gRenameFolder?.(prefix, this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
+  if (action === 'delete-folder' && prefix) return window.gDeleteFolder?.(prefix, this.dataset.galleryFolderId);
+  if (action === 'upload-files' && prefix) return window.gUploadFiles?.(prefix, this.files || [], this.dataset.galleryFolderId, this);
+  if (action === 'open-copy-move') return window.openCopyMoveFileModal?.(this.dataset.fileId, this.dataset.folderId, this.dataset.refreshMode || 'folder');
+  if (action === 'delete-file' && prefix) return window.gDeleteFile?.(prefix, this.dataset.fileId);
+  if (action === 'open-photo') return window.epOpenPhoto?.(this.dataset.photoUrl, this.dataset.photoName || '');
+  if (action === 'close-lightbox') return this.closest('.ep-lightbox')?.remove();
+  if (action === 'folder-permission-mode') return window.setFolderAccessMode?.(this.dataset.folderId, this.dataset.folderMode);
+  if (action === 'create-profile-folder') return window.createProfileFolder?.(this.dataset.username);
+  if (action === 'profile-folder-open') return window.openFileExplorer?.(this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
+  if (action === 'profile-folder-rename') return window.renameFolderAPI?.(this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
+  if (action === 'profile-folder-delete') return window.deleteFolderAPI?.(this.dataset.galleryFolderId);
+  if (action === 'copy-file-to-folder') return window.copyFileToFolder?.(this.dataset.fileId, this.dataset.galleryFolderId, this.dataset.refreshMode || 'folder');
+  if (action === 'stop-prop') return event.stopPropagation();
+};
 
 window.addEventListener('DOMContentLoaded', () => {
     const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
@@ -6929,9 +7156,9 @@ function renderGallery(pfx) {
   if (!view || !bc) return;
 
   // Breadcrumb
-  let bcHtml = `<span class="ep-bc" onclick="${pfx}BcClick('years')">${meta.icon} ${meta.title}</span>`;
-  if (st.year)   bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="${pfx}BcClick('sems')">${st.year.label}</span>`;
-  if (st.sem)    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="${pfx}BcClick('folders')">${st.sem.label}</span>`;
+  let bcHtml = `<span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="years">${meta.icon} ${meta.title}</span>`;
+  if (st.year)   bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="sems">${st.year.label}</span>`;
+  if (st.sem)    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="folders">${st.sem.label}</span>`;
   if (st.folder) bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc ep-bc-active">${st.folder.name}</span>`;
   bc.innerHTML = bcHtml;
 
@@ -6951,7 +7178,7 @@ function renderGallery(pfx) {
 }
 
 function gBackBtn(pfx, level, label) {
-  return `<button class="ep-back-btn" onclick="${pfx}BcClick('${level}')">‹ ${label}</button>`;
+  return `<button class="ep-back-btn" type="button" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="${level}">‹ ${label}</button>`;
 }
 
 function renderGYears(pfx, view) {
@@ -6959,7 +7186,7 @@ function renderGYears(pfx, view) {
     <div class="ep-section-title">Select Year Level</div>
     <div class="ep-grid ep-grid-4">
       ${GALLERY_YEARS.map(y => `
-        <div class="ep-card" style="--ep-accent:${y.accent};background:${y.bg}" onclick="${pfx}SelectYear('${y.key}')">
+        <div class="ep-card" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-year" data-gallery-prefix="${pfx}" data-gallery-year="${y.key}" style="--ep-accent:${y.accent};background:${y.bg}">
           <div class="ep-card-emoji">${y.emoji}</div>
           <div class="ep-card-label">${y.label}</div>
           <div class="ep-card-sub">View semesters</div>
@@ -6975,7 +7202,7 @@ function renderGSems(pfx, view) {
     <div class="ep-section-title">${st.year.label}</div>
     <div class="ep-grid ep-grid-2">
       ${GALLERY_SEMS.map(s => `
-        <div class="ep-card ep-card-sem" style="--ep-accent:${s.accent};background:${s.bg}" onclick="${pfx}SelectSem('${s.key}')">
+        <div class="ep-card ep-card-sem" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-sem" data-gallery-prefix="${pfx}" data-gallery-sem="${s.key}" style="--ep-accent:${s.accent};background:${s.bg}">
           <div class="ep-card-emoji">${s.emoji}</div>
           <div class="ep-card-label">${s.label}</div>
           <div class="ep-card-sub">View albums</div>
@@ -6993,13 +7220,13 @@ function renderGFolders(pfx, view) {
       const safeId = escapeJS(f.id);
       const safeName = escapeJS(f.name);
       const actions = canManageFolder(f)
-        ? `<div class="ep-card-actions" onclick="event.stopPropagation()">
-             <button class="ep-action-btn" onclick="${pfx}RenameFolder('${safeId}','${safeName}')">Rename</button>
-             <button class="ep-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
-             <button class="ep-action-btn ep-btn-del" onclick="${pfx}DeleteFolder('${safeId}')">Delete</button>
+        ? `<div class="ep-card-actions" data-action="handleGalleryAction" data-gallery-action="stop-prop">
+             <button class="ep-action-btn" type="button" data-action="handleGalleryAction" data-gallery-action="rename-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">Rename</button>
+             <button class="ep-action-btn" type="button" data-folder-permissions="${safeId}">Permissions</button>
+             <button class="ep-action-btn ep-btn-del" type="button" data-action="handleGalleryAction" data-gallery-action="delete-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}">Delete</button>
            </div>` : '';
       return `
-        <div class="ep-card ep-card-folder" style="--ep-accent:#00d4ff" onclick="${pfx}SelectFolder('${safeId}','${safeName}')">
+        <div class="ep-card ep-card-folder" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}" style="--ep-accent:#00d4ff">
           <div class="ep-card-emoji">📁</div>
           <div class="ep-card-label">${escapeHTML(f.name)}</div>
           <div class="ep-card-sub">By ${escapeHTML(f.owner || 'Unknown')} · ${folderAccessLabel(f)}</div>
@@ -7009,7 +7236,7 @@ function renderGFolders(pfx, view) {
     }).join('');
 
     const addCard = currentUser ? `
-      <div class="ep-card ep-card-add" style="--ep-accent:#ffffff55" onclick="${pfx}CreateFolder('${parentKey}')">
+      <div class="ep-card ep-card-add" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="create-folder" data-gallery-prefix="${pfx}" data-gallery-parent-key="${parentKey}" style="--ep-accent:#ffffff55">
         <div class="ep-card-emoji">➕</div>
         <div class="ep-card-label">New Album</div>
         <div class="ep-card-sub">Create folder</div>
@@ -7036,7 +7263,7 @@ function renderGFiles(pfx, view) {
 
     const uploadBar = allowEdit ? `
       <label class="ep-upload-btn">
-        <input type="file" multiple accept="image/*,video/*" style="display:none" onchange="${pfx}UploadFiles(this.files,'${folderId}',this)">
+        <input type="file" multiple accept="image/*,video/*" style="display:none" data-gallery-upload data-action="handleGalleryAction" data-gallery-action="upload-files" data-gallery-prefix="${pfx}" data-gallery-folder-id="${escapeHTML(folderId)}">
         📸 Upload Photos / Videos
       </label>` : '';
 
@@ -7051,12 +7278,12 @@ function renderGFiles(pfx, view) {
           const safeFolderId = escapeJS(folderId);
           const actionBtns = allowEdit
             ? `<div class="ep-photo-actions">
-                 <button onclick="openCopyMoveFileModal('${safeId}','${safeFolderId}','gallery-${pfx}')">Copy & Move To</button>
-                 <button class="danger" onclick="${pfx}DeleteFile('${safeId}')">Delete</button>
+                 <button type="button" data-action="handleGalleryAction" data-gallery-action="open-copy-move" data-file-id="${safeId}" data-folder-id="${safeFolderId}" data-refresh-mode="gallery-${pfx}">Copy & Move To</button>
+                 <button class="danger" type="button" data-action="handleGalleryAction" data-gallery-action="delete-file" data-gallery-prefix="${pfx}" data-file-id="${safeId}">Delete</button>
                </div>` : '';
           return `
             <div class="ep-photo-card">
-              ${isImg ? `<img src="${escapeHTML(f.url)}" class="ep-photo-thumb" loading="lazy" onclick="epOpenPhoto('${safeUrl}','${safeName}')">` :
+              ${isImg ? `<img src="${escapeHTML(f.url)}" class="ep-photo-thumb" loading="lazy" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="open-photo" data-photo-url="${safeUrl}" data-photo-name="${safeName}">` :
                 isVid ? `<video src="${escapeHTML(f.url)}" class="ep-photo-thumb" controls playsinline></video>` :
                 `<div class="ep-photo-placeholder">📄</div>`}
               <div class="ep-photo-info">
@@ -7161,10 +7388,10 @@ function epOpenPhoto(url, name) {
   overlay.className = 'ep-lightbox';
   overlay.onclick = () => overlay.remove();
   overlay.innerHTML = `
-    <div class="ep-lightbox-inner" onclick="event.stopPropagation()">
+    <div class="ep-lightbox-inner" data-action="handleGalleryAction" data-gallery-action="stop-prop">
       <img src="${url}" class="ep-lightbox-img">
       <div class="ep-lightbox-name">${name}</div>
-      <button class="ep-lightbox-close" onclick="this.closest('.ep-lightbox').remove()">✕</button>
+      <button class="ep-lightbox-close" type="button" data-action="handleGalleryAction" data-gallery-action="close-lightbox">✕</button>
     </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('ep-lightbox-in'));
@@ -7342,7 +7569,7 @@ function renderSharedAnnouncements() {
       <div class="board-card-meta">
         <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
-        ${isAdmin ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
+        ${isAdmin ? `<button type="button" data-action="handleAnnouncementAction" data-announcement-action="delete-shared" data-announcement-id="${escapeJS(item.id)}" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
       </div>
     </article>`).join('');
 }

@@ -1,6 +1,6 @@
 {
   "name": "class-app",
-  "version": "1.5.77",
+  "version": "1.5.66",
   "description": "School portfolio app with real-time chat, profiles, and file uploads.",
   "main": "server.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "start": "node server.js",
     "dev": "npx nodemon server.js",
     "cache-bust": "node scripts/cache-bust.js",
-    "test": "jest --testPathPatterns=tests/ --forceExit",
+    "test": "npx jest --runInBand --forceExit --roots tests --modulePathIgnorePatterns=.claude/worktrees",
     "lint": "npx eslint .",
     "check": "node --check server.js && node --check script.js && node --check assets/js/codelab.js && node --check coding-educational/coding-educational.js && node --check features/pokemon/pokemon.js && node --check features/royale/royale.js && node --check features/pacman/pacman.js"
   },

@@ -1484,6 +1484,16 @@ body {
     transition: 0.3s;
 }
 
+/* Music control buttons - consistent sizing and better mobile tap targets */
+.music-control-btn {
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    min-height: 44px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Spinning neon border for active loop/repeat toggle buttons */
 @property --neon-angle {
     syntax: '<angle>';

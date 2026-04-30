@@ -430,8 +430,63 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.69';
+const APP_VERSION = '1.5.73';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.73',
+    date: 'April 30, 2026',
+    title: 'PHASE 8: UI/UX Polish & Accessibility Improvements',
+    summary: 'Enhanced user experience and accessibility: added keyboard navigation to interactive elements, improved button sizing for mobile tap targets, and fixed accessibility labels for better screen reader support.',
+    changes: [
+      'Accessibility: Added role="button", tabindex="0", and keyboard handlers (Enter/Space) to chat items, making them fully keyboard-navigable.',
+      'Accessibility: Added role="button" and keyboard support to all game cards (Pokemon, Royale, Pacman, Candy) for better a11y.',
+      'Mobile UX: Created .music-control-btn CSS class with consistent 44px min-height for better mobile tap targets on music player controls.',
+      'Mobile UX: Replaced inline padding styles with CSS class for music controls — now consistent and maintainable.',
+      'Navigation: Verified all nav items have proper role="button" and tabindex for keyboard accessibility.',
+      'Verified: Page layouts, empty states, and error messages display clearly across light and dark themes.',
+      'Status: App is now more accessible (WCAG improvements) and provides better mobile/keyboard experience for students.'
+    ],
+  },
+  {
+    version: '1.5.72',
+    date: 'April 30, 2026',
+    title: 'PHASE 7: Codebase Organization - Remove Duplicate Modules',
+    summary: 'Cleaned up codebase by removing dead duplicate feature modules: eliminated 6 files across 3 legacy directories (notepad, alarm, calculator) that duplicated active implementations in personal-tools.',
+    changes: [
+      'Removed: Deleted legacy features/notepad/, features/alarm/, features/calculator/ directories (6 files, 584 lines of dead code).',
+      'Verified: Only active modern implementations in features/personal-tools/ are loaded (notepad.js, alarm-clock.js, calculator.js with cloud sync, notifications, sounds).',
+      'Verified: All module references in script.js use typeof checks, so removal is completely safe with zero functional impact.',
+      'Status: Codebase now cleaner with no duplicate modules, making future maintenance easier.',
+      'Future: script.js remains unified (7.6K lines) — smaller refactors deferred to future phases to maintain stability.'
+    ],
+  },
+  {
+    version: '1.5.71',
+    date: 'April 30, 2026',
+    title: 'PHASE 6: Performance & PWA Optimization - Defer Heavy Games',
+    summary: 'Significant startup performance improvement: large game files (Pokemon, Royale, Pacman, Candy) now load asynchronously after initial app render, reducing initial page load blocking time.',
+    changes: [
+      'Performance: Pokemon (2.9MB), Royale (3.9MB), Pacman (403KB), and Candy (1.4MB) scripts now defer and load in parallel instead of sequentially blocking HTML parsing.',
+      'Verified: All game module references use typeof checks, so defer loading is completely safe — modules are only accessed when user navigates to that page.',
+      'Tested: Cold load now completes HTML parsing significantly faster, improving perceived performance on mobile and slow connections.',
+      'Verified: Service worker cache strategy remains optimal — network-first for assets, never caches API responses.',
+      'Status: PWA installability, offline fallback, and cache invalidation verified working correctly.'
+    ],
+  },
+  {
+    version: '1.5.70',
+    date: 'April 30, 2026',
+    title: 'PHASE 5: Runtime Stability & Missing Table Fix',
+    summary: 'Fixed critical runtime issues: created missing calendar_notes table migration, audited and validated all Supabase queries, and verified feature module initialization.',
+    changes: [
+      'Fixed: Added missing migration 016_calendar_notes.sql — calendar notes were being stored but the table didn\'t exist, causing runtime errors.',
+      'Verified: All 76 sb.from() database queries now reference existing tables with proper RLS policies.',
+      'Audited: All 5 main module initializations (notepad, alarm, calculator, personalization, reviewers) are properly exported to window scope.',
+      'Verified: Service worker, PWA manifest, and dynamic feature loading are all functioning without errors.',
+      'Tested: Calendar page, notes sharing, and all pages that depend on calendar_notes now work without database errors.',
+      'Status: Calendar feature is now fully functional for all users.'
+    ],
+  },
   {
     version: '1.5.69',
     date: 'April 30, 2026',

@@ -430,8 +430,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.68';
+const APP_VERSION = '1.5.69';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.69',
+    date: 'April 30, 2026',
+    title: 'Button/Event System Stabilization & Mobile Improvements',
+    summary: 'Improved button reliability and interaction patterns: enhanced modal close handlers with error recovery, added comprehensive delegated action handler, improved mobile/touch event handling.',
+    changes: [
+      'Improved: Modal close handler now includes error handling and null checks for robustness against missing elements.',
+      'New: Added comprehensive delegated action button handler supporting data-action attributes for extensibility.',
+      'Improved: Modal close handlers now catch and log errors instead of silently failing.',
+      'Improved: Overlay menu now responds to both click and touchend events for better mobile reliability.',
+      'Improved: Touch event handler includes passive false for better control flow on mobile Safari.',
+      'Note: Inline onclick handlers remain unchanged for backward compatibility; delegated handlers complement them.'
+    ],
+  },
   {
     version: '1.5.68',
     date: 'April 30, 2026',
@@ -5465,33 +5479,97 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Overlay: close menu on tap (touch + click)
+  // Phase 4: Support both click and touch for better mobile reliability
   const overlay = document.getElementById('overlay');
   if (overlay) {
     overlay.addEventListener('click', window.closeMenu);
+    // On mobile, click might not fire if touch handling interferes, so also listen to touchend
+    overlay.addEventListener('touchend', (e) => {
+      if (!e.target.closest('button, input, textarea, a')) {
+        e.preventDefault();
+        window.closeMenu();
+      }
+    }, { passive: false });
   }
+  // Phase 4: Comprehensive delegated button handler for all modal and overlay closes
   document.addEventListener('click', (event) => {
+    // Try to find a close button trigger (multiple patterns for robustness)
     const trigger = event.target.closest('[data-close-modal-id], .modal-close-btn, .changelog-close-action, .close-profile, .social-back-btn');
     if (!trigger) return;
+
+    // Prevent default only after we know this is our button
+    event.preventDefault();
+
+    // Handle profile close
     if (trigger.classList.contains('close-profile')) {
-      event.preventDefault();
-      window.closeProfile?.();
+      try {
+        window.closeProfile?.();
+      } catch (err) {
+        console.warn('[button] closeProfile error:', err);
+      }
       return;
     }
+
+    // Handle social back
     if (trigger.classList.contains('social-back-btn')) {
-      event.preventDefault();
-      window.closeSocialPage?.();
+      try {
+        window.closeSocialPage?.();
+      } catch (err) {
+        console.warn('[button] closeSocialPage error:', err);
+      }
       return;
     }
+
+    // Handle explicit modal ID close
     const explicitId = trigger.dataset.closeModalId;
     if (explicitId) {
-      event.preventDefault();
-      closeOverlayElement(document.getElementById(explicitId));
+      try {
+        const element = document.getElementById(explicitId);
+        if (element) {
+          closeOverlayElement(element);
+        } else {
+          console.warn(`[button] Modal element not found: ${explicitId}`);
+        }
+      } catch (err) {
+        console.warn('[button] closeOverlayElement error:', err);
+      }
       return;
     }
+
+    // Handle generic modal/lightbox close
     if (trigger.classList.contains('modal-close-btn') || trigger.classList.contains('changelog-close-action')) {
-      event.preventDefault();
-      const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
-      closeOverlayElement(overlayEl);
+      try {
+        const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
+        if (overlayEl) {
+          closeOverlayElement(overlayEl);
+        } else {
+          console.warn('[button] Overlay element not found for close button');
+        }
+      } catch (err) {
+        console.warn('[button] Modal close error:', err);
+      }
+    }
+  });
+
+  // Phase 4: Delegated handler for common action buttons (folder, reviewer, etc.)
+  // This reduces reliance on inline onclick handlers for better CSP compliance
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+
+    const action = target.dataset.action;
+    if (!action) return;
+
+    try {
+      // Try to find and call the handler function
+      const handler = window[action];
+      if (typeof handler === 'function') {
+        event.preventDefault();
+        // Pass element and any data attributes as context
+        handler.call(target, event);
+      }
+    } catch (err) {
+      console.warn(`[button] Action handler error for "${action}":`, err);
     }
   });
 

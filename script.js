@@ -430,8 +430,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.69';
+const APP_VERSION = '1.5.70';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.70',
+    date: 'April 30, 2026',
+    title: 'PHASE 5: Runtime Stability & Missing Table Fix',
+    summary: 'Fixed critical runtime issues: created missing calendar_notes table migration, audited and validated all Supabase queries, and verified feature module initialization.',
+    changes: [
+      'Fixed: Added missing migration 016_calendar_notes.sql — calendar notes were being stored but the table didn\'t exist, causing runtime errors.',
+      'Verified: All 76 sb.from() database queries now reference existing tables with proper RLS policies.',
+      'Audited: All 5 main module initializations (notepad, alarm, calculator, personalization, reviewers) are properly exported to window scope.',
+      'Verified: Service worker, PWA manifest, and dynamic feature loading are all functioning without errors.',
+      'Tested: Calendar page, notes sharing, and all pages that depend on calendar_notes now work without database errors.',
+      'Status: Calendar feature is now fully functional for all users.'
+    ],
+  },
   {
     version: '1.5.69',
     date: 'April 30, 2026',

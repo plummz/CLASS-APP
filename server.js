@@ -54,7 +54,11 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   if (process.env.NODE_ENV !== 'production' && !process.env.JWT_SECRET) console.warn('[security] JWT_SECRET not set - using insecure default for local development');
+if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_SERVICE_KEY) {
+  console.warn('[security] SUPABASE_SERVICE_KEY not set - trusted server-side profile writes will fall back to the anon key.');
+}
 const DATA_PATH = process.env.DATA_PATH_OVERRIDE || path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PORT = process.env.PORT || 3000;
@@ -147,9 +151,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.socket.io', 'https://www.youtube.com', 'https://www.gstatic.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-      // TODO: remove inline handler allowance after legacy onclick paths are fully refactored.
-      scriptSrcAttr: ["'unsafe-inline'"],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
       connectSrc: ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co', 'https://pipedapi.kavin.rocks', 'https://pipedapi.tokhmi.xyz', 'https://piped-api.garudalinux.org', 'https://pipedapi.adminforge.de', 'https://www.googleapis.com'],
@@ -225,35 +227,55 @@ const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
 const SUPABASE_PUBLIC_PROFILE_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
-// Legacy SHA-256 hashing (for backward compatibility with existing passwords)
-function hashPasswordSHA256(value) {
+function hashLegacyPassword(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
-}
-
-// Modern bcrypt hashing (for all new passwords)
-async function hashPasswordBcrypt(value) {
-  const saltRounds = 12;
-  return bcrypt.hash(String(value || ''), saltRounds);
-}
-
-// Unified password comparison: handles both legacy SHA-256 and modern bcrypt hashes
-async function verifyPassword(plaintext, storedHash) {
-  if (!storedHash) return false;
-  // Check if hash is bcrypt (starts with $2a$, $2b$, or $2y$)
-  if (storedHash.startsWith('$2')) {
-    return bcrypt.compare(String(plaintext), storedHash);
-  }
-  // Legacy SHA-256 comparison (backward compatible)
-  return hashPasswordSHA256(plaintext) === storedHash;
-}
-
-function hashPassword(value) {
-  // Deprecated: kept for reference. Use hashPasswordBcrypt instead.
-  return hashPasswordSHA256(value);
 }
 
 function isPasswordLongEnough(value) {
   return typeof value === 'string' && value.length >= 8;
+}
+
+function isBcryptHash(value) {
+  return /^\$2[aby]\$\d{2}\$/.test(String(value || ''));
+}
+
+function isLegacySha256Hash(value) {
+  return /^[a-f0-9]{64}$/i.test(String(value || ''));
+}
+
+async function hashPassword(value) {
+  return bcrypt.hash(String(value || ''), 12);
+}
+
+async function verifyPassword(value, storedHash) {
+  const normalizedHash = String(storedHash || '');
+  if (!normalizedHash) return false;
+  if (isBcryptHash(normalizedHash)) {
+    return bcrypt.compare(String(value || ''), normalizedHash);
+  }
+  if (isLegacySha256Hash(normalizedHash)) {
+    return hashLegacyPassword(value) === normalizedHash;
+  }
+  return false;
+}
+
+function shouldUpgradePasswordHash(storedHash) {
+  return isLegacySha256Hash(storedHash);
+}
+
+function getSupabaseApiKey({ preferService = false } = {}) {
+  if (preferService && SUPABASE_SERVICE_KEY) return SUPABASE_SERVICE_KEY;
+  return SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY || '';
+}
+
+function getSupabaseHeaders(extraHeaders = {}, { preferService = false } = {}) {
+  const apiKey = getSupabaseApiKey({ preferService });
+  if (!apiKey) throw new Error('Supabase API key is not configured.');
+  return {
+    apikey: apiKey,
+    Authorization: `Bearer ${apiKey}`,
+    ...extraHeaders,
+  };
 }
 
 function applyAllowedProfileFields(target, source = {}) {
@@ -273,22 +295,22 @@ function toStateUserProfile(profile = {}, passwordHash = '') {
     note: profile.note || 'New user profile',
     online: Boolean(profile.online),
     avatar: profile.avatar || '',
+    last_seen_at: profile.last_seen_at || null,
+    username_last_changed_at: profile.username_last_changed_at || null,
     passwordHash: passwordHash || profile.password_hash || profile.passwordHash || '',
   };
 }
 
 async function fetchSupabaseProfile(username) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return null;
   const url = new URL('/rest/v1/profiles', SUPABASE_URL);
   url.searchParams.set('select', SUPABASE_AUTH_SELECT);
   url.searchParams.set('username', `eq.${username}`);
   url.searchParams.set('limit', '1');
   const response = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    headers: getSupabaseHeaders({
       Accept: 'application/json',
-    },
+    }, { preferService: true }),
   });
   if (!response.ok) {
     const text = await response.text();
@@ -299,16 +321,14 @@ async function fetchSupabaseProfile(username) {
 }
 
 async function fetchSupabasePublicProfiles() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return [];
   const url = new URL('/rest/v1/profiles', SUPABASE_URL);
   url.searchParams.set('select', SUPABASE_PUBLIC_PROFILE_SELECT);
   url.searchParams.set('order', 'display_name.asc.nullslast,username.asc');
   const response = await fetch(url, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    headers: getSupabaseHeaders({
       Accept: 'application/json',
-    },
+    }, { preferService: true }),
   });
   if (!response.ok) {
     const text = await response.text();
@@ -320,7 +340,7 @@ async function fetchSupabasePublicProfiles() {
 
 async function resolveAuthProfile(username) {
   if (!username) return null;
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
     return fetchSupabaseProfile(username);
   }
   const localUser = findUser(username);
@@ -340,8 +360,7 @@ async function resolveAuthProfile(username) {
 }
 
 function issueToken(username, isAdminUser) {
-  // Phase 3: Reduced token expiry from 7 days to 24 hours for better security
-  return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 function issueLegacyPasswordSetupToken(username) {
@@ -364,29 +383,19 @@ function sanitizeAuthProfile(profile = {}) {
   };
 }
 
-async function updateAuthProfilePasswordHash(username, passwordHash, authenticatedUsername = null) {
+async function updateAuthProfilePasswordHash(username, passwordHash) {
   if (!username) throw new Error('Username is required for password setup.');
-  // If called from an authenticated context, validate that the caller is modifying their own password
-  // or is an admin (this would be checked at the route level, but we validate here too)
-  if (authenticatedUsername && authenticatedUsername !== username) {
-    // This should not happen if routes are properly gated, but fail fast if it does
-    throw new Error('Cannot update password for a different user');
-  }
-
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
     const url = new URL('/rest/v1/profiles', SUPABASE_URL);
     url.searchParams.set('username', `eq.${username}`);
     url.searchParams.set('select', SUPABASE_AUTH_SELECT);
     const response = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      headers: getSupabaseHeaders({
         Accept: 'application/json',
         'Content-Type': 'application/json',
         Prefer: 'return=representation',
-        'x-class-username': username,
-      },
+      }, { preferService: true }),
       body: JSON.stringify({ password_hash: passwordHash }),
     });
     if (!response.ok) {
@@ -419,6 +428,91 @@ async function updateAuthProfilePasswordHash(username, passwordHash, authenticat
   };
 }
 
+async function createSupabaseProfile(profile) {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return null;
+  const url = new URL('/rest/v1/profiles', SUPABASE_URL);
+  url.searchParams.set('select', SUPABASE_AUTH_SELECT);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getSupabaseHeaders({
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    }, { preferService: true }),
+    body: JSON.stringify([profile]),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase profile create failed (${response.status}): ${text.slice(0, 160)}`);
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function updateSupabaseProfile(username, payload, { allowCreate = false } = {}) {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return null;
+  const url = new URL('/rest/v1/profiles', SUPABASE_URL);
+  url.searchParams.set('username', `eq.${username}`);
+  url.searchParams.set('select', SUPABASE_AUTH_SELECT);
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: getSupabaseHeaders({
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    }, { preferService: true }),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase profile update failed (${response.status}): ${text.slice(0, 160)}`);
+  }
+  const rows = await response.json();
+  const updated = Array.isArray(rows) ? rows[0] || null : null;
+  if (updated || !allowCreate) return updated;
+  return createSupabaseProfile({ username, ...payload });
+}
+
+function buildDefaultProfile(username, overrides = {}) {
+  return {
+    username,
+    display_name: overrides.display_name || overrides.displayName || username,
+    birthday: overrides.birthday || 'Unknown',
+    address: overrides.address || 'Unknown',
+    github: overrides.github || '',
+    email: overrides.email || '',
+    note: overrides.note || 'New user profile',
+    online: overrides.online ?? false,
+    avatar: overrides.avatar || '',
+    last_seen_at: overrides.last_seen_at || null,
+    username_last_changed_at: overrides.username_last_changed_at || null,
+    password_hash: overrides.password_hash || '',
+  };
+}
+
+async function ensureAuthProfile(username, passwordHash, overrides = {}) {
+  const normalizedUsername = String(username || '').trim();
+  if (!normalizedUsername) throw new Error('Username is required.');
+  const existingProfile = await resolveAuthProfile(normalizedUsername);
+  if (existingProfile) {
+    const merged = {
+      ...existingProfile,
+      ...overrides,
+      username: normalizedUsername,
+      password_hash: passwordHash || existingProfile.password_hash || '',
+    };
+    const updatedProfile = await updateSupabaseProfile(normalizedUsername, merged, { allowCreate: false }).catch(() => null);
+    return updatedProfile || merged;
+  }
+  const newProfile = buildDefaultProfile(normalizedUsername, {
+    ...overrides,
+    username: normalizedUsername,
+    password_hash: passwordHash,
+  });
+  const createdProfile = await createSupabaseProfile(newProfile).catch(() => null);
+  return createdProfile || newProfile;
+}
+
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -429,34 +523,6 @@ function requireAuth(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
-}
-
-// Validate that x-class-username header matches authenticated user (if present)
-// This prevents header spoofing on authenticated requests
-function validateUsernameHeader(req, res, next) {
-  const headerUsername = (req.headers['x-class-username'] || '').trim();
-  if (headerUsername && req.user?.username && headerUsername !== req.user.username) {
-    return res.status(403).json({
-      error: 'Username header mismatch',
-      details: 'x-class-username header does not match authenticated user'
-    });
-  }
-  next();
-}
-
-// Middleware: Ensure username parameter matches authenticated user or is admin
-// Use for routes that update user-specific data
-function requireSelfOrAdmin(paramField) {
-  return [requireAuth, (req, res, next) => {
-    const targetUsername = req.params[paramField] || req.body?.username;
-    if (req.user.isAdmin || req.user.username === targetUsername) {
-      return next();
-    }
-    res.status(403).json({
-      error: 'Forbidden',
-      details: 'Can only modify your own data unless you are an admin'
-    });
-  }];
 }
 
 function requireAdmin(req, res, next) {
@@ -478,20 +544,35 @@ app.use(express.static(path.join(__dirname)));
 // Serve uploads â€” local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
   const filename = req.params[0]; // everything after /uploads/
+  const requestedExt = path.extname(filename).toLowerCase();
+  const safeContentType = SAFE_UPLOAD_CONTENT_TYPES[requestedExt] || 'application/octet-stream';
+  const inlineDisposition = shouldServeUploadInline(filename, safeContentType) ? 'inline' : 'attachment';
+  const safeFileName = path.basename(filename).replace(/["\r\n]/g, '_');
   // Local fallback (old files before migration)
   const localPath = path.join(UPLOAD_DIR, path.basename(filename));
-  if (fs.existsSync(localPath)) return res.sendFile(localPath);
+  if (fs.existsSync(localPath)) {
+    res.setHeader('Content-Type', safeContentType);
+    res.setHeader('Content-Disposition', `${inlineDisposition}; filename="${safeFileName}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.sendFile(localPath);
+  }
   // Try R2: exact key first, then subfolder variants
   const candidates = [
     filename,
     `uploads/images/${path.basename(filename)}`,
     `uploads/videos/${path.basename(filename)}`,
-    `uploads/other/${path.basename(filename)}`,
+    `uploads/audio/${path.basename(filename)}`,
+    `uploads/documents/${path.basename(filename)}`,
   ];
   for (const key of candidates) {
     try {
       const data = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
-      res.setHeader('Content-Type', data.ContentType || 'application/octet-stream');
+      const ext = path.extname(key).toLowerCase();
+      const contentType = SAFE_UPLOAD_CONTENT_TYPES[ext] || data.ContentType || 'application/octet-stream';
+      const disposition = shouldServeUploadInline(key, contentType) ? 'inline' : 'attachment';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `${disposition}; filename="${safeFileName}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       data.Body.pipe(res);
       return;
@@ -596,9 +677,9 @@ app.get('/api/app-open-count', (req, res) => {
   res.json({ count: state.appOpenCount || 0, users });
 });
 
-app.post('/api/app-open-count', wrap((req, res) => {
+app.post('/api/app-open-count', requireAuth, wrap((req, res) => {
   state.appOpenCount = (state.appOpenCount || 0) + 1;
-  const username = String(req.body?.username || '').trim().slice(0, 40);
+  const username = String(req.user?.username || '').trim().slice(0, 40);
   if (username) {
     if (!state.appOpenCounts || typeof state.appOpenCounts !== 'object' || Array.isArray(state.appOpenCounts)) state.appOpenCounts = {};
     state.appOpenCounts[username] = (state.appOpenCounts[username] || 0) + 1;
@@ -910,6 +991,8 @@ function safeUsers() {
     note: user.note,
     online: user.online,
     avatar: user.avatar || '',
+    last_seen_at: user.last_seen_at || null,
+    username_last_changed_at: user.username_last_changed_at || null,
   }));
 }
 
@@ -957,6 +1040,8 @@ function syncStateUserFromProfile(user, profile = {}, passwordHash = '') {
   user.email = next.email;
   user.note = next.note;
   user.avatar = next.avatar;
+  user.last_seen_at = next.last_seen_at || user.last_seen_at || null;
+  user.username_last_changed_at = next.username_last_changed_at || user.username_last_changed_at || null;
   if (passwordHash || next.passwordHash) user.passwordHash = passwordHash || next.passwordHash;
   return user;
 }
@@ -1147,8 +1232,6 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
     return res.status(400).json({ error: 'username and password are required' });
   }
   const normalizedUsername = String(username).trim();
-
-  // Admin user fast path
   if (ADMIN_USERNAME && ADMIN_PASSWORD && normalizedUsername === ADMIN_USERNAME) {
     const valid = ADMIN_PASSWORD.startsWith('$2')
       ? await bcrypt.compare(password, ADMIN_PASSWORD)
@@ -1178,22 +1261,31 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
       profile: sanitizeAuthProfile(authProfile),
     });
   }
-
-  // Use unified password verification (handles both bcrypt and legacy SHA-256)
-  const passwordValid = await verifyPassword(password, authProfile.password_hash);
-  if (!passwordValid) {
+  if (!await verifyPassword(password, authProfile.password_hash)) {
     return res.status(401).json({ error: 'Invalid password' });
   }
 
+  let effectiveProfile = authProfile;
+  if (shouldUpgradePasswordHash(authProfile.password_hash)) {
+    const upgradedHash = await hashPassword(password);
+    const upgradedProfile = await updateAuthProfilePasswordHash(normalizedUsername, upgradedHash);
+    effectiveProfile = upgradedProfile || { ...authProfile, password_hash: upgradedHash };
+  }
+
   let user = findUser(normalizedUsername);
-  if (!user) user = createUser(normalizedUsername, authProfile, authProfile.password_hash);
-  else syncStateUserFromProfile(user, authProfile, authProfile.password_hash);
+  if (!user) user = createUser(normalizedUsername, effectiveProfile, effectiveProfile.password_hash);
+  else syncStateUserFromProfile(user, effectiveProfile, effectiveProfile.password_hash);
   user.online = true;
   await saveData(state);
   io.emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
-  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
+  res.json({
+    user: safeUsers().find((item) => item.username === user.username),
+    isAdmin: isAdminUser,
+    token,
+    profile: sanitizeAuthProfile(effectiveProfile),
+  });
 }));
 
 app.post('/api/password-setup', loginLimiter, wrap(async (req, res) => {
@@ -1224,8 +1316,7 @@ app.post('/api/password-setup', loginLimiter, wrap(async (req, res) => {
     return res.status(409).json({ error: 'This account already has a password. Please sign in normally.' });
   }
 
-  // Use bcrypt for new passwords (Phase 3 hardening)
-  const passwordHash = await hashPasswordBcrypt(password);
+  const passwordHash = await hashPassword(password);
   const updatedProfile = await updateAuthProfilePasswordHash(normalizedUsername, passwordHash);
   const finalProfile = updatedProfile || { ...authProfile, password_hash: passwordHash };
 
@@ -1256,27 +1347,34 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
   const normalizedUsername = String(username).trim();
-  const passwordHash = hashPassword(password);
+  if (ADMIN_USERNAME && normalizedUsername === ADMIN_USERNAME) {
+    return res.status(409).json({ error: 'That username is reserved.' });
+  }
+  const passwordHash = await hashPassword(password);
   const authProfile = await resolveAuthProfile(normalizedUsername);
-  if (SUPABASE_URL && SUPABASE_ANON_KEY && !authProfile) {
-    return res.status(400).json({ error: 'Profile record not found. Please create the account in the app first.' });
+  if (authProfile?.password_hash) {
+    return res.status(409).json({ error: 'Username already exists. Please sign in instead.' });
   }
-  if (authProfile && !authProfile.password_hash) {
-    return res.status(400).json({ error: 'Profile password hash is missing. Please retry registration.' });
-  }
-  if (authProfile && authProfile.password_hash && authProfile.password_hash !== passwordHash) {
-    return res.status(401).json({ error: 'Password does not match the stored profile.' });
-  }
+  const finalProfile = await ensureAuthProfile(normalizedUsername, passwordHash, {
+    display_name: normalizedUsername,
+    online: true,
+    last_seen_at: new Date().toISOString(),
+  });
   let user = findUser(normalizedUsername);
-  if (!user) user = createUser(normalizedUsername, authProfile || { username: normalizedUsername }, passwordHash);
-  else syncStateUserFromProfile(user, authProfile || { username: normalizedUsername }, passwordHash);
+  if (!user) user = createUser(normalizedUsername, finalProfile, passwordHash);
+  else syncStateUserFromProfile(user, finalProfile, passwordHash);
   user.passwordHash = passwordHash;
   user.online = true;
   await saveData(state);
   io.emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
-  res.json({ user: safeUsers().find((item) => item.username === user.username), isAdmin: isAdminUser, token });
+  res.json({
+    user: safeUsers().find((item) => item.username === user.username),
+    isAdmin: isAdminUser,
+    token,
+    profile: sanitizeAuthProfile(finalProfile),
+  });
 }));
 
 app.get('/api/users', requireAuth, wrap(async (req, res) => {
@@ -1310,6 +1408,27 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
 });
 
 // --- CHAT & FILE UPLOAD API ---
+app.post('/api/session/presence', requireAuth, wrap(async (req, res) => {
+  const online = req.body?.online !== false;
+  const timestamp = new Date().toISOString();
+  const user = findUser(req.user.username);
+  if (user) {
+    user.online = online;
+    user.last_seen_at = timestamp;
+    await saveData(state);
+  }
+  try {
+    await updateSupabaseProfile(req.user.username, {
+      online,
+      last_seen_at: timestamp,
+    }, { allowCreate: false });
+  } catch (error) {
+    console.warn('[presence] Supabase profile sync failed:', error.message);
+  }
+  io.emit('users', safeUsers());
+  res.json({ ok: true, online, last_seen_at: timestamp });
+}));
+
 app.get('/api/messages', requireAuth, wrap((req, res) => {
   const { chat, target } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
@@ -1323,7 +1442,6 @@ app.get('/api/messages', requireAuth, wrap((req, res) => {
   if (chat === 'private') {
     if (!target) return res.status(400).json({ error: 'target required for private chat' });
     const [userA, userB] = target.split('||');
-    if (!userA || !userB) return res.status(400).json({ error: 'target must contain two usernames' });
     if (!req.user.isAdmin && req.user.username !== userA && req.user.username !== userB) {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -1370,6 +1488,63 @@ app.post('/api/messages', requireAuth, wrap(async (req, res) => {
 // â”€â”€ Compression helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
 const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
+const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
+const SAFE_DOCUMENT_EXTS = new Set(['.pdf', '.txt', '.doc', '.docx', '.pptx']);
+const BLOCKED_UPLOAD_EXTS = new Set(['.html', '.htm', '.svg', '.xml', '.js', '.mjs', '.cjs', '.css']);
+const BLOCKED_UPLOAD_MIME_PREFIXES = [
+  'text/html',
+  'application/xhtml+xml',
+  'image/svg+xml',
+  'text/xml',
+  'application/xml',
+  'application/javascript',
+  'text/javascript',
+  'text/css',
+];
+const SAFE_UPLOAD_CONTENT_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.mp4': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.avi': 'video/x-msvideo',
+  '.mkv': 'video/x-matroska',
+  '.m4v': 'video/mp4',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.flac': 'audio/flac',
+  '.pdf': 'application/pdf',
+  '.txt': 'text/plain; charset=utf-8',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+const INLINE_UPLOAD_EXTS = new Set([...IMAGE_EXTS, ...VIDEO_EXTS, ...AUDIO_EXTS, '.pdf']);
+
+function isBlockedUploadMimeType(mimeType = '') {
+  const normalized = String(mimeType || '').toLowerCase();
+  return BLOCKED_UPLOAD_MIME_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
+function isAllowedUploadFile(ext, mimeType = '') {
+  if (BLOCKED_UPLOAD_EXTS.has(ext) || isBlockedUploadMimeType(mimeType)) return false;
+  return IMAGE_EXTS.has(ext)
+    || VIDEO_EXTS.has(ext)
+    || AUDIO_EXTS.has(ext)
+    || SAFE_DOCUMENT_EXTS.has(ext);
+}
+
+function shouldServeUploadInline(key, mimeType = '') {
+  const ext = path.extname(String(key || '')).toLowerCase();
+  if (BLOCKED_UPLOAD_EXTS.has(ext) || isBlockedUploadMimeType(mimeType)) return false;
+  return INLINE_UPLOAD_EXTS.has(ext);
+}
 
 async function compressImage(buffer, ext) {
   let img = sharp(buffer).resize({ width: 1920, withoutEnlargement: true });
@@ -1388,10 +1563,21 @@ app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => 
   if (!req.file) return res.status(400).json({ error: 'File required' });
 
   const ext      = path.extname(req.file.originalname).toLowerCase();
+  if (!isAllowedUploadFile(ext, req.file.mimetype)) {
+    return res.status(400).json({ error: 'Unsupported file type. Upload an image, video, audio file, PDF, TXT, DOC, DOCX, or PPTX.' });
+  }
   const isImage  = IMAGE_EXTS.has(ext);
   const isVideo  = VIDEO_EXTS.has(ext);
-  const folder   = isImage ? 'uploads/images' : isVideo ? 'uploads/videos' : 'uploads/other';
+  const isAudio  = AUDIO_EXTS.has(ext);
+  const folder   = isImage
+    ? 'uploads/images'
+    : isVideo
+      ? 'uploads/videos'
+      : isAudio
+        ? 'uploads/audio'
+        : 'uploads/documents';
   const key      = `${folder}/file-${Date.now()}-${Math.round(Math.random()*1e9)}${ext}`;
+  const contentType = SAFE_UPLOAD_CONTENT_TYPES[ext] || 'application/octet-stream';
 
   let finalBuffer = req.file.buffer;
   let tmpIn, tmpOut;
@@ -1406,7 +1592,7 @@ app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => 
       Bucket:      R2_BUCKET,
       Key:         key,
       Body:        finalBuffer,
-      ContentType: req.file.mimetype,
+      ContentType: contentType,
     }));
 
     const url = `/uploads/${path.basename(key)}`;

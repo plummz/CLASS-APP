@@ -63,7 +63,7 @@
   let quizAnswered    = false;
   let userAnswers     = [];
   let quizSourceFile  = '';
-  const allowedExtensions = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx']);
+  const allowedExtensions = new Set(['pdf', 'doc', 'docx', 'pptx']);
 
   // ── Helpers ────────────────────────────────────────────────
   function setError(msg) {
@@ -86,7 +86,7 @@
   function validateSelectedFile(file) {
     const ext = getFileExtension(file?.name);
     if (!allowedExtensions.has(ext)) {
-      return 'Unsupported file. Only PDF, DOC, DOCX, PPT, PPTX allowed.';
+      return 'Unsupported file. Only PDF, DOC, DOCX, and PPTX are allowed.';
     }
     if (file.size > 8 * 1024 * 1024) {
       return `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 8 MB.`;
@@ -112,7 +112,7 @@
     setSummaryBtnsDisabled(true);
     if (uploadLabel) {
       uploadLabel.querySelector('.fs-upload-main').textContent = 'Tap to upload a file';
-      uploadLabel.querySelector('.fs-upload-sub').textContent  = 'PDF · DOCX · PPTX — max 8 MB';
+      uploadLabel.querySelector('.fs-upload-sub').textContent  = 'PDF · DOC · DOCX · PPTX — max 8 MB';
     }
   }
 
@@ -171,9 +171,9 @@
     if (!file) { clearAll(); return; }
 
     const ext = file.name.split('.').pop().toLowerCase();
-    const allowed = ['pdf', 'doc', 'docx', 'ppt', 'pptx'];
+    const allowed = ['pdf', 'doc', 'docx', 'pptx'];
     if (!allowed.includes(ext)) {
-      setError('Unsupported file. Only PDF, DOC, DOCX, PPT, PPTX allowed.');
+      setError('Unsupported file. Only PDF, DOC, DOCX, and PPTX are allowed.');
       fileInput.value = '';
       selectedFile = null;
       setSummaryBtnsDisabled(true);
@@ -260,7 +260,7 @@
       if (summarySection) summarySection.style.display = 'block';
 
       // Save to Notepad
-      saveToNotepad(selectedFile.name, type, data.summary);
+      await saveToNotepad(selectedFile.name, type, data.summary);
 
     } catch (err) {
       setError(err.message || 'Failed. Please try again.');
@@ -270,7 +270,7 @@
   }
 
   // ── Notepad save ───────────────────────────────────────────
-  function saveToNotepad(fileName, type, summary) {
+  async function saveToNotepad(fileName, type, summary) {
     try {
       const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
       const userId = user?.username || 'guest';
@@ -284,13 +284,16 @@
         userId,
       };
 
-      const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-      notes.unshift(note);
-      localStorage.setItem('notepad-notes', JSON.stringify(notes));
-      if (window.notepadModule) window.notepadModule.notes = notes;
+      if (window.notepadModule?.saveExternalNote) {
+        await window.notepadModule.saveExternalNote(note);
+      } else {
+        const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+        notes.unshift(note);
+        localStorage.setItem('notepad-notes', JSON.stringify(notes));
+        if (window.notepadModule) window.notepadModule.notes = notes;
+      }
 
-      const ok = JSON.parse(localStorage.getItem('notepad-notes') || '[]').some(n => n.date === note.date);
-      setStatus(ok ? 'Summary ready — saved to your Notepad!' : 'Summary ready.');
+      setStatus('Summary ready — saved to your Notepad!');
       console.log('[FileSummarizer] Saved to notepad:', note.title);
     } catch (e) {
       setStatus('Summary ready. (Could not save to Notepad.)');

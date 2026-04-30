@@ -10,6 +10,7 @@ window.notepadModule = {
   userLoaded: false,
   firstLoginPromptShown: false,
   isOnline: navigator.onLine,
+  onlineHandlerBound: false,
   pendingDeletes: {},
   pendingDeleteTimeouts: {},
 
@@ -21,6 +22,8 @@ window.notepadModule = {
   },
 
   setupOnlineHandler: function() {
+    if (this.onlineHandlerBound) return;
+    this.onlineHandlerBound = true;
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.syncStatus = 'syncing';
@@ -35,6 +38,75 @@ window.notepadModule = {
       this.syncStatus = 'offline';
       this.render();
     });
+  },
+
+  createLocalId: function() {
+    return `note-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  },
+
+  hydrateNote: function(note = {}) {
+    return {
+      title: note.title || '',
+      content: note.content || '',
+      date: note.date || note.updated_at || note.created_at || new Date().toISOString(),
+      cloudId: note.cloudId || note.id || null,
+      localId: note.localId || this.createLocalId(),
+      sharedToReviewers: Boolean(note.sharedToReviewers || note.shared_to_reviewers),
+    };
+  },
+
+  getStoredNotes: function() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+      return Array.isArray(saved) ? saved.map((note) => this.hydrateNote(note)) : [];
+    } catch (_) {
+      return [];
+    }
+  },
+
+  persistLocalNotes: function() {
+    localStorage.setItem('notepad-notes', JSON.stringify(this.notes.map((note) => this.hydrateNote(note))));
+  },
+
+  notesMatch: function(a, b) {
+    if (a?.cloudId && b?.cloudId) return String(a.cloudId) === String(b.cloudId);
+    if (a?.localId && b?.localId) return String(a.localId) === String(b.localId);
+    return String(a?.title || '') === String(b?.title || '')
+      && String(a?.content || '') === String(b?.content || '')
+      && String(a?.date || '') === String(b?.date || '');
+  },
+
+  mergeLocalAndRemoteNotes: function(localNotes, remoteNotes) {
+    const merged = (remoteNotes || []).map((note) => this.hydrateNote(note));
+    for (const localNote of (localNotes || []).map((note) => this.hydrateNote(note))) {
+      const alreadyPresent = merged.some((remoteNote) =>
+        this.notesMatch(localNote, remoteNote)
+        || (!localNote.cloudId && localNote.title === remoteNote.title && localNote.content === remoteNote.content)
+      );
+      if (!alreadyPresent) merged.unshift(localNote);
+    }
+    merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    return merged;
+  },
+
+  saveExternalNote: async function(noteInput) {
+    const note = this.hydrateNote(noteInput);
+    const existingIndex = this.notes.findIndex((existing) =>
+      this.notesMatch(existing, note)
+      || (!existing.cloudId && existing.title === note.title && existing.content === note.content)
+    );
+    if (existingIndex >= 0) {
+      this.notes[existingIndex] = {
+        ...this.notes[existingIndex],
+        ...note,
+        localId: this.notes[existingIndex].localId || note.localId,
+      };
+    } else {
+      this.notes.unshift(note);
+    }
+    await this.saveNotes();
+    this.render();
+    return note;
   },
 
   checkFirstLogin: async function() {
@@ -56,7 +128,6 @@ window.notepadModule = {
 
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     if (!client || !navigator.onLine) {
-      localStorage.setItem('notepad-imported-to-cloud', 'true');
       return;
     }
 
@@ -95,10 +166,10 @@ window.notepadModule = {
   loadNotes: async function() {
     const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    const localNotes = this.getStoredNotes();
 
     if (!user || !user.username || !client || !navigator.onLine) {
-      const saved = localStorage.getItem('notepad-notes');
-      this.notes = saved ? JSON.parse(saved) : [];
+      this.notes = localNotes;
       this.syncStatus = user && user.username ? 'offline' : 'offline';
       return;
     }
@@ -113,13 +184,12 @@ window.notepadModule = {
 
       if (error) {
         console.error('[Notepad] Load error:', error);
-        const saved = localStorage.getItem('notepad-notes');
-        this.notes = saved ? JSON.parse(saved) : [];
+        this.notes = localNotes;
         this.syncStatus = 'offline';
         return;
       }
 
-      this.notes = (data || []).map(record => ({
+      const remoteNotes = (data || []).map(record => ({
         title: record.title,
         content: record.content,
         date: record.updated_at || record.created_at,
@@ -127,12 +197,12 @@ window.notepadModule = {
         sharedToReviewers: record.shared_to_reviewers || false
       }));
 
-      localStorage.setItem('notepad-notes', JSON.stringify(this.notes));
+      this.notes = this.mergeLocalAndRemoteNotes(localNotes, remoteNotes);
+      this.persistLocalNotes();
       this.syncStatus = 'synced';
     } catch (ex) {
       console.error('[Notepad] Load exception:', ex);
-      const saved = localStorage.getItem('notepad-notes');
-      this.notes = saved ? JSON.parse(saved) : [];
+      this.notes = localNotes;
       this.syncStatus = 'offline';
     }
   },
@@ -145,6 +215,7 @@ window.notepadModule = {
 
     try {
       this.syncStatus = 'syncing';
+      await this.saveNotes();
       await this.loadNotes();
       this.syncStatus = 'synced';
       if (this.render) this.render();
@@ -156,7 +227,8 @@ window.notepadModule = {
 
   saveNotes: async function() {
     const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-    localStorage.setItem('notepad-notes', JSON.stringify(this.notes));
+    this.notes = this.notes.map((note) => this.hydrateNote(note));
+    this.persistLocalNotes();
 
     if (!user || !user.username || !navigator.onLine) return;
 
@@ -198,6 +270,7 @@ window.notepadModule = {
         }
       }
 
+      this.persistLocalNotes();
       this.syncStatus = 'synced';
       if (this.render) this.render();
     } catch (ex) {
@@ -222,7 +295,7 @@ window.notepadModule = {
     page.innerHTML = `
       ${offlineBanner}
       <div class="tool-page-header">
-        <button class="tool-back-btn" type="button" data-action="handleNotepadAction" data-notepad-action="back">← Back</button>
+        <button class="tool-back-btn" onclick="window.goToPage('personal-tools')">← Back</button>
         <h1 class="tool-page-title">Notepad</h1>
         <div class="notepad-sync-status">${syncIcon}</div>
       </div>
@@ -231,13 +304,13 @@ window.notepadModule = {
         <div class="notepad-header">
           <h2 style="margin: 0; color: #00d4ff;">My Notes</h2>
           <div class="notepad-controls">
-            <button class="notepad-btn" type="button" data-action="handleNotepadAction" data-notepad-action="show-form">+ New Note</button>
-            <button class="notepad-btn delete" type="button" data-action="handleNotepadAction" data-notepad-action="clear-all">Clear All</button>
+            <button class="notepad-btn" onclick="notepadModule.showForm()">+ New Note</button>
+            <button class="notepad-btn delete" onclick="notepadModule.clearAll()">Clear All</button>
           </div>
         </div>
 
         <input type="search" id="notepad-search" class="notepad-search-input"
-          placeholder="🔍 Search notes…"
+          placeholder="🔍 Search notes…" oninput="notepadModule.onSearch(this.value)"
           value="${this.escapeHtml(this.searchQuery)}">
 
         <div class="notepad-list" id="notepad-list">
@@ -249,16 +322,14 @@ window.notepadModule = {
           <input type="text" id="note-title" placeholder="Note Title" maxlength="100">
           <textarea id="note-content" placeholder="Write your note here..." maxlength="2000"></textarea>
           <div class="notepad-form-buttons">
-            <button type="button" data-action="handleNotepadAction" data-notepad-action="save-note">Save Note</button>
-            <button class="cancel" type="button" data-action="handleNotepadAction" data-notepad-action="hide-form">Cancel</button>
+            <button onclick="notepadModule.saveNote()">Save Note</button>
+            <button class="cancel" onclick="notepadModule.hideForm()">Cancel</button>
           </div>
         </div>
       </div>
     `;
 
     this.renderNotes();
-    const searchEl = document.getElementById('notepad-search');
-    if (searchEl) searchEl.addEventListener('input', (event) => this.onSearch(event.target.value));
   },
 
   onSearch: function(value) {
@@ -307,9 +378,9 @@ window.notepadModule = {
           ${sharedWarning}
           <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
           <div class="notepad-item-actions">
-            <button type="button" data-action="handleNotepadAction" data-notepad-action="edit" data-note-index="${index}">Edit</button>
-            <button type="button" data-action="handleNotepadAction" data-notepad-action="share" data-note-index="${index}">Share to Reviewers</button>
-            <button class="delete" type="button" data-action="handleNotepadAction" data-notepad-action="delete" data-note-index="${index}">Delete</button>
+            <button onclick="notepadModule.editNote(${index})">Edit</button>
+            <button onclick="notepadModule.shareNote(${index})">Share to Reviewers</button>
+            <button class="delete" onclick="notepadModule.deleteNote(${index})">Delete</button>
           </div>
         </div>
       `;
@@ -358,12 +429,13 @@ window.notepadModule = {
     if (editIndex !== undefined && this.notes[editIndex]) {
       this.notes[editIndex].title = title;
       this.notes[editIndex].content = content;
+      this.notes[editIndex].date = new Date().toISOString();
     } else {
-      this.notes.unshift({
+      this.notes.unshift(this.hydrateNote({
         title,
         content,
         date: new Date().toISOString()
-      });
+      }));
     }
 
     await this.saveNotes();
@@ -390,7 +462,7 @@ window.notepadModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted '${this.escapeHtml(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="undo-delete" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="dismiss-toast">×</span>`;
+      t.innerHTML = `Deleted '${this.escapeHtml(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 
@@ -449,7 +521,7 @@ window.notepadModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted ${savedNotes.length} note(s) <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="undo-clear-all" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="dismiss-toast">×</span>`;
+      t.innerHTML = `Deleted ${savedNotes.length} note(s) <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.notepadModule.undoClearAll('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 
@@ -561,7 +633,7 @@ window.notepadModule = {
           setTimeout(() => {
             const t = document.createElement('div');
             t.className = 'app-toast app-toast-info';
-            t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" role="button" tabindex="0" data-action="handleNotepadAction" data-notepad-action="go-reviewers">View Reviewers →</span>';
+            t.innerHTML = '📄 <span style="cursor:pointer;text-decoration:underline" onclick="window.goToPage&&goToPage(\'reviewers\')">View Reviewers →</span>';
             document.body.appendChild(t);
             requestAnimationFrame(() => t.classList.add('show'));
             setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);

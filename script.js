@@ -7,8 +7,8 @@ let SUPABASE_URL = '';
 let SUPABASE_KEY = '';
 let sb = null;
 let serverAuthToken = localStorage.getItem('classAppToken') || '';
-const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
-const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at';
+const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
+const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
 async function initSupabase() {
   try {
@@ -161,31 +161,6 @@ function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
-async function hashPassword(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(pw || '')));
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Phase 3: Decode JWT to check expiration (without verifying signature client-side)
-function decodeJWT(token) {
-  try {
-    const parts = (token || '').split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1]));
-    return payload;
-  } catch (_) {
-    return null;
-  }
-}
-
-// Phase 3: Check if JWT token is expired
-function isTokenExpired(token) {
-  const payload = decodeJWT(token);
-  if (!payload || !payload.exp) return true;
-  const nowSecs = Math.floor(Date.now() / 1000);
-  return payload.exp <= nowSecs;
-}
-
 function setServerAuthToken(token) {
   serverAuthToken = token || '';
   if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
@@ -193,13 +168,7 @@ function setServerAuthToken(token) {
 }
 
 function getServerAuthToken() {
-  const token = serverAuthToken || localStorage.getItem('classAppToken') || '';
-  // Phase 3: Clear expired token to prevent stale session
-  if (token && isTokenExpired(token)) {
-    setServerAuthToken('');
-    return '';
-  }
-  return token;
+  return serverAuthToken || localStorage.getItem('classAppToken') || '';
 }
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -207,31 +176,6 @@ function getAuthHeaders(extraHeaders = {}) {
   const token = getServerAuthToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return headers;
-}
-
-function hasSecureSession() {
-  return Boolean(currentUser?.username && getServerAuthToken());
-}
-
-function buildSecureSessionNotice(areaLabel) {
-  return `<div class="empty-state-text"><p style="color: #ffb86c;">Your secure session expired before ${escapeHTML(areaLabel)} could load.</p><p style="font-size: 12px; margin-top: 8px;">Please sign in again to refresh your access.</p></div>`;
-}
-
-function ensureSecureSessionForAction(actionLabel) {
-  if (hasSecureSession()) return true;
-  customAlert(`Your secure session expired before ${actionLabel}. Please sign in again.`);
-  return false;
-}
-
-function isAuthRelatedDataError(error) {
-  const code = String(error?.code || '').toUpperCase();
-  const status = Number(error?.status || error?.statusCode || 0);
-  const message = String(error?.message || '');
-  return status === 401
-    || status === 403
-    || code === '42501'
-    || code === 'PGRST301'
-    || /auth|expired|forbidden|jwt|permission|not authenticated|row[-\s]?level security|rls/i.test(message);
 }
 
 window.getAuthToken = getServerAuthToken;
@@ -455,184 +399,46 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.77';
+const APP_VERSION = '1.5.66';
 const APP_CHANGELOG = [
-  {
-    version: '1.5.77',
-    date: 'April 30, 2026',
-    title: 'Improve app structure, cache reliability, and accessibility safely',
-    summary: 'Moved the social-media embed flow and software-updates system into their feature modules, improved version-check tooling for cache validation, and added accessibility polish to common icon-first controls.',
-    changes: [
-      'Improved: Moved Social Media page logic and Software Updates logic out of script.js into features/social/social.js and features/updates/updates.js to reduce core-file clutter.',
-      'Improved: Version-check tooling now normalizes asset paths so cache/version mismatches are easier to detect before deployment.',
-      'Improved: Added safer labels and keyboard support for common icon-based controls like the chat bauble, profile close button, personalization shortcut, and YouTube mini-player actions.'
-    ],
-  },
-  {
-    version: '1.5.76',
-    date: 'April 30, 2026',
-    title: 'Stabilize high-traffic button handlers and modal interactions',
-    summary: 'Moved core chat, users/profile, notepad, reviewers, folder/file, gallery, calendar, announcement, lobby, and music interactions onto bound listeners and data-driven actions so the app is less dependent on inline handlers.',
-    changes: [
-      'Improved: High-traffic folder/file, reviewer, notepad, gallery, profile, calendar, announcement, lobby, and music actions now work through delegated listeners or direct bindings after render.',
-      'Improved: Injected modals for app opens, contributions, calendar notes, and gallery lightboxes now close through shared modal handlers instead of depending on inline close logic.',
-      'Fixed: Chat entry points, user directory filters, profile actions, announcement search/refresh, and lobby chat/music keyboard actions now have explicit listeners for safer mobile and future CSP behavior.'
-    ],
-  },
-  {
-    version: '1.5.75',
-    date: 'April 30, 2026',
-    title: 'Harden Supabase identity and admin policy model',
-    summary: 'Removed hardcoded admin fallback and moved admin status to database table. Restricted admin functions to authenticated users, added operation audit logging, and improved backend validation for user-specific operations.',
-    changes: [
-      'Security: Removed hardcoded "Marquillero" admin fallback; admin status now requires entry in admins table.',
-      'Security: Admin functions (delete user, stats) now require authenticated context, checked at function level.',
-      'Security: Created operation_audit_log table to track sensitive operations and detect anomalies.',
-      'Security: Added requireSelfOrAdmin middleware for routes modifying user data; backend validates that authenticated user matches target user.',
-      'Improved: Backend updateAuthProfilePasswordHash now validates authenticated context and rejects cross-user modifications.',
-      'Documentation: Added migration 020 documenting current identity model and Phase 3 migration path to JWT-based Supabase auth.',
-      'Note: x-class-username header identity model persists as designed trade-off; Phase 3 will migrate to server-validated JWT claims.'
-    ],
-  },
-  {
-    version: '1.5.74',
-    date: 'April 30, 2026',
-    title: 'Secure authenticated read endpoints',
-    summary: 'Locked the legacy chat, folder, and file read APIs behind signed-in sessions and added visible re-sign-in states so those views fail clearly instead of looking empty when auth is missing.',
-    changes: [
-      'Security: GET /api/messages, GET /api/folders, and GET /api/files now require a valid bearer token before returning data.',
-      'Security: Private chat history requests now reject authenticated users who are not part of that direct-message pair.',
-      'Fixed: Chat, folder explorer, and file explorer now show a clear "sign in again" message when a secure session is missing or auth-related data access fails.'
-    ],
-  },
-  {
-    version: '1.5.73',
-    date: 'April 30, 2026',
-    title: 'PHASE 8: UI/UX Polish & Accessibility Improvements',
-    summary: 'Enhanced user experience and accessibility: added keyboard navigation to interactive elements, improved button sizing for mobile tap targets, and fixed accessibility labels for better screen reader support.',
-    changes: [
-      'Accessibility: Added role="button", tabindex="0", and keyboard handlers (Enter/Space) to chat items, making them fully keyboard-navigable.',
-      'Accessibility: Added role="button" and keyboard support to all game cards (Pokemon, Royale, Pacman, Candy) for better a11y.',
-      'Mobile UX: Created .music-control-btn CSS class with consistent 44px min-height for better mobile tap targets on music player controls.',
-      'Mobile UX: Replaced inline padding styles with CSS class for music controls — now consistent and maintainable.',
-      'Navigation: Verified all nav items have proper role="button" and tabindex for keyboard accessibility.',
-      'Verified: Page layouts, empty states, and error messages display clearly across light and dark themes.',
-      'Status: App is now more accessible (WCAG improvements) and provides better mobile/keyboard experience for students.'
-    ],
-  },
-  {
-    version: '1.5.72',
-    date: 'April 30, 2026',
-    title: 'PHASE 7: Codebase Organization - Remove Duplicate Modules',
-    summary: 'Cleaned up codebase by removing dead duplicate feature modules: eliminated 6 files across 3 legacy directories (notepad, alarm, calculator) that duplicated active implementations in personal-tools.',
-    changes: [
-      'Removed: Deleted legacy features/notepad/, features/alarm/, features/calculator/ directories (6 files, 584 lines of dead code).',
-      'Verified: Only active modern implementations in features/personal-tools/ are loaded (notepad.js, alarm-clock.js, calculator.js with cloud sync, notifications, sounds).',
-      'Verified: All module references in script.js use typeof checks, so removal is completely safe with zero functional impact.',
-      'Status: Codebase now cleaner with no duplicate modules, making future maintenance easier.',
-      'Future: script.js remains unified (7.6K lines) — smaller refactors deferred to future phases to maintain stability.'
-    ],
-  },
-  {
-    version: '1.5.71',
-    date: 'April 30, 2026',
-    title: 'PHASE 6: Performance & PWA Optimization - Defer Heavy Games',
-    summary: 'Significant startup performance improvement: large game files (Pokemon, Royale, Pacman, Candy) now load asynchronously after initial app render, reducing initial page load blocking time.',
-    changes: [
-      'Performance: Pokemon (2.9MB), Royale (3.9MB), Pacman (403KB), and Candy (1.4MB) scripts now defer and load in parallel instead of sequentially blocking HTML parsing.',
-      'Verified: All game module references use typeof checks, so defer loading is completely safe — modules are only accessed when user navigates to that page.',
-      'Tested: Cold load now completes HTML parsing significantly faster, improving perceived performance on mobile and slow connections.',
-      'Verified: Service worker cache strategy remains optimal — network-first for assets, never caches API responses.',
-      'Status: PWA installability, offline fallback, and cache invalidation verified working correctly.'
-    ],
-  },
-  {
-    version: '1.5.70',
-    date: 'April 30, 2026',
-    title: 'PHASE 5: Runtime Stability & Missing Table Fix',
-    summary: 'Fixed critical runtime issues: created missing calendar_notes table migration, audited and validated all Supabase queries, and verified feature module initialization.',
-    changes: [
-      'Fixed: Added missing migration 016_calendar_notes.sql — calendar notes were being stored but the table didn\'t exist, causing runtime errors.',
-      'Verified: All 76 sb.from() database queries now reference existing tables with proper RLS policies.',
-      'Audited: All 5 main module initializations (notepad, alarm, calculator, personalization, reviewers) are properly exported to window scope.',
-      'Verified: Service worker, PWA manifest, and dynamic feature loading are all functioning without errors.',
-      'Tested: Calendar page, notes sharing, and all pages that depend on calendar_notes now work without database errors.',
-      'Status: Calendar feature is now fully functional for all users.'
-    ],
-  },
-  {
-    version: '1.5.69',
-    date: 'April 30, 2026',
-    title: 'Button/Event System Stabilization & Mobile Improvements',
-    summary: 'Improved button reliability and interaction patterns: enhanced modal close handlers with error recovery, added comprehensive delegated action handler, improved mobile/touch event handling.',
-    changes: [
-      'Improved: Modal close handler now includes error handling and null checks for robustness against missing elements.',
-      'New: Added comprehensive delegated action button handler supporting data-action attributes for extensibility.',
-      'Improved: Modal close handlers now catch and log errors instead of silently failing.',
-      'Improved: Overlay menu now responds to both click and touchend events for better mobile reliability.',
-      'Improved: Touch event handler includes passive false for better control flow on mobile Safari.',
-      'Note: Inline onclick handlers remain unchanged for backward compatibility; delegated handlers complement them.'
-    ],
-  },
-  {
-    version: '1.5.68',
-    date: 'April 30, 2026',
-    title: 'Auth Hardening: Bcrypt Hashing & Token Expiry',
-    summary: 'Critical authentication improvements: migrated password hashing from weak SHA-256 to bcrypt, reduced token expiry from 7 days to 24 hours, and added client-side token expiration validation.',
-    changes: [
-      'Security: Replaced plain SHA-256 password hashing with bcrypt (12 rounds) for all new passwords and password setup.',
-      'Security: Reduced JWT token expiry from 7 days to 24 hours for better session security.',
-      'Improved: Added client-side token expiration checking — expired tokens are automatically cleared and user is prompted to re-login.',
-      'Improved: Unified password verification supports both bcrypt and legacy SHA-256 hashes for backward compatibility during transition.',
-      'Backward compatible: Existing passwords continue to work until users reset them (then bcrypt is used).'
-    ],
-  },
-  {
-    version: '1.5.67',
-    date: 'April 30, 2026',
-    title: 'Authorization Hardening: Admin Table & RLS Safety',
-    summary: 'Incremental authorization security hardening by introducing a proper admins table and server-side header validation to reduce reliance on hardcoded username checks.',
-    changes: [
-      'Improved: Admin status is now stored in a dedicated admins table instead of checking a single hardcoded username.',
-      'Security: Added server-side middleware to validate x-class-username header matches authenticated user, preventing simple header spoofing.',
-      'New: Migration 015 creates the admins table with proper RLS policies and seeds it with the original admin.',
-      'Note: x-class-username header-based identity model remains unchanged; Phase 3 will migrate to proper JWT-based auth.',
-      'Backward compatible: Existing hardcoded admin check still works during transition period.'
-    ],
-  },
   {
     version: '1.5.66',
     date: 'April 30, 2026',
-    title: 'Security Hotfix: Protect Public Data Exposure',
-    summary: 'Critical security fix: GET /api/messages, GET /api/folders, and GET /api/files endpoints now require authenticated access to prevent unauthorized public data exposure.',
+    title: 'Tighten cache checks and stale-tooling gaps',
+    summary: 'Presence now marks hidden tabs offline, app-open fallback writes no longer trust caller-supplied usernames, stale version drift now fails loudly, and broken legacy/test paths were cleaned up enough to verify safely.',
     changes: [
-      'Security: GET /api/messages endpoint now requires authentication (Bearer token) instead of being publicly readable.',
-      'Security: GET /api/folders endpoint now requires authentication (Bearer token) instead of being publicly readable.',
-      'Security: GET /api/files endpoint now requires authentication (Bearer token) instead of being publicly readable.',
-      'Improved: All three endpoints now return 401 Unauthorized when accessed without a valid authentication token.',
-      'Note: Frontend uses Supabase directly for these operations, so this change has no impact on app functionality.'
+      'PWA: The version-check script now fails on real cache drift instead of only warning, and the missing personal-tools assets were added back to the service worker asset list.',
+      'Presence: Hidden tabs now publish offline status instead of incorrectly keeping users marked online the whole time.',
+      'Integrity: The app-open API fallback now authenticates the caller server-side, so app-open counts can no longer be polluted with arbitrary usernames.',
+      'Maintainability: The admin delete-user cancel path now resolves cleanly instead of leaving a pending promise behind.',
+      'Maintainability: The broken legacy notepad module now passes syntax checking, and the Jest command ignores `.claude/worktrees` so cloned worktrees stop colliding with the main repo test scan.',
     ],
   },
   {
     version: '1.5.65',
     date: 'April 30, 2026',
-    title: 'Repair reviewer votes fallback',
-    summary: 'Shared Reviewers now degrades cleanly when the reviewer votes table is missing, and the repo now includes a repair migration to restore voting on the live database.',
+    title: 'Protect uploads and stabilize notepad sync',
+    summary: 'Blocked risky upload types from being served as app-origin content, fixed Notepad reconnect overwrites, and made generated notes follow the same sync path across devices.',
     changes: [
-      'Improved: Reviewers now shows a clear voting-unavailable message instead of failing noisily when reviewer_votes has not been deployed.',
-      'Fixed: Vote buttons are disabled safely until the reviewer votes migration is applied, preventing dead or misleading taps.',
-      'Backend: Added migration 014_reviewer_votes_repair.sql so the live Supabase project can create reviewer_votes and restore upvote tracking safely.'
+      'Security: Uploads now use an explicit safe-file allowlist and safer response headers so HTML, SVG, and other scriptable files cannot round-trip back from the app origin as active content.',
+      'Reliability: Notepad no longer registers duplicate online/offline listeners on every page open, and reconnect sync now saves local unsynced notes before merging cloud state.',
+      'Reliability: Local-only notes are no longer marked as “already imported” just because the user first logged in while offline.',
+      'Consistency: File Summarizer and Reviewers now save through the Notepad sync module so generated notes can reach cloud sync instead of living only in localStorage.',
+      'Compatibility: The File Summarizer now matches the backend and accepts PPTX instead of advertising unsupported legacy PPT uploads.',
+      'UX: Announcement now shows a clear unavailable state instead of rendering blank when Supabase is not ready.',
     ],
   },
   {
     version: '1.5.64',
     date: 'April 30, 2026',
-    title: 'Restore live button handlers and trim failed queries',
-    summary: 'Restored legacy click-path compatibility under the current CSP and removed two broken Supabase queries that were slowing the app after login.',
+    title: 'Harden auth boundaries and private APIs',
+    summary: 'Moved sign-in, registration, and presence updates onto trusted server routes, upgraded password handling to bcrypt with legacy migration, and closed unauthenticated reads on private data APIs.',
     changes: [
-      'Improved: Legacy inline button handlers now execute again under the deployed CSP while the remaining pages continue moving toward delegated listeners.',
-      'Fixed: User Directory profile reads no longer request the missing profiles.updated_at column, so post-login users loading stops throwing repeated 400 errors.',
-      'Fixed: App open tally now uses direct table reads and writes instead of the broken Supabase RPC path that was returning ambiguous username errors and slowing page boot.'
+      'Security: Registration now completes through the server instead of a browser-side profiles insert, so account creation no longer depends on direct anonymous profile writes.',
+      'Security: Real user passwords now verify with bcrypt and legacy SHA-256 hashes are upgraded on successful sign-in instead of staying in the weaker format.',
+      'Security: Login responses now return a sanitized profile to the browser, removing the need to fetch password hashes into frontend session code.',
+      'Security: Messages, folders, and files API reads now require authentication, and private message history checks that the caller is part of the conversation.',
+      'Resilience: Login, registration, and logout no longer fail just because Supabase config or presence wiring is slow to initialize on the client.',
     ],
   },
   {
@@ -1885,8 +1691,6 @@ const APP_CHANGELOG = [
     ],
   },
 ];
-window.CLASS_APP_VERSION = APP_VERSION;
-window.CLASS_APP_CHANGELOG = APP_CHANGELOG;
 
 function normalizeFolderPermissions(folder) {
     const raw = folder?.permissions;
@@ -1986,7 +1790,6 @@ window.openFolderModalObj = function(modalId) {
 };
 
 window.openFolderExplorer = async function(parentName) {
-    if (!ensureSecureSessionForAction('loading folder lists')) return;
     currentParentContext = parentName;
     folderStack = []; // reset navigation stack
     const title = document.getElementById('folder-explorer-title');
@@ -2004,27 +1807,15 @@ window.openFolderExplorer = async function(parentName) {
     }
 };
 
-async function fetchAndRenderFolders() {
-    const grid = document.getElementById('folder-grid-modal');
-    if(!grid) return;
-    if (!hasSecureSession()) {
-        grid.innerHTML = buildSecureSessionNotice('folders');
-        return;
-    }
-    if (!await waitForSupabaseClient()) {
-        grid.innerHTML = buildSecureSessionNotice('folders');
-        return;
-    }
+function fetchAndRenderFolders() {
     sb.from('folders').select('*').eq('parent', currentParentContext)
     .then(({ data: folders, error }) => {
+        const grid = document.getElementById('folder-grid-modal');
+        if(!grid) return;
         grid.innerHTML = '';
 
         if (error) {
             console.error("Folder fetch error:", error);
-            if (isAuthRelatedDataError(error)) {
-                grid.innerHTML = buildSecureSessionNotice('folders');
-                return;
-            }
             grid.innerHTML = `<div class="empty-state-text"><p style="color: #ff6b6b;">Error loading folders: ${escapeHTML(error.message || 'Unknown error')}</p><p style="font-size: 12px; margin-top: 8px;">Please refresh and try again.</p></div>`;
             return;
         }
@@ -2110,7 +1901,6 @@ window.deleteFolderAPI = async function(id) {
 };
 
 window.openFileExplorer = async function(folderId, folderName, parentId) {
-    if (!ensureSecureSessionForAction('opening files')) return;
     let folder;
     try {
         folder = await fetchFolderById(folderId);
@@ -2166,7 +1956,7 @@ function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
-const SUMMARIZABLE_FILE_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx']);
+const SUMMARIZABLE_FILE_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'pptx']);
 
 function isSummarizableFileName(fileName) {
     const ext = String(fileName || '').split('.').pop().toLowerCase();
@@ -2193,7 +1983,7 @@ function getFileActionIcon(kind) {
 
 window.openFileSummarizerForStoredFile = async function(fileUrl, fileName, fileType = '') {
     if (!isSummarizableFileName(fileName)) {
-        return customAlert('Only PDF, DOC, DOCX, PPT, and PPTX files can be summarized.');
+        return customAlert('Only PDF, DOC, DOCX, and PPTX files can be summarized.');
     }
     if (!window.fileSummarizerModule?.loadRemoteFile) {
         return customAlert('File Summarizer is still loading. Please try again.');
@@ -2212,31 +2002,22 @@ window.openFileSummarizerForStoredFile = async function(fileUrl, fileName, fileT
 };
 
 function fetchAndRenderFiles() {
-    const list = document.getElementById('file-list-container');
-    const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
-    if(!list) return;
-    if (!hasSecureSession()) {
-        if (uploadArea) uploadArea.style.display = 'none';
-        list.innerHTML = buildSecureSessionNotice('files');
-        return;
-    }
     if (!currentFolderContext || !canViewFolder(currentFolderContext)) {
-        list.innerHTML = '<p class="empty-state-text">You do not have permission to view files here.</p>';
+        const list = document.getElementById('file-list-container');
+        if (list) list.innerHTML = '<p class="empty-state-text">You do not have permission to view files here.</p>';
         return;
     }
     const allowEdit = canEditFolder(currentFolderContext);
+    const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
     if (uploadArea) uploadArea.style.display = allowEdit ? '' : 'none';
     sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
     .then(({ data: files, error }) => {
+        const list = document.getElementById('file-list-container');
+        if(!list) return;
         list.innerHTML = '';
 
         if (error) {
             console.error(error);
-            if (isAuthRelatedDataError(error)) {
-                if (uploadArea) uploadArea.style.display = 'none';
-                list.innerHTML = buildSecureSessionNotice('files');
-                return;
-            }
             list.innerHTML = `<p class="empty-state-text" style="color: #ff6b6b;">Error loading files: ${escapeHTML(error.message || 'Unknown error')}</p>`;
             return;
         }
@@ -2261,10 +2042,10 @@ function fetchAndRenderFiles() {
                     <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}${getUploaderAvatarHTML(f.uploader)}${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
                 <div class="file-row-actions">
-                    <button type="button" data-action="handleFileListAction" data-file-action="open" data-file-url="${safeUrl}" data-file-name="${safeName}" data-folder-id="${escapeJS(currentFolderContext.id)}" class="file-action primary">Open</button>
-                    ${canSummarizeFile ? `<button type="button" data-action="handleFileListAction" data-file-action="summarize" data-file-url="${safeUrl}" data-file-name="${safeName}" data-file-type="${safeType}" class="file-action summarize">Summarize</button>` : ''}
-                    ${canModifyFile ? `<button type="button" data-action="handleFileListAction" data-file-action="copy" data-file-id="${safeId}" data-folder-id="${escapeJS(currentFolderContext.id)}" class="file-action icon-only" aria-label="Copy and move file" title="Copy & Move To">${getFileActionIcon('transfer')}</button>` : ''}
-                    ${canModifyFile ? `<button type="button" data-action="handleFileListAction" data-file-action="delete" data-file-id="${safeId}" class="file-action danger icon-only" aria-label="Delete file" title="Delete">${getFileActionIcon('delete')}</button>` : ''}
+                    <button onclick="window.playOrOpenFileAPI('${safeUrl}', '${safeName}', false, '${escapeJS(currentFolderContext.id)}')" class="file-action primary">Open</button>
+                    ${canSummarizeFile ? `<button onclick="window.openFileSummarizerForStoredFile('${safeUrl}', '${safeName}', '${safeType}')" class="file-action summarize">Summarize</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.openCopyMoveFileModal('${safeId}', '${escapeJS(currentFolderContext.id)}', 'folder')" class="file-action icon-only" aria-label="Copy and move file" title="Copy & Move To">${getFileActionIcon('transfer')}</button>` : ''}
+                    ${canModifyFile ? `<button onclick="window.deleteFileAPI('${safeId}')" class="file-action danger icon-only" aria-label="Delete file" title="Delete">${getFileActionIcon('delete')}</button>` : ''}
                 </div>
             </div>
             `;
@@ -2277,23 +2058,15 @@ function fetchAndRenderSubFolders() {
     if (!currentFolderContext || !currentFolderContext.id) return;
     const parentId = String(currentFolderContext.id);
     const subfolderSection = document.getElementById('subfolder-section');
-    const grid = document.getElementById('subfolder-grid-modal');
-    if (!grid) return;
-    if (!hasSecureSession()) {
-        grid.innerHTML = buildSecureSessionNotice('sub-folders');
-        return;
-    }
     if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
     sb.from('folders').select('*').eq('parent', parentId)
     .then(({ data: subs, error }) => {
+        const grid = document.getElementById('subfolder-grid-modal');
+        if (!grid) return;
         grid.innerHTML = '';
 
         if (error) {
             console.error('Subfolder fetch error:', error);
-            if (isAuthRelatedDataError(error)) {
-                grid.innerHTML = buildSecureSessionNotice('sub-folders');
-                return;
-            }
             grid.innerHTML = `<p class="empty-state-text small" style="color: #ff6b6b;">Error loading sub-folders: ${escapeHTML(error.message || 'Unknown error')}</p>`;
             return;
         }
@@ -2496,7 +2269,7 @@ window.openFolderPermissions = async function(folderId) {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="folder-permission-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal-box permission-modal-box">
-          <button class="modal-close-btn" type="button" data-close-modal-id="folder-permission-modal">&times;</button>
+          <button class="modal-close-btn" onclick="removeDynamicModal('folder-permission-modal')">&times;</button>
           <h3 class="modal-title text-blue">Folder Permissions</h3>
           <p class="modal-text align-left">Owner: ${escapeHTML(folder.owner)} · Folder: ${escapeHTML(folder.name)}</p>
           <div class="permission-state-card ${isOpen ? 'open' : 'restricted'}">
@@ -2505,11 +2278,11 @@ window.openFolderPermissions = async function(folderId) {
             <p>${statusText}</p>
           </div>
           <div class="permission-quick-actions">
-            <button class="permission-quick-btn danger" type="button" data-action="handleGalleryAction" data-gallery-action="folder-permission-mode" data-folder-id="${escapeJS(folder.id)}" data-folder-mode="restricted">
+            <button class="permission-quick-btn danger" onclick="setFolderAccessMode('${escapeJS(folder.id)}','restricted')">
               <span>Restrict All Access</span>
               <small>Owner only</small>
             </button>
-            <button class="permission-quick-btn success" type="button" data-action="handleGalleryAction" data-gallery-action="folder-permission-mode" data-folder-id="${escapeJS(folder.id)}" data-folder-mode="edit">
+            <button class="permission-quick-btn success" onclick="setFolderAccessMode('${escapeJS(folder.id)}','edit')">
               <span>Allow Everyone Access</span>
               <small>Instant edit access</small>
             </button>
@@ -2555,7 +2328,7 @@ async function renderProfileFolders(username) {
     container.innerHTML = `
       <div class="profile-folder-head">
         <h3>Profile Folders</h3>
-        ${canCreate ? `<button class="btn-primary compact-btn" type="button" data-action="handleGalleryAction" data-gallery-action="create-profile-folder" data-username="${escapeJS(username)}">New Folder</button>` : ''}
+        ${canCreate ? `<button class="btn-primary compact-btn" onclick="createProfileFolder('${escapeJS(username)}')">New Folder</button>` : ''}
       </div>
       <div class="profile-folder-grid">
         ${visible.map((folder) => {
@@ -2563,16 +2336,16 @@ async function renderProfileFolders(username) {
             const safeName = escapeJS(folder.name);
             return `
               <div class="profile-folder-card">
-                <button class="profile-folder-open" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-open" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">
+                <button class="profile-folder-open" onclick="openFileExplorer('${safeId}','${safeName}')">
                   <span class="profile-folder-icon">📁</span>
                   <span class="profile-folder-name">${escapeHTML(folder.name)}</span>
                   <span class="profile-folder-owner">Owner: ${escapeHTML(folder.owner)}</span>
                   <span class="folder-access-pill ${canEditFolder(folder) ? 'editor' : 'viewer'}">${folderAccessLabel(folder)}</span>
                 </button>
                 ${canManageFolder(folder) ? `<div class="folder-card-actions">
-                  <button class="mini-action-btn" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-rename" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">Rename</button>
-                  <button class="mini-action-btn" type="button" data-folder-permissions="${safeId}">Permissions</button>
-                  <button class="mini-action-btn danger" type="button" data-action="handleGalleryAction" data-gallery-action="profile-folder-delete" data-gallery-folder-id="${safeId}">Delete</button>
+                  <button class="mini-action-btn" onclick="renameFolderAPI('${safeId}','${safeName}')">Rename</button>
+                  <button class="mini-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
+                  <button class="mini-action-btn danger" onclick="deleteFolderAPI('${safeId}')">Delete</button>
                 </div>` : ''}
               </div>`;
         }).join('')}
@@ -2648,7 +2421,7 @@ window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMo
     const targets = folders.filter((folder) => canUseAsCopyMoveDestination(source, folder, folderMap));
     removeDynamicModal('move-file-modal');
     const cards = targets.map((folder) => `
-      <button class="move-target-card" type="button" data-action="handleGalleryAction" data-gallery-action="copy-file-to-folder" data-file-id="${escapeJS(fileId)}" data-gallery-folder-id="${escapeJS(folder.id)}" data-refresh-mode="${escapeJS(refreshMode)}">
+      <button class="move-target-card" onclick="copyFileToFolder('${escapeJS(fileId)}','${escapeJS(folder.id)}','${escapeJS(refreshMode)}')">
         <span class="move-target-icon">📁</span>
         <span class="move-target-title">${escapeHTML(folder.name)}</span>
         <span class="move-target-path">${escapeHTML(buildFolderPath(folder, folderMap))}</span>
@@ -2656,7 +2429,7 @@ window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMo
     document.body.insertAdjacentHTML('beforeend', `
       <div id="move-file-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
         <div class="custom-modal-box move-modal-box">
-          <button class="modal-close-btn" type="button" data-close-modal-id="move-file-modal">&times;</button>
+          <button class="modal-close-btn" onclick="removeDynamicModal('move-file-modal')">&times;</button>
           <h3 class="modal-title text-green">Copy & Move To</h3>
           <p class="modal-text align-left">Choose a destination in the same area, or a profile folder from Users. The original file will stay where it is.</p>
           <p class="move-filter-note">Source area: ${escapeHTML(sourceArea.toUpperCase())}</p>
@@ -3327,7 +3100,7 @@ window.searchMusicFiles = async function() {
                 <div class="music-search-item-name">${f.name}</div>
                 <div class="music-search-item-meta">📂 ${folderPath} · by ${f.uploader}</div>
               </div>
-              ${isAudio ? `<button type="button" data-action="handleMusicAction" data-music-action="play-result" data-music-file-url="${safeUrl}" data-music-file-name="${safeName}" data-music-folder-id="${escapeJS(f.folder_id)}" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
+              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}',false,'${escapeJS(f.folder_id)}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
             </div>`;
         }).join('');
     } catch (e) {
@@ -3371,13 +3144,9 @@ let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 let authBindingsReady = false;
 let usersLoadState = { loading: false, error: '' };
-window.currentUser = currentUser;
-window.isAdmin = isAdmin;
 
 function syncAuthState() {
   isAuthenticated = Boolean(currentUser?.username);
-  window.currentUser = currentUser;
-  window.isAdmin = isAdmin;
 }
 
 function renderAppState() {
@@ -3490,7 +3259,7 @@ function getUserActivityLabel(user) {
 }
 
 async function persistLastSeen({ online = true, force = false } = {}) {
-  if (!currentUser?.username || !sb) return;
+  if (!currentUser?.username) return;
   const now = Date.now();
   if (!force && now - lastSeenWriteAt < 45000) return;
   lastSeenWriteAt = now;
@@ -3499,12 +3268,11 @@ async function persistLastSeen({ online = true, force = false } = {}) {
   currentUser.online = online;
   saveSession();
   try {
-    const { error } = await sb.from('profiles')
-      .update({ online, last_seen_at: timestamp })
-      .eq('username', currentUser.username);
-    if (error && /last_seen_at/i.test(error.message || '')) {
-      await sb.from('profiles').update({ online }).eq('username', currentUser.username);
-    }
+    await authFetch('/api/session/presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ online }),
+    });
   } catch (_) {}
 }
 
@@ -3704,10 +3472,6 @@ window.login = async function() {
   try {
     console.info('[auth] Sign-in requested.');
     setAuthInfo('Signing in...');
-    if (!await waitForSupabaseClient()) {
-      setAuthError('Connection error. Please refresh the page.');
-      return;
-    }
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     if (!username) { customAlert('Enter username'); return; }
@@ -3735,17 +3499,7 @@ window.login = async function() {
       return;
     }
 
-    // Fetch full profile for session data; fall back to minimal object if Supabase unavailable
-    let profile = null;
-    if (sb && SUPABASE_URL) {
-      try {
-        const result = await Promise.race([
-          sb.from('profiles').select(PROFILE_SELECT_FIELDS).eq('username', username).single(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000)),
-        ]);
-        profile = result.data || null;
-      } catch (_) { /* fall through */ }
-    }
+    let profile = serverSession.profile || null;
     if (!profile) {
       const su = serverSession.user || {};
       profile = {
@@ -3774,10 +3528,6 @@ window.register = async function() {
   try {
     console.info('[auth] Registration requested.');
     setAuthInfo('Creating your account...');
-    if (!await waitForSupabaseClient()) {
-      setAuthError('Connection error. Please refresh the page.');
-      return;
-    }
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     if (!username) { customAlert('Enter username'); return; }
@@ -3787,47 +3537,15 @@ window.register = async function() {
     if (formatError) { customAlert(formatError); return; }
 
     setAuthInfo('Creating your account...');
-    const passwordHash = await hashPassword(password);
-    const insertPayload = {
-      username,
-      display_name: username,
-      online: true,
-      password_hash: passwordHash,
-      last_seen_at: new Date().toISOString(),
-    };
-
-    let insertResult;
-    try {
-      insertResult = await withAuthTimeout(
-        sb.from('profiles').insert([insertPayload]).select(PROFILE_SELECT_FIELDS).single()
-      );
-    } catch (err) {
-      setAuthError(err.message);
-      return;
-    }
-    if (insertResult.error && /last_seen_at/i.test(insertResult.error.message || '')) {
-      try {
-        insertResult = await withAuthTimeout(
-          sb.from('profiles').insert([{
-            username,
-            display_name: username,
-            online: true,
-            password_hash: passwordHash,
-          }]).select(PROFILE_SELECT_FIELDS).single()
-        );
-      } catch (err) {
-        setAuthError(err.message);
-        return;
-      }
-    }
-    if (insertResult.error) {
-      setAuthError('Username taken or error occurred.');
-      return;
-    }
-
     try {
       const serverSession = await requestServerSession('/api/register', { username, password });
-      await finalizeLogin(insertResult.data, serverSession);
+      const profile = serverSession.profile || {
+        username,
+        display_name: username,
+        online: true,
+        last_seen_at: new Date().toISOString(),
+      };
+      await finalizeLogin(profile, serverSession);
     } catch (serverError) {
       console.error('[auth] Registration failed:', serverError);
       setAuthError(serverError.message || 'Could not finish registration.');
@@ -3842,16 +3560,9 @@ window.register = async function() {
 };
 
 window.handleLogout = async function() {
-    if (!await waitForSupabaseClient()) return;
     await persistLastSeen({ online: false, force: true });
     stopLastSeenHeartbeat();
     destroyAppPresence();
-    if(currentUser) {
-        const { error } = await sb.from('profiles').update({ online: false, last_seen_at: new Date().toISOString() }).eq('username', currentUser.username);
-        if (error && /last_seen_at/i.test(error.message || '')) {
-          await sb.from('profiles').update({ online: false }).eq('username', currentUser.username);
-        }
-    }
     currentUser = null;
     isAdmin = false;
     syncAuthState();
@@ -3864,18 +3575,11 @@ window.handleLogout = async function() {
 window.addEventListener('beforeunload', () => {
   try {
     if (currentUser?.username) {
-      const timestamp = new Date().toISOString();
-      fetch(`${SUPABASE_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(currentUser.username)}`, {
-        method: 'PATCH',
+      authFetch('/api/session/presence', {
+        method: 'POST',
         keepalive: true,
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=minimal',
-          'x-class-username': currentUser.username,
-        },
-        body: JSON.stringify({ online: false, last_seen_at: timestamp }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ online: false }),
       }).catch(() => {});
     }
   } catch (_) {}
@@ -3884,14 +3588,12 @@ window.addEventListener('beforeunload', () => {
 
 document.addEventListener('visibilitychange', () => {
   if (!currentUser?.username) return;
-  if (document.visibilityState === 'hidden') persistLastSeen({ online: true, force: true });
+  if (document.visibilityState === 'hidden') persistLastSeen({ online: false, force: true });
   else persistLastSeen({ online: true, force: true });
 });
 
 async function establishSession() {
-  if (!await waitForSupabaseClient()) {
-    throw new Error('Connection error. Please refresh the page.');
-  }
+  await waitForSupabaseClient();
   syncAuthState();
   renderAppState();
   const navLogout = document.getElementById('nav-logout');
@@ -3940,26 +3642,13 @@ async function fetchUsers() {
   let loadedUsers = [];
   let lastError = null;
 
-  if (sb) {
-    try {
-      const { data, error } = await sb.from('profiles').select(PROFILE_PUBLIC_FIELDS);
-      if (error) throw error;
-      loadedUsers = data || [];
-    } catch (error) {
-      lastError = error;
-      console.warn('[users] Supabase directory fetch failed:', error.message || error);
-    }
-  }
-
-  if (!loadedUsers.length) {
-    try {
-      const response = await authFetch('/api/users', { cache: 'no-store' });
-      if (!response.ok) throw new Error(`Users failed (${response.status})`);
-      loadedUsers = await response.json();
-    } catch (error) {
-      lastError = error;
-      console.warn('[users] Authenticated directory fetch failed:', error.message || error);
-    }
+  try {
+    const response = await authFetch('/api/users', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Users failed (${response.status})`);
+    loadedUsers = await response.json();
+  } catch (error) {
+    lastError = error;
+    console.warn('[users] Authenticated directory fetch failed:', error.message || error);
   }
 
   users = Array.isArray(loadedUsers) ? loadedUsers : [];
@@ -4003,7 +3692,7 @@ function renderUserDirectory() {
     })
     .sort((a, b) => {
       if (sortMode === 'name') return String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
-      if (sortMode === 'recent') return new Date(b.last_seen_at || b.username_last_changed_at || 0) - new Date(a.last_seen_at || a.username_last_changed_at || 0);
+      if (sortMode === 'recent') return new Date(b.updated_at || b.last_seen_at || 0) - new Date(a.updated_at || a.last_seen_at || 0);
       return Number(isUserLiveOnline(b)) - Number(isUserLiveOnline(a)) || String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''));
     });
 
@@ -4024,7 +3713,7 @@ function renderUserDirectory() {
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
           <div class="user-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
-        <button class="user-view-btn" type="button" data-action="handleUserProfileAction" data-username="${safeUsername}">Profile</button>
+        <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
       </div>
       <div class="user-meta">GitHub: ${escapeHTML(user.github || '—')}</div>
       <div class="user-meta">Email: ${escapeHTML(user.email || '—')}</div>
@@ -4053,7 +3742,7 @@ function renderChatUsersList() {
           <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
-        <button type="button" data-action="handleChatOpenAction" data-chat-type="private" data-chat-target="${safeUsername}" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
+        <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
       `;
       list.appendChild(item);
     });
@@ -4070,7 +3759,7 @@ window.openUserProfile = function(username) {
   const safeUsername = escapeJS(profile.username);
   const liveOnline = isUserLiveOnline(profile);
   const avatarLarge = profile.avatar
-    ? `<div class="profile-avatar-large"><img src="${escapeHTML(profile.avatar)}" alt="" data-avatar-fallback="${escapeHTML(getInitials(profile))}"></div>`
+    ? `<div class="profile-avatar-large"><img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='${escapeHTML(getInitials(profile))}'"></div>`
     : `<div class="profile-avatar-large">${escapeHTML(getInitials(profile))}</div>`;
   let html = `
     ${avatarLarge}
@@ -4082,11 +3771,11 @@ window.openUserProfile = function(username) {
     <div class="profile-row"><strong>Email:</strong> ${escapeHTML(profile.email || '—')}</div>
     <div class="profile-row" style="margin-bottom: 20px;"><strong>Note:</strong> ${escapeHTML(profile.note || 'No additional note.')}</div>
     <div class="profile-actions modal-btn-group" style="flex-wrap: wrap;">
-      <button class="btn-primary flex-1" type="button" data-action="handleProfileAction" data-profile-action="message" data-username="${safeUsername}">Message</button>
+      <button class="btn-primary flex-1" onclick="openChat('private', '${safeUsername}')">Message</button>
   `;
 
-  if (isMine) html += `<button class="btn-blue flex-1" type="button" data-action="handleProfileAction" data-profile-action="edit" data-username="${safeUsername}">Edit Profile</button>`;
-  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" type="button" data-action="handleProfileAction" data-profile-action="delete-user" data-username="${safeUsername}">Delete User</button>`;
+  if (isMine) html += `<button class="btn-blue flex-1" onclick="editUserProfile('${safeUsername}')">Edit Profile</button>`;
+  if (isAdmin && !isMine) html += `<button class="btn-outline-red flex-1" onclick="adminDeleteUser('${safeUsername}')">Delete User</button>`;
   html += `</div><div id="profile-folders-container" class="profile-folders-container"></div>`;
   details.innerHTML = html;
 
@@ -4124,7 +3813,7 @@ window.editUserProfile = function(username) {
   
   const currentInitials = escapeHTML(getInitials(profile));
   const avatarPreviewContent = profile.avatar
-    ? `<img src="${escapeHTML(profile.avatar)}" alt="" data-avatar-fallback="${currentInitials}">`
+    ? `<img src="${escapeHTML(profile.avatar)}" alt="" onerror="this.style.display='none'">`
     : currentInitials;
 
   details.innerHTML = `
@@ -4136,7 +3825,7 @@ window.editUserProfile = function(username) {
         <div class="avatar-upload-info">
           <input type="file" id="profile-avatar-file" accept="image/*" style="font-size:12px; color:rgba(255,255,255,0.7); background:none; border:none; padding:0; cursor:pointer;">
           <p class="profile-field-hint" style="margin:0;">Max 5 MB. Square images work best.</p>
-          ${profile.avatar ? `<button class="btn-outline-red" type="button" style="padding:4px 10px;font-size:11px;" data-action="handleProfileAction" data-profile-action="remove-avatar">Remove photo</button>` : ''}
+          ${profile.avatar ? `<button class="btn-outline-red" style="padding:4px 10px;font-size:11px;" onclick="window._clearProfileAvatar()">Remove photo</button>` : ''}
         </div>
       </div>
     </div>
@@ -4156,8 +3845,8 @@ window.editUserProfile = function(username) {
     <div style="margin-bottom: 15px;"><label style="font-size: 12px; color: #00d4ff;">Bio / Note</label>
         <textarea id="profile-note" class="modal-input" style="margin-bottom: 5px; padding: 8px; height: 60px; resize: none;">${escapeHTML(profile.note || '')}</textarea></div>
     <div class="profile-actions modal-btn-group">
-      <button class="btn-primary flex-1" type="button" data-action="handleProfileAction" data-profile-action="save" data-username="${safeUsername}">Save</button>
-      <button class="btn-outline-red flex-1" type="button" data-action="handleProfileAction" data-profile-action="cancel" data-username="${safeUsername}">Cancel</button>
+      <button class="btn-primary flex-1" onclick="saveProfileEdits('${safeUsername}')">Save</button>
+      <button class="btn-outline-red flex-1" onclick="openUserProfile('${safeUsername}')">Cancel</button>
     </div>
   `;
 
@@ -4182,12 +3871,6 @@ window.editUserProfile = function(username) {
       reader.readAsDataURL(file);
     });
   }
-  details.querySelectorAll('img[data-avatar-fallback]').forEach((img) => {
-    img.addEventListener('error', () => {
-      const fallback = img.dataset.avatarFallback || currentInitials;
-      if (img.parentElement) img.parentElement.textContent = fallback;
-    }, { once: true });
-  });
 };
 
 function formatRemainingTime(ms) {
@@ -4312,7 +3995,6 @@ function updateChatHeader() {
 }
 
 window.openChat = function(type, target = null) {
-  if (!ensureSecureSessionForAction('loading chat history')) return;
   currentChat = { type, target };
   updateChatHeader();
   // Clear unread badge for this DM
@@ -4391,43 +4073,41 @@ function showChatSkeleton() {
   container.innerHTML = Array.from({ length: 5 }, () => '<div class="chat-skeleton"></div>').join('');
 }
 
-function renderChatLoadNotice(messageMarkup) {
-  const container = document.getElementById('chat-messages');
-  if (!container) return;
-  container.innerHTML = messageMarkup;
-}
-
 async function fetchMessages(chatType, target = null) {
-  if (!hasSecureSession()) {
-    renderChatLoadNotice(buildSecureSessionNotice('chat history'));
-    return;
-  }
-  if (!await waitForSupabaseClient()) {
-    renderChatLoadNotice(buildSecureSessionNotice('chat history'));
-    return;
-  }
   if (!chatType) return;
   showChatSkeleton();
-  let query = sb.from('messages').select('*');
-  if (chatType === 'private') query = query.eq('chat_type', 'private').or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
-  else query = query.eq('chat_type', chatType);
+  let formattedMessages = [];
 
-  const { data: messages, error } = await query.order('created_at', { ascending: false }).limit(50);
-  if (error) {
-    console.warn(error);
-    if (isAuthRelatedDataError(error)) {
-      renderChatLoadNotice(buildSecureSessionNotice('chat history'));
-      return;
+  if (await waitForSupabaseClient()) {
+    let query = sb.from('messages').select('*');
+    if (chatType === 'private') query = query.eq('chat_type', 'private').or(`and(sender.eq.${currentUser.username},target.eq.${target}),and(sender.eq.${target},target.eq.${currentUser.username})`);
+    else query = query.eq('chat_type', chatType);
+
+    const { data: messages, error } = await query.order('created_at', { ascending: false }).limit(50);
+    if (!error) {
+      formattedMessages = [...(messages || [])].reverse().map(m => ({
+        id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
+        pinned: Boolean(m.pinned), edited: Boolean(m.edited), deletedFor: m.deleted_for || m.deletedFor || [], type: m.type || 'message',
+        time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      }));
+    } else {
+      console.warn(error);
     }
-    renderChatLoadNotice('<p class="empty-chat" style="color: #ff6b6b;">Could not load chat history right now.</p>');
-    return;
   }
 
-  const formattedMessages = [...(messages || [])].reverse().map(m => ({
-      id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,
-      pinned: Boolean(m.pinned), edited: Boolean(m.edited), deletedFor: m.deleted_for || m.deletedFor || [], type: m.type || 'message',
-      time: new Date(m.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-  }));
+  if (!formattedMessages.length) {
+    try {
+      const params = new URLSearchParams({ chat: chatType, limit: '50' });
+      if (chatType === 'private' && target) params.set('target', `${currentUser.username}||${target}`);
+      const response = await authFetch(`/api/messages?${params.toString()}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Messages failed (${response.status})`);
+      const messages = await response.json();
+      formattedMessages = Array.isArray(messages) ? messages : [];
+    } catch (error) {
+      console.warn('[chat] Server message fetch failed:', error.message || error);
+      formattedMessages = [];
+    }
+  }
 
   if (chatType === 'private') { const key = getPrivateKey(currentUser.username, target); chatHistory.private[key] = formattedMessages; }
   else chatHistory[chatType] = formattedMessages;
@@ -4823,7 +4503,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
   if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
   if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
-  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => window.closeSocialPage?.());
+  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
   if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
   if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
   if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
@@ -5113,7 +4793,7 @@ function renderCalendar() {
   grid.innerHTML = ''; const firstDay = new Date(currentYear, currentMonth, 1).getDay(); const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
   for (let day = 1; day <= daysInMonth; day++) {
-    const dayDiv = document.createElement('div'); dayDiv.textContent = day; dayDiv.dataset.calendarDay = String(day); dayDiv.setAttribute('role', 'button'); dayDiv.setAttribute('tabindex', '0');
+    const dayDiv = document.createElement('div'); dayDiv.textContent = day; dayDiv.onclick = () => window.addNote(day);
     const dateKey = `${currentYear}-${currentMonth}-${day}`;
     if (calendarNotes[dateKey]) { const dot = document.createElement('div'); dot.className = 'calendar-note-dot'; dayDiv.appendChild(dot); }
     grid.appendChild(dayDiv);
@@ -5134,29 +4814,24 @@ window.addNote = function(day) {
 
 window.showNoteView = function(dateKey, displayDate, text) {
     let existingModal = document.getElementById('view-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" type="button" data-close-modal-id="view-note-modal">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${escapeHTML(displayDate)}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHTML(text)}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="share-note-btn" type="button">Share to Everyone</button><button class="btn-blue flex-1" id="edit-note-btn" type="button">Edit Note</button></div></div></div>`;
+    const modalHtml = `<div id="view-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><button class="modal-close-btn" onclick="document.getElementById('view-note-modal').remove()">&times;</button><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">Note for ${escapeHTML(displayDate)}</h3><div style="color:white; margin-bottom:25px; white-space:pre-wrap; max-height:40vh; overflow-y:auto; font-size:16px; text-align: left; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">${escapeHTML(text)}</div><div class="modal-btn-group"><button class="btn-primary flex-1" id="share-note-btn">Share to Everyone</button><button class="btn-blue flex-1" id="edit-note-btn">Edit Note</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('edit-note-btn')?.addEventListener('click', function() {
-        document.getElementById('view-note-modal')?.remove();
-        openNotePrompt(dateKey, displayDate, text);
-    });
-    document.getElementById('share-note-btn')?.addEventListener('click', function() {
-        shareCalendarNote(dateKey, displayDate, text);
-    });
+    document.getElementById('edit-note-btn').onclick = function() { document.getElementById('view-note-modal').remove(); openNotePrompt(dateKey, displayDate, text); };
+    document.getElementById('share-note-btn').onclick = function() { shareCalendarNote(dateKey, displayDate, text); };
 };
 
 window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     let existingModal = document.getElementById('edit-note-modal'); if (existingModal) existingModal.remove();
-    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${escapeHTML(existingNote)}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn" type="button">Save</button><button class="btn-outline-red flex-1" type="button" data-close-modal-id="edit-note-modal">Cancel</button></div></div></div>`;
+    const modalHtml = `<div id="edit-note-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;"><div class="custom-modal-box small-box border-blue"><h3 class="modal-title text-blue" style="font-size: 1.2rem; margin-bottom: 15px;">${existingNote ? 'Edit' : 'Add'} Note</h3><textarea id="note-textarea" class="modal-input" placeholder="Type..." style="height:120px; resize:none; margin-bottom: 20px;">${escapeHTML(existingNote)}</textarea><div class="modal-btn-group"><button class="btn-blue flex-1" id="save-note-btn">Save</button><button class="btn-outline-red flex-1" onclick="document.getElementById('edit-note-modal').remove()">Cancel</button></div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const textEl = document.getElementById('note-textarea'); if (textEl) textEl.focus();
-    document.getElementById('save-note-btn')?.addEventListener('click', async function() {
+    document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
         if(!currentUser) return customAlert("Login to save notes.");
         if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
         else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
         renderCalendar(); document.getElementById('edit-note-modal').remove();
-    });
+    };
 };
 
 function updateClock() { const now = new Date(); const el = document.getElementById('live-clock'); if(el) el.textContent = now.toLocaleTimeString(); }
@@ -5237,12 +4912,7 @@ function renderAppOpenRows(rows = []) {
 }
 
 async function fetchSupabaseAppOpenRows() {
-  if (!sb) throw new Error('Supabase unavailable');
-  const { data, error } = await sb
-    .from('app_open_counts')
-    .select('username,count,last_opened_at,updated_at')
-    .order('count', { ascending: false })
-    .order('username', { ascending: true });
+  const { data, error } = await sb.rpc('class_app_app_open_tally');
   if (error) throw error;
   return normalizeAppOpenRows(data || []);
 }
@@ -5252,7 +4922,7 @@ window.openAppOpenTallyModal = async function() {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="app-open-tally-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
       <div class="custom-modal-box contribution-modal-box border-blue">
-        <button class="modal-close-btn" type="button" data-close-modal-id="app-open-tally-modal">&times;</button>
+        <button class="modal-close-btn" onclick="removeDynamicModal('app-open-tally-modal')">&times;</button>
         <h3 class="modal-title text-blue">App Open Tally</h3>
         <p class="modal-text align-left">Shows every user's saved login/app-open count.</p>
         <div class="lobby-open-list" id="app-open-user-list">${createInlineLoader('Loading app opens...')}</div>
@@ -5344,7 +5014,7 @@ window.openContributionTallyModal = async function() {
   document.body.insertAdjacentHTML('beforeend', `
     <div id="contribution-tally-modal" class="custom-modal-overlay blur-bg high-z" style="display:flex;">
       <div class="custom-modal-box contribution-modal-box border-blue">
-        <button class="modal-close-btn" type="button" data-close-modal-id="contribution-tally-modal">&times;</button>
+        <button class="modal-close-btn" onclick="removeDynamicModal('contribution-tally-modal')">&times;</button>
         <h3 class="modal-title text-blue">Contribution Tally</h3>
         <p class="modal-text align-left">Counts original uploads only. Copied or moved items do not add points.</p>
         <div class="contribution-board-list" id="contribution-board-list">${createInlineLoader('Loading contributions...')}</div>
@@ -5378,7 +5048,7 @@ window.refreshAppOpenCount = async function() {
 };
 
 async function recordAppOpen() {
-  if (!currentUser?.username || !sb) {
+  if (!currentUser?.username) {
     console.log('[AppOpen] Skipped — no user logged in');
     return window.refreshAppOpenCount();
   }
@@ -5392,25 +5062,33 @@ async function recordAppOpen() {
   const localCount = incrementLocalAppOpenTally(currentUser.username);
   
   try {
-    const nowIso = new Date().toISOString();
-    const { error: upsertErr } = await sb.from('app_open_counts').upsert({
-      username: currentUser.username,
-      count: localCount,
-      last_opened_at: nowIso,
-      updated_at: nowIso,
-    }, { onConflict: 'username' });
-
-    if (upsertErr) throw upsertErr;
-
+    if (!sb) throw new Error('Supabase unavailable');
+    const { error } = await sb.rpc('class_app_record_app_open', { p_local_count: localCount });
+    if (error) throw error;
+    
     sessionStorage.setItem('appOpenRecorded', 'true');
-    console.log('[AppOpen] Recorded via direct table upsert.');
-
+    console.log('[AppOpen] Recorded via Supabase RPC.');
+    
     const rows = await fetchSupabaseAppOpenRows();
     renderAppOpenRows(rows);
-  } catch (upsertFail) {
-    console.warn('[AppOpen] Direct upsert failed:', upsertFail?.message || upsertFail);
-    sessionStorage.setItem('appOpenRecorded', 'true');
-    renderAppOpenRows(localAppOpenRows());
+  } catch (err) {
+    console.warn('[AppOpen] RPC failed:', err?.message || err);
+    try {
+      const response = await authFetch('/api/app-open-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) throw new Error(`App open fallback failed (${response.status})`);
+
+      sessionStorage.setItem('appOpenRecorded', 'true');
+      console.log('[AppOpen] Recorded via authenticated API fallback.');
+      renderAppOpenStats(await response.json());
+    } catch (upsertFail) {
+      console.warn('[AppOpen] Auth API fallback also failed:', upsertFail?.message || upsertFail);
+      sessionStorage.setItem('appOpenRecorded', 'true');
+      renderAppOpenRows(localAppOpenRows());
+    }
   }
 }
 
@@ -5473,76 +5151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (msgInput.value) localStorage.setItem(key, msgInput.value);
       else localStorage.removeItem(key);
     });
-    msgInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' || event.shiftKey) return;
-      event.preventDefault();
-      window.sendMessage?.();
-    });
   }
-  const userSearchInput = document.getElementById('user-search-input');
-  if (userSearchInput) userSearchInput.addEventListener('input', () => renderUserDirectory());
-  const userFilterSelect = document.getElementById('user-filter-select');
-  if (userFilterSelect) userFilterSelect.addEventListener('change', () => renderUserDirectory());
-  const userSortSelect = document.getElementById('user-sort-select');
-  if (userSortSelect) userSortSelect.addEventListener('change', () => renderUserDirectory());
-  const calendarGrid = document.getElementById('calendar-grid');
-  if (calendarGrid) {
-    calendarGrid.addEventListener('click', (event) => {
-      const dayEl = event.target.closest('[data-calendar-day]');
-      if (!dayEl) return;
-      event.preventDefault();
-      window.addNote?.(Number(dayEl.dataset.calendarDay));
-    });
-    calendarGrid.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      const dayEl = event.target.closest('[data-calendar-day]');
-      if (!dayEl) return;
-      event.preventDefault();
-      window.addNote?.(Number(dayEl.dataset.calendarDay));
-    });
-  }
-  const ytMainInput = document.getElementById('yt-main-input');
-  if (ytMainInput) {
-    ytMainInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      window.handleYtInput?.();
-    });
-  }
-  const musicSearchInput = document.getElementById('music-search-input');
-  if (musicSearchInput) {
-    musicSearchInput.addEventListener('input', () => window.musicSearchDebounced?.());
-    musicSearchInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      window.searchMusicFiles?.();
-    });
-  }
-  const lobbyChatInput = document.getElementById('lobby-chat-input');
-  if (lobbyChatInput) {
-    lobbyChatInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      window.sendLobbyChat?.();
-    });
-  }
-  const announcementSearchInput = document.getElementById('announcement-search-input');
-  if (announcementSearchInput) announcementSearchInput.addEventListener('input', () => renderSharedAnnouncements());
-  const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) {
-    chatBauble.addEventListener('click', () => window.goToPage?.('chat'));
-    chatBauble.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      window.goToPage?.('chat');
-    });
-  }
-  document.querySelectorAll('[data-yt-mini-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      if (button.dataset.ytMiniAction === 'back') window.goToPage?.('music');
-      if (button.dataset.ytMiniAction === 'stop') window.stopYouTubePlayer?.();
-    });
-  });
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
@@ -5746,117 +5355,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Overlay: close menu on tap (touch + click)
-  // Phase 4: Support both click and touch for better mobile reliability
   const overlay = document.getElementById('overlay');
   if (overlay) {
     overlay.addEventListener('click', window.closeMenu);
-    // On mobile, click might not fire if touch handling interferes, so also listen to touchend
-    overlay.addEventListener('touchend', (e) => {
-      if (!e.target.closest('button, input, textarea, a')) {
-        e.preventDefault();
-        window.closeMenu();
-      }
-    }, { passive: false });
   }
-  // Phase 4: Comprehensive delegated button handler for all modal and overlay closes
   document.addEventListener('click', (event) => {
-    // Try to find a close button trigger (multiple patterns for robustness)
     const trigger = event.target.closest('[data-close-modal-id], .modal-close-btn, .changelog-close-action, .close-profile, .social-back-btn');
     if (!trigger) return;
-
-    // Prevent default only after we know this is our button
-    event.preventDefault();
-
-    // Handle profile close
     if (trigger.classList.contains('close-profile')) {
-      try {
-        window.closeProfile?.();
-      } catch (err) {
-        console.warn('[button] closeProfile error:', err);
-      }
+      event.preventDefault();
+      window.closeProfile?.();
       return;
     }
-
-    // Handle social back
     if (trigger.classList.contains('social-back-btn')) {
-      try {
-        window.closeSocialPage?.();
-      } catch (err) {
-        console.warn('[button] closeSocialPage error:', err);
-      }
+      event.preventDefault();
+      window.closeSocialPage?.();
       return;
     }
-
-    // Handle explicit modal ID close
     const explicitId = trigger.dataset.closeModalId;
     if (explicitId) {
-      try {
-        const element = document.getElementById(explicitId);
-        if (element) {
-          closeOverlayElement(element);
-        } else {
-          console.warn(`[button] Modal element not found: ${explicitId}`);
-        }
-      } catch (err) {
-        console.warn('[button] closeOverlayElement error:', err);
-      }
+      event.preventDefault();
+      closeOverlayElement(document.getElementById(explicitId));
       return;
     }
-
-    // Handle generic modal/lightbox close
     if (trigger.classList.contains('modal-close-btn') || trigger.classList.contains('changelog-close-action')) {
-      try {
-        const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
-        if (overlayEl) {
-          closeOverlayElement(overlayEl);
-        } else {
-          console.warn('[button] Overlay element not found for close button');
-        }
-      } catch (err) {
-        console.warn('[button] Modal close error:', err);
-      }
+      event.preventDefault();
+      const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
+      closeOverlayElement(overlayEl);
     }
-  });
-
-  // Phase 4: Delegated handler for common action buttons (folder, reviewer, etc.)
-  // This reduces reliance on inline onclick handlers for better CSP compliance
-  document.addEventListener('click', (event) => {
-    const target = event.target.closest('[data-action]');
-    if (!target) return;
-
-    const action = target.dataset.action;
-    if (!action) return;
-
-    try {
-      // Try to find and call the handler function
-      const handler = window[action];
-      if (typeof handler === 'function') {
-        event.preventDefault();
-        // Pass element and any data attributes as context
-        handler.call(target, event);
-      }
-    } catch (err) {
-      console.warn(`[button] Action handler error for "${action}":`, err);
-    }
-  });
-  document.addEventListener('click', (event) => {
-    const permissionBtn = event.target.closest('[data-folder-permissions]');
-    if (!permissionBtn) return;
-    event.preventDefault();
-    window.openFolderPermissions?.(permissionBtn.dataset.folderPermissions);
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const target = event.target.closest('[data-action]');
-    if (!target) return;
-    if (target.matches('button, a, input, select, textarea')) return;
-    event.preventDefault();
-    target.click();
-  });
-  document.addEventListener('change', (event) => {
-    const target = event.target.closest('[data-gallery-upload]');
-    if (!target) return;
-    window.handleGalleryAction?.call(target, event);
   });
 
   if (currentUser) {
@@ -5903,10 +5429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   fetchCalendarNotes(); updateClock();
 
   const player = document.getElementById('audio-player');
-  if(player) {
-    player.addEventListener('ended', handleAudioEnded);
-    player.addEventListener('play', () => window.startBlockVisualizer?.(player));
-  }
+  if(player) player.addEventListener('ended', handleAudioEnded);
 
   // Reflect initial toggle states on buttons
   const loopBtn = document.getElementById('btn-loop');
@@ -5935,135 +5458,6 @@ document.getElementById('custom-bg-upload')?.addEventListener('change', function
 });
 
 window.saveAnnouncement = function() { const noteContent = document.getElementById('announcement-note').value; localStorage.setItem('savedWeeklyAnnouncement', noteContent); showToast("Weekly announcement saved."); };
-
-window.handleChatOpenAction = function() {
-  const chatType = this.dataset.chatType;
-  const chatTarget = this.dataset.chatTarget || null;
-  if (!chatType) return;
-  window.openChat?.(chatType, chatTarget);
-};
-
-window.handleSendMessageAction = function() {
-  window.sendMessage?.();
-};
-
-window.handleUserProfileAction = function() {
-  const username = this.dataset.username;
-  if (!username) return;
-  window.openUserProfile?.(username);
-};
-
-window.handleProfileAction = function() {
-  const action = this.dataset.profileAction;
-  const username = this.dataset.username || currentUser?.username || '';
-  if (action === 'message' && username) return window.openChat?.('private', username);
-  if (action === 'edit') return window.editUserProfile?.();
-  if (action === 'delete-user' && username) return window.adminDeleteUser?.(username);
-  if (action === 'remove-avatar') {
-    window._clearProfileAvatar?.();
-    return;
-  }
-  if (action === 'save') return window.saveProfileEdits?.(username);
-  if (action === 'cancel') return window.openUserProfile?.(username);
-};
-
-window.handleFileListAction = function() {
-  const action = this.dataset.fileAction;
-  if (action === 'open') {
-    return window.playOrOpenFileAPI?.(this.dataset.fileUrl, this.dataset.fileName, false, this.dataset.folderId || null);
-  }
-  if (action === 'summarize') {
-    return window.openFileSummarizerForStoredFile?.(this.dataset.fileUrl, this.dataset.fileName, this.dataset.fileType || '');
-  }
-  if (action === 'copy') {
-    return window.openCopyMoveFileModal?.(this.dataset.fileId, this.dataset.folderId, 'folder');
-  }
-  if (action === 'delete') {
-    return window.deleteFileAPI?.(this.dataset.fileId);
-  }
-};
-
-window.handleCalendarNavAction = function() {
-  const action = this.dataset.calendarNav;
-  if (action === 'prev') return window.prevMonth?.();
-  if (action === 'next') return window.nextMonth?.();
-};
-
-window.handleAnnouncementAction = function() {
-  const action = this.dataset.announcementAction;
-  if (action === 'save-weekly') return window.saveAnnouncement?.();
-  if (action === 'share-weekly') return window.shareWeeklyAnnouncement?.();
-  if (action === 'refresh') return window.fetchSharedAnnouncements?.();
-  if (action === 'delete-shared') return window.deleteSharedAnnouncement?.(this.dataset.announcementId);
-};
-
-window.handleMusicAction = function() {
-  const action = this.dataset.musicAction;
-  if (action === 'youtube-submit') return window.handleYtInput?.();
-  if (action === 'library-search') return window.searchMusicFiles?.();
-  if (action === 'open-music-folders') return window.openFolderExplorer?.('Music Hub');
-  if (action === 'prev') return window.playPrevSong?.();
-  if (action === 'loop') return window.toggleLoop?.();
-  if (action === 'repeat') return window.toggleRepeat?.();
-  if (action === 'next') return window.playNextSong?.();
-  if (action === 'play-result') return window.playOrOpenFileAPI?.(this.dataset.musicFileUrl, this.dataset.musicFileName, false, this.dataset.musicFolderId || null);
-};
-
-window.handleLobbyChatAction = function() {
-  window.sendLobbyChat?.();
-};
-
-window.handleReviewerAction = function(event) {
-  const action = this.dataset.reviewerAction;
-  if (action === 'open-viewer') return window.reviewersModule?.openViewer?.(this.dataset.reviewerId);
-  if (action === 'toggle-vote') return window.reviewersModule?.toggleVote?.(this.dataset.reviewerId, event);
-  if (action === 'delete') return window.reviewersModule?.deleteReviewer?.(this.dataset.reviewerId, event);
-  if (action === 'load-more') return window.reviewersModule?.loadMore?.();
-  if (action === 'close-viewer') return window.reviewersModule?.closeViewer?.();
-  if (action === 'save-to-notepad') return window.reviewersModule?.saveToNotepad?.(this.dataset.reviewerId, event);
-  if (action === 'undo-delete') return window.reviewersModule?.undoDelete?.(this.dataset.undoKey);
-  if (action === 'dismiss-toast') return this.closest('.app-toast')?.remove();
-};
-
-window.handleNotepadAction = function() {
-  const action = this.dataset.notepadAction;
-  if (action === 'back') return window.goToPage?.('personal-tools');
-  if (action === 'show-form') return window.notepadModule?.showForm?.();
-  if (action === 'clear-all') return window.notepadModule?.clearAll?.();
-  if (action === 'save-note') return window.notepadModule?.saveNote?.();
-  if (action === 'hide-form') return window.notepadModule?.hideForm?.();
-  if (action === 'edit') return window.notepadModule?.editNote?.(Number(this.dataset.noteIndex));
-  if (action === 'share') return window.notepadModule?.shareNote?.(Number(this.dataset.noteIndex));
-  if (action === 'delete') return window.notepadModule?.deleteNote?.(Number(this.dataset.noteIndex));
-  if (action === 'undo-delete') return window.notepadModule?.undoDelete?.(this.dataset.undoKey);
-  if (action === 'undo-clear-all') return window.notepadModule?.undoClearAll?.(this.dataset.undoKey);
-  if (action === 'go-reviewers') return window.goToPage?.('reviewers');
-  if (action === 'dismiss-toast') return this.closest('.app-toast')?.remove();
-};
-
-window.handleGalleryAction = function(event) {
-  const action = this.dataset.galleryAction;
-  const prefix = this.dataset.galleryPrefix;
-  if (action === 'breadcrumb' && prefix) return window.gBcClick?.(prefix, this.dataset.galleryLevel);
-  if (action === 'select-year' && prefix) return window.gSelectYear?.(prefix, this.dataset.galleryYear);
-  if (action === 'select-sem' && prefix) return window.gSelectSem?.(prefix, this.dataset.gallerySem);
-  if (action === 'select-folder' && prefix) return window.gSelectFolder?.(prefix, this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
-  if (action === 'create-folder' && prefix) return window.gCreateFolder?.(prefix, this.dataset.galleryParentKey);
-  if (action === 'rename-folder' && prefix) return window.gRenameFolder?.(prefix, this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
-  if (action === 'delete-folder' && prefix) return window.gDeleteFolder?.(prefix, this.dataset.galleryFolderId);
-  if (action === 'upload-files' && prefix) return window.gUploadFiles?.(prefix, this.files || [], this.dataset.galleryFolderId, this);
-  if (action === 'open-copy-move') return window.openCopyMoveFileModal?.(this.dataset.fileId, this.dataset.folderId, this.dataset.refreshMode || 'folder');
-  if (action === 'delete-file' && prefix) return window.gDeleteFile?.(prefix, this.dataset.fileId);
-  if (action === 'open-photo') return window.epOpenPhoto?.(this.dataset.photoUrl, this.dataset.photoName || '');
-  if (action === 'close-lightbox') return this.closest('.ep-lightbox')?.remove();
-  if (action === 'folder-permission-mode') return window.setFolderAccessMode?.(this.dataset.folderId, this.dataset.folderMode);
-  if (action === 'create-profile-folder') return window.createProfileFolder?.(this.dataset.username);
-  if (action === 'profile-folder-open') return window.openFileExplorer?.(this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
-  if (action === 'profile-folder-rename') return window.renameFolderAPI?.(this.dataset.galleryFolderId, this.dataset.galleryFolderName || '');
-  if (action === 'profile-folder-delete') return window.deleteFolderAPI?.(this.dataset.galleryFolderId);
-  if (action === 'copy-file-to-folder') return window.copyFileToFolder?.(this.dataset.fileId, this.dataset.galleryFolderId, this.dataset.refreshMode || 'folder');
-  if (action === 'stop-prop') return event.stopPropagation();
-};
 
 window.addEventListener('DOMContentLoaded', () => {
     const savedNote = localStorage.getItem('savedWeeklyAnnouncement');
@@ -6154,9 +5548,6 @@ if ('serviceWorker' in navigator) {
 }
 
 async function fetchAppUpdates() {
-  if (window.classAppFeatures?.updates?.fetchAppUpdates) {
-    return window.classAppFeatures.updates.fetchAppUpdates();
-  }
   refreshUpdateIndicator();
   if (localStorage.getItem('seenSoftwareVersion') !== APP_VERSION) showSoftwareUpdateBanner();
   const { data, error } = await sb.from('app_updates')
@@ -6234,9 +5625,6 @@ function refreshUpdateIndicator() {
 }
 
 function ensureAdminUpdateControl() {
-  if (window.classAppFeatures?.updates?.ensureAdminUpdateControl) {
-    return window.classAppFeatures.updates.ensureAdminUpdateControl();
-  }
   if (document.getElementById('admin-update-btn')) return;
   const controls = document.querySelector('.sidebar-controls');
   if (!controls) return;
@@ -6512,11 +5900,12 @@ window.adminDeleteUser = async function(username) {
           <p style="opacity:.65;font-size:13px;margin:10px 0 18px;">This will permanently remove their profile and all associated data. This cannot be undone.</p>
           <div style="display:flex;gap:10px;">
             <button class="btn-outline-red flex-1" id="adm-del-yes">Yes, Delete</button>
-            <button class="btn-outline flex-1" onclick="removeDynamicModal('admin-del-confirm')">Cancel</button>
+            <button class="btn-outline flex-1" id="adm-del-cancel">Cancel</button>
           </div>
         </div>
       </div>`);
     document.getElementById('adm-del-yes').onclick = () => { removeDynamicModal('admin-del-confirm'); resolve(true); };
+    document.getElementById('adm-del-cancel').onclick = () => { removeDynamicModal('admin-del-confirm'); resolve(false); };
   });
   if (!confirmed) return;
 
@@ -7194,9 +6583,9 @@ function renderGallery(pfx) {
   if (!view || !bc) return;
 
   // Breadcrumb
-  let bcHtml = `<span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="years">${meta.icon} ${meta.title}</span>`;
-  if (st.year)   bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="sems">${st.year.label}</span>`;
-  if (st.sem)    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="folders">${st.sem.label}</span>`;
+  let bcHtml = `<span class="ep-bc" onclick="${pfx}BcClick('years')">${meta.icon} ${meta.title}</span>`;
+  if (st.year)   bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="${pfx}BcClick('sems')">${st.year.label}</span>`;
+  if (st.sem)    bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc" onclick="${pfx}BcClick('folders')">${st.sem.label}</span>`;
   if (st.folder) bcHtml += `<span class="ep-bc-sep">›</span><span class="ep-bc ep-bc-active">${st.folder.name}</span>`;
   bc.innerHTML = bcHtml;
 
@@ -7216,7 +6605,7 @@ function renderGallery(pfx) {
 }
 
 function gBackBtn(pfx, level, label) {
-  return `<button class="ep-back-btn" type="button" data-action="handleGalleryAction" data-gallery-action="breadcrumb" data-gallery-prefix="${pfx}" data-gallery-level="${level}">‹ ${label}</button>`;
+  return `<button class="ep-back-btn" onclick="${pfx}BcClick('${level}')">‹ ${label}</button>`;
 }
 
 function renderGYears(pfx, view) {
@@ -7224,7 +6613,7 @@ function renderGYears(pfx, view) {
     <div class="ep-section-title">Select Year Level</div>
     <div class="ep-grid ep-grid-4">
       ${GALLERY_YEARS.map(y => `
-        <div class="ep-card" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-year" data-gallery-prefix="${pfx}" data-gallery-year="${y.key}" style="--ep-accent:${y.accent};background:${y.bg}">
+        <div class="ep-card" style="--ep-accent:${y.accent};background:${y.bg}" onclick="${pfx}SelectYear('${y.key}')">
           <div class="ep-card-emoji">${y.emoji}</div>
           <div class="ep-card-label">${y.label}</div>
           <div class="ep-card-sub">View semesters</div>
@@ -7240,7 +6629,7 @@ function renderGSems(pfx, view) {
     <div class="ep-section-title">${st.year.label}</div>
     <div class="ep-grid ep-grid-2">
       ${GALLERY_SEMS.map(s => `
-        <div class="ep-card ep-card-sem" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-sem" data-gallery-prefix="${pfx}" data-gallery-sem="${s.key}" style="--ep-accent:${s.accent};background:${s.bg}">
+        <div class="ep-card ep-card-sem" style="--ep-accent:${s.accent};background:${s.bg}" onclick="${pfx}SelectSem('${s.key}')">
           <div class="ep-card-emoji">${s.emoji}</div>
           <div class="ep-card-label">${s.label}</div>
           <div class="ep-card-sub">View albums</div>
@@ -7258,13 +6647,13 @@ function renderGFolders(pfx, view) {
       const safeId = escapeJS(f.id);
       const safeName = escapeJS(f.name);
       const actions = canManageFolder(f)
-        ? `<div class="ep-card-actions" data-action="handleGalleryAction" data-gallery-action="stop-prop">
-             <button class="ep-action-btn" type="button" data-action="handleGalleryAction" data-gallery-action="rename-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}">Rename</button>
-             <button class="ep-action-btn" type="button" data-folder-permissions="${safeId}">Permissions</button>
-             <button class="ep-action-btn ep-btn-del" type="button" data-action="handleGalleryAction" data-gallery-action="delete-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}">Delete</button>
+        ? `<div class="ep-card-actions" onclick="event.stopPropagation()">
+             <button class="ep-action-btn" onclick="${pfx}RenameFolder('${safeId}','${safeName}')">Rename</button>
+             <button class="ep-action-btn" onclick="openFolderPermissions('${safeId}')">Permissions</button>
+             <button class="ep-action-btn ep-btn-del" onclick="${pfx}DeleteFolder('${safeId}')">Delete</button>
            </div>` : '';
       return `
-        <div class="ep-card ep-card-folder" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="select-folder" data-gallery-prefix="${pfx}" data-gallery-folder-id="${safeId}" data-gallery-folder-name="${safeName}" style="--ep-accent:#00d4ff">
+        <div class="ep-card ep-card-folder" style="--ep-accent:#00d4ff" onclick="${pfx}SelectFolder('${safeId}','${safeName}')">
           <div class="ep-card-emoji">📁</div>
           <div class="ep-card-label">${escapeHTML(f.name)}</div>
           <div class="ep-card-sub">By ${escapeHTML(f.owner || 'Unknown')} · ${folderAccessLabel(f)}</div>
@@ -7274,7 +6663,7 @@ function renderGFolders(pfx, view) {
     }).join('');
 
     const addCard = currentUser ? `
-      <div class="ep-card ep-card-add" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="create-folder" data-gallery-prefix="${pfx}" data-gallery-parent-key="${parentKey}" style="--ep-accent:#ffffff55">
+      <div class="ep-card ep-card-add" style="--ep-accent:#ffffff55" onclick="${pfx}CreateFolder('${parentKey}')">
         <div class="ep-card-emoji">➕</div>
         <div class="ep-card-label">New Album</div>
         <div class="ep-card-sub">Create folder</div>
@@ -7301,7 +6690,7 @@ function renderGFiles(pfx, view) {
 
     const uploadBar = allowEdit ? `
       <label class="ep-upload-btn">
-        <input type="file" multiple accept="image/*,video/*" style="display:none" data-gallery-upload data-action="handleGalleryAction" data-gallery-action="upload-files" data-gallery-prefix="${pfx}" data-gallery-folder-id="${escapeHTML(folderId)}">
+        <input type="file" multiple accept="image/*,video/*" style="display:none" onchange="${pfx}UploadFiles(this.files,'${folderId}',this)">
         📸 Upload Photos / Videos
       </label>` : '';
 
@@ -7316,12 +6705,12 @@ function renderGFiles(pfx, view) {
           const safeFolderId = escapeJS(folderId);
           const actionBtns = allowEdit
             ? `<div class="ep-photo-actions">
-                 <button type="button" data-action="handleGalleryAction" data-gallery-action="open-copy-move" data-file-id="${safeId}" data-folder-id="${safeFolderId}" data-refresh-mode="gallery-${pfx}">Copy & Move To</button>
-                 <button class="danger" type="button" data-action="handleGalleryAction" data-gallery-action="delete-file" data-gallery-prefix="${pfx}" data-file-id="${safeId}">Delete</button>
+                 <button onclick="openCopyMoveFileModal('${safeId}','${safeFolderId}','gallery-${pfx}')">Copy & Move To</button>
+                 <button class="danger" onclick="${pfx}DeleteFile('${safeId}')">Delete</button>
                </div>` : '';
           return `
             <div class="ep-photo-card">
-              ${isImg ? `<img src="${escapeHTML(f.url)}" class="ep-photo-thumb" loading="lazy" role="button" tabindex="0" data-action="handleGalleryAction" data-gallery-action="open-photo" data-photo-url="${safeUrl}" data-photo-name="${safeName}">` :
+              ${isImg ? `<img src="${escapeHTML(f.url)}" class="ep-photo-thumb" loading="lazy" onclick="epOpenPhoto('${safeUrl}','${safeName}')">` :
                 isVid ? `<video src="${escapeHTML(f.url)}" class="ep-photo-thumb" controls playsinline></video>` :
                 `<div class="ep-photo-placeholder">📄</div>`}
               <div class="ep-photo-info">
@@ -7426,10 +6815,10 @@ function epOpenPhoto(url, name) {
   overlay.className = 'ep-lightbox';
   overlay.onclick = () => overlay.remove();
   overlay.innerHTML = `
-    <div class="ep-lightbox-inner" data-action="handleGalleryAction" data-gallery-action="stop-prop">
+    <div class="ep-lightbox-inner" onclick="event.stopPropagation()">
       <img src="${url}" class="ep-lightbox-img">
       <div class="ep-lightbox-name">${name}</div>
-      <button class="ep-lightbox-close" type="button" data-action="handleGalleryAction" data-gallery-action="close-lightbox">✕</button>
+      <button class="ep-lightbox-close" onclick="this.closest('.ep-lightbox').remove()">✕</button>
     </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('ep-lightbox-in'));
@@ -7439,6 +6828,62 @@ function epOpenPhoto(url, name) {
 let sharedAIOutputs = [];
 let sharedAnnouncements = [];
 let sharedRealtimeReady = false;
+let socialEmbedTimer = null;
+
+function buildFacebookEmbedUrl(url) {
+  const encoded = encodeURIComponent(url);
+  return `https://www.facebook.com/plugins/page.php?href=${encoded}&tabs=timeline&width=500&height=720&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`;
+}
+
+window.openSocialPage = function(title, url) {
+  const pageUrl = url || title;
+  const pageTitle = url ? title : 'Social Media Page';
+  const home = document.getElementById('social-home-view');
+  const embed = document.getElementById('social-embed-view');
+  const frame = document.getElementById('social-embed-frame');
+  const titleEl = document.getElementById('social-embed-title');
+  const status = document.getElementById('social-embed-status');
+  const statusText = document.getElementById('social-embed-status-text');
+  const externalLink = document.getElementById('social-open-external');
+  if (!home || !embed || !frame) return;
+  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
+  if (titleEl) {
+    const decoder = document.createElement('textarea');
+    decoder.innerHTML = pageTitle;
+    titleEl.textContent = decoder.value;
+  }
+  if (externalLink) externalLink.href = pageUrl;
+  if (status) {
+    status.classList.remove('is-warning');
+    status.classList.remove('hidden');
+  }
+  if (statusText) statusText.textContent = 'Loading Facebook embed inside the app...';
+  frame.onload = () => {
+    if (statusText) statusText.textContent = 'If the page keeps loading, Facebook may be blocking the embedded view. Use the browser link below.';
+  };
+  frame.src = buildFacebookEmbedUrl(pageUrl);
+  home.classList.add('hidden');
+  embed.classList.remove('hidden');
+  embed.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  socialEmbedTimer = setTimeout(() => {
+    if (!document.getElementById('social-embed-view')?.classList.contains('hidden')) {
+      if (status) status.classList.add('is-warning');
+      if (statusText) statusText.textContent = 'Facebook did not finish loading here. This is usually Facebook blocking third-party embeds, privacy cookies, or a page restriction, not your signal.';
+    }
+  }, 8000);
+};
+
+window.closeSocialPage = function() {
+  const home = document.getElementById('social-home-view');
+  const embed = document.getElementById('social-embed-view');
+  const frame = document.getElementById('social-embed-frame');
+  const status = document.getElementById('social-embed-status');
+  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
+  if (frame) frame.src = 'about:blank';
+  if (status) status.classList.add('hidden');
+  if (embed) embed.classList.add('hidden');
+  if (home) home.classList.remove('hidden');
+};
 
 async function fetchSharedAIOutputs() {
   const feed = document.getElementById('output-ai-feed');
@@ -7498,7 +6943,15 @@ window.deleteSharedAIOutput = function(id) {
 
 async function fetchSharedAnnouncements() {
   const feed = document.getElementById('announcement-feed');
-  if (!sb) { if (feed) feed.innerHTML = ''; return; }
+  const stats = document.getElementById('announcement-stats');
+  if (!sb) {
+    sharedAnnouncements = [];
+    if (stats) stats.innerHTML = '';
+    if (feed) {
+      feed.innerHTML = '<div class="board-empty">Announcements are unavailable right now. Please try again after the app reconnects.</div>';
+    }
+    return;
+  }
   if (feed) feed.innerHTML = createInlineLoader('Loading announcements...');
   const { data, error } = await sb.from('shared_announcements').select('*').order('created_at', { ascending: false }).limit(80);
   if (error) {
@@ -7551,7 +7004,7 @@ function renderSharedAnnouncements() {
       <div class="board-card-meta">
         <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
-        ${isAdmin ? `<button type="button" data-action="handleAnnouncementAction" data-announcement-action="delete-shared" data-announcement-id="${escapeJS(item.id)}" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
+        ${isAdmin ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
       </div>
     </article>`).join('');
 }

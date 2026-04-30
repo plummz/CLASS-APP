@@ -10,8 +10,6 @@ window.reviewersModule = {
   sortBy: 'trending',
   voteCounts: {},
   userVotes: {},
-  votesAvailable: true,
-  voteStatusMessage: '',
   pendingDeletes: {},
   pendingDeleteTimeouts: {},
   pageSize: 20,
@@ -25,7 +23,7 @@ window.reviewersModule = {
 
   isAdmin: function() {
     const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-    return u?.username === 'Marquillero';
+    return !!u?.isAdmin;
   },
 
   currentUsername: function() {
@@ -81,15 +79,7 @@ window.reviewersModule = {
 
       if (voteError) {
         console.warn('[Reviewers] Vote load error:', voteError);
-        if (voteError.code === 'PGRST205' || /reviewer_votes/i.test(voteError.message || '')) {
-          this.votesAvailable = false;
-          this.voteStatusMessage = 'Voting is temporarily unavailable until the reviewer votes table is applied on the server.';
-          this.voteCounts = {};
-          this.userVotes = {};
-        }
       } else {
-        this.votesAvailable = true;
-        this.voteStatusMessage = '';
         this.voteCounts = {};
         this.userVotes = {};
         const me = this.currentUsername();
@@ -112,8 +102,6 @@ window.reviewersModule = {
       console.log('[Reviewers] Vote counts and contributor stats loaded');
     } catch (ex) {
       console.error('[Reviewers] Vote load exception:', ex);
-      this.votesAvailable = false;
-      this.voteStatusMessage = 'Voting is temporarily unavailable right now.';
     }
   },
 
@@ -136,7 +124,6 @@ window.reviewersModule = {
             </select>
           </div>
         </div>
-        <div class="reviewers-status" id="reviewers-status"></div>
         <div class="reviewers-grid" id="reviewers-grid">
           <div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>
         </div>
@@ -172,23 +159,10 @@ window.reviewersModule = {
       await this.loadReviewers();
       this.applyFilter();
       this.renderGrid();
-      this.renderStatus();
     } catch (e) {
       const grid = document.getElementById('reviewers-grid');
       if (grid) grid.innerHTML = '<div class="reviewer-empty"><p>Failed to load shared content. Please refresh.</p></div>';
     }
-  },
-
-  renderStatus: function() {
-    const status = document.getElementById('reviewers-status');
-    if (!status) return;
-    if (!this.voteStatusMessage) {
-      status.style.display = 'none';
-      status.innerHTML = '';
-      return;
-    }
-    status.style.display = 'block';
-    status.innerHTML = `<div class="reviewer-empty" style="margin:0 0 14px 0;padding:12px 14px;"><p>${this.esc(this.voteStatusMessage)}</p></div>`;
   },
 
   applyFilter: function() {
@@ -261,7 +235,7 @@ window.reviewersModule = {
           ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : '<div></div>'}
           <div class="reviewer-card-badge">👍 ${voteCount}</div>
         </div>
-        <div class="reviewer-card-content" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="open-viewer" data-reviewer-id="${safeId}">
+        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 150 ? '…' : ''}</div>
           <div class="reviewer-card-footer">
@@ -270,25 +244,18 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
-          <button class="reviewer-vote-btn ${voteClass}" type="button" data-action="handleReviewerAction" data-reviewer-action="toggle-vote" data-reviewer-id="${safeId}">👍</button>
-          <button class="reviewer-view-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="open-viewer" data-reviewer-id="${safeId}">View</button>
-          ${canDel ? `<button class="reviewer-delete-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="delete" data-reviewer-id="${safeId}">Delete</button>` : ''}
+          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
+          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
+          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer('${safeId}', event)">Delete</button>` : ''}
         </div>
       </div>`;
     }).join('');
 
     if (this.displayed.length < this.filtered.length) {
-      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="load-more">Load More</button></div>`;
+      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" onclick="window.reviewersModule.loadMore()">Load More</button></div>`;
     }
 
     grid.innerHTML = html;
-    if (!this.votesAvailable) {
-      grid.querySelectorAll('.reviewer-vote-btn').forEach((btn) => {
-        btn.disabled = true;
-        btn.title = 'Voting unavailable until reviewer votes migration is applied.';
-      });
-    }
-    this.renderStatus();
   },
 
   openViewer: async function(id) {
@@ -319,7 +286,7 @@ window.reviewersModule = {
     const safeId = String(rev.id).replace(/[^0-9]/g, '');
     overlay.innerHTML = `
       <div class="reviewer-viewer-paper">
-        <button class="reviewer-close-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="close-viewer">×</button>
+        <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
         <div class="reviewer-paper-title">${this.esc(rev.title)}</div>
         <div class="reviewer-paper-meta">
           Shared by <strong>${this.esc(rev.contributor_name)}</strong>
@@ -328,7 +295,7 @@ window.reviewersModule = {
         </div>
         <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
-          <button class="reviewer-save-note-btn" type="button" data-action="handleReviewerAction" data-reviewer-action="save-to-notepad" data-reviewer-id="${safeId}">📝 Save to My Notes</button>
+          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId}, event)">📝 Save to My Notes</button>
         </div>
       </div>
     `;
@@ -371,7 +338,7 @@ window.reviewersModule = {
     const showUndoToast = () => {
       const t = document.createElement('div');
       t.className = 'app-toast app-toast-info';
-      t.innerHTML = `Deleted '${this.esc(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="undo-delete" data-undo-key="${key}">Undo</span> <span style="cursor:pointer;opacity:0.6" role="button" tabindex="0" data-action="handleReviewerAction" data-reviewer-action="dismiss-toast">×</span>`;
+      t.innerHTML = `Deleted '${this.esc(title)}' <span style="cursor:pointer;text-decoration:underline;margin:0 8px" onclick="window.reviewersModule.undoDelete('${key}')">Undo</span> <span style="cursor:pointer;opacity:0.6" onclick="this.parentElement.remove()">×</span>`;
       document.body.appendChild(t);
       requestAnimationFrame(() => t.classList.add('show'));
 
@@ -437,10 +404,6 @@ window.reviewersModule = {
       window.showToast ? showToast('Log in to upvote.', 'info') : alert('Log in to upvote.');
       return;
     }
-    if (!this.votesAvailable) {
-      window.showToast ? showToast('Voting is temporarily unavailable until the reviewer votes table is applied.', 'info') : alert('Voting is temporarily unavailable.');
-      return;
-    }
 
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     if (!client || !navigator.onLine) {
@@ -502,17 +465,23 @@ window.reviewersModule = {
         return;
       }
 
-      const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
-      const already = notes.some(n => n.title === rev.title && n.content === rev.summary_content);
+      const existingNotes = window.notepadModule?.getNotes?.() || JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+      const already = existingNotes.some(n => n.title === rev.title && n.content === rev.summary_content);
       if (already) {
         window.showToast ? showToast('Already in your Notes.', 'info') : alert('Already in your Notes.');
         if (btn) btn.disabled = false;
         return;
       }
 
-      notes.unshift({ title: rev.title, content: rev.summary_content, date: new Date().toISOString() });
-      localStorage.setItem('notepad-notes', JSON.stringify(notes));
-      if (window.notepadModule) window.notepadModule.notes = notes;
+      const note = { title: rev.title, content: rev.summary_content, date: new Date().toISOString() };
+      if (window.notepadModule?.saveExternalNote) {
+        await window.notepadModule.saveExternalNote(note);
+      } else {
+        const notes = JSON.parse(localStorage.getItem('notepad-notes') || '[]');
+        notes.unshift(note);
+        localStorage.setItem('notepad-notes', JSON.stringify(notes));
+        if (window.notepadModule) window.notepadModule.notes = notes;
+      }
 
       window.showToast ? showToast('📝 Saved to your Notepad!', 'success') : alert('Saved to your Notepad!');
 

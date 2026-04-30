@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.70-20260430-runtime-stability';
+const CACHE_VERSION = 'v1.5.71-20260430-perf-defer-games';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=115',
+  '/index.html?v=116',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=10',
-  '/script.js?v=115',
+  '/script.js?v=116',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=6',

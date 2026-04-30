@@ -430,8 +430,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.70';
+const APP_VERSION = '1.5.71';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.71',
+    date: 'April 30, 2026',
+    title: 'PHASE 6: Performance & PWA Optimization - Defer Heavy Games',
+    summary: 'Significant startup performance improvement: large game files (Pokemon, Royale, Pacman, Candy) now load asynchronously after initial app render, reducing initial page load blocking time.',
+    changes: [
+      'Performance: Pokemon (2.9MB), Royale (3.9MB), Pacman (403KB), and Candy (1.4MB) scripts now defer and load in parallel instead of sequentially blocking HTML parsing.',
+      'Verified: All game module references use typeof checks, so defer loading is completely safe — modules are only accessed when user navigates to that page.',
+      'Tested: Cold load now completes HTML parsing significantly faster, improving perceived performance on mobile and slow connections.',
+      'Verified: Service worker cache strategy remains optimal — network-first for assets, never caches API responses.',
+      'Status: PWA installability, offline fallback, and cache invalidation verified working correctly.'
+    ],
+  },
   {
     version: '1.5.70',
     date: 'April 30, 2026',

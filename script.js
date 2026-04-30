@@ -455,8 +455,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.74';
+const APP_VERSION = '1.5.75';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.75',
+    date: 'April 30, 2026',
+    title: 'Harden Supabase identity and admin policy model',
+    summary: 'Removed hardcoded admin fallback and moved admin status to database table. Restricted admin functions to authenticated users, added operation audit logging, and improved backend validation for user-specific operations.',
+    changes: [
+      'Security: Removed hardcoded "Marquillero" admin fallback; admin status now requires entry in admins table.',
+      'Security: Admin functions (delete user, stats) now require authenticated context, checked at function level.',
+      'Security: Created operation_audit_log table to track sensitive operations and detect anomalies.',
+      'Security: Added requireSelfOrAdmin middleware for routes modifying user data; backend validates that authenticated user matches target user.',
+      'Improved: Backend updateAuthProfilePasswordHash now validates authenticated context and rejects cross-user modifications.',
+      'Documentation: Added migration 020 documenting current identity model and Phase 3 migration path to JWT-based Supabase auth.',
+      'Note: x-class-username header identity model persists as designed trade-off; Phase 3 will migrate to server-validated JWT claims.'
+    ],
+  },
   {
     version: '1.5.74',
     date: 'April 30, 2026',

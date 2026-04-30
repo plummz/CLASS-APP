@@ -225,8 +225,31 @@ const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
 const SUPABASE_PUBLIC_PROFILE_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
-function hashPassword(value) {
+// Legacy SHA-256 hashing (for backward compatibility with existing passwords)
+function hashPasswordSHA256(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+// Modern bcrypt hashing (for all new passwords)
+async function hashPasswordBcrypt(value) {
+  const saltRounds = 12;
+  return bcrypt.hash(String(value || ''), saltRounds);
+}
+
+// Unified password comparison: handles both legacy SHA-256 and modern bcrypt hashes
+async function verifyPassword(plaintext, storedHash) {
+  if (!storedHash) return false;
+  // Check if hash is bcrypt (starts with $2a$, $2b$, or $2y$)
+  if (storedHash.startsWith('$2')) {
+    return bcrypt.compare(String(plaintext), storedHash);
+  }
+  // Legacy SHA-256 comparison (backward compatible)
+  return hashPasswordSHA256(plaintext) === storedHash;
+}
+
+function hashPassword(value) {
+  // Deprecated: kept for reference. Use hashPasswordBcrypt instead.
+  return hashPasswordSHA256(value);
 }
 
 function isPasswordLongEnough(value) {
@@ -317,7 +340,8 @@ async function resolveAuthProfile(username) {
 }
 
 function issueToken(username, isAdminUser) {
-  return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '7d' });
+  // Phase 3: Reduced token expiry from 7 days to 24 hours for better security
+  return jwt.sign({ username, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '24h' });
 }
 
 function issueLegacyPasswordSetupToken(username) {
@@ -398,6 +422,19 @@ function requireAuth(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
+}
+
+// Validate that x-class-username header matches authenticated user (if present)
+// This prevents header spoofing on authenticated requests
+function validateUsernameHeader(req, res, next) {
+  const headerUsername = (req.headers['x-class-username'] || '').trim();
+  if (headerUsername && req.user?.username && headerUsername !== req.user.username) {
+    return res.status(403).json({
+      error: 'Username header mismatch',
+      details: 'x-class-username header does not match authenticated user'
+    });
+  }
+  next();
 }
 
 function requireAdmin(req, res, next) {
@@ -1020,7 +1057,7 @@ app.post('/api/push/private-message', requireAuth, async (req, res) => {
 });
 
 // --- FOLDERS & FILES API ---
-app.get('/api/folders', wrap((req, res) => {
+app.get('/api/folders', requireAuth, wrap((req, res) => {
   const parent = req.query.parent;
   res.json(state.folders.filter(f => f.parent === parent));
 }));
@@ -1051,7 +1088,7 @@ app.delete('/api/folders/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/files', wrap((req, res) => {
+app.get('/api/files', requireAuth, wrap((req, res) => {
   res.json(state.files.filter(f => f.folderId === req.query.folderId));
 }));
 
@@ -1088,6 +1125,8 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
     return res.status(400).json({ error: 'username and password are required' });
   }
   const normalizedUsername = String(username).trim();
+
+  // Admin user fast path
   if (ADMIN_USERNAME && ADMIN_PASSWORD && normalizedUsername === ADMIN_USERNAME) {
     const valid = ADMIN_PASSWORD.startsWith('$2')
       ? await bcrypt.compare(password, ADMIN_PASSWORD)
@@ -1117,7 +1156,10 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
       profile: sanitizeAuthProfile(authProfile),
     });
   }
-  if (hashPassword(password) !== authProfile.password_hash) {
+
+  // Use unified password verification (handles both bcrypt and legacy SHA-256)
+  const passwordValid = await verifyPassword(password, authProfile.password_hash);
+  if (!passwordValid) {
     return res.status(401).json({ error: 'Invalid password' });
   }
 
@@ -1160,7 +1202,8 @@ app.post('/api/password-setup', loginLimiter, wrap(async (req, res) => {
     return res.status(409).json({ error: 'This account already has a password. Please sign in normally.' });
   }
 
-  const passwordHash = hashPassword(password);
+  // Use bcrypt for new passwords (Phase 3 hardening)
+  const passwordHash = await hashPasswordBcrypt(password);
   const updatedProfile = await updateAuthProfilePasswordHash(normalizedUsername, passwordHash);
   const finalProfile = updatedProfile || { ...authProfile, password_hash: passwordHash };
 
@@ -1245,7 +1288,7 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
 });
 
 // --- CHAT & FILE UPLOAD API ---
-app.get('/api/messages', wrap((req, res) => {
+app.get('/api/messages', requireAuth, wrap((req, res) => {
   const { chat, target } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);

@@ -139,6 +139,16 @@ describe('Auth enforcement', () => {
     expect(res.status).toBe(401);
   });
 
+  test('GET /api/folders without token returns 401', async () => {
+    const res = await request(app).get('/api/folders?parent=root');
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /api/files without token returns 401', async () => {
+    const res = await request(app).get('/api/files?folderId=abc');
+    expect(res.status).toBe(401);
+  });
+
   test('POST /api/upload without token returns 401', async () => {
     const res = await request(app).post('/api/upload').attach('file', Buffer.from('hello'), 'hello.txt');
     expect(res.status).toBe(401);
@@ -172,14 +182,20 @@ describe('Auth enforcement', () => {
 
 describe('GET /api/users', () => {
   test('returns an array', async () => {
-    const res = await request(app).get('/api/users');
+    const token = makeToken('testuser');
+    const res = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   test('registered user appears in the user list', async () => {
     await registerUser('listcheck_user', REGULAR_PASSWORD);
-    const res = await request(app).get('/api/users');
+    const token = makeToken('listcheck_user');
+    const res = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${token}`);
     const usernames = res.body.map((user) => user.username);
     expect(usernames).toContain('listcheck_user');
   });
@@ -205,13 +221,24 @@ describe('PUT /api/users/:username allowlist', () => {
 });
 
 describe('GET /api/messages', () => {
+  test('missing token returns 401', async () => {
+    const res = await request(app).get('/api/messages?chat=group');
+    expect(res.status).toBe(401);
+  });
+
   test('missing chat param returns 400', async () => {
-    const res = await request(app).get('/api/messages');
+    const token = makeToken('testuser');
+    const res = await request(app)
+      .get('/api/messages')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(400);
   });
 
   test('group messages returns an array', async () => {
-    const res = await request(app).get('/api/messages?chat=group');
+    const token = makeToken('testuser');
+    const res = await request(app)
+      .get('/api/messages?chat=group')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
@@ -227,7 +254,9 @@ describe('GET /api/messages', () => {
       expect(postRes.status).toBe(200);
     }
 
-    const res = await request(app).get('/api/messages?chat=group');
+    const res = await request(app)
+      .get('/api/messages?chat=group')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.length).toBeLessThanOrEqual(50);
     expect(res.body[res.body.length - 1].text).toBe('message-59');

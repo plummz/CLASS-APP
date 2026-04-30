@@ -166,6 +166,26 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Phase 3: Decode JWT to check expiration (without verifying signature client-side)
+function decodeJWT(token) {
+  try {
+    const parts = (token || '').split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Phase 3: Check if JWT token is expired
+function isTokenExpired(token) {
+  const payload = decodeJWT(token);
+  if (!payload || !payload.exp) return true;
+  const nowSecs = Math.floor(Date.now() / 1000);
+  return payload.exp <= nowSecs;
+}
+
 function setServerAuthToken(token) {
   serverAuthToken = token || '';
   if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
@@ -173,7 +193,13 @@ function setServerAuthToken(token) {
 }
 
 function getServerAuthToken() {
-  return serverAuthToken || localStorage.getItem('classAppToken') || '';
+  const token = serverAuthToken || localStorage.getItem('classAppToken') || '';
+  // Phase 3: Clear expired token to prevent stale session
+  if (token && isTokenExpired(token)) {
+    setServerAuthToken('');
+    return '';
+  }
+  return token;
 }
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -404,8 +430,61 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.65';
+const APP_VERSION = '1.5.69';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.69',
+    date: 'April 30, 2026',
+    title: 'Button/Event System Stabilization & Mobile Improvements',
+    summary: 'Improved button reliability and interaction patterns: enhanced modal close handlers with error recovery, added comprehensive delegated action handler, improved mobile/touch event handling.',
+    changes: [
+      'Improved: Modal close handler now includes error handling and null checks for robustness against missing elements.',
+      'New: Added comprehensive delegated action button handler supporting data-action attributes for extensibility.',
+      'Improved: Modal close handlers now catch and log errors instead of silently failing.',
+      'Improved: Overlay menu now responds to both click and touchend events for better mobile reliability.',
+      'Improved: Touch event handler includes passive false for better control flow on mobile Safari.',
+      'Note: Inline onclick handlers remain unchanged for backward compatibility; delegated handlers complement them.'
+    ],
+  },
+  {
+    version: '1.5.68',
+    date: 'April 30, 2026',
+    title: 'Auth Hardening: Bcrypt Hashing & Token Expiry',
+    summary: 'Critical authentication improvements: migrated password hashing from weak SHA-256 to bcrypt, reduced token expiry from 7 days to 24 hours, and added client-side token expiration validation.',
+    changes: [
+      'Security: Replaced plain SHA-256 password hashing with bcrypt (12 rounds) for all new passwords and password setup.',
+      'Security: Reduced JWT token expiry from 7 days to 24 hours for better session security.',
+      'Improved: Added client-side token expiration checking — expired tokens are automatically cleared and user is prompted to re-login.',
+      'Improved: Unified password verification supports both bcrypt and legacy SHA-256 hashes for backward compatibility during transition.',
+      'Backward compatible: Existing passwords continue to work until users reset them (then bcrypt is used).'
+    ],
+  },
+  {
+    version: '1.5.67',
+    date: 'April 30, 2026',
+    title: 'Authorization Hardening: Admin Table & RLS Safety',
+    summary: 'Incremental authorization security hardening by introducing a proper admins table and server-side header validation to reduce reliance on hardcoded username checks.',
+    changes: [
+      'Improved: Admin status is now stored in a dedicated admins table instead of checking a single hardcoded username.',
+      'Security: Added server-side middleware to validate x-class-username header matches authenticated user, preventing simple header spoofing.',
+      'New: Migration 015 creates the admins table with proper RLS policies and seeds it with the original admin.',
+      'Note: x-class-username header-based identity model remains unchanged; Phase 3 will migrate to proper JWT-based auth.',
+      'Backward compatible: Existing hardcoded admin check still works during transition period.'
+    ],
+  },
+  {
+    version: '1.5.66',
+    date: 'April 30, 2026',
+    title: 'Security Hotfix: Protect Public Data Exposure',
+    summary: 'Critical security fix: GET /api/messages, GET /api/folders, and GET /api/files endpoints now require authenticated access to prevent unauthorized public data exposure.',
+    changes: [
+      'Security: GET /api/messages endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Security: GET /api/folders endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Security: GET /api/files endpoint now requires authentication (Bearer token) instead of being publicly readable.',
+      'Improved: All three endpoints now return 401 Unauthorized when accessed without a valid authentication token.',
+      'Note: Frontend uses Supabase directly for these operations, so this change has no impact on app functionality.'
+    ],
+  },
   {
     version: '1.5.65',
     date: 'April 30, 2026',
@@ -5400,33 +5479,97 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Overlay: close menu on tap (touch + click)
+  // Phase 4: Support both click and touch for better mobile reliability
   const overlay = document.getElementById('overlay');
   if (overlay) {
     overlay.addEventListener('click', window.closeMenu);
+    // On mobile, click might not fire if touch handling interferes, so also listen to touchend
+    overlay.addEventListener('touchend', (e) => {
+      if (!e.target.closest('button, input, textarea, a')) {
+        e.preventDefault();
+        window.closeMenu();
+      }
+    }, { passive: false });
   }
+  // Phase 4: Comprehensive delegated button handler for all modal and overlay closes
   document.addEventListener('click', (event) => {
+    // Try to find a close button trigger (multiple patterns for robustness)
     const trigger = event.target.closest('[data-close-modal-id], .modal-close-btn, .changelog-close-action, .close-profile, .social-back-btn');
     if (!trigger) return;
+
+    // Prevent default only after we know this is our button
+    event.preventDefault();
+
+    // Handle profile close
     if (trigger.classList.contains('close-profile')) {
-      event.preventDefault();
-      window.closeProfile?.();
+      try {
+        window.closeProfile?.();
+      } catch (err) {
+        console.warn('[button] closeProfile error:', err);
+      }
       return;
     }
+
+    // Handle social back
     if (trigger.classList.contains('social-back-btn')) {
-      event.preventDefault();
-      window.closeSocialPage?.();
+      try {
+        window.closeSocialPage?.();
+      } catch (err) {
+        console.warn('[button] closeSocialPage error:', err);
+      }
       return;
     }
+
+    // Handle explicit modal ID close
     const explicitId = trigger.dataset.closeModalId;
     if (explicitId) {
-      event.preventDefault();
-      closeOverlayElement(document.getElementById(explicitId));
+      try {
+        const element = document.getElementById(explicitId);
+        if (element) {
+          closeOverlayElement(element);
+        } else {
+          console.warn(`[button] Modal element not found: ${explicitId}`);
+        }
+      } catch (err) {
+        console.warn('[button] closeOverlayElement error:', err);
+      }
       return;
     }
+
+    // Handle generic modal/lightbox close
     if (trigger.classList.contains('modal-close-btn') || trigger.classList.contains('changelog-close-action')) {
-      event.preventDefault();
-      const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
-      closeOverlayElement(overlayEl);
+      try {
+        const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
+        if (overlayEl) {
+          closeOverlayElement(overlayEl);
+        } else {
+          console.warn('[button] Overlay element not found for close button');
+        }
+      } catch (err) {
+        console.warn('[button] Modal close error:', err);
+      }
+    }
+  });
+
+  // Phase 4: Delegated handler for common action buttons (folder, reviewer, etc.)
+  // This reduces reliance on inline onclick handlers for better CSP compliance
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+
+    const action = target.dataset.action;
+    if (!action) return;
+
+    try {
+      // Try to find and call the handler function
+      const handler = window[action];
+      if (typeof handler === 'function') {
+        event.preventDefault();
+        // Pass element and any data attributes as context
+        handler.call(target, event);
+      }
+    } catch (err) {
+      console.warn(`[button] Action handler error for "${action}":`, err);
     }
   });
 

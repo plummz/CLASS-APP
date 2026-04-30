@@ -209,6 +209,31 @@ function getAuthHeaders(extraHeaders = {}) {
   return headers;
 }
 
+function hasSecureSession() {
+  return Boolean(currentUser?.username && getServerAuthToken());
+}
+
+function buildSecureSessionNotice(areaLabel) {
+  return `<div class="empty-state-text"><p style="color: #ffb86c;">Your secure session expired before ${escapeHTML(areaLabel)} could load.</p><p style="font-size: 12px; margin-top: 8px;">Please sign in again to refresh your access.</p></div>`;
+}
+
+function ensureSecureSessionForAction(actionLabel) {
+  if (hasSecureSession()) return true;
+  customAlert(`Your secure session expired before ${actionLabel}. Please sign in again.`);
+  return false;
+}
+
+function isAuthRelatedDataError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const status = Number(error?.status || error?.statusCode || 0);
+  const message = String(error?.message || '');
+  return status === 401
+    || status === 403
+    || code === '42501'
+    || code === 'PGRST301'
+    || /auth|expired|forbidden|jwt|permission|not authenticated|row[-\s]?level security|rls/i.test(message);
+}
+
 window.getAuthToken = getServerAuthToken;
 window.authFetch = function(url, options = {}) {
   return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
@@ -430,8 +455,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.73';
+const APP_VERSION = '1.5.74';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.74',
+    date: 'April 30, 2026',
+    title: 'Secure authenticated read endpoints',
+    summary: 'Locked the legacy chat, folder, and file read APIs behind signed-in sessions and added visible re-sign-in states so those views fail clearly instead of looking empty when auth is missing.',
+    changes: [
+      'Security: GET /api/messages, GET /api/folders, and GET /api/files now require a valid bearer token before returning data.',
+      'Security: Private chat history requests now reject authenticated users who are not part of that direct-message pair.',
+      'Fixed: Chat, folder explorer, and file explorer now show a clear "sign in again" message when a secure session is missing or auth-related data access fails.'
+    ],
+  },
   {
     version: '1.5.73',
     date: 'April 30, 2026',
@@ -1911,6 +1947,7 @@ window.openFolderModalObj = function(modalId) {
 };
 
 window.openFolderExplorer = async function(parentName) {
+    if (!ensureSecureSessionForAction('loading folder lists')) return;
     currentParentContext = parentName;
     folderStack = []; // reset navigation stack
     const title = document.getElementById('folder-explorer-title');
@@ -1928,15 +1965,27 @@ window.openFolderExplorer = async function(parentName) {
     }
 };
 
-function fetchAndRenderFolders() {
+async function fetchAndRenderFolders() {
+    const grid = document.getElementById('folder-grid-modal');
+    if(!grid) return;
+    if (!hasSecureSession()) {
+        grid.innerHTML = buildSecureSessionNotice('folders');
+        return;
+    }
+    if (!await waitForSupabaseClient()) {
+        grid.innerHTML = buildSecureSessionNotice('folders');
+        return;
+    }
     sb.from('folders').select('*').eq('parent', currentParentContext)
     .then(({ data: folders, error }) => {
-        const grid = document.getElementById('folder-grid-modal');
-        if(!grid) return;
         grid.innerHTML = '';
 
         if (error) {
             console.error("Folder fetch error:", error);
+            if (isAuthRelatedDataError(error)) {
+                grid.innerHTML = buildSecureSessionNotice('folders');
+                return;
+            }
             grid.innerHTML = `<div class="empty-state-text"><p style="color: #ff6b6b;">Error loading folders: ${escapeHTML(error.message || 'Unknown error')}</p><p style="font-size: 12px; margin-top: 8px;">Please refresh and try again.</p></div>`;
             return;
         }
@@ -2022,6 +2071,7 @@ window.deleteFolderAPI = async function(id) {
 };
 
 window.openFileExplorer = async function(folderId, folderName, parentId) {
+    if (!ensureSecureSessionForAction('opening files')) return;
     let folder;
     try {
         folder = await fetchFolderById(folderId);
@@ -2123,22 +2173,31 @@ window.openFileSummarizerForStoredFile = async function(fileUrl, fileName, fileT
 };
 
 function fetchAndRenderFiles() {
+    const list = document.getElementById('file-list-container');
+    const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
+    if(!list) return;
+    if (!hasSecureSession()) {
+        if (uploadArea) uploadArea.style.display = 'none';
+        list.innerHTML = buildSecureSessionNotice('files');
+        return;
+    }
     if (!currentFolderContext || !canViewFolder(currentFolderContext)) {
-        const list = document.getElementById('file-list-container');
-        if (list) list.innerHTML = '<p class="empty-state-text">You do not have permission to view files here.</p>';
+        list.innerHTML = '<p class="empty-state-text">You do not have permission to view files here.</p>';
         return;
     }
     const allowEdit = canEditFolder(currentFolderContext);
-    const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
     if (uploadArea) uploadArea.style.display = allowEdit ? '' : 'none';
     sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
     .then(({ data: files, error }) => {
-        const list = document.getElementById('file-list-container');
-        if(!list) return;
         list.innerHTML = '';
 
         if (error) {
             console.error(error);
+            if (isAuthRelatedDataError(error)) {
+                if (uploadArea) uploadArea.style.display = 'none';
+                list.innerHTML = buildSecureSessionNotice('files');
+                return;
+            }
             list.innerHTML = `<p class="empty-state-text" style="color: #ff6b6b;">Error loading files: ${escapeHTML(error.message || 'Unknown error')}</p>`;
             return;
         }
@@ -2179,15 +2238,23 @@ function fetchAndRenderSubFolders() {
     if (!currentFolderContext || !currentFolderContext.id) return;
     const parentId = String(currentFolderContext.id);
     const subfolderSection = document.getElementById('subfolder-section');
+    const grid = document.getElementById('subfolder-grid-modal');
+    if (!grid) return;
+    if (!hasSecureSession()) {
+        grid.innerHTML = buildSecureSessionNotice('sub-folders');
+        return;
+    }
     if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
     sb.from('folders').select('*').eq('parent', parentId)
     .then(({ data: subs, error }) => {
-        const grid = document.getElementById('subfolder-grid-modal');
-        if (!grid) return;
         grid.innerHTML = '';
 
         if (error) {
             console.error('Subfolder fetch error:', error);
+            if (isAuthRelatedDataError(error)) {
+                grid.innerHTML = buildSecureSessionNotice('sub-folders');
+                return;
+            }
             grid.innerHTML = `<p class="empty-state-text small" style="color: #ff6b6b;">Error loading sub-folders: ${escapeHTML(error.message || 'Unknown error')}</p>`;
             return;
         }
@@ -4196,6 +4263,7 @@ function updateChatHeader() {
 }
 
 window.openChat = function(type, target = null) {
+  if (!ensureSecureSessionForAction('loading chat history')) return;
   currentChat = { type, target };
   updateChatHeader();
   // Clear unread badge for this DM
@@ -4274,8 +4342,21 @@ function showChatSkeleton() {
   container.innerHTML = Array.from({ length: 5 }, () => '<div class="chat-skeleton"></div>').join('');
 }
 
+function renderChatLoadNotice(messageMarkup) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  container.innerHTML = messageMarkup;
+}
+
 async function fetchMessages(chatType, target = null) {
-  if (!await waitForSupabaseClient()) return;
+  if (!hasSecureSession()) {
+    renderChatLoadNotice(buildSecureSessionNotice('chat history'));
+    return;
+  }
+  if (!await waitForSupabaseClient()) {
+    renderChatLoadNotice(buildSecureSessionNotice('chat history'));
+    return;
+  }
   if (!chatType) return;
   showChatSkeleton();
   let query = sb.from('messages').select('*');
@@ -4283,7 +4364,15 @@ async function fetchMessages(chatType, target = null) {
   else query = query.eq('chat_type', chatType);
 
   const { data: messages, error } = await query.order('created_at', { ascending: false }).limit(50);
-  if (error) return console.warn(error);
+  if (error) {
+    console.warn(error);
+    if (isAuthRelatedDataError(error)) {
+      renderChatLoadNotice(buildSecureSessionNotice('chat history'));
+      return;
+    }
+    renderChatLoadNotice('<p class="empty-chat" style="color: #ff6b6b;">Could not load chat history right now.</p>');
+    return;
+  }
 
   const formattedMessages = [...(messages || [])].reverse().map(m => ({
       id: m.id, sender: m.sender, text: m.text, attachment: m.attachment,

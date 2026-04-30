@@ -261,4 +261,21 @@ describe('GET /api/messages', () => {
     expect(res.body.length).toBeLessThanOrEqual(50);
     expect(res.body[res.body.length - 1].text).toBe('message-59');
   });
+
+  test('private message history rejects unrelated authenticated users', async () => {
+    await registerUser('dm_owner', REGULAR_PASSWORD);
+    await registerUser('dm_target', REGULAR_PASSWORD);
+    const ownerToken = makeToken('dm_owner');
+    const intruderToken = makeToken('dm_intruder');
+    const postRes = await request(app)
+      .post('/api/messages')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ chat: 'private', target: 'dm_owner||dm_target', text: 'secret note' });
+    expect(postRes.status).toBe(200);
+
+    const res = await request(app)
+      .get('/api/messages?chat=private&target=dm_owner||dm_target')
+      .set('Authorization', `Bearer ${intruderToken}`);
+    expect(res.status).toBe(403);
+  });
 });

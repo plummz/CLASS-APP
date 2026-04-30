@@ -1301,6 +1301,10 @@ app.get('/api/messages', requireAuth, wrap((req, res) => {
   if (chat === 'private') {
     if (!target) return res.status(400).json({ error: 'target required for private chat' });
     const [userA, userB] = target.split('||');
+    if (!userA || !userB) return res.status(400).json({ error: 'target must contain two usernames' });
+    if (!req.user.isAdmin && req.user.username !== userA && req.user.username !== userB) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     return res.json(sliceHistory(getHistory('private', { userA, userB })));
   }
   return res.json(sliceHistory(getHistory(chat)));

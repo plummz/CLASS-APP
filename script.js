@@ -166,6 +166,26 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Phase 3: Decode JWT to check expiration (without verifying signature client-side)
+function decodeJWT(token) {
+  try {
+    const parts = (token || '').split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Phase 3: Check if JWT token is expired
+function isTokenExpired(token) {
+  const payload = decodeJWT(token);
+  if (!payload || !payload.exp) return true;
+  const nowSecs = Math.floor(Date.now() / 1000);
+  return payload.exp <= nowSecs;
+}
+
 function setServerAuthToken(token) {
   serverAuthToken = token || '';
   if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
@@ -173,7 +193,13 @@ function setServerAuthToken(token) {
 }
 
 function getServerAuthToken() {
-  return serverAuthToken || localStorage.getItem('classAppToken') || '';
+  const token = serverAuthToken || localStorage.getItem('classAppToken') || '';
+  // Phase 3: Clear expired token to prevent stale session
+  if (token && isTokenExpired(token)) {
+    setServerAuthToken('');
+    return '';
+  }
+  return token;
 }
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -404,8 +430,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.67';
+const APP_VERSION = '1.5.68';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.68',
+    date: 'April 30, 2026',
+    title: 'Auth Hardening: Bcrypt Hashing & Token Expiry',
+    summary: 'Critical authentication improvements: migrated password hashing from weak SHA-256 to bcrypt, reduced token expiry from 7 days to 24 hours, and added client-side token expiration validation.',
+    changes: [
+      'Security: Replaced plain SHA-256 password hashing with bcrypt (12 rounds) for all new passwords and password setup.',
+      'Security: Reduced JWT token expiry from 7 days to 24 hours for better session security.',
+      'Improved: Added client-side token expiration checking — expired tokens are automatically cleared and user is prompted to re-login.',
+      'Improved: Unified password verification supports both bcrypt and legacy SHA-256 hashes for backward compatibility during transition.',
+      'Backward compatible: Existing passwords continue to work until users reset them (then bcrypt is used).'
+    ],
+  },
   {
     version: '1.5.67',
     date: 'April 30, 2026',

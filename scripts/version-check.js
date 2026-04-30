@@ -17,6 +17,10 @@ const ROOT = path.join(__dirname, '..');
 const SW_PATH = path.join(ROOT, 'sw.js');
 const INDEX_PATH = path.join(ROOT, 'index.html');
 
+function normalizeAssetPath(assetPath = '') {
+  return String(assetPath || '').replace(/^\//, '').replace(/\\/g, '/');
+}
+
 console.log('🔍 Checking version consistency...\n');
 
 // Read sw.js
@@ -32,6 +36,7 @@ if (!assetsMatch) {
 const assetsContent = assetsMatch[1];
 const assetLines = assetsContent.match(/'[^']+'/g) || [];
 const assets = assetLines.map(line => line.replace(/'/g, ''));
+const normalizedAssets = new Set(assets.map(normalizeAssetPath));
 
 console.log(`Found ${assets.length} assets in sw.js ASSETS list\n`);
 
@@ -45,7 +50,7 @@ assets.forEach(asset => {
   const match = asset.match(/^(.+?)\?v=(\d+)$/);
   if (!match) {
     // No version string, just check if file exists
-    const filePath = path.join(ROOT, asset);
+    const filePath = path.join(ROOT, normalizeAssetPath(asset));
     if (!fs.existsSync(filePath)) {
       console.warn(`⚠️  File not found: ${asset}`);
       issuesFound++;
@@ -54,7 +59,8 @@ assets.forEach(asset => {
   }
 
   const [, filePath, version] = match;
-  const fullPath = path.join(ROOT, filePath);
+  const normalizedFilePath = normalizeAssetPath(filePath);
+  const fullPath = path.join(ROOT, normalizedFilePath);
 
   // Check file exists
   if (!fs.existsSync(fullPath)) {
@@ -64,15 +70,16 @@ assets.forEach(asset => {
   }
 
   // Check version matches in index.html
-  const indexVersionMatch = indexContent.match(new RegExp(`${filePath}\\?v=(\\d+)`));
+  const escapedFilePath = normalizedFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const indexVersionMatch = indexContent.match(new RegExp(`${escapedFilePath}\\?v=(\\d+)`));
   if (indexVersionMatch) {
     const indexVersion = indexVersionMatch[1];
     if (indexVersion !== version) {
       console.error(`❌ Version mismatch for ${filePath}: sw.js has v${version}, index.html has v${indexVersion}`);
       issuesFound++;
     }
-  } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-    console.warn(`⚠️  Version in index.html not found for: ${filePath}`);
+  } else if (normalizedFilePath.endsWith('.js') || normalizedFilePath.endsWith('.css')) {
+    console.warn(`⚠️  Version in index.html not found for: ${normalizedFilePath}`);
   }
 });
 
@@ -82,7 +89,7 @@ const linkMatches = indexContent.matchAll(/href="([^"]+\?v=\d+)"/g);
 
 [...scriptMatches, ...linkMatches].forEach(match => {
   const tag = match[1];
-  if (!assets.includes(tag)) {
+  if (!normalizedAssets.has(normalizeAssetPath(tag))) {
     console.warn(`⚠️  Version tag in index.html not in sw.js ASSETS: ${tag}`);
   }
 });

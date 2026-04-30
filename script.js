@@ -455,8 +455,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.76';
+const APP_VERSION = '1.5.77';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.77',
+    date: 'April 30, 2026',
+    title: 'Improve app structure, cache reliability, and accessibility safely',
+    summary: 'Moved the social-media embed flow and software-updates system into their feature modules, improved version-check tooling for cache validation, and added accessibility polish to common icon-first controls.',
+    changes: [
+      'Improved: Moved Social Media page logic and Software Updates logic out of script.js into features/social/social.js and features/updates/updates.js to reduce core-file clutter.',
+      'Improved: Version-check tooling now normalizes asset paths so cache/version mismatches are easier to detect before deployment.',
+      'Improved: Added safer labels and keyboard support for common icon-based controls like the chat bauble, profile close button, personalization shortcut, and YouTube mini-player actions.'
+    ],
+  },
   {
     version: '1.5.76',
     date: 'April 30, 2026',
@@ -1874,6 +1885,8 @@ const APP_CHANGELOG = [
     ],
   },
 ];
+window.CLASS_APP_VERSION = APP_VERSION;
+window.CLASS_APP_CHANGELOG = APP_CHANGELOG;
 
 function normalizeFolderPermissions(folder) {
     const raw = folder?.permissions;
@@ -3358,9 +3371,13 @@ let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 let authBindingsReady = false;
 let usersLoadState = { loading: false, error: '' };
+window.currentUser = currentUser;
+window.isAdmin = isAdmin;
 
 function syncAuthState() {
   isAuthenticated = Boolean(currentUser?.username);
+  window.currentUser = currentUser;
+  window.isAdmin = isAdmin;
 }
 
 function renderAppState() {
@@ -4806,7 +4823,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
   if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
   if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
-  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
+  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => window.closeSocialPage?.());
   if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
   if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
   if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
@@ -5511,6 +5528,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const announcementSearchInput = document.getElementById('announcement-search-input');
   if (announcementSearchInput) announcementSearchInput.addEventListener('input', () => renderSharedAnnouncements());
+  const chatBauble = document.getElementById('chat-bauble');
+  if (chatBauble) {
+    chatBauble.addEventListener('click', () => window.goToPage?.('chat'));
+    chatBauble.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      window.goToPage?.('chat');
+    });
+  }
+  document.querySelectorAll('[data-yt-mini-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.ytMiniAction === 'back') window.goToPage?.('music');
+      if (button.dataset.ytMiniAction === 'stop') window.stopYouTubePlayer?.();
+    });
+  });
 
   const menuToggle = document.getElementById('menu-toggle');
   if (menuToggle) menuToggle.addEventListener('click', window.toggleMenu);
@@ -6122,6 +6154,9 @@ if ('serviceWorker' in navigator) {
 }
 
 async function fetchAppUpdates() {
+  if (window.classAppFeatures?.updates?.fetchAppUpdates) {
+    return window.classAppFeatures.updates.fetchAppUpdates();
+  }
   refreshUpdateIndicator();
   if (localStorage.getItem('seenSoftwareVersion') !== APP_VERSION) showSoftwareUpdateBanner();
   const { data, error } = await sb.from('app_updates')
@@ -6199,6 +6234,9 @@ function refreshUpdateIndicator() {
 }
 
 function ensureAdminUpdateControl() {
+  if (window.classAppFeatures?.updates?.ensureAdminUpdateControl) {
+    return window.classAppFeatures.updates.ensureAdminUpdateControl();
+  }
   if (document.getElementById('admin-update-btn')) return;
   const controls = document.querySelector('.sidebar-controls');
   if (!controls) return;
@@ -7401,62 +7439,6 @@ function epOpenPhoto(url, name) {
 let sharedAIOutputs = [];
 let sharedAnnouncements = [];
 let sharedRealtimeReady = false;
-let socialEmbedTimer = null;
-
-function buildFacebookEmbedUrl(url) {
-  const encoded = encodeURIComponent(url);
-  return `https://www.facebook.com/plugins/page.php?href=${encoded}&tabs=timeline&width=500&height=720&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`;
-}
-
-window.openSocialPage = function(title, url) {
-  const pageUrl = url || title;
-  const pageTitle = url ? title : 'Social Media Page';
-  const home = document.getElementById('social-home-view');
-  const embed = document.getElementById('social-embed-view');
-  const frame = document.getElementById('social-embed-frame');
-  const titleEl = document.getElementById('social-embed-title');
-  const status = document.getElementById('social-embed-status');
-  const statusText = document.getElementById('social-embed-status-text');
-  const externalLink = document.getElementById('social-open-external');
-  if (!home || !embed || !frame) return;
-  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
-  if (titleEl) {
-    const decoder = document.createElement('textarea');
-    decoder.innerHTML = pageTitle;
-    titleEl.textContent = decoder.value;
-  }
-  if (externalLink) externalLink.href = pageUrl;
-  if (status) {
-    status.classList.remove('is-warning');
-    status.classList.remove('hidden');
-  }
-  if (statusText) statusText.textContent = 'Loading Facebook embed inside the app...';
-  frame.onload = () => {
-    if (statusText) statusText.textContent = 'If the page keeps loading, Facebook may be blocking the embedded view. Use the browser link below.';
-  };
-  frame.src = buildFacebookEmbedUrl(pageUrl);
-  home.classList.add('hidden');
-  embed.classList.remove('hidden');
-  embed.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  socialEmbedTimer = setTimeout(() => {
-    if (!document.getElementById('social-embed-view')?.classList.contains('hidden')) {
-      if (status) status.classList.add('is-warning');
-      if (statusText) statusText.textContent = 'Facebook did not finish loading here. This is usually Facebook blocking third-party embeds, privacy cookies, or a page restriction, not your signal.';
-    }
-  }, 8000);
-};
-
-window.closeSocialPage = function() {
-  const home = document.getElementById('social-home-view');
-  const embed = document.getElementById('social-embed-view');
-  const frame = document.getElementById('social-embed-frame');
-  const status = document.getElementById('social-embed-status');
-  if (socialEmbedTimer) clearTimeout(socialEmbedTimer);
-  if (frame) frame.src = 'about:blank';
-  if (status) status.classList.add('hidden');
-  if (embed) embed.classList.add('hidden');
-  if (home) home.classList.remove('hidden');
-};
 
 async function fetchSharedAIOutputs() {
   const feed = document.getElementById('output-ai-feed');

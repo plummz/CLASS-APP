@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.76-20260430-handler-stability';
+const CACHE_VERSION = 'v1.5.77-20260430-structure-accessibility';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=120',
+  '/index.html?v=121',
   '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -43,9 +43,13 @@ const ASSETS = [
   '/features/royale/royale.css?v=18',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
+  '/features/personal-tools/personal-tools.css?v=1',
+  '/features/personal-tools/alarm-clock.css?v=2',
+  '/features/personal-tools/calculator.css?v=3',
+  '/features/personal-tools/personalization.css?v=2',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=10',
-  '/script.js?v=120',
+  '/script.js?v=121',
   '/features/reviewers/reviewers.js?v=16',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/notepad.js?v=7',
@@ -57,10 +61,10 @@ const ASSETS = [
   '/features/calendar/calendar.js?v=1',
   '/features/personal-tools/calculator.js?v=5',
   '/features/music/music.js?v=1',
-  '/features/social/social.js?v=1',
+  '/features/social/social.js?v=2',
   '/features/users/users.js?v=1',
   '/features/games/games.js?v=1',
-  '/features/updates/updates.js?v=1',
+  '/features/updates/updates.js?v=2',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
   '/assets/js/codelab.js?v=8',
@@ -71,6 +75,9 @@ const ASSETS = [
   '/features/royale/royale.js?v=26',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=10',
+  '/features/personal-tools/personal-tools.js?v=1',
+  '/features/personal-tools/alarm-clock.js?v=2',
+  '/features/personal-tools/personalization.js?v=2',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

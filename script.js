@@ -430,8 +430,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.72';
+const APP_VERSION = '1.5.73';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.73',
+    date: 'April 30, 2026',
+    title: 'PHASE 8: UI/UX Polish & Accessibility Improvements',
+    summary: 'Enhanced user experience and accessibility: added keyboard navigation to interactive elements, improved button sizing for mobile tap targets, and fixed accessibility labels for better screen reader support.',
+    changes: [
+      'Accessibility: Added role="button", tabindex="0", and keyboard handlers (Enter/Space) to chat items, making them fully keyboard-navigable.',
+      'Accessibility: Added role="button" and keyboard support to all game cards (Pokemon, Royale, Pacman, Candy) for better a11y.',
+      'Mobile UX: Created .music-control-btn CSS class with consistent 44px min-height for better mobile tap targets on music player controls.',
+      'Mobile UX: Replaced inline padding styles with CSS class for music controls — now consistent and maintainable.',
+      'Navigation: Verified all nav items have proper role="button" and tabindex for keyboard accessibility.',
+      'Verified: Page layouts, empty states, and error messages display clearly across light and dark themes.',
+      'Status: App is now more accessible (WCAG improvements) and provides better mobile/keyboard experience for students.'
+    ],
+  },
   {
     version: '1.5.72',
     date: 'April 30, 2026',

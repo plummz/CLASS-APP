@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=42">
+<link rel="stylesheet" href="style.css?v=43">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
-  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=5">
   <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
@@ -375,6 +375,17 @@
           <button class="fs-outline-btn" id="fs-share-btn">📤 Share to Reviewers</button>
           <button class="fs-outline-btn danger" id="fs-clear-btn">✕ Clear</button>
         </div>
+      </div>
+
+      <!-- History Section -->
+      <div class="fs-card fs-history-card">
+        <div class="fs-section-label">History</div>
+        <div class="fs-chip-row" style="margin-bottom: 12px;">
+          <button class="fs-chip selected" id="fs-tab-summary-history">Summaries</button>
+          <button class="fs-chip" id="fs-tab-quiz-history">Quizzes</button>
+        </div>
+        <div id="fs-summary-history-list" class="fs-history-list"></div>
+        <div id="fs-quiz-history-list" class="fs-history-list" style="display:none;"></div>
       </div>
 
       <div class="fs-error" id="fs-error"></div>
@@ -1100,7 +1111,7 @@
             </button>
                 <button class="lobby-open-count-btn" type="button" id="lobby-header-updates-btn">
               <span>View Updates</span>
-              <strong id="lobby-dash-update-version">1.5.1</strong>
+              <strong id="lobby-dash-update-version">1.6.1</strong>
             </button>
           </div>
         </div>
@@ -1527,7 +1538,7 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=113"></script>
+  <script src="script.js?v=115"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1553,7 +1564,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=12" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=14" defer></script>
   <script src="features/reviewers/reviewers.js?v=15" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->

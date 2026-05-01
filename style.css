@@ -2225,6 +2225,38 @@ body.light-mode .music-search-item-meta { color: #2a4a8a; }
   .profile-panel { top: 86px; left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); max-height: calc(100vh - 108px); }
 }
 
+@media (max-width: 600px) {
+  #live-clock {
+    top: auto !important;
+    bottom: 20px !important;
+    right: auto !important;
+    left: 20px !important;
+  }
+  #page-indicator {
+    left: 64px !important;
+    max-width: calc(100vw - 110px) !important;
+    font-size: 10px !important;
+    padding: 4px 8px !important;
+  }
+  .custom-bg-btn {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: max(88px, calc(env(safe-area-inset-top) + 72px)) 16px 120px !important;
+  }
+  #menu-toggle {
+    width: 44px !important;
+    height: 44px !important;
+    top: max(14px, calc(env(safe-area-inset-top) + 8px)) !important;
+    left: 14px !important;
+  }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -5264,51 +5296,3 @@ body.light-mode .notepad-search-input::placeholder { color: rgba(0,30,100,0.4); 
 body.light-mode .home-trending-card { background: rgba(255,255,255,0.6); border-color: rgba(0,100,200,0.2); }
 body.light-mode .home-trending-title { color: #0b2d6b; }
 body.light-mode .home-trending-by { color: #2a4a8a; }
-
-
-/* ============================================================
-   MOBILE BOTTOM SAFE ZONE — iOS PWA / notch devices
-   Prevents overlap between bottom nav, floating chat bubble,
-   mini music player, and iOS home indicator.
-   ============================================================ */
-
-/* Page content bottom padding: leaves room for iOS home bar */
-.page {
-  padding-bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px));
-}
-
-/* Floating YouTube mini-player clears the iOS home indicator */
-.yt-mini-player {
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px));
-}
-
-/* Sidebar scroll area clears the bottom inset */
-#sidebar {
-  padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 16px));
-}
-
-/* Prevent 100vh overflow on iOS Safari where the address bar eats into the viewport */
-.full-height,
-.modal-overlay,
-[style*="height: 100vh"] {
-  height: 100dvh; /* dynamic viewport height — supported iOS 15.4+ */
-}
-
-/* Empty-state helper classes */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  text-align: center;
-  color: rgba(255,255,255,0.45);
-  gap: 12px;
-}
-.empty-state-icon  { font-size: 2.8rem; opacity: 0.5; }
-.empty-state-title { font-size: 1rem; font-weight: 600; color: rgba(255,255,255,0.6); }
-.empty-state-sub   { font-size: 0.85rem; line-height: 1.55; max-width: 280px; }
-
-body.light-mode .empty-state        { color: rgba(11,45,107,0.45); }
-body.light-mode .empty-state-title  { color: rgba(11,45,107,0.65); }
-body.light-mode .empty-state-sub    { color: rgba(11,45,107,0.4); }

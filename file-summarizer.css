@@ -1,0 +1,8 @@
+.fs-history-card { margin-top: 15px; }
+.fs-history-list { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; }
+.fs-history-empty { text-align: center; padding: 20px; color: rgba(255,255,255,0.5); font-size: 13px; font-weight: 600; }
+.fs-history-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+.fs-history-item-main { display: flex; flex-direction: column; gap: 4px; overflow: hidden; padding-right: 10px; }
+.fs-history-title { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-history-meta { font-size: 12px; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-history-item button.compact { padding: 6px 12px; font-size: 11px; white-space: nowrap; flex-shrink: 0; }

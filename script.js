@@ -377,8 +377,35 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.6.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.2',
+    date: 'May 1, 2026',
+    title: 'Shared Boards Security & Mobile Layout Fixes',
+    summary: 'Repaired RLS errors when sharing to AI Whiteboard, Reviewers, and Announcements. Fixed broken Personal Tools buttons and cleaned up mobile header overlaps.',
+    changes: [
+      'Security: Migrated all shared board writes (OUTPUT-AI, Reviewers, Announcements) to the authenticated backend API to prevent RLS failures and unauthorized spoofing.',
+      'Security: Added migration 023 to lock down client writes on shared tables.',
+      'Bug Fix: The Announcement board delete button now correctly works for admins and the original poster.',
+      'Bug Fix: The "Open" buttons for Alarm Clock, Notepad, and Calculator on the Personal Tools page now respond properly.',
+      'UX: Mobile headers no longer cramp together. The live clock was moved to the bottom left on small screens to free up space.',
+      'UX: The floating chat bubble is now hidden on the Personal Tools page so it does not block the bottom cards.'
+    ],
+  },
+  {
+    version: '1.6.1',
+    date: 'May 1, 2026',
+    title: 'Quiz & Summary History Integration',
+    summary: 'Finished frontend integration for the new quiz and summary history backend routes, allowing seamless tracking of generated study materials.',
+    changes: [
+      'Feature: Added a History panel to the File Summarizer with tabs for Summaries and Quizzes.',
+      'Feature: Quiz completions are now securely logged to your backend account.',
+      'Feature: Users can delete past quizzes and summaries directly from the history panel.',
+      'UX: Offline quiz completions safely merge with cloud history so your progress isn\'t lost during connection drops.',
+      'Cleanup: Removed orphaned staging SQL files to prevent database confusion.'
+    ],
+  },
   {
     version: '1.6.0',
     date: 'April 30, 2026',
@@ -4418,7 +4445,14 @@ function applyPageBackground(pageName = currentPage) {
   if (cfg.aurora) document.getElementById('aurora')?.classList.add('active');
 }
 
-window.goToPage = function(pageName) {
+const originalGoToPage = window.goToPage;
+window.goToPage = function(targetPage) {
+  const aliases = {
+    'alarm-clock': 'alarm',
+    'scientific-calculator': 'calculator',
+    'tools': 'personal-tools'
+  };
+  const pageName = aliases[targetPage] || targetPage;
   if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
   if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
 
@@ -4436,6 +4470,7 @@ window.goToPage = function(pageName) {
   if (currentPage === 'file-summarizer') {
     document.getElementById('fs-quiz-modal')?.classList.remove('active');
     document.getElementById('fs-quiz-score')?.classList.remove('active');
+    runSafeUiAction('File Summarizer', () => window.fileSummarizerModule?.refreshHistory?.());
   }
 
   // YouTube mini-player: show when leaving music, hide when returning
@@ -4450,7 +4485,7 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'personal-tools' || pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
@@ -5369,6 +5404,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     overlay.addEventListener('click', window.closeMenu);
   }
   document.addEventListener('click', (event) => {
+    // Allow any element with data-page to route outside of sidebar
+    const pageTrigger = event.target.closest('[data-page]');
+    if (pageTrigger && !pageTrigger.closest('#sidebar')) {
+      event.preventDefault();
+      window.goToPage(pageTrigger.dataset.page);
+      return;
+    }
+
     const trigger = event.target.closest('[data-close-modal-id], .modal-close-btn, .changelog-close-action, .close-profile, .social-back-btn');
     if (!trigger) return;
     if (trigger.classList.contains('close-profile')) {
@@ -6962,11 +7005,16 @@ window.deleteSharedAIOutput = function(id) {
     return customAlert('Only the sharer can delete this OUTPUT-AI post.');
   }
   customConfirm('Delete this shared OUTPUT-AI post for everyone?', async function() {
-    const { error } = await sb.from('shared_ai_outputs').delete().eq('id', id);
-    if (error) return customAlert(error.message);
-    sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
-    renderSharedAIOutputs();
-    showToast('Shared AI output deleted.', 'warning');
+    try {
+      const response = await authFetch(`/api/shared-ai-outputs/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete');
+      }
+      sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
+      renderSharedAIOutputs();
+      showToast('Shared AI output deleted.', 'warning');
+    } catch (error) { customAlert(error.message); }
   });
 }
 
@@ -7033,29 +7081,40 @@ function renderSharedAnnouncements() {
       <div class="board-card-meta">
         <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
-        ${isAdmin ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
+        ${(currentUser && (item.sharer === currentUser.username || isAdmin)) ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
       </div>
     </article>`).join('');
 }
 
 window.deleteSharedAnnouncement = async function(id) {
-  if (!isAdmin) return;
+  if (!currentUser) return customAlert('Please log in.');
   if (!confirm('Delete this announcement?')) return;
-  const { error } = await sb.from('shared_announcements').delete().eq('id', id);
-  if (error) return customAlert(error.message);
-  showToast('Announcement deleted.');
-  fetchSharedAnnouncements();
+  try {
+    const response = await authFetch(`/api/shared-announcements/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+       const data = await response.json();
+       throw new Error(data.error || 'Failed to delete announcement.');
+    }
+    showToast('Announcement deleted.');
+    fetchSharedAnnouncements();
+  } catch (error) { customAlert(error.message); }
 };
 
 async function shareAnnouncementPayload(payload) {
   if (!currentUser) return customAlert('Please log in to share announcements.');
-  const { error } = await sb.from('shared_announcements').insert([{
-    ...payload,
-    sharer: currentUser.username,
-  }]);
-  if (error) return customAlert(error.message);
-  showToast('Shared to ANNOUNCEMENT.');
-  fetchSharedAnnouncements();
+  try {
+    const response = await authFetch('/api/shared-announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to share');
+    }
+    showToast('Shared to ANNOUNCEMENT.');
+    fetchSharedAnnouncements();
+  } catch (error) { customAlert(error.message); }
 }
 
 window.shareCalendarNote = function(dateKey, displayDate, text) {
@@ -7284,15 +7343,21 @@ window.shareAIMessage = async function(provider, index) {
   const previousPrompt = [...aiChats[provider].slice(0, index)].reverse().find((item) => item.role === 'user')?.content || '';
   const prompt = message.role === 'user' ? message.content : previousPrompt;
   const output = message.role === 'assistant' ? message.content : '';
-  const { error } = await sb.from('shared_ai_outputs').insert([{
-    sharer: currentUser.username,
-    provider: AI_PROVIDERS[provider]?.name || provider,
-    prompt,
-    output,
-  }]);
-  if (error) return customAlert(error.message);
-  showToast('Shared to OUTPUT-AI.');
-  fetchSharedAIOutputs();
+  
+  try {
+    const response = await authFetch('/api/shared-ai-outputs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: AI_PROVIDERS[provider]?.name || provider,
+        prompt,
+        output,
+      })
+    });
+    if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Failed to share'); }
+    showToast('Shared to OUTPUT-AI.');
+    fetchSharedAIOutputs();
+  } catch (error) { customAlert(error.message); }
 };
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */

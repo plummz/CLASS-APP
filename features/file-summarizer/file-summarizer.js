@@ -587,6 +587,16 @@
       if (history.length > 20) history.length = 20;
       localStorage.setItem('fs-quiz-history', JSON.stringify(history));
     } catch(_) {}
+
+    try {
+      if (window.authFetch) {
+        window.authFetch('/api/quiz-history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_name: quizSourceFile, score: quizScore_val, total })
+        }).catch(e => console.warn('[Quiz] backend save failed:', e));
+      }
+    } catch(_) {}
   }
 
   // ── Quiz navigation ────────────────────────────────────────
@@ -708,36 +718,47 @@
       };
 
       try {
-        const { error } = await client.from('reviewers').insert([record]);
-        if (error) {
-          if (error.code === '42P01') {
+        const response = await (window.authFetch ? window.authFetch('/api/reviewers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }) : fetch('/api/reviewers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }));
+        
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (data.error && data.error.includes('42P01')) {
             setError('Reviewers table missing — run migration 010_reviewers_table.sql.');
           } else {
-            setError('Share failed: ' + (error.message || 'Unknown error'));
+            throw new Error(data.error || 'Share failed');
           }
+          return;
+        }
+        
+        setStatus('');
+        if (window.showToast) {
+          showToast('📤 Shared to Reviewers!', 'success');
+          setTimeout(() => {
+            const t = document.createElement('div');
+            t.className = 'app-toast app-toast-info';
+            t.innerHTML = '📄 <button type="button" class="fs-toast-link-btn" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">View Reviewers →</button>';
+            document.body.appendChild(t);
+            t.querySelector('.fs-toast-link-btn')?.addEventListener('click', () => {
+              if (typeof window.goToPage === 'function') window.goToPage('reviewers');
+              t.classList.remove('show');
+              setTimeout(() => t.remove(), 220);
+            });
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);
+          }, 400);
         } else {
-          setStatus('');
-          if (window.showToast) {
-            showToast('📤 Shared to Reviewers!', 'success');
-            setTimeout(() => {
-              const t = document.createElement('div');
-              t.className = 'app-toast app-toast-info';
-              t.innerHTML = '📄 <button type="button" class="fs-toast-link-btn" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit;">View Reviewers →</button>';
-              document.body.appendChild(t);
-              t.querySelector('.fs-toast-link-btn')?.addEventListener('click', () => {
-                if (typeof window.goToPage === 'function') window.goToPage('reviewers');
-                t.classList.remove('show');
-                setTimeout(() => t.remove(), 220);
-              });
-              requestAnimationFrame(() => t.classList.add('show'));
-              setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 5000);
-            }, 400);
-          } else {
-            customAlert('✅ Shared to Reviewers!');
-          }
+          customAlert('✅ Shared to Reviewers!');
         }
       } catch (ex) {
-        setError('Share failed. Please try again.');
+        setError('Share failed. Please try again. (' + ex.message + ')');
       } finally {
         shareBtn.disabled = false;
         shareBtn.textContent = '📤 Share to Reviewers';
@@ -764,4 +785,126 @@
       return file;
     },
   });
+
+  // ── History Panels ────────────────────────────────────────
+  const tabSummaryHistory = document.getElementById('fs-tab-summary-history');
+  const tabQuizHistory    = document.getElementById('fs-tab-quiz-history');
+  const listSummary       = document.getElementById('fs-summary-history-list');
+  const listQuiz          = document.getElementById('fs-quiz-history-list');
+
+  function fsEscapeHTML(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function loadSummaryHistory() {
+    if (!listSummary) return;
+    listSummary.innerHTML = '<div class="fs-history-empty">Loading summaries...</div>';
+    try {
+      const res = await (window.authFetch ? window.authFetch('/api/summary-history') : fetch('/api/summary-history'));
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+      if (!data || !data.length) {
+        listSummary.innerHTML = '<div class="fs-history-empty">No summaries saved yet.</div>';
+        return;
+      }
+      listSummary.innerHTML = data.map(item => `
+        <div class="fs-history-item">
+          <div class="fs-history-item-main">
+            <div class="fs-history-title">📄 ${fsEscapeHTML(item.source_name || 'Document')}</div>
+            <div class="fs-history-meta">${new Date(item.created_at).toLocaleDateString()} · ${fsEscapeHTML(item.summary_text).substring(0, 60)}...</div>
+          </div>
+          <button class="fs-outline-btn danger compact" onclick="window.fsDeleteSummary(${item.id})">Delete</button>
+        </div>
+      `).join('');
+    } catch (err) {
+      listSummary.innerHTML = `<div class="fs-history-empty">Error: ${err.message}</div>`;
+    }
+  }
+
+  async function loadQuizHistory() {
+    if (!listQuiz) return;
+    listQuiz.innerHTML = '<div class="fs-history-empty">Loading quizzes...</div>';
+    let backendQuizzes = [];
+    try {
+      const res = await (window.authFetch ? window.authFetch('/api/quiz-history') : fetch('/api/quiz-history'));
+      if (res.ok) backendQuizzes = await res.json();
+    } catch (err) { console.warn('Backend fetch failed', err); }
+
+    let localQuizzes = [];
+    try { localQuizzes = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]'); } catch(_) {}
+
+    const allQuizzes = [...backendQuizzes];
+    localQuizzes.forEach(lq => {
+      const lqDate = new Date(lq.date).getTime();
+      const duplicate = backendQuizzes.find(bq => bq.source_name === lq.file && bq.score === lq.score && bq.total === lq.count && Math.abs(new Date(bq.taken_at).getTime() - lqDate) < 60000);
+      if (!duplicate) {
+        allQuizzes.push({
+          isLocal: true,
+          source_name: lq.file,
+          score: lq.score,
+          total: lq.count,
+          taken_at: lq.date,
+          localIdx: localQuizzes.indexOf(lq)
+        });
+      }
+    });
+
+    allQuizzes.sort((a, b) => new Date(b.taken_at).getTime() - new Date(a.taken_at).getTime());
+
+    if (!allQuizzes.length) {
+      listQuiz.innerHTML = '<div class="fs-history-empty">No quiz attempts yet.</div>';
+      return;
+    }
+
+    listQuiz.innerHTML = allQuizzes.map(item => {
+      const pct = item.total ? Math.round((item.score / item.total) * 100) : 0;
+      const delAction = item.isLocal ? `window.fsDeleteLocalQuiz(${item.localIdx})` : `window.fsDeleteQuiz(${item.id})`;
+      return `
+        <div class="fs-history-item">
+          <div class="fs-history-item-main">
+            <div class="fs-history-title">❓ ${fsEscapeHTML(item.source_name || 'Document')}</div>
+            <div class="fs-history-meta">${new Date(item.taken_at).toLocaleDateString()} · Score: ${item.score}/${item.total} (${pct}%) ${item.isLocal ? ' (Offline)' : ''}</div>
+          </div>
+          <button class="fs-outline-btn danger compact" onclick="${delAction}">Delete</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.fsDeleteSummary = async function(id) {
+    if (!confirm('Delete this summary?')) return;
+    try {
+      const res = await (window.authFetch ? window.authFetch(`/api/summary-history/${id}`, { method: 'DELETE' }) : fetch(`/api/summary-history/${id}`, { method: 'DELETE' }));
+      if (!res.ok) throw new Error('Delete failed');
+      loadSummaryHistory();
+    } catch (err) { alert(err.message); }
+  };
+
+  window.fsDeleteQuiz = async function(id) {
+    if (!confirm('Delete this quiz record?')) return;
+    try {
+      const res = await (window.authFetch ? window.authFetch(`/api/quiz-history/${id}`, { method: 'DELETE' }) : fetch(`/api/quiz-history/${id}`, { method: 'DELETE' }));
+      if (!res.ok) throw new Error('Delete failed');
+      loadQuizHistory();
+    } catch (err) { alert(err.message); }
+  };
+
+  window.fsDeleteLocalQuiz = function(idx) {
+    if (!confirm('Delete this offline quiz record?')) return;
+    try {
+      let localQuizzes = JSON.parse(localStorage.getItem('fs-quiz-history') || '[]');
+      localQuizzes.splice(idx, 1);
+      localStorage.setItem('fs-quiz-history', JSON.stringify(localQuizzes));
+      loadQuizHistory();
+    } catch(e) {}
+  };
+
+  if (tabSummaryHistory) tabSummaryHistory.addEventListener('click', () => { tabSummaryHistory.classList.add('selected'); if (tabQuizHistory) tabQuizHistory.classList.remove('selected'); if (listSummary) listSummary.style.display = 'flex'; if (listQuiz) listQuiz.style.display = 'none'; loadSummaryHistory(); });
+  if (tabQuizHistory) tabQuizHistory.addEventListener('click', () => { tabQuizHistory.classList.add('selected'); if (tabSummaryHistory) tabSummaryHistory.classList.remove('selected'); if (listQuiz) listQuiz.style.display = 'flex'; if (listSummary) listSummary.style.display = 'none'; loadQuizHistory(); });
+
+  window.fileSummarizerModule.refreshHistory = function() {
+    if (tabQuizHistory && tabQuizHistory.classList.contains('selected')) loadQuizHistory();
+    else loadSummaryHistory();
+  };
+  window.fileSummarizerModule.refreshHistory();
 })();

@@ -14,11 +14,38 @@ window.reviewersModule = {
   pendingDeleteTimeouts: {},
   pageSize: 20,
   currentPage: 1,
+  eventsBound: false,
 
   init: function() {
     this.sortBy = localStorage.getItem('reviewers-sort-by') || 'trending';
     this.currentPage = 1;
+    this.bindEvents();
     this.render();
+  },
+
+  bindEvents: function() {
+    if (this.eventsBound) return;
+    this.eventsBound = true;
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const page = document.getElementById('page-reviewers');
+      const overlay = document.getElementById('reviewer-viewer-modal');
+      
+      if (!(page && page.contains(btn)) && !(overlay && overlay.contains(btn))) return;
+
+      const action = btn.getAttribute('data-action');
+      const id = btn.getAttribute('data-id');
+
+      if (action === 'vote') this.toggleVote(id, e);
+      else if (action === 'view') this.openViewer(id);
+      else if (action === 'delete') this.deleteReviewer(id, e);
+      else if (action === 'close-viewer') this.closeViewer();
+      else if (action === 'save-note') this.saveToNotepad(id, e);
+      else if (action === 'load-more') this.loadMore();
+    });
   },
 
   isAdmin: function() {
@@ -235,7 +262,7 @@ window.reviewersModule = {
           ${isContributor ? '<div class="reviewer-card-contributor-badge">⭐ Contributor</div>' : '<div></div>'}
           <div class="reviewer-card-badge">👍 ${voteCount}</div>
         </div>
-        <div class="reviewer-card-content" onclick="window.reviewersModule.openViewer('${rev.id}')">
+        <div class="reviewer-card-content" data-action="view" data-id="${safeId}">
           <div class="reviewer-card-title">${this.esc(rev.title)}</div>
           <div class="reviewer-card-preview">${this.esc(preview)}${rev.summary_content?.length > 150 ? '…' : ''}</div>
           <div class="reviewer-card-footer">
@@ -244,15 +271,15 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
-          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote('${safeId}', event)">👍</button>
-          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${safeId}')">View</button>
-          ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer('${safeId}', event)">Delete</button>` : ''}
+          <button class="reviewer-vote-btn ${voteClass}" data-action="vote" data-id="${safeId}">👍</button>
+          <button class="reviewer-view-btn" data-action="view" data-id="${safeId}">View</button>
+          ${canDel ? `<button class="reviewer-delete-btn" data-action="delete" data-id="${safeId}">Delete</button>` : ''}
         </div>
       </div>`;
     }).join('');
 
     if (this.displayed.length < this.filtered.length) {
-      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" onclick="window.reviewersModule.loadMore()">Load More</button></div>`;
+      html += `<div class="reviewer-load-more"><button class="reviewer-load-more-btn" data-action="load-more">Load More</button></div>`;
     }
 
     grid.innerHTML = html;
@@ -286,7 +313,7 @@ window.reviewersModule = {
     const safeIdStr = String(rev.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     overlay.innerHTML = `
       <div class="reviewer-viewer-paper">
-        <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
+        <button class="reviewer-close-btn" data-action="close-viewer">×</button>
         <div class="reviewer-paper-title">${this.esc(rev.title)}</div>
         <div class="reviewer-paper-meta">
           Shared by <strong>${this.esc(rev.contributor_name)}</strong>
@@ -295,7 +322,7 @@ window.reviewersModule = {
         </div>
         <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
-          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad('${safeIdStr}', event)">📝 Save to My Notes</button>
+          <button class="reviewer-save-note-btn" data-action="save-note" data-id="${safeIdStr}">📝 Save to My Notes</button>
         </div>
       </div>
     `;

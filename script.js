@@ -7227,6 +7227,8 @@ async function shareAnnouncementPayload(payload) {
 }
 
 window.shareCalendarNote = function(dateKey, displayDate, text) {
+  const modal = document.getElementById('view-note-modal');
+  if (modal) modal.remove();
   shareAnnouncementPayload({
     title: `Calendar: ${displayDate}`,
     body: text,

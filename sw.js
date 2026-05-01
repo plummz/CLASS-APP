@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.6.6-share-fixes';
+const CACHE_VERSION = 'v1.6.8-bug-fixes';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=117',
-  '/style.css?v=47',
+  '/index.html?v=118',
+  '/style.css?v=48',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -44,9 +44,9 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/file-summarizer/file-summarizer.js?v=15',
-  '/script.js?v=119',
-  '/features/reviewers/reviewers.js?v=16',
+  '/features/file-summarizer/file-summarizer.js?v=16',
+  '/script.js?v=120',
+  '/features/reviewers/reviewers.js?v=17',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',
   '/features/personal-tools/alarm-clock.css?v=2',

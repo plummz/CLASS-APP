@@ -150,6 +150,8 @@ function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
+// TODO (Phase 3): Migrate token storage from localStorage to secure HttpOnly cookies
+// to prevent token theft via XSS.
 function setServerAuthToken(token) {
   serverAuthToken = token || '';
   if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
@@ -377,8 +379,21 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.4';
+const APP_VERSION = '1.6.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.5',
+    date: 'May 1, 2026',
+    title: 'Startup Recovery & XSS Security',
+    summary: 'Fixed a syntax error that caused the app to freeze permanently on the BSIT splash screen. Hardened rendering to prevent XSS and adjusted mobile UI layering.',
+    changes: [
+      'Bug Fix: Restored missing syntax in the boot sequence so the app correctly proceeds past the splash screen.',
+      'Bug Fix: Lowered the chat bubble z-index and made the live clock click-through so they do not block buttons on mobile.',
+      'Security: Hardened Music Hub search results against cross-site scripting (XSS).',
+      'Security: Applied 2MB payload limits to the backend JSON parser to prevent crashes.',
+      'Diagnostics: Added server logs to warn about ephemeral filesystem usage on Render.'
+    ]
+  },
   {
     version: '1.6.4',
     date: 'May 1, 2026',
@@ -3172,10 +3187,10 @@ window.searchMusicFiles = async function() {
             <div class="music-search-item">
               <span style="font-size:24px;">${isAudio ? '🎵' : '📄'}</span>
               <div class="music-search-item-info">
-                <div class="music-search-item-name">${f.name}</div>
-                <div class="music-search-item-meta">📂 ${folderPath} · by ${f.uploader}</div>
+                <div class="music-search-item-name">${escapeHTML(f.name)}</div>
+                <div class="music-search-item-meta">📂 ${escapeHTML(folderPath)} · by ${escapeHTML(f.uploader)}</div>
               </div>
-              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}',false,'${escapeJS(f.folder_id)}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${f.url}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
+              ${isAudio ? `<button onclick="window.playOrOpenFileAPI('${safeUrl}','${safeName}',false,'${escapeJS(f.folder_id)}')" style="background:#00ff88;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;">▶ Play</button>` : `<a href="${escapeHTML(f.url)}" target="_blank" style="background:#00d4ff;color:#000;border:none;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;text-decoration:none;">Open</a>`}
             </div>`;
         }).join('');
     } catch (e) {
@@ -3246,7 +3261,7 @@ function renderAppState() {
   document.querySelectorAll('.page').forEach((page) => {
     page.style.visibility = showShell ? '' : 'hidden';
     if (!showShell) page.style.pointerEvents = 'none';
-    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
+    else page.style.pointerEvents = page.classList.contains('active') ? 'auto' : 'none';
   });
 }
 
@@ -5191,6 +5206,7 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
    INITIALIZATION
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
+  try {
   renderAppState();
   bindAuthPortalHandlers();
   const splashReady = waitForSplashDismissal();

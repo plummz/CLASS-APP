@@ -1083,7 +1083,7 @@ body {
 }
 #overlay.active {
   opacity: 1;
-  pointer-events: all;
+  pointer-events: auto;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -1104,7 +1104,7 @@ body {
 }
 .page.active {
   opacity: 1;
-  pointer-events: all;
+  pointer-events: auto;
   transform: translateY(0);
 }
  

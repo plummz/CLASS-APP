@@ -377,8 +377,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.3';
+const APP_VERSION = '1.6.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.4',
+    date: 'May 1, 2026',
+    title: 'Global Button & Interaction Fix',
+    summary: 'Fixed a critical issue where all buttons became unclickable after logging in due to an invalid CSS pointer-events property on Safari/iOS devices.',
+    changes: [
+      'Bug Fix: Replaced invalid "pointer-events: all" with "pointer-events: auto" to restore touch and click interactions across all pages.',
+      'Diagnostics: Added internal routing and click event logs to verify button responsiveness.',
+      'Routing: Verified Personal Tools (Alarm Clock, Notepad, Calculator) correctly route to their respective pages.',
+      'Safety: Added inline pointer-events overrides to ensure pages become clickable even if the stylesheet fails to load.'
+    ]
+  },
   {
     version: '1.6.3',
     date: 'May 1, 2026',
@@ -3473,6 +3485,7 @@ async function requestServerSession(endpoint, payload) {
 }
 
 async function finalizeLogin(profile, serverSession) {
+  console.log('[AUTH] login complete, finalizing session...');
   currentUser = toSessionUser(profile, serverSession);
   isAdmin = Boolean(serverSession.isAdmin);
   syncAuthState();
@@ -4465,6 +4478,8 @@ window.goToPage = function(targetPage) {
     'tools': 'personal-tools'
   };
   const pageName = aliases[targetPage] || targetPage;
+
+  console.log(`[ROUTER] Navigating to page: ${pageName}`);
   if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
   if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
 
@@ -4505,7 +4520,10 @@ window.goToPage = function(targetPage) {
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
-  if(oldPage) oldPage.classList.remove('active');
+  if(oldPage) {
+    oldPage.classList.remove('active');
+    oldPage.style.pointerEvents = '';
+  }
   if (old) {
     document.getElementById(old.bg)?.classList.remove('active');
     document.getElementById(old.particles)?.classList.remove('active');
@@ -4526,7 +4544,10 @@ window.goToPage = function(targetPage) {
   }
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
-  if(newPage) newPage.classList.add('active');
+  if(newPage) {
+    newPage.classList.add('active');
+    newPage.style.pointerEvents = 'auto';
+  }
 
   applyPageBackground(pageName);
 
@@ -5418,6 +5439,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     overlay.addEventListener('click', window.closeMenu);
   }
   document.addEventListener('click', (event) => {
+    console.log('[BUTTON CLICK] Target:', event.target.tagName, event.target.className);
     // Allow any element with data-page to route outside of sidebar
     const pageTrigger = event.target.closest('[data-page]');
     if (pageTrigger && !pageTrigger.closest('#sidebar')) {

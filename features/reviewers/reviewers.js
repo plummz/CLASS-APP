@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// PUBLIC REVIEWERS - Module (Upvoting + Trending) v1.5.44 (v10)
+// PUBLIC REVIEWERS - Module (Upvoting + Trending) v1.6.6
 // ═══════════════════════════════════════════════════════════
 
 window.reviewersModule = {
@@ -244,8 +244,8 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewer-card-actions">
-          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote(${rev.id}, event)">👍</button>
-          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${rev.id}')">View</button>
+          <button class="reviewer-vote-btn ${voteClass}" onclick="window.reviewersModule.toggleVote('${safeId}', event)">👍</button>
+          <button class="reviewer-view-btn" onclick="window.reviewersModule.openViewer('${safeId}')">View</button>
           ${canDel ? `<button class="reviewer-delete-btn" onclick="window.reviewersModule.deleteReviewer('${safeId}', event)">Delete</button>` : ''}
         </div>
       </div>`;
@@ -283,7 +283,7 @@ window.reviewersModule = {
     }
 
     const dateStr = new Date(rev.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const safeId = String(rev.id).replace(/[^0-9]/g, '');
+    const safeIdStr = String(rev.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     overlay.innerHTML = `
       <div class="reviewer-viewer-paper">
         <button class="reviewer-close-btn" onclick="window.reviewersModule.closeViewer()">×</button>
@@ -295,7 +295,7 @@ window.reviewersModule = {
         </div>
         <div class="reviewer-paper-content">${this.smartBold(rev.summary_content)}</div>
         <div class="reviewer-viewer-actions">
-          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad(${safeId}, event)">📝 Save to My Notes</button>
+          <button class="reviewer-save-note-btn" onclick="window.reviewersModule.saveToNotepad('${safeIdStr}', event)">📝 Save to My Notes</button>
         </div>
       </div>
     `;
@@ -352,9 +352,19 @@ window.reviewersModule = {
         const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
         if (!client) return;
 
-        const { error } = await client.from('reviewers').delete().eq('id', rev.id);
-        if (error) {
-          console.error('[Reviewers] Delete error:', error);
+        const response = await (window.authFetch ? window.authFetch(`/api/reviewers/${rev.id}`, { method: 'DELETE' }) : fetch(`/api/reviewers/${rev.id}`, { method: 'DELETE' }));
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          let errorMsg = 'Delete failed.';
+          if (contentType.includes('application/json')) {
+            const data = await response.json().catch(() => ({}));
+            errorMsg = data.error || errorMsg;
+          } else {
+            const text = await response.text();
+            console.error(`Expected JSON but received ${contentType} from /api/reviewers. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+            errorMsg = 'Unable to complete this action. Please try again.';
+          }
+          console.error('[Reviewers] Delete error:', errorMsg);
           this.restoreReviewer(rev);
           if (window.showToast) {
             showToast(`Could not delete '${title}'.`, 'error');

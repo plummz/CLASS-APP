@@ -2300,6 +2300,83 @@ app.delete('/api/messages/:id', requireAuth, wrap(async (req, res) => {
   res.json({ success: true });
 }));
 
+// -- Shared Boards API (Announcements, AI Outputs, Reviewers) ----------------
+app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
+  const { title, body, schedule, source_type, date_key, date_label } = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const inserted = await supabaseQuery('shared_announcements', 'POST', [{ 
+      sharer: req.user.username, 
+      title: title || '', 
+      body: body || '', 
+      text: body || '',
+      schedule: schedule || null,
+      source_type: source_type || null,
+      date_key: date_key || null,
+      date_label: date_label || null
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/shared-announcements/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('shared_announcements', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('shared_announcements', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/shared-ai-outputs', requireAuth, wrap(async (req, res) => {
+  const { provider, prompt, output } = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const inserted = await supabaseQuery('shared_ai_outputs', 'POST', [{ 
+      sharer: req.user.username, 
+      provider: provider || 'AI', 
+      prompt: prompt || '', 
+      output: output || '' 
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/shared-ai-outputs/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('shared_ai_outputs', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('shared_ai_outputs', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/reviewers', requireAuth, wrap(async (req, res) => {
+  const record = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    record.user_id = req.user.username; // Enforce user identity
+    if (!record.contributor_name) record.contributor_name = req.user.username;
+    const inserted = await supabaseQuery('reviewers', 'POST', [record]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/reviewers/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('reviewers', 'GET', null, { id: `eq.${req.params.id}`, select: 'user_id' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].user_id !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('reviewers', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
 // -- Calendar Notes API --------------------------------------------------
 app.get('/api/calendar-notes', requireAuth, wrap(async (req, res) => {
   if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {

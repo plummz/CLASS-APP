@@ -379,8 +379,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.5';
+const APP_VERSION = '1.6.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.6',
+    date: 'May 1, 2026',
+    title: 'Share Actions & Button Reliability',
+    summary: 'Fixed backend routes and frontend response handling for all shared boards. Reviewer buttons now function correctly. Fixed "Unexpected token" errors.',
+    changes: [
+      'Bug Fix: AI Assistant and Calendar now correctly share to public boards using dedicated backend routes.',
+      'Bug Fix: File Summarizer and Notepad sharing to Reviewers now uses backend routes instead of direct client queries.',
+      'Bug Fix: Shared Reviewers action buttons (Like, View, Delete) no longer break due to UUID syntax formatting errors.',
+      'Security: Implemented safe JSON response checks across all authenticated fetches to show friendly errors instead of raw parse failures.',
+    ]
+  },
   {
     version: '1.6.5',
     date: 'May 1, 2026',
@@ -7083,9 +7095,16 @@ window.deleteSharedAIOutput = function(id) {
   customConfirm('Delete this shared OUTPUT-AI post for everyone?', async function() {
     try {
       const response = await authFetch(`/api/shared-ai-outputs/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete');
+      if (!response.ok) { 
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await response.json(); 
+          throw new Error(data.error || 'Failed to delete'); 
+        } else {
+          const text = await response.text();
+          console.error(`Expected JSON but received ${contentType} from /api/shared-ai-outputs. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+          throw new Error('Unable to complete this action. Please try again.');
+        }
       }
       sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
       renderSharedAIOutputs();
@@ -7168,8 +7187,15 @@ window.deleteSharedAnnouncement = async function(id) {
   try {
     const response = await authFetch(`/api/shared-announcements/${id}`, { method: 'DELETE' });
     if (!response.ok) {
-       const data = await response.json();
-       throw new Error(data.error || 'Failed to delete announcement.');
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete announcement.');
+      } else {
+        const text = await response.text();
+        console.error(`Expected JSON but received ${contentType} from /api/shared-announcements. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+        throw new Error('Unable to complete this action. Please try again.');
+      }
     }
     showToast('Announcement deleted.');
     fetchSharedAnnouncements();
@@ -7185,8 +7211,15 @@ async function shareAnnouncementPayload(payload) {
       body: JSON.stringify(payload)
     });
     if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to share');
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to share');
+      } else {
+        const text = await response.text();
+        console.error(`Expected JSON but received ${contentType} from /api/shared-announcements. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+        throw new Error('Unable to share right now. Please try again or sign in again.');
+      }
     }
     showToast('Shared to ANNOUNCEMENT.');
     fetchSharedAnnouncements();
@@ -7430,7 +7463,17 @@ window.shareAIMessage = async function(provider, index) {
         output,
       })
     });
-    if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Failed to share'); }
+    if (!response.ok) { 
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json(); 
+        throw new Error(data.error || 'Failed to share'); 
+      } else {
+        const text = await response.text();
+        console.error(`Expected JSON but received ${contentType} from /api/shared-ai-outputs. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+        throw new Error('Unable to share right now. Please try again or sign in again.');
+      }
+    }
     showToast('Shared to OUTPUT-AI.');
     fetchSharedAIOutputs();
   } catch (error) { customAlert(error.message); }

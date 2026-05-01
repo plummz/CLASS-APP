@@ -1,4 +1,4 @@
-// File Summarizer — v1.5.34
+// File Summarizer — v1.6.6
 (function () {
   // ── DOM refs ───────────────────────────────────────────────
   const fileInput   = document.getElementById('fs-file-input');
@@ -729,11 +729,18 @@
         }));
         
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          if (data.error && data.error.includes('42P01')) {
-            setError('Reviewers table missing — run migration 010_reviewers_table.sql.');
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await response.json().catch(() => ({}));
+            if (data.error && data.error.includes('42P01')) {
+              setError('Reviewers table missing — run migration 010_reviewers_table.sql.');
+            } else {
+              throw new Error(data.error || 'Share failed');
+            }
           } else {
-            throw new Error(data.error || 'Share failed');
+            const text = await response.text();
+            console.error(`Expected JSON but received ${contentType} from /api/reviewers. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+            throw new Error('Unable to share right now. Please try again or sign in again.');
           }
           return;
         }

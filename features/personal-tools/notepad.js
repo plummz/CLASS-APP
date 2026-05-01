@@ -603,14 +603,30 @@ window.notepadModule = {
     console.log('[Notepad] Sharing note:', record.title, '| user_id:', record.user_id);
 
     try {
-      const { error } = await client.from('reviewers').insert([record]);
+      const response = await (window.authFetch ? window.authFetch('/api/reviewers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      }) : fetch('/api/reviewers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      }));
 
-      if (error) {
-        console.error('[Notepad] Share error:', error.code, error.message);
-        if (error.code === '42P01') {
-          customAlert('Reviewers table not found. Ask your admin to run the database migration (010_reviewers_table.sql).');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('[Notepad] Share error:', errorData);
+          if (errorData.error && errorData.error.includes('42P01')) {
+            customAlert('Reviewers table not found. Ask your admin to run the database migration (010_reviewers_table.sql).');
+          } else {
+            customAlert('Could not share: ' + (errorData.error || 'Unknown error'));
+          }
         } else {
-          customAlert('Could not share: ' + (error.message || 'Unknown error'));
+          const text = await response.text();
+          console.error(`Expected JSON but received ${contentType} from /api/reviewers. Status: ${response.status}. Preview: ${text.slice(0, 100)}`);
+          customAlert('Unable to share right now. Please try again or sign in again.');
         }
       } else {
         console.log('[Notepad] Note shared successfully:', record.title);

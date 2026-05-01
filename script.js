@@ -377,8 +377,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.2';
+const APP_VERSION = '1.6.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.3',
+    date: 'May 1, 2026',
+    title: 'Startup Reliability Fix',
+    summary: 'Fixed a critical bug that caused the app to freeze on the BSIT splash screen due to unhandled initialization timeouts.',
+    changes: [
+      'Bug Fix: Added strict timeouts to Supabase initialization so offline or slow connections do not block the app from loading.',
+      'Bug Fix: Added an absolute safety net to forcibly remove the splash screen if normal boot sequence hangs.',
+      'UX: Added a friendly error screen with a "Reload App" button in case of total boot failure instead of a blank screen.',
+      'Developer Tool: Added explicit [BOOT] console logs to track startup progress.'
+    ]
+  },
   {
     version: '1.6.2',
     date: 'May 1, 2026',
@@ -4956,6 +4968,7 @@ function renderAppOpenRows(rows = []) {
 }
 
 async function fetchSupabaseAppOpenRows() {
+  if (!sb) throw new Error('Supabase unavailable');
   const { data, error } = await sb.rpc('class_app_app_open_tally');
   if (error) throw error;
   return normalizeAppOpenRows(data || []);
@@ -4977,6 +4990,7 @@ window.openAppOpenTallyModal = async function() {
 };
 
 async function fetchContributionTally() {
+  if (!sb) throw new Error('Supabase unavailable');
   const { data, error } = await sb.rpc('class_app_contribution_tally');
   if (!error && Array.isArray(data)) {
     return data.map((row) => ({
@@ -5437,27 +5451,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  if (currentUser) {
-    try {
-      if (isAdmin) revealAdminNav();
-      await establishSession();
-      await recordAppOpen();
-    } catch (error) {
-      console.error('[auth] Session restore failed:', error);
-      stopLastSeenHeartbeat();
-      destroyAppPresence();
-      currentUser = null;
-      isAdmin = false;
-      syncAuthState();
-      saveSession();
-      setAuthError('Your saved session expired or failed to load. Please sign in again.');
+    console.log('[BOOT] Restoring user session...');
+    if (currentUser) {
+      try {
+        if (isAdmin) revealAdminNav();
+        await Promise.race([
+          establishSession(),
+          new Promise((_, r) => setTimeout(() => r(new Error('establishSession timed out')), 15000))
+        ]);
+        await recordAppOpen();
+        console.log('[BOOT] Session restored successfully.');
+      } catch (error) {
+        console.error('[auth] Session restore failed:', error);
+        stopLastSeenHeartbeat();
+        destroyAppPresence();
+        currentUser = null;
+        isAdmin = false;
+        syncAuthState();
+        saveSession();
+        setAuthError('Your saved session expired or failed to load. Please sign in again.');
+        window.refreshAppOpenCount();
+      }
+    } else {
       window.refreshAppOpenCount();
     }
-  } else {
-    window.refreshAppOpenCount();
+    console.log('[BOOT] Waiting for splash screen dismissal...');
+    await splashReady;
+    console.log('[BOOT] Boot sequence complete.');
+  } catch (error) {
+    console.error('[BOOT ERROR] Critical failure during startup:', error);
+    setAuthError('App failed to initialize cleanly. Please refresh the page.');
+    const errorOverlay = document.createElement('div');
+    errorOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(10,10,30,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;padding:20px;text-align:center;';
+    errorOverlay.innerHTML = '<h2 style="color:#ff6b6b;margin-bottom:10px;">Startup Error</h2><p style="opacity:0.8;margin-bottom:20px;max-width:400px;">The application failed to load correctly. Check your connection and try again.</p><code style="background:rgba(0,0,0,0.5);padding:10px;border-radius:8px;margin-bottom:20px;max-width:100%;overflow-wrap:break-word;color:#ff8fa0;font-size:12px;">' + (error.message || 'Unknown error') + '</code><button onclick="window.location.reload()" style="padding:10px 20px;background:#00d4ff;color:black;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">Reload App</button>';
+    document.body.appendChild(errorOverlay);
+  } finally {
+    console.log('[BOOT] Revealing app shell...');
+    setInitializing(false);
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+      console.log('[BOOT] Forcibly removing stuck splash screen...');
+      splash.classList.add('splash-out');
+      setTimeout(() => splash.remove(), 650);
+    }
   }
-  await splashReady;
-  setInitializing(false);
 
   // Push chat input above the soft keyboard on mobile
   if ('visualViewport' in window) {
@@ -5602,6 +5639,7 @@ if ('serviceWorker' in navigator) {
 async function fetchAppUpdates() {
   refreshUpdateIndicator();
   if (localStorage.getItem('seenSoftwareVersion') !== APP_VERSION) showSoftwareUpdateBanner();
+  if (!sb) return;
   const { data, error } = await sb.from('app_updates')
     .select('*')
     .eq('active', true)

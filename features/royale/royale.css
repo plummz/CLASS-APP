@@ -1,0 +1,758 @@
+/* ============================================================
+   BATTLE ROYALE — Full-screen landscape game styles
+   ============================================================ */
+
+/* Page container: fixed full-screen, override .page padding */
+#page-royale {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important;
+  right: 0 !important; bottom: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 9995;
+  overflow: hidden !important;
+  background: #000;
+  display: none;
+}
+#page-royale.active {
+  display: block;
+}
+
+/* Wrapper fills entire viewport */
+.rl-wrapper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #1a2e0a;
+}
+
+body.rl-force-landscape-shell #page-royale .rl-wrapper {
+  width: 100vh;
+  height: 100vw;
+  inset: auto;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  transform: rotate(90deg) translateY(-100%);
+}
+
+/* Main canvas — always fills the wrapper exactly */
+#rl-canvas {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ── Fire button (bottom-right) ─────────────────────────── */
+#rl-fire-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 60;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(220,30,30,0.85);
+  border: 3px solid rgba(255,120,120,0.7);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(200,0,0,0.6);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.1s, transform 0.08s;
+}
+#rl-fire-btn:active,
+#rl-fire-btn.pressed {
+  background: rgba(255,60,60,0.95);
+  transform: scale(0.93);
+  box-shadow: 0 0 22px rgba(255,80,0,0.8);
+}
+
+/* ── Reload button (above fire) ──────────────────────────── */
+#rl-reload-btn {
+  position: absolute;
+  bottom: 116px;
+  right: 30px;
+  z-index: 60;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(40,40,60,0.82);
+  border: 2px solid rgba(180,180,255,0.45);
+  color: #cdf;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#rl-reload-btn:active {
+  background: rgba(80,80,140,0.85);
+  transform: scale(0.95);
+}
+
+/* ── Throw button (above reload) ────────────────────────── */
+#rl-throw-btn {
+  position: absolute;
+  bottom: 188px;
+  right: 30px;
+  z-index: 60;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(60,40,10,0.82);
+  border: 2px solid rgba(255,200,80,0.55);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#rl-throw-btn:active {
+  background: rgba(120,80,10,0.9);
+  transform: scale(0.93);
+}
+
+/* ── Back button ─────────────────────────────────────────── */
+.rl-back-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  min-width: 44px;
+  width: auto;
+  height: 44px;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(0,0,0,0.65);
+  border: 2px solid rgba(255,255,255,0.4);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.rl-back-btn:hover,
+.rl-back-btn:active {
+  background: rgba(200,0,0,0.75);
+}
+
+/* ── Virtual Joystick ────────────────────────────────────── */
+.rl-joy-base,
+.rl-joy-knob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: none;
+  z-index: 50;
+}
+
+.rl-joy-base {
+  width: 100px;
+  height: 100px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.35);
+}
+
+.rl-joy-knob {
+  width: 46px;
+  height: 46px;
+  background: rgba(255,255,255,0.4);
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+/* ── Aim Joystick (right side) ───────────────────────────── */
+/* ── Shoot button (bottom-right) ─────────────────────────── */
+/* Prevent the page from scrolling under the game */
+body.rl-active {
+  overflow: hidden;
+}
+
+/* ── Orientation warning (shown if stuck in portrait) ───── */
+.rl-rotate-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+}
+.rl-rotate-prompt.visible {
+  display: flex;
+}
+body.rl-force-landscape-shell .rl-rotate-prompt {
+  display: none !important;
+}
+.rl-rotate-prompt .rl-rotate-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: rl-spin 1.5s ease-in-out infinite alternate;
+}
+@keyframes rl-spin {
+  from { transform: rotate(-30deg); }
+  to   { transform: rotate(30deg); }
+}
+.rl-rotate-prompt p {
+  font-size: 18px;
+  opacity: 0.85;
+  max-width: 260px;
+}
+
+body.rl-portrait-blocked .controls-right,
+body.rl-portrait-blocked .rl-joy-base,
+body.rl-portrait-blocked .rl-joy-knob,
+body.rl-portrait-blocked .rl-end-actions,
+body.rl-portrait-blocked .rl-switch-weapon-btn,
+body.rl-portrait-blocked .rl-heal-btn,
+body.rl-portrait-blocked .rl-early-drop-btn {
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+/* ── Loading overlay ─────────────────────────────────────── */
+.rl-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  background: #0d1a05;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8fce50;
+  font-family: 'Rajdhani', monospace;
+  font-size: 22px;
+  letter-spacing: 2px;
+  gap: 20px;
+  transition: opacity 0.6s;
+}
+.rl-loading.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.rl-loading .rl-loading-bar-track {
+  width: 220px;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rl-loading .rl-loading-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4aaa20, #8fce50);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* End-screen controls */
+.rl-end-actions {
+  position: absolute;
+  left: 50%;
+  bottom: max(28px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 360;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.rl-end-actions.hidden {
+  display: none;
+}
+.rl-end-actions button {
+  min-width: 138px;
+  height: 48px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.42);
+  color: #fff;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 0 28px rgba(0,0,0,0.35);
+}
+#rl-play-again-btn {
+  background: linear-gradient(135deg, rgba(34,190,92,0.96), rgba(15,118,58,0.94));
+}
+#rl-quit-btn {
+  background: linear-gradient(135deg, rgba(214,52,68,0.96), rgba(128,22,32,0.94));
+}
+.rl-end-actions button:active {
+  transform: scale(0.96);
+}
+.rl-wrapper.end-active .controls-right,
+.rl-wrapper.end-active #rl-joy-base,
+.rl-wrapper.end-active #rl-joy-knob,
+.rl-wrapper.end-active .rl-switch-weapon-btn,
+.rl-wrapper.end-active .rl-heal-btn,
+.rl-wrapper.end-active .rl-early-drop-btn {
+  opacity: 0.28;
+  pointer-events: none;
+}
+#rl-joy-base {
+  width: 112px;
+  height: 112px;
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.34);
+  box-shadow: inset 0 0 22px rgba(255,255,255,0.05), 0 10px 34px rgba(0,0,0,0.28);
+}
+#rl-joy-knob {
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.45);
+  border-color: rgba(255,255,255,0.72);
+  box-shadow: 0 0 12px rgba(0,0,0,0.55);
+}
+
+.rl-switch-weapon-btn {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 92;
+  min-width: 112px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.28);
+  background: rgba(7,12,24,0.76);
+  color: rgba(255,255,255,0.92);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.32), inset 0 0 18px rgba(0,212,255,0.08);
+  font: 900 12px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.rl-switch-weapon-btn:active,
+.rl-switch-weapon-btn.pressed {
+  transform: translateY(-50%) scale(0.95);
+  border-color: rgba(0,212,255,0.75);
+  box-shadow: 0 0 24px rgba(0,212,255,0.24), 0 10px 28px rgba(0,0,0,0.34);
+}
+
+.rl-switch-weapon-btn.disabled {
+  opacity: 0.42;
+  filter: grayscale(0.4);
+}
+
+.rl-heal-btn,
+.rl-early-drop-btn {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  transform: translateY(-50%);
+  z-index: 92;
+  min-width: 112px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(0,212,255,0.46);
+  border-radius: 14px;
+  background: rgba(7,12,24,0.78);
+  color: rgba(255,255,255,0.94);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12);
+  touch-action: manipulation;
+  transition: transform 0.08s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, filter 0.12s ease;
+}
+
+.rl-heal-btn {
+  top: calc(50% + 52px);
+}
+
+.rl-early-drop-btn {
+  top: calc(50% - 52px);
+  border-color: rgba(255,205,80,0.58);
+  color: #ffe9a6;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.32), 0 0 18px rgba(255,195,50,0.18);
+}
+
+.rl-heal-btn.hidden,
+.rl-early-drop-btn.hidden {
+  display: none !important;
+}
+
+.rl-heal-btn:active,
+.rl-heal-btn.pressed,
+.rl-early-drop-btn:active,
+.rl-early-drop-btn.pressed {
+  transform: translateY(-50%) scale(0.95);
+  border-color: rgba(0,212,255,0.75);
+  box-shadow: 0 0 24px rgba(0,212,255,0.24), 0 10px 28px rgba(0,0,0,0.34);
+}
+
+.rl-heal-btn.disabled {
+  opacity: 0.42;
+  filter: grayscale(0.45);
+}
+/* Strict landscape HUD layout override */
+.controls-right {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 90;
+  display: grid;
+  grid-template-columns: 58px 58px 88px;
+  grid-template-rows: 58px 88px;
+  gap: 10px;
+  align-items: end;
+  justify-items: end;
+  pointer-events: auto;
+  width: auto;
+  max-width: calc(100vw - 160px);
+  touch-action: none;
+}
+
+.controls-right button {
+  position: static !important;
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 999px !important;
+  border: 2px solid rgba(255,255,255,0.28) !important;
+  background: rgba(7,12,24,0.78) !important;
+  color: rgba(255,255,255,0.92) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 10px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28), inset 0 0 16px rgba(255,255,255,0.04);
+  transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.controls-right .fire-button {
+  grid-column: 3;
+  grid-row: 2;
+  width: 88px !important;
+  height: 88px !important;
+  background: rgba(220,30,30,0.88) !important;
+  border-color: rgba(255,255,255,0.55) !important;
+  font-size: 16px;
+  box-shadow: 0 0 20px rgba(255,80,0,0.42), 0 12px 34px rgba(0,0,0,0.34);
+}
+
+#rl-reload-btn {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#rl-crouch-btn {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#rl-jump-btn {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#rl-throw-btn {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.controls-right button:active,
+.controls-right button.pressed {
+  transform: scale(0.93);
+  background: rgba(0,212,255,0.2) !important;
+  box-shadow: 0 0 24px rgba(0,212,255,0.22), 0 0 26px rgba(255,80,0,0.26);
+}
+
+.controls-right .fire-button:active,
+.controls-right .fire-button.pressed {
+  background: rgba(255,60,60,0.96) !important;
+  box-shadow: 0 0 24px rgba(255,80,0,0.78);
+}
+
+/* === Weapon Inventory Panel (#rl-weapon-panel) === */
+#rl-weapon-panel {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: auto;
+  animation: rl-panel-fadein 0.3s ease;
+}
+@keyframes rl-panel-fadein {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+#rl-weapon-panel button {
+  min-width: 72px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(7,12,28,0.72);
+  border: 2px solid rgba(255,255,255,0.22);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-align: center;
+  line-height: 1.3;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: transform 0.08s, border-color 0.1s, box-shadow 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#rl-weapon-panel button:active {
+  transform: scale(0.92);
+  box-shadow: 0 0 22px rgba(0,212,255,0.28);
+}
+.rl-wrapper.end-active #rl-weapon-panel,
+body.rl-portrait-blocked #rl-weapon-panel {
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* === Special Crate Countdown Badge (#rl-crate-badge) === */
+#rl-crate-badge {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  background: rgba(10,8,0,0.72);
+  border: 2px solid rgba(255,220,0,0.65);
+  border-radius: 20px;
+  padding: 4px 14px;
+  color: #ffdd55;
+  font: 800 11px/1.4 'Rajdhani', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+}
+#rl-crate-badge.visible {
+  opacity: 1;
+  animation: rl-crate-pulse 1.4s ease-in-out infinite;
+}
+#rl-crate-badge.alert {
+  border-color: rgba(255,80,0,0.85);
+  color: #ff9944;
+  animation: rl-crate-alert 0.5s ease-in-out infinite alternate;
+}
+@keyframes rl-crate-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,220,0,0.3); }
+  50%       { box-shadow: 0 0 22px rgba(255,220,0,0.65); }
+}
+@keyframes rl-crate-alert {
+  from { box-shadow: 0 0 12px rgba(255,80,0,0.5); border-color: rgba(255,80,0,0.8); }
+  to   { box-shadow: 0 0 28px rgba(255,80,0,0.9); border-color: rgba(255,200,0,0.9); }
+}
+
+#rl-crate-panel {
+  position: absolute;
+  left: 50%;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 92px));
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 176px));
+  z-index: 96;
+  padding: 12px 12px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: linear-gradient(180deg, rgba(10,18,34,0.88), rgba(6,10,22,0.82));
+  color: #f5f8ff;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  pointer-events: auto;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#rl-crate-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(12px);
+}
+
+.rl-crate-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#rl-crate-title {
+  font: 900 13px/1.2 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rl-crate-close,
+.rl-crate-open,
+.rl-crate-choice {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rl-crate-close {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.86);
+  font: 800 11px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.rl-crate-copy {
+  margin: 8px 0 10px;
+  color: rgba(236,241,255,0.84);
+  font: 700 11px/1.45 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.rl-crate-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.rl-crate-open {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,214,92,0.4);
+  background: linear-gradient(135deg, rgba(255,184,68,0.92), rgba(204,120,24,0.96));
+  color: #140d00;
+  font: 900 12px/1 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 22px rgba(255,136,0,0.24);
+  cursor: pointer;
+}
+
+.rl-crate-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.rl-crate-choice {
+  min-height: 54px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rl-crate-choice strong,
+.rl-crate-choice span {
+  display: block;
+}
+
+.rl-crate-choice strong {
+  font: 800 12px/1.2 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.rl-crate-choice span {
+  margin-top: 3px;
+  color: rgba(219,231,255,0.72);
+  font: 700 10px/1.35 'Rajdhani', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rl-crate-choice.special {
+  border-color: rgba(255,220,0,0.32);
+  background: linear-gradient(180deg, rgba(255,220,0,0.14), rgba(255,255,255,0.06));
+}
+
+.rl-crate-close:active,
+.rl-crate-open:active,
+.rl-crate-choice:active {
+  transform: scale(0.97);
+}
+
+.rl-wrapper.end-active #rl-crate-panel,
+body.rl-portrait-blocked #rl-crate-panel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 780px) {
+  #rl-crate-panel {
+    width: min(320px, calc(100vw - 136px));
+    bottom: max(100px, calc(env(safe-area-inset-bottom) + 80px));
+  }
+}
+
+/* === Blood Skin Modal (#rl-blood-skin-modal) === */
+#rl-blood-skin-modal { font-family: 'Rajdhani', monospace; }
+#rl-blood-skin-modal > div {
+  animation: rl-modal-drop 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes rl-modal-drop {
+  from { opacity: 0; transform: scale(0.88) translateY(-14px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Loading screen faster fade */
+.rl-loading { transition: opacity 0.35s ease; }

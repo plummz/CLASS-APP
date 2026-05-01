@@ -1,0 +1,585 @@
+.code-lab-shell {
+  width: min(980px, calc(100% - 20px));
+  margin: 18px auto 88px;
+  color: #e5f4ff;
+}
+
+.code-lab-header,
+.code-lab-card,
+.code-lab-editor-panel,
+.code-lab-output-panel,
+.code-lab-env-card,
+.code-lab-tabs,
+.code-lab-view-tabs {
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: linear-gradient(145deg, rgba(5, 11, 25, 0.96), rgba(15, 23, 42, 0.9));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(16px);
+}
+
+.code-lab-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.code-lab-kicker,
+.code-lab-card-top,
+.code-lab-panel-title {
+  color: #67e8f9;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.code-lab-title {
+  margin: 4px 0;
+  font-size: clamp(2rem, 10vw, 3.7rem);
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+  text-shadow: 0 0 26px rgba(34, 211, 238, 0.34);
+}
+
+.code-lab-sub {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.72);
+  max-width: 620px;
+}
+
+.code-lab-header-actions,
+.code-lab-run-actions,
+.code-lab-tabs,
+.code-lab-view-tabs {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.code-lab-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.code-lab-btn,
+.code-lab-tab,
+.code-lab-file-tab,
+.code-lab-view-tab,
+.code-lab-upload-btn {
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(99, 102, 241, 0.2));
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 10px 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.code-lab-btn:hover,
+.code-lab-tab:hover,
+.code-lab-file-tab:hover,
+.code-lab-view-tab:hover,
+.code-lab-upload-btn:hover,
+.code-lab-env-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(103, 232, 249, 0.72);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.18);
+}
+
+.code-lab-btn.ghost {
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.code-lab-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.code-lab-tab,
+.code-lab-file-tab,
+.code-lab-view-tab {
+  background: rgba(15, 23, 42, 0.82);
+  white-space: nowrap;
+}
+
+.code-lab-tab.active,
+.code-lab-file-tab.active,
+.code-lab-view-tab.active {
+  color: #08111f;
+  background: linear-gradient(135deg, #67e8f9, #a7f3d0);
+  border-color: transparent;
+}
+
+.code-lab-home {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.code-lab-env-card {
+  min-height: 270px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: left;
+  padding: 22px;
+  border-radius: 22px;
+  color: #f8fafc;
+}
+
+.code-lab-env-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.92;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.code-lab-env-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(2, 6, 23, 0.76) 58%, rgba(2, 6, 23, 0.96));
+}
+
+.code-lab-env-card:hover::before {
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+.code-lab-env-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.code-lab-env-card.web-env::before {
+  background-image: url("../images/code-web-card.svg");
+}
+
+.code-lab-env-card.java-env::before {
+  background-image: url("../images/code-java-card.svg");
+}
+
+.code-lab-env-icon {
+  width: fit-content;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(15, 23, 42, 0.72);
+  color: #67e8f9;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.code-lab-env-card strong {
+  margin-top: 14px;
+  display: block;
+  font-size: clamp(1.35rem, 4vw, 2.1rem);
+  line-height: 1;
+}
+
+.code-lab-env-card small {
+  margin-top: 9px;
+  display: block;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.95rem;
+}
+
+.code-lab-workbench {
+  display: none;
+  margin-top: 14px;
+}
+
+.code-lab-shell.is-workbench .code-lab-home {
+  display: none;
+}
+
+.code-lab-shell.is-workbench .code-lab-workbench {
+  display: block;
+}
+
+.code-lab-workbench-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.code-lab-workbench-top h2 {
+  margin: 2px 0 0;
+  color: #f8fafc;
+  line-height: 1;
+}
+
+.code-lab-tabs,
+.code-lab-view-tabs {
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 16px;
+  scrollbar-width: none;
+}
+
+.code-lab-tabs::-webkit-scrollbar,
+.code-lab-view-tabs::-webkit-scrollbar,
+.code-lab-file-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.code-lab-status-grid {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.code-lab-card {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.code-lab-card h2 {
+  margin: 8px 0 6px;
+  color: #f8fafc;
+  line-height: 1.05;
+}
+
+.code-lab-card p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.code-lab-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.code-lab-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.code-lab-badges span {
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: rgba(15, 23, 42, 0.72);
+  color: rgba(226, 232, 240, 0.82);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.code-lab-badges .solved {
+  color: #052e1b;
+  background: #86efac;
+}
+
+.code-lab-assets-panel {
+  display: none;
+}
+
+.code-lab-shell.is-view-assets .challenge-card {
+  display: none;
+}
+
+.code-lab-shell.is-view-assets .code-lab-assets-panel {
+  display: block;
+}
+
+.code-lab-upload-btn {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 12px;
+}
+
+.code-lab-upload-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.code-lab-assets {
+  display: grid;
+  gap: 10px;
+  max-height: 48vh;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.code-lab-assets p {
+  color: rgba(226,232,240,0.58);
+  font-size: 0.9rem;
+}
+
+.code-lab-asset {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  background: rgba(2, 6, 23, 0.48);
+  border-radius: 14px;
+  padding: 9px;
+}
+
+.code-lab-asset img,
+.code-lab-video-thumb {
+  width: 44px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: rgba(34, 211, 238, 0.16);
+  color: #67e8f9;
+  font-size: 0.6rem;
+  font-weight: 900;
+}
+
+.code-lab-asset strong,
+.code-lab-asset small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-lab-asset small {
+  color: rgba(226,232,240,0.5);
+}
+
+.code-lab-asset button {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #08111f;
+  background: #67e8f9;
+  font-weight: 900;
+}
+
+.code-lab-workspace {
+  display: grid;
+  gap: 12px;
+}
+
+.code-lab-editor-panel,
+.code-lab-output-panel {
+  display: none;
+  min-width: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.code-lab-shell.is-view-editor .code-lab-editor-panel,
+.code-lab-shell.is-view-preview .code-lab-output-panel,
+.code-lab-shell.is-view-console .code-lab-output-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.code-lab-shell.is-view-assets .code-lab-workspace {
+  display: none;
+}
+
+.code-lab-toolbar {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.14);
+  background: rgba(2, 6, 23, 0.78);
+}
+
+.code-lab-file-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.code-lab-file-tab {
+  flex: 0 0 auto;
+  min-width: 104px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  text-align: left;
+  font-size: 0.86rem;
+}
+
+.code-lab-run-actions {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.code-lab-run-actions .code-lab-btn {
+  flex: 0 0 auto;
+  min-width: 88px;
+  padding: 9px 12px;
+}
+
+.code-lab-editor {
+  min-height: 58vh;
+  height: min(66vh, 720px);
+}
+
+.code-lab-editor-fallback {
+  display: none;
+  width: 100%;
+  min-height: 58vh;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  padding: 14px;
+  color: #e5f4ff;
+  background: #0f172a;
+  font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.code-lab-preview-panel,
+.code-lab-console-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.code-lab-shell.is-view-preview .code-lab-preview-panel,
+.code-lab-shell.is-view-console .code-lab-console-panel {
+  display: flex;
+}
+
+.code-lab-preview {
+  width: 100%;
+  min-height: 58vh;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 14px;
+  background: white;
+}
+
+.code-lab-console {
+  margin: 0;
+  min-height: 54vh;
+  overflow: auto;
+  padding: 14px;
+  color: #b7f7c7;
+  background: #020617;
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  border-radius: 14px;
+  font-family: Consolas, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.code-lab-shell.is-java .code-lab-view-tab[data-code-lab-view="preview"],
+.code-lab-shell.is-java .code-lab-preview-panel {
+  display: none;
+}
+
+.code-lab-modal-open {
+  display: flex;
+}
+
+.code-lab-modal-open .contribution-row {
+  animation: codeLabRowIn 0.22s ease both;
+}
+
+@keyframes codeLabRowIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 720px) {
+  .code-lab-shell {
+    width: min(100% - 14px, 560px);
+    margin-top: 10px;
+  }
+
+  .code-lab-header {
+    display: grid;
+    padding: 14px;
+  }
+
+  .code-lab-header-actions {
+    justify-content: stretch;
+  }
+
+  .code-lab-header-actions .code-lab-btn {
+    flex: 1 1 0;
+  }
+
+  .code-lab-home {
+    grid-template-columns: 1fr;
+  }
+
+  .code-lab-env-card {
+    min-height: 220px;
+    border-radius: 18px;
+  }
+
+  .code-lab-workbench-top {
+    align-items: flex-start;
+  }
+
+  .code-lab-tabs,
+  .code-lab-view-tabs {
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+
+  .code-lab-tab,
+  .code-lab-view-tab {
+    flex: 0 0 auto;
+    padding: 9px 11px;
+    font-size: 0.82rem;
+  }
+
+  .code-lab-card {
+    padding: 13px;
+  }
+
+  .code-lab-file-tab {
+    min-width: 96px;
+    font-size: 0.8rem;
+  }
+
+  .code-lab-editor,
+  .code-lab-editor-fallback {
+    min-height: 60vh;
+    height: 62vh;
+  }
+
+  .code-lab-preview {
+    min-height: 58vh;
+  }
+
+  .code-lab-console {
+    min-height: 56vh;
+  }
+
+  .code-lab-asset {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .code-lab-asset button {
+    grid-column: span 2;
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "users": [
+    {
+      "username": "Marquillero",
+      "displayName": "Marquillero",
+      "birthday": "May 12, 2005",
+      "address": "Manila, Philippines",
+      "github": "marquillero",
+      "email": "marquillero@example.com",
+      "note": "Admin account with full access.",
+      "online": true,
+      "avatar": ""
+    },
+    {
+      "username": "Amina",
+      "displayName": "Amina Cruz",
+      "birthday": "Nov 1, 2006",
+      "address": "Cebu City",
+      "github": "aminacruz",
+      "email": "amina@example.com",
+      "note": "Math tutor and study notes keeper.",
+      "online": false,
+      "avatar": ""
+    }
+  ],
+  "chatHistory": {
+    "group": [],
+    "todo": [],
+    "private": {}
+  }
+}

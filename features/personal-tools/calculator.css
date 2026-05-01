@@ -1,0 +1,288 @@
+/* ═══════════════════════════════════════════════════════════
+   SCIENTIFIC CALCULATOR - Casio-style Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.casio-wrapper {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 20px;
+}
+
+.casio-body {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.06);
+}
+
+/* ── Display ─────────────────────────────────────────────── */
+
+.casio-display {
+  background: rgba(0, 20, 15, 0.9);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px 10px;
+  margin-bottom: 12px;
+  min-height: 90px;
+  position: relative;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 212, 255, 0.06);
+}
+
+.casio-expr {
+  font-family: 'Courier New', monospace;
+  font-size: 1.4em;
+  color: #00ff88;
+  text-align: right;
+  word-break: break-all;
+  line-height: 1.3;
+  min-height: 1.4em;
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+  transition: font-size 0.15s;
+}
+
+.casio-expr.long { font-size: 1.05em; }
+
+.casio-result {
+  font-family: 'Courier New', monospace;
+  font-size: 1.7em;
+  color: #00d4ff;
+  text-align: right;
+  min-height: 1.5em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+}
+
+.casio-result.preview {
+  color: #aaa;
+  font-size: 1.1em;
+  text-shadow: none;
+}
+
+.casio-result.error {
+  color: #ff4444;
+  text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+  font-size: 1.1em;
+}
+
+.casio-indicators {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.casio-ind {
+  font-size: 0.65em;
+  color: #444;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.casio-ind.active { color: #00ff88; }
+
+/* ── Mode bar ─────────────────────────────────────────────── */
+
+.casio-mode-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.casio-mode-btn {
+  flex: 1;
+  padding: 7px;
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 7px;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.casio-mode-btn.active {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.5);
+  color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+}
+
+/* ── Keypad ──────────────────────────────────────────────── */
+
+.casio-keys {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+}
+
+.ckey {
+  padding: 0;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 0.78em;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  backdrop-filter: blur(6px);
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ckey:active {
+  transform: scale(0.94);
+}
+
+/* Number keys */
+.ckey.num {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+.ckey.num:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Operator keys */
+.ckey.op {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+}
+.ckey.op:hover {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.15);
+}
+
+/* Function keys */
+.ckey.fn {
+  background: rgba(200, 100, 255, 0.08);
+  border-color: rgba(200, 100, 255, 0.2);
+  color: #c864ff;
+  font-size: 0.72em;
+}
+.ckey.fn:hover {
+  background: rgba(200, 100, 255, 0.16);
+  border-color: rgba(200, 100, 255, 0.4);
+}
+
+/* Shift/secondary function keys */
+.ckey.fn2 {
+  background: rgba(255, 170, 0, 0.07);
+  border-color: rgba(255, 170, 0, 0.18);
+  color: #ffaa00;
+  font-size: 0.65em;
+}
+.ckey.fn2:hover {
+  background: rgba(255, 170, 0, 0.15);
+  border-color: rgba(255, 170, 0, 0.4);
+}
+
+/* Constants */
+.ckey.const {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+}
+.ckey.const:hover {
+  background: rgba(0, 212, 255, 0.16);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+/* Memory keys */
+.ckey.mem {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #818cf8;
+  font-size: 0.72em;
+}
+.ckey.mem:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+/* DEL key */
+.ckey.del {
+  background: rgba(255, 170, 0, 0.1);
+  border-color: rgba(255, 170, 0, 0.25);
+  color: #ffaa00;
+}
+.ckey.del:hover {
+  background: rgba(255, 170, 0, 0.2);
+  border-color: rgba(255, 170, 0, 0.5);
+}
+
+/* AC key */
+.ckey.ac {
+  background: rgba(255, 50, 50, 0.12);
+  border-color: rgba(255, 50, 50, 0.3);
+  color: #ff4444;
+}
+.ckey.ac:hover {
+  background: rgba(255, 50, 50, 0.22);
+  border-color: rgba(255, 50, 50, 0.55);
+}
+
+/* Equals key — spans 2 columns */
+.ckey.eq {
+  background: linear-gradient(135deg, rgba(255, 136, 0, 0.25), rgba(255, 80, 0, 0.2));
+  border-color: rgba(255, 136, 0, 0.4);
+  color: #ff8800;
+  font-size: 1.1em;
+}
+.ckey.eq:hover {
+  background: linear-gradient(135deg, rgba(255, 136, 0, 0.38), rgba(255, 80, 0, 0.3));
+  border-color: rgba(255, 136, 0, 0.65);
+  box-shadow: 0 0 14px rgba(255, 136, 0, 0.25);
+}
+
+.ckey.span2 {
+  grid-column: span 2;
+}
+
+/* ── KaTeX overrides ─────────────────────────────────────── */
+
+.casio-expr .katex {
+  color: #00ff88;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.45));
+}
+
+.casio-expr .katex * {
+  color: inherit;
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .casio-body {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .casio-keys {
+    gap: 5px;
+  }
+
+  .ckey {
+    height: 38px;
+    font-size: 0.68em;
+    border-radius: 6px;
+  }
+
+  .ckey.fn, .ckey.fn2, .ckey.mem { font-size: 0.6em; }
+
+  .casio-expr  { font-size: 1.1em; }
+  .casio-result { font-size: 1.4em; }
+}

@@ -1,0 +1,47 @@
+-- Migration 020: Document current identity model
+-- Depends on: 019
+-- Status: PENDING — run after migration 019
+--
+-- This migration is documentation-only. It creates no schema objects.
+-- It records the current auth architecture so future maintainers understand
+-- which security constraints are database-enforced vs. backend-enforced.
+--
+-- CURRENT IDENTITY MODEL (after migrations 015-021):
+-- =================================================
+-- Backend (server.js):
+--   - JWT tokens issued on login; verified by requireAuth middleware.
+--   - All sensitive mutations (folder/file/message CRUD, profile updates,
+--     admin actions) require a valid JWT via requireAuth.
+--   - The backend uses SUPABASE_SERVICE_KEY, which bypasses RLS entirely,
+--     for all server-side Supabase mutations.
+--
+-- Supabase RLS (applied by migrations 001-021):
+--   - class_app_username() reads the x-class-username request header.
+--   - This header is set by the frontend from localStorage and is NOT
+--     cryptographically verified by Supabase.
+--   - Migration 021 removes all INSERT/UPDATE/DELETE client policies on
+--     folders, files, and messages so that even a spoofed header cannot
+--     modify those tables from the browser.
+--   - SELECT policies remain open (read-only) so the frontend can fetch
+--     data directly via the Supabase JS client for real-time subscriptions.
+--
+-- REMAINING RISK:
+-- ==============
+--   - class_app_is_admin() still relies on x-class-username, which means
+--     a browser client CAN spoof admin status for the admins table RLS
+--     policies (insert/delete) and the audit log read policy.
+--   - Impact is low post-021 because those RLS policies gate non-critical
+--     operations; all real admin actions go through the backend.
+--   - Full mitigation requires migrating to Supabase native JWT auth
+--     (Phase 3 future work) so that RLS can verify the JWT claim instead
+--     of a browser-supplied header.
+--
+-- PHASE 3 FUTURE PATH:
+-- ===================
+--   Option A: Supabase native auth — generate Supabase JWTs for each user
+--             and embed them in Authorization headers instead of x-class-username.
+--   Option B: Full backend proxy — all Supabase queries go through server.js;
+--             client never speaks to Supabase directly.
+
+-- No SQL DDL in this migration — documentation only.
+select 'identity model documented' as status;

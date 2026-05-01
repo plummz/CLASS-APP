@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My School Portfolio</title>
+ 
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+  
+<link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="assets/css/codelab.css?v=4">
+  <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
+  <link rel="stylesheet" href="features/ai/ai.css?v=1">
+  <link rel="stylesheet" href="features/academics/academics.css?v=1">
+  <link rel="stylesheet" href="features/lobby/lobby.css?v=2">
+  <link rel="stylesheet" href="features/chat/chat.css?v=1">
+  <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
+  <link rel="stylesheet" href="features/music/music.css?v=1">
+  <link rel="stylesheet" href="features/social/social.css?v=1">
+  <link rel="stylesheet" href="features/users/users.css?v=1">
+  <link rel="stylesheet" href="features/games/games.css?v=1">
+  <link rel="stylesheet" href="features/updates/updates.css?v=1">
+  <link rel="stylesheet" href="features/folders/folders.css?v=1">
+  <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
+  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
+<link rel="stylesheet" href="features/royale/royale.css?v=18">
+  <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
+  <link rel="stylesheet" href="features/candy/candy.css?v=11">
+  <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
+  <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1b3d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+  <audio id="notif-sound" src="https://actions.google.com/sounds/v1/ui/pop.ogg" preload="auto"></audio>
+
+  <button id="install-btn" class="install-btn">Install App</button>
+ 
+  <div id="bg-mountain" class="scene-bg"></div>
+  <div id="bg-ocean"    class="scene-bg"></div>
+  <div id="bg-aerial"   class="scene-bg"></div>
+  <div id="bg-galaxy"   class="scene-bg active"></div>
+  <div id="custom-animated-bg" class="custom-animated-bg" aria-hidden="true"></div>
+
+  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
+  <button type="button" class="custom-bg-btn" onclick="window.goToPage('personalization')" title="Personalize">🎨</button>
+  <input type="file" id="profile-avatar-upload" accept="image/*" style="display: none;">
+ 
+  <div class="aurora" id="aurora"></div>
+ 
+  <canvas id="starfield"></canvas>
+ 
+  <svg class="mountain-silhouette" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
+    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
+  </svg>
+ 
+  <div class="wave-container" id="wave-container">
+    <div class="wave"></div><div class="wave"></div><div class="wave"></div>
+  </div>
+
+  <!-- ── SPLASH SCREEN ──────────────────────────────────────── -->
+  <div id="splash-screen">
+    <div class="splash-bg"></div>
+    <canvas id="splash-canvas"></canvas>
+    <div class="splash-content">
+      <div class="splash-logo-wrap">
+        <div class="splash-ring splash-ring-1"></div>
+        <div class="splash-ring splash-ring-2"></div>
+        <div class="splash-ring splash-ring-3"></div>
+        <div class="splash-scan"></div>
+        <img src="icons/icon-512.png" class="splash-logo" alt="BSIT">
+      </div>
+      <div class="splash-title">BSIT</div>
+      <div class="splash-sub">Bachelor of Science in Information Technology</div>
+      <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-ocean"    id="particles-ocean"></div>
+  <div class="particles particle-aerial"   id="particles-aerial"></div>
+  <div class="particles particle-galaxy active"   id="particles-galaxy"></div>
+ 
+  <button id="menu-toggle" aria-label="Toggle menu">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </button>
+ 
+  <div id="page-indicator">📢 ANNOUNCEMENT</div>
+ 
+  <nav id="sidebar">
+    <div class="sidebar-title">My Portfolio</div>
+
+    <div class="sidebar-controls">
+      <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Dark/Light Mode">🌙</button>
+      <input type="color" id="accent-picker" class="accent-picker" value="#00d4ff" title="Pick Accent Color">
+      <span class="accent-label">Accent</span>
+      <button id="notif-prefs-btn" class="theme-toggle-btn" title="Notification preferences">🔔</button>
+    </div>
+    <div id="notif-prefs-panel" class="notif-prefs-panel hidden">
+      <div class="notif-prefs-title">Notifications</div>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-sound" onchange="saveNotifPrefs()"> Sound</label>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-group" onchange="saveNotifPrefs()"> Group chat alerts</label>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-dm"    onchange="saveNotifPrefs()"> DM badges</label>
+    </div>
+
+    <!-- ── MAIN ─────────────────────────────────── -->
+    <div class="nav-section-title nav-section-first">Main</div>
+    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
+      <span class="nav-icon">🏠</span>
+      <div class="nav-text"><span class="nav-label">Home</span></div>
+    </div>
+    <div class="nav-item" data-page="lobby" role="button" tabindex="0">
+      <span class="nav-icon">🏫</span>
+      <div class="nav-text"><span class="nav-label">Lobby</span></div>
+    </div>
+
+    <!-- ── LEARNING ──────────────────────────────── -->
+    <div class="nav-section-title">Learning</div>
+    <div class="nav-item" data-page="file-summarizer" role="button" tabindex="0">
+      <span class="nav-icon">📝</span>
+      <div class="nav-text"><span class="nav-label">File Summarizer</span></div>
+    </div>
+    <div class="nav-item" data-page="reviewers" role="button" tabindex="0">
+      <span class="nav-icon">📄</span>
+      <div class="nav-text"><span class="nav-label">Reviewers</span></div>
+    </div>
+    <div class="nav-item" data-page="ai" role="button" tabindex="0">
+      <span class="nav-icon">🤖</span>
+      <div class="nav-text"><span class="nav-label">AI Assistants</span></div>
+    </div>
+    <div class="nav-item" data-page="coding-educational" role="button" tabindex="0">
+      <span class="nav-icon">📚</span>
+      <div class="nav-text"><span class="nav-label">Coding Lessons</span></div>
+    </div>
+    <div class="nav-item" data-page="codelab" role="button" tabindex="0">
+      <span class="nav-icon">⌨️</span>
+      <div class="nav-text"><span class="nav-label">Code Lab</span></div>
+    </div>
+    <div class="nav-item" data-page="outputai" role="button" tabindex="0">
+      <span class="nav-icon">🧾</span>
+      <div class="nav-text"><span class="nav-label">Output-AI</span></div>
+    </div>
+
+    <!-- ── MY CLASSES ───────────────────────────── -->
+    <div class="nav-section-title">My Classes</div>
+    <div class="nav-dropdown-group year-1-theme">
+      <div class="nav-dropdown-header" data-year="year1" role="button" tabindex="0">
+        <span class="nav-icon">🎓</span>
+        <div class="nav-text"><span class="nav-label">First Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year1" class="nav-dropdown-content">
+        <div class="nav-item" data-page="first" role="button" tabindex="0">
+          <span class="nav-icon">⛰️</span>
+          <div class="nav-text"><span class="nav-label">First Semester</span></div>
+        </div>
+        <div class="nav-item" data-page="second" role="button" tabindex="0">
+          <span class="nav-icon">🌊</span>
+          <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-dropdown-group year-2-theme">
+      <div class="nav-dropdown-header" data-year="year2" role="button" tabindex="0">
+        <span class="nav-icon">🏛️</span>
+        <div class="nav-text"><span class="nav-label">Second Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year2" class="nav-dropdown-content">
+        <div class="nav-item" data-page="y2first" role="button" tabindex="0">
+          <span class="nav-icon">📘</span>
+          <div class="nav-text"><span class="nav-label">First Semester</span></div>
+        </div>
+        <div class="nav-item" data-page="y2second" role="button" tabindex="0">
+          <span class="nav-icon">📙</span>
+          <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-dropdown-group year-3-theme">
+      <div class="nav-dropdown-header" data-year="year3" role="button" tabindex="0">
+        <span class="nav-icon">🚀</span>
+        <div class="nav-text"><span class="nav-label">Third Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year3" class="nav-dropdown-content">
+        <div class="nav-item" data-page="y3first" role="button" tabindex="0">
+          <span class="nav-icon">🔬</span>
+          <div class="nav-text"><span class="nav-label">First Semester</span></div>
+        </div>
+        <div class="nav-item" data-page="y3second" role="button" tabindex="0">
+          <span class="nav-icon">🔭</span>
+          <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-dropdown-group year-4-theme">
+      <div class="nav-dropdown-header" data-year="year4" role="button" tabindex="0">
+        <span class="nav-icon">🏆</span>
+        <div class="nav-text"><span class="nav-label">Fourth Year</span></div>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div id="dropdown-year4" class="nav-dropdown-content">
+        <div class="nav-item" data-page="y4first" role="button" tabindex="0">
+          <span class="nav-icon">📜</span>
+          <div class="nav-text"><span class="nav-label">First Semester</span></div>
+        </div>
+        <div class="nav-item" data-page="y4second" role="button" tabindex="0">
+          <span class="nav-icon">✨</span>
+          <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── COMMUNITY ─────────────────────────────── -->
+    <div class="nav-section-title">Community</div>
+    <div class="nav-item" data-page="chat" role="button" tabindex="0">
+      <span class="nav-icon" style="position: relative;">💬<span id="chat-notif-dot" class="notif-dot hidden"></span></span>
+      <div class="nav-text"><span class="nav-label">Chat</span></div>
+    </div>
+    <div class="nav-item" data-page="users" role="button" tabindex="0">
+      <span class="nav-icon">👥</span>
+      <div class="nav-text"><span class="nav-label">Users</span></div>
+    </div>
+    <div class="nav-item" data-page="witfb" role="button" tabindex="0">
+      <span class="nav-icon">📘</span>
+      <div class="nav-text"><span class="nav-label">Social Media Pages</span></div>
+    </div>
+
+    <!-- ── TOOLS ─────────────────────────────────── -->
+    <div class="nav-section-title">Tools</div>
+    <div class="nav-item" data-page="personal-tools" role="button" tabindex="0">
+      <span class="nav-icon">🔧</span>
+      <div class="nav-text"><span class="nav-label">Personal Tools</span></div>
+    </div>
+    <div class="nav-item" data-page="calendar" role="button" tabindex="0">
+      <span class="nav-icon">📅</span>
+      <div class="nav-text"><span class="nav-label">Calendar</span></div>
+    </div>
+    <div class="nav-item" data-page="music" role="button" tabindex="0">
+      <span class="nav-icon">🎵</span>
+      <div class="nav-text"><span class="nav-label">Music</span></div>
+    </div>
+    <div class="nav-item" data-page="events" role="button" tabindex="0">
+      <span class="nav-icon">🛩️</span>
+      <div class="nav-text"><span class="nav-label">Event Pictures</span></div>
+    </div>
+    <div class="nav-item" data-page="random" role="button" tabindex="0">
+      <span class="nav-icon">🌌</span>
+      <div class="nav-text"><span class="nav-label">Random Pictures</span></div>
+    </div>
+
+    <!-- ── GAMES ─────────────────────────────────── -->
+    <div class="nav-section-title">Games</div>
+    <div class="nav-item" data-page="games" role="button" tabindex="0">
+      <span class="nav-icon">🎮</span>
+      <div class="nav-text"><span class="nav-label">Games</span></div>
+    </div>
+
+    <!-- ── SYSTEM ────────────────────────────────── -->
+    <div class="nav-section-title">System</div>
+    <div class="nav-item" data-page="diagnostics" role="button" tabindex="0">
+      <span class="nav-icon">🩺</span>
+      <div class="nav-text"><span class="nav-label">Diagnostics</span></div>
+    </div>
+    <div class="nav-item admin-only hidden" data-page="admin" role="button" tabindex="0">
+      <span class="nav-icon">🛡️</span>
+      <div class="nav-text"><span class="nav-label">Admin</span></div>
+    </div>
+
+    <div class="nav-item" id="nav-logout" role="button" tabindex="0" style="display: none;">
+      <span class="nav-icon">🚪</span>
+      <div class="nav-text"><span class="nav-label text-red">Log Out</span></div>
+    </div>
+
+    <div class="sidebar-footer" id="sidebar-footer-year">School Portfolio &nbsp;·&nbsp; 2025–2026</div>
+  </nav>
+ 
+  <div id="overlay"></div>
+ 
+  <div id="auth-modal" class="custom-modal-overlay high-z pointer-auto" style="display:none;">
+    <div class="custom-modal-box small-box auth-modal-box">
+      <h2 class="modal-title text-white">CLASS APP PORTAL</h2>
+      <div class="input-group">
+        <input type="text" id="username" class="modal-input" placeholder="Username" autocomplete="username">
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" class="modal-input" placeholder="Password" autocomplete="current-password">
+      </div>
+      <div class="modal-btn-group">
+        <button id="btn-sign-in" type="button" class="btn-primary flex-1">Sign In</button>
+        <button id="btn-create-account" type="button" class="btn-primary flex-1">Create Account</button>
+      </div>
+      <p id="errorMessage" class="error-msg"></p>
+    </div>
+  </div>
+ 
+  <!-- FILE SUMMARIZER PAGE -->
+  <div class="page" id="page-file-summarizer">
+    <div class="fs-wrap">
+      <div class="fs-header">
+        <h1 class="fs-title">📄 File Summarizer</h1>
+        <p class="fs-subtitle">Turn your files into study materials instantly</p>
+      </div>
+
+      <!-- Upload Section -->
+      <div class="fs-card" id="fs-upload-card">
+        <input type="file" id="fs-file-input" accept=".pdf,.doc,.docx,.ppt,.pptx" />
+        <label for="fs-file-input" class="fs-upload-label" id="fs-upload-label">
+          <span class="fs-upload-icon">📂</span>
+          <span class="fs-upload-main">Tap to upload a file</span>
+          <span class="fs-upload-sub">PDF · DOCX · PPTX — max 8 MB</span>
+        </label>
+        <div class="fs-upload-status" id="fs-upload-status"></div>
+      </div>
+
+      <!-- Summary Action Buttons -->
+      <div class="fs-card fs-actions-card">
+        <div class="fs-section-label">Generate Summary</div>
+        <div class="fs-btn-grid">
+          <button class="fs-action-btn" id="fs-btn-short" disabled>📋 Short</button>
+          <button class="fs-action-btn" id="fs-btn-detailed" disabled>📚 Detailed</button>
+          <button class="fs-action-btn" id="fs-btn-key" disabled>⭐ Key Points</button>
+          <button class="fs-action-btn" id="fs-btn-terms" disabled>📖 Terms</button>
+        </div>
+      </div>
+
+      <!-- Quiz Section -->
+      <div class="fs-card fs-quiz-card">
+        <div class="fs-section-label">❓ Quiz Generator</div>
+
+        <div class="fs-quiz-group">
+          <div class="fs-quiz-group-label">Quiz Type</div>
+          <div class="fs-chip-row">
+            <button class="fs-chip" data-quiz-type="identification">Identification</button>
+            <button class="fs-chip" data-quiz-type="multiple-choice">Multiple Choice</button>
+            <button class="fs-chip" data-quiz-type="both">Both</button>
+          </div>
+        </div>
+
+        <div class="fs-quiz-group">
+          <div class="fs-quiz-group-label">Number of Items</div>
+          <div class="fs-chip-row">
+            <button class="fs-chip fs-chip-count" data-quiz-count="10">10</button>
+            <button class="fs-chip fs-chip-count" data-quiz-count="20">20</button>
+            <button class="fs-chip fs-chip-count" data-quiz-count="30">30</button>
+            <button class="fs-chip fs-chip-count" data-quiz-count="50">50</button>
+          </div>
+        </div>
+
+        <div class="fs-quiz-selection" id="fs-quiz-selection">Select type and count above</div>
+        <button class="fs-quiz-start-btn" id="fs-btn-quiz" disabled>Start Quiz</button>
+      </div>
+
+      <!-- Summary Output -->
+      <div class="fs-card fs-output-card" id="fs-summary-section" style="display:none;">
+        <div class="fs-section-label">Summary Output</div>
+        <textarea class="fs-summary-output" id="fs-summary-output" readonly></textarea>
+        <div class="fs-output-actions">
+          <button class="fs-outline-btn" id="fs-copy-btn">📋 Copy</button>
+          <button class="fs-outline-btn" id="fs-share-btn">📤 Share to Reviewers</button>
+          <button class="fs-outline-btn danger" id="fs-clear-btn">✕ Clear</button>
+        </div>
+      </div>
+
+      <div class="fs-error" id="fs-error"></div>
+    </div>
+
+    <!-- Quiz Modal -->
+    <div class="fs-quiz-modal" id="fs-quiz-modal">
+      <div class="fs-quiz-modal-inner">
+        <div class="fs-quiz-modal-header">
+          <div class="fs-quiz-header-left">
+            <span class="fs-quiz-progress" id="fs-quiz-progress">Q 1 / 10</span>
+            <span class="fs-quiz-source" id="fs-quiz-source"></span>
+          </div>
+          <div class="fs-quiz-timer" id="fs-quiz-timer">10</div>
+        </div>
+        <div class="fs-quiz-question-text" id="fs-quiz-question-text"></div>
+        <div class="fs-quiz-choices" id="fs-quiz-choices"></div>
+        <div class="fs-quiz-feedback" id="fs-quiz-feedback"></div>
+        <button class="fs-quiz-next-btn" id="fs-quiz-next-btn" style="display:none;">Next →</button>
+      </div>
+    </div>
+
+    <!-- Quiz Score Screen -->
+    <div class="fs-quiz-score" id="fs-quiz-score">
+      <div class="fs-quiz-score-inner">
+        <div class="fs-quiz-score-emoji" id="fs-quiz-score-emoji">🎉</div>
+        <div class="fs-quiz-score-text" id="fs-quiz-score-text"></div>
+        <div class="fs-quiz-score-detail" id="fs-quiz-score-detail"></div>
+        <button class="fs-quiz-review-btn" id="fs-quiz-review-btn">📋 Review Answers</button>
+        <button class="fs-quiz-start-btn" id="fs-quiz-restart-btn">↩ Restart Quiz</button>
+        <button class="fs-outline-btn" id="fs-quiz-close-btn">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Quiz Review Screen -->
+    <div class="fs-quiz-review" id="fs-quiz-review">
+      <div class="fs-quiz-review-inner">
+        <div class="fs-quiz-review-header">
+          <h3 class="fs-quiz-review-title">📋 Answer Review</h3>
+          <button class="fs-quiz-review-close" id="fs-quiz-review-close">✕ Close</button>
+        </div>
+        <div class="fs-quiz-review-list" id="fs-quiz-review-list"></div>
+        <button class="fs-quiz-start-btn" id="fs-quiz-review-retake">↩ Retake Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVIEWERS PAGE -->
+  <div class="page" id="page-reviewers"></div>
+
+  <div class="page" id="page-first">
+    <div class="page-header"><h1 class="page-title">First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-first"></div>
+  </div>
+
+  <div class="page" id="page-second">
+    <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-second"></div>
+  </div>
+
+  <div class="page" id="page-events">
+    <div class="ep-breadcrumb" id="ep-breadcrumb"></div>
+    <div class="ep-view" id="ep-view"></div>
+  </div>
+  
+  <div class="page" id="page-random">
+    <div class="ep-breadcrumb" id="rp-breadcrumb"></div>
+    <div class="ep-view" id="rp-view"></div>
+  </div>
+
+  <div class="page" id="page-chat">
+    <div class="page-header"><h1 class="page-title">Chat</h1></div>
+    <div class="chat-container">
+      <div class="chat-sidebar">
+        <div class="chat-list">
+          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
+          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
+          <div class="chat-section-label">Private Contacts</div>
+          <div id="chat-user-list" class="chat-user-list"></div>
+        </div>
+      </div>
+      <div class="chat-main">
+        <div class="chat-header" id="chat-header">Select a chat</div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+          <input type="text" id="message-input" placeholder="Type a message...">
+          <label class="attachment-label" for="attachment-input">Attach</label>
+          <input type="file" id="attachment-input" accept="*/*">
+          <span class="attachment-selected" id="attachment-selected">No file chosen</span>
+          <button class="btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-users">
+    <div class="page-header"><h1 class="page-title">User Directory</h1></div>
+    <div class="section-label">Profile cards, online status, and private chat access</div>
+    <div class="user-tools">
+      <input id="user-search-input" class="user-search-input" type="search" placeholder="Search users..." oninput="renderUserDirectory()">
+      <select id="user-filter-select" class="user-filter-select" onchange="renderUserDirectory()">
+        <option value="all">All users</option>
+        <option value="online">Online only</option>
+        <option value="offline">Offline only</option>
+      </select>
+      <select id="user-sort-select" class="user-filter-select" onchange="renderUserDirectory()">
+        <option value="online">Online first</option>
+        <option value="name">Name A-Z</option>
+        <option value="recent">Recently updated</option>
+      </select>
+    </div>
+    <div class="user-grid" id="user-grid"></div>
+    <div class="profile-panel" id="profile-panel">
+      <button class="close-profile" onclick="closeProfile()">×</button>
+      <div id="profile-details"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-diagnostics">
+    <div class="page-header"><h1 class="page-title">Diagnostics</h1></div>
+    <div class="section-label">App health, deployment, cache, and service checks</div>
+    <div class="diagnostics-shell">
+      <div class="diagnostics-toolbar">
+        <div>
+          <h2>System Status</h2>
+          <p>Safe runtime checks for the current deployment. No secrets are displayed.</p>
+        </div>
+        <button class="btn-primary" type="button">Refresh Checks</button>
+      </div>
+      <div id="diagnostics-summary" class="diagnostics-summary"></div>
+      <div id="diagnostics-grid" class="diagnostics-grid">
+        <div class="diagnostics-card loading">Loading diagnostics...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-admin">
+    <div class="page-header"><h1 class="page-title">Admin Dashboard</h1></div>
+    <div class="section-label">User management and app statistics — admin only</div>
+    <div id="admin-stats" class="admin-stats-grid"></div>
+    <div class="admin-section-tabs">
+      <button class="admin-tab-btn active" onclick="switchAdminTab('users',this)">Users</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('log',this)">Activity Log</button>
+    </div>
+    <div id="admin-tab-users">
+      <div id="admin-user-table" class="admin-user-table"></div>
+    </div>
+    <div id="admin-tab-log" style="display:none">
+      <div id="admin-activity-log" class="activity-log-list"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-calendar">
+    <div class="page-header"><h1 class="page-title">Calendar</h1></div>
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <button class="btn-secondary" onclick="prevMonth()">Prev</button>
+        <h2 id="month-year">April 2026</h2>
+        <button class="btn-secondary" onclick="nextMonth()">Next</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+    <div class="announcements" style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+      <h3 style="color: #00ff88; margin-bottom: 10px;">Weekly Announcements</h3>
+      <textarea id="announcement-note" placeholder="Type your weekly notes here..." style="width: 100%; height: 80px; background: rgba(0,0,0,0.3); color: white; border: 1px solid #00d4ff; border-radius: 8px; padding: 10px; resize: none;"></textarea>
+      <button class="btn-primary" style="margin-top: 10px; width: 100%;" onclick="saveAnnouncement()">Save Announcement</button>
+      <button class="btn-blue" style="margin-top: 10px; width: 100%;" onclick="shareWeeklyAnnouncement()">Share to Everyone</button>
+    </div>
+  </div>
+  
+  <!-- ── PERSONAL TOOLS ─────────────────────────────────── -->
+  <div class="page" id="page-personal-tools">
+    <!-- Content will be rendered by personalToolsModule -->
+  </div>
+
+  <!-- ── ALARM CLOCK ─────────────────────────────────────── -->
+  <div class="page" id="page-alarm">
+    <!-- Content will be rendered by alarmModule -->
+  </div>
+
+  <!-- ── NOTEPAD ───────────────────────────────────────── -->
+  <div class="page" id="page-notepad">
+    <!-- Content will be rendered by notepadModule -->
+  </div>
+
+  <!-- ── CALCULATOR ────────────────────────────────────── -->
+  <div class="page" id="page-calculator">
+    <!-- Content will be rendered by calculatorModule -->
+  </div>
+
+  <!-- ── PERSONALIZATION ────────────────────────────────── -->
+  <div class="page" id="page-personalization">
+    <!-- Content will be rendered by personalizationModule -->
+  </div>
+  
+  <!-- ── 2ND YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y2first">
+    <div class="page-header"><h1 class="page-title">2nd Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y2first"></div>
+  </div>
+  <div class="page" id="page-y2second">
+    <div class="page-header"><h1 class="page-title">2nd Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y2second"></div>
+  </div>
+  <!-- ── 3RD YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y3first">
+    <div class="page-header"><h1 class="page-title">3rd Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y3first"></div>
+  </div>
+  <div class="page" id="page-y3second">
+    <div class="page-header"><h1 class="page-title">3rd Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y3second"></div>
+  </div>
+  <!-- ── 4TH YEAR ──────────────────────────────────────── -->
+  <div class="page" id="page-y4first">
+    <div class="page-header"><h1 class="page-title">4th Year · First Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y4first"></div>
+  </div>
+  <div class="page" id="page-y4second">
+    <div class="page-header"><h1 class="page-title">4th Year · Second Semester</h1></div>
+    <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
+    <div class="upload-grid" id="grid-y4second"></div>
+  </div>
+
+  <div class="page" id="page-music">
+    <div class="page-header"><h1 class="page-title">MUSIC HUB</h1></div>
+
+    <!-- ── YouTube Embedded Player ──────────────────────── -->
+    <div class="yt-embed-section">
+      <div class="yt-input-row">
+        <input type="text" id="yt-main-input"
+          placeholder="Song name or paste YouTube URL..."
+          class="yt-input"
+          onkeydown="if(event.key==='Enter') handleYtInput()">
+        <button class="btn-primary" id="yt-action-btn" onclick="handleYtInput()">Search</button>
+      </div>
+      <p class="yt-hint" id="yt-hint-text">
+        Type a song name to search · or paste a YouTube URL to play instantly
+      </p>
+
+      <!-- Search results list -->
+      <div id="yt-results" class="yt-results hidden"></div>
+
+      <div class="yt-player-container" id="yt-player-container">
+        <div class="yt-placeholder" id="yt-placeholder">
+          <span style="font-size:36px;">▶️</span>
+          <p>Search for a song or paste a YouTube link</p>
+        </div>
+        <iframe id="yt-iframe" class="yt-iframe hidden" title="YouTube player" frameborder="0"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen></iframe>
+      </div>
+    </div>
+
+    <!-- ── Uploaded file search ─────────────────────────────── -->
+    <div class="music-search-section">
+      <div class="music-search-row">
+        <input type="text" id="music-search-input" class="yt-input music-search-input"
+          placeholder="🔍 Search uploaded songs (e.g. Lauv, OPM, Ed Sheeran…)"
+          oninput="musicSearchDebounced()"
+          onkeydown="if(event.key==='Enter') searchMusicFiles()">
+        <button class="btn-primary" onclick="searchMusicFiles()">Search</button>
+      </div>
+      <div id="music-search-results" class="music-search-results hidden"></div>
+    </div>
+
+    <div class="music-manage-container" style="margin-top: 16px;">
+        <button class="btn-primary btn-large" onclick="openFolderExplorer('Music Hub')">Open Music Folders</button>
+    </div>
+    <div class="music-player-card">
+      <h3 id="now-playing-text" class="music-now-playing">Select a track from a folder to play</h3>
+      <audio id="audio-player" class="full-width" controls crossorigin="anonymous" onplay="startBlockVisualizer(this)"></audio>
+      
+      <div class="music-controls" style="margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-secondary" onclick="playPrevSong()" style="padding: 8px 12px; font-size: 12px;">⏮ Prev</button>
+          <button id="btn-loop" class="btn-secondary" onclick="toggleLoop()" style="padding: 8px 12px; font-size: 12px; color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
+          <button id="btn-repeat" class="btn-secondary" onclick="toggleRepeat()" style="padding: 8px 12px; font-size: 12px; color: white; border-color: white;">🔂 Repeat 1: OFF</button>
+          <button class="btn-secondary" onclick="playNextSong()" style="padding: 8px 12px; font-size: 12px;">Next ⏭</button>
+      </div>
+
+      <div id="visualizer-container" class="visualizer-wrapper" style="margin-top: 20px; height: 250px; background: black; border-radius: 12px; overflow: hidden;">
+        <canvas id="block-canvas" style="width: 100%; height: 100%;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GAMES HUB ─────────────────────────────────────────── -->
+  <div class="page" id="page-games">
+    <div class="games-hub">
+      <div class="games-hub-header">
+        <div class="games-hub-title-row">
+          <span class="games-hub-icon-large">🎮</span>
+          <h1 class="games-hub-title">ARCADE</h1>
+        </div>
+        <p class="games-hub-sub">Pick a game and start playing</p>
+      </div>
+
+      <div class="games-grid">
+
+        <!-- Pokémon -->
+        <div class="game-card" onclick="goToPage('pokemon')">
+          <div class="game-thumb pokemon-thumb">
+            <img
+              src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png"
+              alt="Pokémon" class="game-thumb-img"
+              onerror="this.style.display='none'">
+            <div class="game-thumb-badge">RPG</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">TURN-BASED</span><span class="game-tag">ADVENTURE</span></div>
+            <h3 class="game-name">Pokémon</h3>
+            <p class="game-desc">Explore the overworld, battle wild Pokémon, level up your team, and rise to become champion.</p>
+            <button class="game-play-btn pokemon-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Battle Royale -->
+        <div class="game-card" onclick="goToPage('royale')">
+          <div class="game-thumb royale-thumb">
+            <canvas id="games-royale-preview" class="royale-mini-canvas"></canvas>
+            <div class="game-thumb-badge royale-badge">LIVE</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">BATTLE ROYALE</span><span class="game-tag">40 PLAYERS</span></div>
+            <h3 class="game-name">Battle Royale</h3>
+            <p class="game-desc">Drop in, loot weapons, survive the zone. Customize your skin, earn coins, and be the last one standing.</p>
+            <button class="game-play-btn royale-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Pac-Man -->
+        <div class="game-card" onclick="goToPage('pacman')">
+          <div class="game-thumb pacman-thumb">
+            <div class="pacman-card-art">
+              <span class="pac-dot"></span><span class="pac-dot"></span><span class="pac-dot"></span>
+              <span class="pac-card-player"></span>
+              <span class="pac-card-ghost red"></span>
+              <span class="pac-card-ghost cyan"></span>
+            </div>
+            <div class="game-thumb-badge">ARCADE</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">MAZE</span><span class="game-tag">CLASSIC</span></div>
+            <h3 class="game-name">Pac-Man</h3>
+            <p class="game-desc">Eat pellets, dodge ghosts, clear the maze, and chase the high score in landscape arcade mode.</p>
+            <button class="game-play-btn pacman-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Candy Match -->
+        <div class="game-card" onclick="goToPage('candy')">
+          <div class="game-thumb candy-thumb">
+            <div class="candy-card-art">
+              <div class="candy-card-gem t0"></div><div class="candy-card-gem t1"></div><div class="candy-card-gem t2"></div><div class="candy-card-gem t3"></div>
+              <div class="candy-card-gem t4"></div><div class="candy-card-gem t5"></div><div class="candy-card-gem t6"></div><div class="candy-card-gem t7"></div>
+              <div class="candy-card-gem t2"></div><div class="candy-card-gem t7"></div><div class="candy-card-gem t0"></div><div class="candy-card-gem t5"></div>
+            </div>
+            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ff6b9d,#c44dff)">MATCH-3</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">CASUAL</span></div>
+            <h3 class="game-name">Candy Match</h3>
+            <p class="game-desc">Swap candies, match 3, and score high!</p>
+            <button class="game-play-btn candy-play-btn">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── POKEMON ──────────────────────────────────────────── -->
+  <div class="page" id="page-pacman">
+    <div class="pacman-wrapper">
+      <div class="pacman-topbar">
+        <span id="pacman-score">SCORE 0</span>
+        <span id="pacman-lives">LIVES 3</span>
+      </div>
+      <canvas id="pacman-canvas" width="672" height="592"></canvas>
+      <button class="pacman-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
+      <button class="pacman-start-btn" id="pacman-start-btn" type="button">START</button>
+      <div class="pacman-dpad" id="pacman-dpad">
+        <button class="pacman-dpad-btn pacman-up" data-dir="up" type="button">▲</button>
+        <button class="pacman-dpad-btn pacman-left" data-dir="left" type="button">◀</button>
+        <button class="pacman-dpad-center" type="button" disabled></button>
+        <button class="pacman-dpad-btn pacman-right" data-dir="right" type="button">▶</button>
+        <button class="pacman-dpad-btn pacman-down" data-dir="down" type="button">▼</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CANDY MATCH ───────────────────────────────────────── -->
+  <div class="page" id="page-candy">
+    <div class="candy-game-wrap" id="candy-game-wrap">
+      <div class="candy-topbar">
+        <button class="candy-back-btn" onclick="goToPage('games')">← Games</button>
+        <div class="candy-hud">
+          <div class="candy-hud-pill">
+            <div class="candy-hud-label">Score</div>
+            <div class="candy-hud-value" id="candy-score">0</div>
+          </div>
+          <div class="candy-hud-pill">
+            <div class="candy-hud-label">Moves</div>
+            <div class="candy-hud-value" id="candy-moves">30</div>
+          </div>
+          <div class="candy-hud-pill" id="candy-blockers-pill">
+            <div class="candy-hud-label">Blocks</div>
+            <div class="candy-hud-value" id="candy-blockers">0</div>
+          </div>
+        </div>
+        <button class="candy-lb-open-btn" onclick="openCandyLeaderboard()">🏆</button>
+        <button class="candy-restart-btn" onclick="window.candyModule.restart()">↺</button>
+      </div>
+      <div class="candy-infobar">
+        <div class="candy-level-badge">Lvl <span id="candy-level-num">1</span></div>
+        <div class="candy-score-bar-wrap">
+          <div id="candy-score-bar-fill" class="candy-score-bar-fill"></div>
+        </div>
+        <div class="candy-target-pill">🎯 <span id="candy-target">200</span></div>
+      </div>
+      <div id="candy-board" class="candy-board"></div>
+      <div id="candy-status" class="candy-status"></div>
+      <div class="candy-action-bar">
+        <button class="candy-action-btn" onclick="window.candyModule.openLevelSelect()">🗺️ Levels</button>
+        <div class="candy-coins-display">🪙 <span id="candy-coins-hud">0</span></div>
+        <button class="candy-action-btn" onclick="window.candyModule.openShop()">🛍️ Shop</button>
+        <button class="candy-action-btn" id="candy-lowend-btn" onclick="window.candyModule.toggleLowEnd()">⚡ FX</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-pokemon">
+    <div class="pk-wrapper">
+      <div class="pk-game-column" id="pk-game-column">
+      <!-- pk-screen is sized by JS to match the canvas; battle overlay lives inside it -->
+      <div class="pk-screen">
+        <canvas id="pk-canvas" width="800" height="560"></canvas>
+
+        <!-- Battle Overlay -->
+        <div id="pk-battle" class="pk-battle hidden">
+        <!-- Move flash effects (shown on the hit side) -->
+        <div id="pk-flash-enemy"  class="pk-move-flash pk-flash-enemy"></div>
+        <div id="pk-flash-player" class="pk-move-flash pk-flash-player"></div>
+
+        <div class="pk-battle-field">
+          <!-- Enemy side -->
+          <div class="pk-enemy-side">
+            <div class="pk-hud pk-hud-enemy">
+              <div class="pk-name-level">
+                <span id="pk-ename" class="pk-name">???</span>
+                <span id="pk-elvl" class="pk-level">Lv.1</span>
+              </div>
+              <div class="pk-hp-row">
+                <span class="pk-hp-label">HP</span>
+                <div class="pk-hp-bar-track"><div id="pk-ehp-bar" class="pk-hp-bar" style="width:100%"></div></div>
+                <span id="pk-ehp-text" class="pk-hp-text">-- / --</span>
+              </div>
+            </div>
+            <div id="pk-esprite" class="pk-sprite pk-esprite"><img id="pk-esprite-img" class="pk-sprite-img" src="" alt=""></div>
+          </div>
+          <!-- Player side -->
+          <div class="pk-player-side">
+            <div id="pk-psprite" class="pk-sprite pk-psprite"><img id="pk-psprite-img" class="pk-sprite-img pk-sprite-back" src="" alt=""></div>
+            <div class="pk-hud pk-hud-player">
+              <div class="pk-name-level">
+                <span id="pk-pname" class="pk-name">Pikachu</span>
+                <span id="pk-plvl" class="pk-level">Lv.5</span>
+              </div>
+              <div class="pk-hp-row">
+                <span class="pk-hp-label">HP</span>
+                <div class="pk-hp-bar-track"><div id="pk-php-bar" class="pk-hp-bar" style="width:100%"></div></div>
+                <span id="pk-php-text" class="pk-hp-text">-- / --</span>
+              </div>
+              <div class="pk-xp-row">
+                <span class="pk-xp-label">XP</span>
+                <div class="pk-xp-bar-track"><div id="pk-xp-bar" class="pk-xp-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Battle log -->
+        <div id="pk-log" class="pk-log">
+          <div id="pk-log-line1" class="pk-log-line"></div>
+          <div id="pk-log-line2" class="pk-log-line"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div id="pk-actions" class="pk-actions">
+          <div id="pk-move-btns" class="pk-move-grid">
+            <button class="pk-move-btn" id="pk-move-0" onclick="window.pokemonModule.useMove(0)"></button>
+            <button class="pk-move-btn" id="pk-move-1" onclick="window.pokemonModule.useMove(1)"></button>
+            <button class="pk-move-btn" id="pk-move-2" onclick="window.pokemonModule.useMove(2)"></button>
+            <button class="pk-move-btn" id="pk-move-3" onclick="window.pokemonModule.useMove(3)"></button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-self:stretch;">
+            <button class="pk-ball-btn" id="pk-ball-btn" onclick="window.pokemonModule.throwBall()">⚾ Ball <span id="pk-ball-count">(5)</span></button>
+            <button class="pk-swap-btn" id="pk-swap-btn" onclick="window.pokemonModule.showSwapPanel(false)">⇄ Swap</button>
+            <button class="pk-run-btn" onclick="window.pokemonModule.tryRun()">🏃 Run</button>
+          </div>
+        </div>
+
+        <!-- Swap panel (party selection) -->
+        <div id="pk-swap-panel" class="pk-swap-panel hidden">
+          <div class="pk-swap-title" id="pk-swap-title">Choose a Pokémon:</div>
+          <div class="pk-swap-list" id="pk-swap-list"></div>
+        </div>
+
+        <!-- Coin counter — inside pk-screen so it sits over the canvas -->
+        <div id="pk-coins" class="pk-coin-display">💰 0</div>
+
+        <!-- Blackout overlay -->
+        <div id="pk-blackout" class="pk-blackout hidden">
+          <div class="pk-blackout-text">You blacked out!</div>
+          <button class="pk-blackout-btn" onclick="window.pokemonModule.dismissBlackout()">Continue</button>
+        </div>
+      </div>
+      </div><!-- /pk-screen -->
+      <div class="dpad" id="pk-dpad">
+        <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
+        <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
+        <button class="dpad-btn dpad-center" disabled></button>
+        <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
+        <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
+      </div>
+      </div><!-- /pk-game-column -->
+
+      <!-- Landscape mode FAB -->
+      <button class="pk-landscape-fab" id="pk-landscape-fab" onclick="window.pokemonModule.toggleLandscape()" title="Toggle Landscape Mode">⛶</button>
+      <button class="pk-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
+
+      <!-- Pokédex toggle button -->
+      <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>
+      <!-- Leaderboard button -->
+      <button class="pk-lb-fab" id="pk-lb-fab" onclick="window.pokemonModule.showLeaderboard()" title="Leaderboard">🏆</button>
+      <!-- Save button -->
+      <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
+      <!-- Shop button -->
+      <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
+      <!-- Heal button -->
+      <button class="pk-heal-fab" id="pk-heal-fab" onclick="window.pokemonModule.quickHeal()" title="Heal Team (90s cooldown)">💊</button>
+      <span class="pk-heal-cooldown hidden" id="pk-heal-cooldown"></span>
+
+      <!-- Shop Overlay -->
+      <div id="pk-shop-overlay" class="pk-shop-overlay hidden">
+        <div class="pk-shop-panel">
+          <div class="pk-shop-header">
+            <span class="pk-shop-title">🛒 PokéMart</span>
+            <span id="pk-shop-coins-display" class="pk-shop-coins">💰 0</span>
+            <button class="pk-dex-close" onclick="window.pokemonModule.toggleShop()">✕</button>
+          </div>
+          <div class="pk-shop-tabs">
+            <button class="pk-shop-tab active" id="pk-shop-tab-buy" onclick="window.pokemonModule.showShopTab('buy')">🛒 Buy</button>
+            <button class="pk-shop-tab" id="pk-shop-tab-pokemon" onclick="window.pokemonModule.showShopTab('pokemon')">🐾 Pokémon</button>
+            <button class="pk-shop-tab" id="pk-shop-tab-sell" onclick="window.pokemonModule.showShopTab('sell')">💰 Sell</button>
+          </div>
+          <div class="pk-shop-timer" id="pk-shop-timer">Stock refreshes in: --</div>
+          <div class="pk-shop-refresh-row">
+            <button class="pk-shop-refresh-btn" id="pk-shop-refresh-btn" onclick="window.pokemonModule.refreshShop()">🔄 Refresh Stock</button>
+            <span class="pk-shop-refresh-info" id="pk-shop-refresh-info"></span>
+          </div>
+          <!-- Target picker (revive / rare candy / stone) -->
+          <div id="pk-shop-picker" class="pk-shop-picker hidden">
+            <div class="pk-shop-picker-title" id="pk-shop-picker-title">Choose a Pokémon:</div>
+            <div id="pk-shop-picker-list" class="pk-shop-picker-list"></div>
+            <button class="pk-run-btn" style="margin-top:8px" onclick="document.getElementById('pk-shop-picker').classList.add('hidden')">Cancel</button>
+          </div>
+          <div class="pk-shop-items" id="pk-shop-items"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BATTLE ROYALE ─────────────────────────────────────── -->
+  <div class="page" id="page-royale">
+    <div class="rl-wrapper">
+      <canvas id="rl-canvas"></canvas>
+
+      <!-- Loading screen -->
+      <div id="rl-loading" class="rl-loading">
+        <div>BATTLE ROYALE</div>
+        <div class="rl-loading-bar-track"><div class="rl-loading-bar" style="width:100%"></div></div>
+        <div style="font-size:13px;opacity:0.6">Generating map…</div>
+      </div>
+
+      <!-- Rotate prompt (portrait fallback) -->
+      <div id="rl-rotate-prompt" class="rl-rotate-prompt">
+        <div class="rl-rotate-icon">📱</div>
+        <p>Opening Battle Royale in horizontal mode...</p>
+      </div>
+
+      <!-- Back button -->
+      <button class="rl-back-btn" onclick="goToPage('games')" title="Return to games">← Games</button>
+
+      <!-- Joystick elements -->
+      <div id="rl-joy-base"  class="rl-joy-base"></div>
+      <div id="rl-joy-knob"  class="rl-joy-knob"></div>
+      <button id="rl-switch-weapon-btn" class="rl-switch-weapon-btn" type="button" aria-label="Switch weapon">↔ Weapon</button>
+      <button id="rl-heal-btn" class="rl-heal-btn disabled" type="button" aria-label="Use medkit">Heal x0</button>
+      <button id="rl-early-drop-btn" class="rl-early-drop-btn hidden" type="button" aria-label="Drop early from parachute">DROP</button>
+      <!-- Special crate countdown badge -->
+      <div id="rl-crate-badge" aria-live="polite"></div>
+      <div id="rl-crate-panel" class="rl-crate-panel hidden" aria-live="polite">
+        <div class="rl-crate-panel-head">
+          <strong id="rl-crate-title">Nearby Crate</strong>
+          <button id="rl-crate-close" class="rl-crate-close" type="button" aria-label="Close crate panel">Close</button>
+        </div>
+        <p id="rl-crate-copy" class="rl-crate-copy">Move closer to a crate to open it.</p>
+        <div id="rl-crate-actions" class="rl-crate-actions">
+          <button id="rl-crate-open" class="rl-crate-open" type="button">Open Crate</button>
+        </div>
+        <div id="rl-crate-choices" class="rl-crate-choices"></div>
+      </div>
+      <!-- Blood skin picker button (top-right, subtle) -->
+      <button id="rl-blood-btn" onclick="window.royaleModule?.openBloodSkinMenu()" title="Blood Effect Skins"
+        style="position:absolute;top:10px;right:80px;z-index:100;background:rgba(0,0,0,0.55);border:1px solid rgba(180,0,0,0.5);border-radius:999px;padding:0 10px;height:36px;color:rgba(255,100,100,0.9);font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;letter-spacing:0.04em;">
+        🩸 Blood
+      </button>
+      <!-- Landscape action cluster: movement stays left, combat actions stay bottom-right -->
+      <div class="controls-right" aria-label="Battle Royale action controls">
+        <button id="rl-fire-btn" class="fire-button">FIRE</button>
+        <button id="rl-reload-btn">RELOAD</button>
+        <button id="rl-crouch-btn">CROUCH</button>
+        <button id="rl-jump-btn">JUMP</button>
+        <button id="rl-throw-btn">💣</button>
+      </div>
+      <div id="rl-end-actions" class="rl-end-actions hidden">
+        <button id="rl-play-again-btn" type="button">PLAY AGAIN</button>
+        <button id="rl-quit-btn" type="button">QUIT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pokédex Overlay -->
+  <div id="pk-dex-overlay" class="pk-dex-overlay hidden">
+    <div class="pk-dex-panel">
+      <div class="pk-dex-header">
+        <span class="pk-dex-title">📖 Pokédex</span>
+        <button class="pk-dex-close" onclick="window.pokemonModule.toggleDex()">✕</button>
+      </div>
+      <div class="pk-dex-subtitle" id="pk-dex-subtitle">Loading…</div>
+      <div class="pk-dex-grid" id="pk-dex-grid"></div>
+    </div>
+  </div>
+
+  <!-- Pokédex Detail Modal -->
+  <div id="pk-dex-detail-overlay" class="pk-dex-detail-overlay hidden">
+    <div class="pk-dex-detail-panel" id="pk-dex-detail-panel"></div>
+  </div>
+
+  <!-- Gym Leader Dialog -->
+  <div id="pk-gym-dialog" class="pk-gym-dialog hidden">
+    <div class="pk-gym-dialog-box">
+      <div class="pk-gym-dialog-leader">
+        <div class="pk-gym-dialog-avatar" id="pk-gym-dialog-avatar">⚔️</div>
+        <div>
+          <div class="pk-gym-dialog-name" id="pk-gym-dialog-name">Gym Leader</div>
+          <div class="pk-gym-dialog-title" id="pk-gym-dialog-title">Champion</div>
+        </div>
+      </div>
+      <div class="pk-gym-dialog-text" id="pk-gym-dialog-text">…</div>
+      <div class="pk-gym-dialog-btns">
+        <button class="pk-gym-dialog-battle" id="pk-gym-dialog-battle-btn" onclick="window.pokemonModule.acceptGymBattle()">⚔️ Battle!</button>
+        <button class="pk-gym-dialog-leave" onclick="window.pokemonModule.declineGymBattle()">🏃 Leave</button>
+      </div>
+      <div class="pk-gym-dialog-cooldown hidden" id="pk-gym-dialog-cooldown"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Overlay -->
+  <div id="pk-lb-overlay" class="pk-lb-overlay hidden">
+    <div class="pk-lb-panel">
+      <div class="pk-lb-header">
+        <span class="pk-lb-title">🏆 Pokémon Leaderboard</span>
+        <button class="pk-dex-close" onclick="window.pokemonModule.closeLeaderboard()">✕</button>
+      </div>
+      <div class="pk-lb-tabs">
+        <button class="pk-lb-tab active" id="pk-lb-tab-caught"  onclick="window.pokemonModule.showLeaderboard('caught')">🎯 Most Caught</button>
+        <button class="pk-lb-tab"        id="pk-lb-tab-levels"  onclick="window.pokemonModule.showLeaderboard('levels')">⭐ Top Levels</button>
+      </div>
+      <div class="pk-lb-list" id="pk-lb-list">
+        <div class="pk-lb-loading">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Starter Selection Modal -->
+  <div id="pk-starter-modal" class="pk-starter-modal hidden">
+    <div class="pk-starter-box">
+      <h2 class="pk-starter-title">Choose Your Starter Pokemon!</h2>
+      <p class="pk-starter-sub">Your journey begins now. Choose wisely!</p>
+      <div class="pk-starter-grid" id="pk-starter-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── LOBBY ──────────────────────────────────────────── -->
+  <div class="page" id="page-lobby">
+    <div class="lobby-wrapper">
+      <div class="lobby-header">
+        <h2 class="lobby-title">🏫 School Lobby</h2>
+        <div class="lobby-count-stack">
+          <span class="lobby-online" id="lobby-online-count">0 online</span>
+          <div class="lobby-mini-actions">
+                <button class="lobby-open-count-btn" id="app-open-count-btn" type="button">
+              <span>App Opens</span>
+              <strong id="lobby-dash-open-count">0</strong>
+            </button>
+                <button class="lobby-open-count-btn" id="contribution-tally-btn" type="button">
+              <span>Contributions</span>
+              <strong id="lobby-dash-contribution-count">0</strong>
+            </button>
+                <button class="lobby-open-count-btn" type="button" id="lobby-header-updates-btn">
+              <span>View Updates</span>
+              <strong id="lobby-dash-update-version">1.5.1</strong>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="lobby-presence-board">
+        <div class="lobby-open-board-head">
+          <span>Live Presence</span>
+            <button id="lobby-view-updates-btn" type="button">View Updates</button>
+        </div>
+        <div class="lobby-presence-list" id="lobby-presence-list">
+          <p class="lobby-open-empty">Open the lobby to see active users.</p>
+        </div>
+      </div>
+
+      <div class="lobby-canvas-area">
+        <canvas id="lobby-canvas" width="800" height="500"></canvas>
+        <div class="dpad" id="lobby-dpad">
+          <button class="dpad-btn dpad-up"    id="dpad-up">▲</button>
+          <button class="dpad-btn dpad-left"  id="dpad-left">◀</button>
+          <button class="dpad-btn dpad-center" disabled></button>
+          <button class="dpad-btn dpad-right" id="dpad-right">▶</button>
+          <button class="dpad-btn dpad-down"  id="dpad-down">▼</button>
+        </div>
+      </div>
+      <div class="lobby-chat-panel">
+        <div class="lobby-chat-messages" id="lobby-chat-messages"></div>
+        <div class="lobby-chat-input-row">
+          <input type="text" id="lobby-chat-input" placeholder="Say something in the lobby…" maxlength="100"
+            onkeydown="if(event.key==='Enter') sendLobbyChat()">
+          <button class="btn-primary" onclick="sendLobbyChat()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CLASS ANNOUNCEMENTS ────────────────────────────────── -->
+  <div class="page active" id="page-announcement">
+    <div class="shared-board announcement-board">
+      <div class="shared-board-header">
+        <div>
+          <div class="shared-board-kicker">Public Board</div>
+          <h1 class="shared-board-title">📢 Class Announcements</h1>
+          <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
+        </div>
+        <div class="board-toolbar">
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
+          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+        </div>
+      </div>
+      <div class="announcement-stats" id="announcement-stats"></div>
+      <div class="shared-board-feed" id="announcement-feed"></div>
+    </div>
+  </div>
+    </div>
+  </div>
+
+  <!-- ── OUTPUT-AI ────────────────────────────────────── -->
+  <div class="page" id="page-outputai">
+    <div class="shared-board output-ai-board">
+      <div class="shared-board-header">
+        <div>
+          <div class="shared-board-kicker">Shared AI Whiteboard</div>
+          <h1 class="shared-board-title">OUTPUT-AI</h1>
+        </div>
+          <button id="output-ai-refresh-btn" class="board-refresh-btn" type="button">Refresh</button>
+      </div>
+      <div class="shared-board-feed" id="output-ai-feed"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-codelab">
+    <div class="code-lab-shell is-home is-view-editor" id="code-lab-shell">
+      <div class="code-lab-header">
+        <div>
+          <div class="code-lab-kicker">Sandboxed Practice</div>
+          <h1 class="code-lab-title">CODE LAB</h1>
+          <p class="code-lab-sub">Pick a practice environment, then code in a portrait-first mobile editor workspace.</p>
+        </div>
+        <div class="code-lab-header-actions">
+          <button class="code-lab-btn ghost" id="code-lab-leaderboard-btn" type="button">Leaderboard</button>
+          <button class="code-lab-btn" id="code-lab-reset-btn" type="button">Reset Workspace</button>
+        </div>
+      </div>
+
+      <div class="code-lab-home" id="code-lab-home">
+        <button class="code-lab-env-card web-env" type="button" data-code-lab-env="web">
+          <span class="code-lab-env-icon">HTML</span>
+          <strong>HTML / CSS / JavaScript</strong>
+          <small>Browser-style preview, DOM practice, image/video assets, and web debug challenges.</small>
+        </button>
+        <button class="code-lab-env-card java-env" type="button" data-code-lab-env="java">
+          <span class="code-lab-env-icon">JAVA</span>
+          <strong>Java Swing</strong>
+          <small>Java basics, Swing source checks, compile/runtime output, and backend sandbox execution.</small>
+        </button>
+      </div>
+
+      <div class="code-lab-workbench" id="code-lab-workbench">
+        <div class="code-lab-workbench-top">
+          <button class="code-lab-btn ghost" id="code-lab-return-btn" type="button">Return</button>
+          <div>
+            <div class="code-lab-kicker" id="code-lab-env-label">HTML / CSS / JavaScript</div>
+            <h2 id="code-lab-workspace-title">Workspace</h2>
+          </div>
+        </div>
+
+        <div class="code-lab-tabs">
+          <button class="code-lab-tab active" id="code-lab-tab-daily" type="button" data-code-lab-mode="daily">Daily Debug Challenge</button>
+          <button class="code-lab-tab" id="code-lab-tab-practice" type="button" data-code-lab-mode="practice">Free Practice Workspace</button>
+        </div>
+
+        <div class="code-lab-status-grid">
+          <div class="code-lab-card challenge-card">
+            <div class="code-lab-card-top">
+              <span id="code-lab-challenge-type">Loading</span>
+              <strong id="code-lab-challenge-points">+1 point</strong>
+            </div>
+            <h2 id="code-lab-challenge-title">Daily challenge loading...</h2>
+            <p id="code-lab-challenge-desc">Preparing today's debugging task.</p>
+            <div class="code-lab-badges">
+              <span id="code-lab-challenge-date">Today</span>
+              <span id="code-lab-solved-badge">Not solved yet</span>
+              <span id="code-lab-streak-badge">Streak: 0</span>
+            </div>
+          </div>
+          <div class="code-lab-card asset-card code-lab-assets-panel">
+            <div class="code-lab-card-top">
+              <span>Practice Assets</span>
+              <label class="code-lab-upload-btn">
+                Upload
+                <input type="file" id="code-lab-asset-input" accept="image/*,video/*" multiple>
+              </label>
+            </div>
+            <div class="code-lab-assets" id="code-lab-assets">
+              <p>No practice assets uploaded yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-lab-view-tabs" aria-label="Code Lab panels">
+          <button class="code-lab-view-tab active" data-code-lab-view="editor" type="button">Editor</button>
+          <button class="code-lab-view-tab" data-code-lab-view="preview" type="button">Preview</button>
+          <button class="code-lab-view-tab" data-code-lab-view="console" type="button">Console</button>
+          <button class="code-lab-view-tab" data-code-lab-view="assets" type="button">Assets</button>
+        </div>
+
+        <div class="code-lab-workspace">
+          <div class="code-lab-editor-panel">
+            <div class="code-lab-toolbar">
+              <div class="code-lab-file-tabs">
+                <button class="code-lab-file-tab active" data-lang="html" type="button">index.html</button>
+                <button class="code-lab-file-tab" data-lang="css" type="button">style.css</button>
+                <button class="code-lab-file-tab" data-lang="javascript" type="button">script.js</button>
+                <button class="code-lab-file-tab" data-lang="java" type="button">Main.java</button>
+              </div>
+              <div class="code-lab-run-actions">
+                <button class="code-lab-btn ghost" id="code-lab-clear-btn" type="button">Clear</button>
+                <button class="code-lab-btn ghost" id="code-lab-run-btn" type="button">Run</button>
+                <button class="code-lab-btn" id="code-lab-submit-btn" type="button">Submit Daily</button>
+              </div>
+            </div>
+            <div id="code-lab-editor" class="code-lab-editor"></div>
+            <textarea id="code-lab-editor-fallback" class="code-lab-editor-fallback" spellcheck="false"></textarea>
+          </div>
+
+          <div class="code-lab-output-panel">
+            <div class="code-lab-preview-panel">
+              <div class="code-lab-panel-title" id="code-lab-preview-title">Preview</div>
+              <iframe id="code-lab-preview" class="code-lab-preview" title="Code Lab sandbox preview" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+            </div>
+            <div class="code-lab-console-panel">
+              <div class="code-lab-panel-title">Console</div>
+              <pre id="code-lab-console" class="code-lab-console">Ready.</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CODING LESSONS ────────────────────────────────────── -->
+  <div class="page" id="page-coding-educational">
+    <div class="coding-edu-shell">
+      <div class="coding-edu-hero">
+        <div>
+          <div class="coding-edu-kicker">Structured IT Learning</div>
+          <h1 class="coding-edu-title">CODING LESSONS</h1>
+          <p class="coding-edu-sub">Beginner-friendly programming, web, database, deployment, security, and IT fundamentals. Lessons open inside the app and are written for first-year to incoming second-year IT students.</p>
+        </div>
+        <label class="coding-edu-search" for="coding-edu-search">
+          <input id="coding-edu-search" type="search" placeholder="Search categories, folders, lessons, or tags...">
+        </label>
+      </div>
+      <div class="coding-edu-toolbar">
+        <div class="coding-edu-breadcrumbs" id="coding-edu-breadcrumbs"></div>
+        <button class="coding-edu-back" id="coding-edu-back" type="button" hidden>Back</button>
+      </div>
+      <div class="coding-edu-view" id="coding-edu-view"></div>
+    </div>
+  </div>
+
+  <!-- ── AI ASSISTANTS ────────────────────────────────────── -->
+  <div class="page" id="page-ai">
+    <div class="ai-breadcrumb" id="ai-breadcrumb"></div>
+    <div class="ai-view" id="ai-view"></div>
+  </div>
+
+  <!-- ── SOCIAL MEDIA PAGES ───────────────────────────────── -->
+  <div class="page" id="page-witfb">
+    <div class="social-pages-wrap" id="social-home-view">
+      <div class="games-hub social-games-hub">
+        <div class="games-hub-header">
+          <div class="games-hub-title-row">
+            <span class="games-hub-icon-large">📘</span>
+            <h1 class="games-hub-title">SOCIAL MEDIA</h1>
+          </div>
+          <p class="games-hub-sub">Official WIT channels inside the app</p>
+        </div>
+        <div class="games-grid">
+          <div class="game-card social-game-card" onclick="openSocialPage('WIT FB PAGE','https://www.facebook.com/WesternInstituteOfTechnology.iloilo')">
+          <div class="game-thumb social-thumb wit-thumb">
+            <div class="social-thumb-mark">f</div>
+            <div class="game-thumb-badge">OFFICIAL</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">WIT</span></div>
+            <h3 class="game-name">WIT FB PAGE</h3>
+            <p class="game-desc">Western Institute of Technology official Facebook page.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('WIT-IT page','https://www.facebook.com/wititdepartment')">
+          <div class="game-thumb social-thumb it-thumb">
+            <div class="social-thumb-mark">IT</div>
+            <div class="game-thumb-badge">DEPT</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">IT</span></div>
+            <h3 class="game-name">WIT-IT page</h3>
+            <p class="game-desc">Information Technology department updates and posts.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('WIT-PSITS page','https://www.facebook.com/bsitpsitswit')">
+          <div class="game-thumb social-thumb psits-thumb">
+            <div class="social-thumb-mark">PS</div>
+            <div class="game-thumb-badge">ORG</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PSITS</span></div>
+            <h3 class="game-name">WIT-PSITS page</h3>
+            <p class="game-desc">BSIT PSITS organization announcements and activities.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+        <div class="game-card social-game-card" onclick="openSocialPage('RAISA TRE&Ntilde;AS page','https://www.facebook.com/profile.php?id=61553662959404')">
+          <div class="game-thumb social-thumb raisa-thumb">
+            <div class="social-thumb-mark">RT</div>
+            <div class="game-thumb-badge">PUBLIC</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PUBLIC</span></div>
+            <h3 class="game-name">RAISA TRE&Ntilde;AS page</h3>
+            <p class="game-desc">Public page and community updates.</p>
+            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="social-embed-wrap hidden" id="social-embed-view">
+      <div class="social-embed-toolbar">
+            <button class="social-back-btn" type="button" onclick="closeSocialPage()">&larr; Back</button>
+        <div>
+          <div class="shared-board-kicker">Embedded Page</div>
+          <h2 id="social-embed-title">Social Media Pages</h2>
+        </div>
+      </div>
+      <iframe id="social-embed-frame" class="social-embed-frame" title="Embedded social media page" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; clipboard-write; web-share"></iframe>
+      <div id="social-embed-status" class="social-embed-status hidden">
+        <span class="social-loader-dot"></span>
+        <p id="social-embed-status-text">Loading Facebook embed inside the app...</p>
+        <a id="social-open-external" href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">Open in browser</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="folder-explorer-modal" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <button id="folder-explorer-close-btn" class="modal-close-btn" type="button">&times;</button>
+      <h2 id="folder-explorer-title" class="modal-title text-green">Subject Folders</h2>
+      <button id="folder-create-btn" class="btn-primary btn-create-folder" type="button">+ New Folder</button>
+      <div id="folder-grid-modal" class="folder-modal-grid"></div>
+      <div id="subject-ann-container"></div>
+    </div>
+  </div>
+
+  <div id="file-explorer-modal" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+      <button id="file-explorer-close-btn" class="modal-close-btn" type="button">&times;</button>
+      <button class="modal-back-btn" id="file-explorer-back-btn" onclick="backToFoldersAPI()">&larr; Back</button>
+      <h2 id="file-explorer-title" class="modal-title text-blue text-center spaced">Folder Name</h2>
+      <!-- Sub-folder section (visible when folder has/can have subfolders) -->
+      <div id="subfolder-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="color:rgba(255,255,255,0.6);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">📂 Sub-folders</span>
+          <button id="subfolder-create-btn" class="btn-primary" style="padding:4px 12px;font-size:12px;" type="button">+ New Sub-folder</button>
+        </div>
+        <div id="subfolder-grid-modal" class="folder-modal-grid" style="margin-bottom:16px;"></div>
+        <hr style="border-color:rgba(255,255,255,0.1);margin-bottom:14px;">
+      </div>
+      <div class="file-upload-area">
+         <input type="file" id="file-upload-input" class="file-upload-input" multiple>
+         <button id="file-upload-btn" class="btn-blue" type="button">Upload Files</button>
+         <div id="file-upload-status" class="upload-status-text"></div>
+      </div>
+      <div id="file-list-container" class="file-list-container"></div>
+    </div>
+  </div>
+
+  <div id="custom-alert-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-red">
+      <h3 class="modal-title text-red">Notice</h3>
+      <p id="alert-text" class="modal-text"></p>
+      <button class="btn-red" type="button" data-close-modal-id="custom-alert-modal" onclick="closeFolderModal('custom-alert-modal')">OK</button>
+    </div>
+  </div>
+
+  <div id="custom-prompt-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-blue">
+      <h3 id="prompt-title" class="modal-title text-blue">Input Required</h3>
+      <input type="text" id="prompt-input" class="modal-input" autocomplete="off">
+      <div class="modal-btn-group">
+        <button id="prompt-submit" class="btn-blue flex-1">Submit</button>
+      <button class="btn-outline-red flex-1" type="button" data-close-modal-id="custom-prompt-modal" onclick="closeFolderModal('custom-prompt-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="custom-confirm-modal" class="custom-modal-overlay blur-bg high-z">
+    <div class="custom-modal-box small-box border-yellow">
+      <h3 class="modal-title text-yellow">Confirm Action</h3>
+      <p id="confirm-text" class="modal-text"></p>
+      <div class="modal-btn-group">
+        <button id="confirm-yes" class="btn-yellow flex-1">Yes</button>
+        <button id="confirm-no" class="btn-outline-red flex-1">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="live-clock"></div>
+
+  <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
+
+  <script>
+  // ── Splash screen particle canvas + auto-dismiss ──────────
+  (function() {
+    const canvas = document.getElementById('splash-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [], raf;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Neon floating particles
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.8 + 0.4,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        color: ['#00d4ff','#00ff88','#a855f7','#ff6b35'][Math.floor(Math.random()*4)],
+        alpha: Math.random() * 0.6 + 0.2,
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      });
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Dismiss after 2.8s
+    function dismissSplash() {
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      splash.classList.add('splash-out');
+      setTimeout(() => {
+        splash.remove();
+        cancelAnimationFrame(raf);
+        window.dispatchEvent(new Event('classapp:splash-dismissed'));
+      }, 650);
+    }
+    setTimeout(dismissSplash, 2800);
+    // Also dismiss on tap for impatient users
+    document.getElementById('splash-screen').addEventListener('click', dismissSplash);
+  })();
+  </script>
+
+  <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js?v=113"></script>
+  <script src="features/ai/ai.js?v=1" defer></script>
+  <script src="features/academics/academics.js?v=1" defer></script>
+  <script src="features/lobby/lobby.js?v=1" defer></script>
+  <script src="features/chat/chat.js?v=1" defer></script>
+  <script src="features/calendar/calendar.js?v=1" defer></script>
+  <script src="features/music/music.js?v=1" defer></script>
+  <script src="features/social/social.js?v=1" defer></script>
+  <script src="features/users/users.js?v=1" defer></script>
+  <script src="features/games/games.js?v=1" defer></script>
+  <script src="features/updates/updates.js?v=1" defer></script>
+  <script src="features/folders/folders.js?v=1" defer></script>
+  <script src="features/gallery/gallery.js?v=1" defer></script>
+  <script src="assets/js/codelab.js?v=8" defer></script>
+  <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
+  <script src="coding-educational/coding-educational.js?v=9" defer></script>
+  <script src="features/pokemon/pokemon.js?v=3"></script>
+  <script src="features/royale/royale.js?v=26"></script>
+  <script src="features/pacman/pacman.js?v=3"></script>
+  <script src="features/candy/candy.js?v=10"></script>
+  <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
+  <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
+  <script src="features/personal-tools/notepad.js?v=7" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script src="features/personal-tools/calculator.js?v=5" defer></script>
+  <script src="features/personal-tools/personalization.js?v=2" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=12" defer></script>
+  <script src="features/reviewers/reviewers.js?v=15" defer></script>
+
+  <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
+  <div id="yt-mini-player" class="yt-mini-player hidden">
+    <span class="yt-mini-icon">▶️</span>
+    <span id="yt-mini-label" class="yt-mini-label">YouTube Playing</span>
+    <div class="yt-mini-actions">
+      <button class="yt-mini-btn" onclick="goToPage('music')" title="Back to Music">🎵</button>
+      <button class="yt-mini-btn" onclick="stopYouTubePlayer()" title="Stop">✕</button>
+    </div>
+  </div>
+
+
+</body>
+</html>

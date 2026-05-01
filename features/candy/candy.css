@@ -1,0 +1,1169 @@
+/* ── Candy Match — all selectors scoped under .candy-game-wrap ────────── */
+
+.candy-game-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 10px 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+  gap: 12px;
+  user-select: none;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.candy-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 440px;
+  gap: 8px;
+}
+
+.candy-back-btn,
+.candy-restart-btn,
+.candy-lb-open-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.candy-back-btn:hover,
+.candy-restart-btn:hover,
+.candy-lb-open-btn:hover { background: rgba(255,255,255,.16); }
+
+.candy-hud {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+}
+.candy-hud-pill {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  padding: 5px 14px;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  min-width: 72px;
+}
+.candy-hud-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  opacity: .55;
+}
+.candy-hud-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+/* ── Board ────────────────────────────────────────────────────────────── */
+.candy-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.04)),
+              radial-gradient(circle at top left, rgba(255,255,255,.22), transparent 28%),
+              radial-gradient(circle at bottom right, rgba(255,255,255,.12), transparent 24%);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 22px;
+  padding: 12px;
+  box-shadow: 0 18px 52px rgba(10,10,20,.36), inset 0 1px 0 rgba(255,255,255,.16);
+  backdrop-filter: blur(14px);
+  width: min(96vw, 440px);
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.candy-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 15% 12%, rgba(255,255,255,.20), transparent 30%),
+    radial-gradient(circle at 86% 18%, rgba(255,175,255,.15), transparent 28%),
+    radial-gradient(circle at 20% 78%, rgba(255,215,150,.12), transparent 26%),
+    radial-gradient(circle at 75% 72%, rgba(145,210,255,.10), transparent 24%);
+  pointer-events: none;
+  z-index: 0;
+}
+.candy-board > * { position: relative; z-index: 1; }
+
+@keyframes candy-bg-drift {
+  0%   { opacity: .8; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.01); }
+}
+
+/* ── Cell ─────────────────────────────────────────────────────────────── */
+.candy-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform .14s ease, background .14s ease, box-shadow .14s ease;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 10px rgba(0,0,0,.18);
+}
+.candy-cell:hover { background: rgba(255,255,255,.10); }
+.candy-cell:active { transform: scale(.96); }
+.candy-cell.selected { transform: scale(1.04); outline: none; background: rgba(255,255,255,.16); box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.22); }
+.candy-cell.candy-has-stick .candy-gem { margin-bottom: 3px; }
+
+/* ── Gem base ─────────────────────────────────────────────────────────── */
+.candy-gem {
+  width: 82%;
+  height: 82%;
+  border-radius: 50%;
+  position: relative;
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), opacity .18s;
+  box-shadow: 0 12px 24px rgba(0,0,0,.24), inset 0 2px 10px rgba(255,255,255,.24);
+  flex-shrink: 0;
+}
+
+/* Shine highlight on all gems */
+.candy-gem::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  left: 16%;
+  width: 35%;
+  height: 28%;
+  background: rgba(255,255,255,.58);
+  border-radius: 50%;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5 CANDY PIECE TYPES — refined and visually distinct
+   t0  Ruby Drop      — glossy red teardrop candy
+   t1  Lollipop Swirl — blue swirl candy with stick
+   t2  Gummy Heart    — juicy green heart candy
+   t3  Wrapped Pillow — warm yellow wrapped sweet
+   t4  Starburst Gem  — violet starburst candy gem
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.candy-gem.t0 {
+  background: radial-gradient(circle at 34% 34%, #ffc1d3 0%, #e5284d 48%, #92091d 100%);
+  clip-path: polygon(50% 0%, 74% 20%, 88% 44%, 84% 70%, 64% 94%, 50% 100%, 36% 94%, 16% 70%, 12% 44%, 26% 20%);
+  width: 70%;
+  height: 80%;
+  box-shadow: 0 8px 18px rgba(0,0,0,.26), inset 0 4px 10px rgba(255,255,255,.28);
+}
+
+.candy-gem.t1 {
+  background: radial-gradient(circle at 35% 35%, #a1e7ff 0%, #2998e0 48%, #0b4b88 100%);
+  border-radius: 50%;
+  width: 62%;
+  height: 62%;
+  box-shadow: 0 14px 28px rgba(0,0,0,.22), inset 0 4px 12px rgba(255,255,255,.35);
+}
+.candy-gem.t1::before {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: conic-gradient(from 45deg, rgba(255,255,255,.26) 0deg 35deg, transparent 35deg 90deg, rgba(255,255,255,.22) 90deg 125deg, transparent 125deg 240deg, rgba(255,255,255,.22) 240deg 280deg, transparent 280deg 360deg);
+  filter: blur(.5px);
+  pointer-events: none;
+}
+.candy-gem.t1::after {
+  top: 8%;
+  left: 20%;
+  width: 28%;
+  height: 28%;
+  background: rgba(255,255,255,.35);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+.candy-gem.t2 {
+  background: radial-gradient(circle at 40% 38%, #dcff9a 0%, #6ecb27 48%, #1d600e 100%);
+  clip-path: polygon(50% 8%, 70% 22%, 86% 40%, 92% 62%, 72% 84%, 50% 94%, 28% 84%, 8% 62%, 14% 40%, 30% 22%);
+  width: 76%;
+  height: 78%;
+  box-shadow: 0 8px 18px rgba(0,0,0,.24), inset 0 4px 10px rgba(255,255,255,.22);
+}
+.candy-gem.t2::before {
+  content: '';
+  position: absolute;
+  top: 14%;
+  left: 22%;
+  width: 56%;
+  height: 36%;
+  background: rgba(255,255,255,.28);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+.candy-gem.t3 {
+  background: linear-gradient(150deg, #fff9c9 0%, #ffda5b 42%, #ff9c2d 100%);
+  border-radius: 40%;
+  width: 90%;
+  height: 58%;
+  box-shadow: 0 14px 28px rgba(0,0,0,.24), inset 0 5px 14px rgba(255,255,255,.35);
+}
+.candy-gem.t3::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 40%;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.32) 0 8px, transparent 8px 18px);
+  opacity: .88;
+}
+.candy-gem.t3::after {
+  top: 8%;
+  left: 14%;
+  width: 62%;
+  height: 30%;
+  background: rgba(255,255,255,.24);
+  border-radius: 999px;
+  filter: blur(.8px);
+}
+
+.candy-gem.t4 {
+  background: radial-gradient(circle at 30% 30%, #ffd8ff 0%, #c43bff 48%, #740088 100%);
+  clip-path: polygon(50% 0%, 62% 34%, 98% 35%, 70% 57%, 80% 92%, 50% 74%, 20% 92%, 30% 57%, 2% 35%, 38% 35%);
+  width: 80%;
+  height: 80%;
+  box-shadow: 0 8px 20px rgba(0,0,0,.26), inset 0 4px 12px rgba(255,255,255,.25);
+}
+.candy-gem.t4::before {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 72%);
+  filter: blur(1px);
+}
+
+/* ── Lollipop stick (only rendered for t1) ────────────────────────────── */
+.candy-lolly-stick {
+  width: 10%;
+  height: 22%;
+  background: linear-gradient(180deg, #f7e0c4 0%, #ca9d67 100%);
+  border-radius: 4px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,.2);
+  margin-top: 2px;
+  transition: opacity .18s;
+}
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+@keyframes candy-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); }
+  100% { transform: scale(0); opacity: 0; }
+}
+@keyframes candy-drop {
+  0%   { transform: translateY(-100%) scale(.8); opacity: 0; }
+  70%  { transform: translateY(8%) scale(1.05); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes candy-shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+
+/* clip-path types need a safe pop: opacity fade prevents scale-overflow artefacts
+   t0=Drop, t2=Heart, t4=Star all use clip-path */
+@keyframes candy-pop-clip {
+  0%   { opacity: 1; transform: scale(1); }
+  40%  { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 0; transform: scale(0); }
+}
+
+/* !important ensures pop overrides any persistent skin animation (neon-pulse, holo-shimmer, etc.) */
+.candy-gem.anim-pop              { animation: candy-pop       .28s ease-in forwards !important; }
+.candy-gem.t0.anim-pop,
+.candy-gem.t2.anim-pop,
+.candy-gem.t4.anim-pop           { animation: candy-pop-clip  .28s ease-in forwards !important; }
+.candy-gem.anim-drop             { animation: candy-drop      .32s cubic-bezier(.22,1,.36,1) forwards; }
+.candy-gem.anim-shake            { animation: candy-shake     .25s ease-in-out; }
+.candy-lolly-stick.anim-pop      { animation: candy-pop       .28s ease-in forwards; }
+.candy-lolly-stick.anim-drop     { animation: candy-drop      .32s cubic-bezier(.22,1,.36,1) forwards; }
+
+/* ── Chain / combo board FX ───────────────────────────────────────────── */
+@keyframes candy-board-glow {
+  0%,100% { box-shadow: 0 8px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.06) inset; }
+  50%     { box-shadow: 0 8px 60px rgba(255,107,157,.6), 0 0 30px rgba(196,77,255,.5), 0 0 0 2px rgba(255,200,100,.5) inset; }
+}
+@keyframes candy-board-pulse {
+  0%,100% { transform: scale(1); }
+  40%     { transform: scale(1.025); }
+}
+@keyframes candy-board-sparkle {
+  0%,100% { filter: brightness(1) saturate(1); }
+  50%     { filter: brightness(1.35) saturate(1.8); }
+}
+@keyframes candy-board-rainbow {
+  0%   { border-color: rgba(255,107,157,.7); }
+  20%  { border-color: rgba(255,200,77,.7); }
+  40%  { border-color: rgba(77,220,130,.7); }
+  60%  { border-color: rgba(77,157,255,.7); }
+  80%  { border-color: rgba(196,77,255,.7); }
+  100% { border-color: rgba(255,107,157,.7); }
+}
+@keyframes candy-board-shake {
+  0%,100% { transform: translateX(0); }
+  15%      { transform: translateX(-8px); }
+  35%      { transform: translateX(8px); }
+  55%      { transform: translateX(-5px); }
+  75%      { transform: translateX(5px); }
+}
+
+.candy-board.candy-fx-glow    { animation: candy-board-glow    .7s ease-in-out; }
+.candy-board.candy-fx-pulse   { animation: candy-board-pulse   .7s ease-in-out; }
+.candy-board.candy-fx-sparkle { animation: candy-board-sparkle .7s ease-in-out; }
+.candy-board.candy-fx-rainbow { animation: candy-board-rainbow .7s linear; }
+.candy-board.candy-fx-shake   { animation: candy-board-shake   .45s ease-in-out; }
+
+/* ── Status banner ────────────────────────────────────────────────────── */
+.candy-status {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  min-height: 22px;
+  opacity: .8;
+  text-align: center;
+}
+
+/* ── Game-over overlay ────────────────────────────────────────────────── */
+.candy-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.65);
+  border-radius: 18px;
+  gap: 14px;
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.candy-overlay-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+.candy-overlay-score {
+  font-size: 16px;
+  opacity: .75;
+  color: #fff;
+}
+.candy-overlay-btns {
+  display: flex;
+  gap: 10px;
+}
+.candy-lb-btn {
+  background: linear-gradient(90deg, rgba(255,107,157,.3), rgba(196,77,255,.3));
+  border-color: rgba(255,107,157,.5);
+}
+
+/* ── Hub card candy theme ─────────────────────────────────────────────── */
+.candy-thumb {
+  background: linear-gradient(135deg, #ff6b9d 0%, #c44dff 40%, #4d79ff 100%);
+  overflow: visible;
+}
+.candy-card-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 14px;
+  box-sizing: border-box;
+}
+.candy-card-gem {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  flex-shrink: 0;
+}
+
+/* Card art gem previews (simplified versions of the 8 types) */
+.candy-card-gem.t0 { background: radial-gradient(circle at 35% 35%, #ff99aa, #cc1133); border-radius: 50%; }
+.candy-card-gem.t1 { background: radial-gradient(circle at 35% 35%, #88ccff, #1144cc); border-radius: 50%; }
+.candy-card-gem.t2 { background: radial-gradient(ellipse at 40% 60%, #fff176, #e6ac00); border-radius: 50% 50% 45% 45% / 40% 40% 60% 60%; }
+.candy-card-gem.t3 { background: radial-gradient(ellipse at 30% 40%, #99ff99, #118833); border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%; }
+.candy-card-gem.t4 { background: radial-gradient(ellipse at 35% 35%, #ee88ff, #7711bb); border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%; }
+.candy-card-gem.t5 { background: linear-gradient(145deg, #ffb866, #cc5500); border-radius: 22%; }
+.candy-card-gem.t6 { background: linear-gradient(165deg, #88ffee, #009988); clip-path: polygon(50% 4%, 96% 94%, 4% 94%); border-radius: 0; }
+.candy-card-gem.t7 { background: linear-gradient(135deg, #ff88cc, #dd1177); border-radius: 12%; }
+
+.candy-play-btn {
+  background: linear-gradient(90deg, #ff6b9d, #c44dff);
+  border: none;
+}
+.candy-play-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, #ff88b5, #d877ff);
+}
+
+/* ── Info bar ─────────────────────────────────────────────────────────── */
+.candy-infobar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.candy-level-badge {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.candy-score-bar-wrap {
+  flex: 1;
+  height: 7px;
+  background: rgba(255,255,255,.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.candy-score-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ff6b9d, #c44dff);
+  transition: width .35s ease, background .35s;
+}
+.candy-target-pill {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.75);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Blockers pill is always in DOM but JS hides it for no-blocker levels */
+#candy-blockers-pill { display: none; }
+
+/* ── Action bar ───────────────────────────────────────────────────────── */
+.candy-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.candy-action-btn {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #fff;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.candy-action-btn:hover { background: rgba(255,255,255,.14); }
+
+/* ── Blocker overlay ──────────────────────────────────────────────────── */
+.candy-blocker {
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(60,40,20,.7) 0px,
+    rgba(60,40,20,.7) 4px,
+    rgba(100,70,30,.4) 4px,
+    rgba(100,70,30,.4) 8px
+  );
+  border: 2px solid rgba(160,110,50,.65);
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes blocker-pop {
+  0%   { transform: scale(1);    opacity: 1; }
+  40%  { transform: scale(1.2);  opacity: 1; }
+  100% { transform: scale(0);    opacity: 0; }
+}
+.candy-blocker.anim-blocker-pop {
+  animation: blocker-pop .25s ease-in forwards;
+}
+
+/* ── Level complete overlay ───────────────────────────────────────────── */
+.candy-lc-overlay {
+  background: rgba(0,0,0,.7);
+}
+.candy-lc-overlay .candy-overlay-title {
+  background: linear-gradient(90deg, #ff6b9d, #ffdd44, #c44dff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Level select modal ───────────────────────────────────────────────── */
+.candy-level-modal-body {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.candy-level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 55vh;
+  padding: 4px 2px;
+  margin-top: 4px;
+}
+.candy-level-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.4);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px;
+  transition: background .12s;
+  line-height: 1.1;
+}
+.candy-level-btn.unlocked {
+  cursor: pointer;
+  background: rgba(255,107,157,.08);
+  border-color: rgba(255,107,157,.25);
+  color: #fff;
+}
+.candy-level-btn.unlocked:hover {
+  background: rgba(255,107,157,.2);
+}
+.candy-level-btn.current {
+  border-color: #ffdd44;
+  background: rgba(255,221,68,.15);
+  color: #ffdd44;
+}
+.clb-num {
+  font-size: 13px;
+  font-weight: 900;
+}
+.candy-modal-nav-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s;
+  flex-shrink: 0;
+}
+.candy-modal-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.candy-modal-nav-btn:disabled { opacity: .35; cursor: default; }
+
+/* ── Coins display ────────────────────────────────────────────────────── */
+.candy-coins-display {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffdd44;
+  padding: 6px 10px;
+  background: rgba(255,221,68,.08);
+  border: 1px solid rgba(255,221,68,.22);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Shop modal ───────────────────────────────────────────────────────── */
+.candy-shop-modal-inner { max-height: 90vh; display: flex; flex-direction: column; }
+
+.candy-shop-section { margin-bottom: 18px; }
+
+.candy-shop-rarity-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.candy-rarity-common    { color: #b0b8c8; background: rgba(176,184,200,.12); }
+.candy-rarity-rare      { color: #66aaff; background: rgba(102,170,255,.12); }
+.candy-rarity-epic      { color: #cc77ff; background: rgba(204,119,255,.12); }
+.candy-rarity-legendary { color: #ffbb33; background: rgba(255,187,51,.12); }
+.candy-rarity-premium   { color: #ff6699; background: rgba(255,102,153,.12); }
+
+.candy-shop-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.candy-shop-item {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: background .12s, border-color .12s;
+}
+.candy-shop-item.equipped {
+  background: rgba(255,107,157,.1);
+  border-color: rgba(255,107,157,.4);
+}
+
+.candy-skin-preview {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+}
+.cskin-gem {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  flex-shrink: 0;
+}
+
+.candy-shop-item-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.candy-shop-action-btn {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,107,157,.5);
+  background: rgba(255,107,157,.15);
+  color: #fff;
+  cursor: pointer;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.candy-shop-action-btn:hover { background: rgba(255,107,157,.3); }
+.candy-shop-action-btn.cant-afford,
+.candy-shop-action-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.06);
+}
+
+.candy-shop-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+.equipped-badge {
+  background: rgba(255,107,157,.2);
+  border: 1px solid rgba(255,107,157,.5);
+  color: #ff6b9d;
+}
+
+/* ── Shop tabs ────────────────────────────────────────────────────────── */
+.candy-shop-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.candy-shop-tab {
+  flex: 1;
+  padding: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.55);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.candy-shop-tab.active {
+  background: rgba(255,107,157,.18);
+  border-color: rgba(255,107,157,.45);
+  color: #fff;
+}
+
+/* ── Effect icon in shop ──────────────────────────────────────────────── */
+.candy-effect-icon {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,.3));
+}
+
+/* ── Visual effects — GPU-friendly (transform + opacity + filter only) ── */
+
+/* Epic: board-level subtle effects */
+@keyframes eff-sparkle {
+  0%,100% { filter: brightness(1) saturate(1); }
+  40%     { filter: brightness(1.4) saturate(2); }
+}
+@keyframes eff-glowtrail {
+  0%,100% { box-shadow: 0 8px 40px rgba(0,0,0,.45); }
+  50%     { box-shadow: 0 0 40px rgba(255,107,157,.7), 0 0 80px rgba(196,77,255,.5); }
+}
+@keyframes eff-softpulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.015); }
+}
+@keyframes eff-colorwave {
+  0%   { border-color: rgba(255,107,157,.6); }
+  25%  { border-color: rgba(255,220,77,.6); }
+  50%  { border-color: rgba(77,220,130,.6); }
+  75%  { border-color: rgba(77,157,255,.6); }
+  100% { border-color: rgba(255,107,157,.6); }
+}
+@keyframes eff-shimmer {
+  0%,100% { filter: hue-rotate(0deg) brightness(1); }
+  50%     { filter: hue-rotate(40deg) brightness(1.2); }
+}
+
+.candy-board.candy-eff-sparkle    { animation: eff-sparkle   .9s ease-in-out; }
+.candy-board.candy-eff-glowtrail  { animation: eff-glowtrail .9s ease-in-out; }
+.candy-board.candy-eff-softpulse  { animation: eff-softpulse .9s ease-in-out; }
+.candy-board.candy-eff-colorwave  { animation: eff-colorwave .9s linear; }
+.candy-board.candy-eff-shimmer    { animation: eff-shimmer   .9s ease-in-out; }
+
+/* Legendary: stronger board effects */
+@keyframes eff-rainbowfx {
+  0%   { border-color: rgba(255,80,80,.8);  box-shadow: 0 0 30px rgba(255,80,80,.4); }
+  20%  { border-color: rgba(255,200,80,.8); box-shadow: 0 0 30px rgba(255,200,80,.4); }
+  40%  { border-color: rgba(80,255,130,.8); box-shadow: 0 0 30px rgba(80,255,130,.4); }
+  60%  { border-color: rgba(80,160,255,.8); box-shadow: 0 0 30px rgba(80,160,255,.4); }
+  80%  { border-color: rgba(200,80,255,.8); box-shadow: 0 0 30px rgba(200,80,255,.4); }
+  100% { border-color: rgba(255,80,80,.8);  box-shadow: 0 0 30px rgba(255,80,80,.4); }
+}
+@keyframes eff-prismsplit {
+  0%,100% { filter: hue-rotate(0deg) saturate(1) brightness(1); }
+  33%     { filter: hue-rotate(60deg) saturate(2) brightness(1.3); }
+  66%     { filter: hue-rotate(120deg) saturate(1.5) brightness(1.1); }
+}
+@keyframes eff-startrail {
+  0%,100% { box-shadow: 0 8px 40px rgba(0,0,0,.45); }
+  25%     { box-shadow: 0 0 20px rgba(255,220,80,.6), 0 0 60px rgba(255,107,157,.4); }
+  75%     { box-shadow: 0 0 30px rgba(196,77,255,.6), 0 0 70px rgba(77,157,255,.4); }
+}
+
+.candy-board.candy-eff-rainbowfx  { animation: eff-rainbowfx  .9s linear; }
+.candy-board.candy-eff-prismsplit { animation: eff-prismsplit  .9s ease-in-out; }
+.candy-board.candy-eff-startrail  { animation: eff-startrail   .9s ease-in-out; }
+
+/* Legendary: wrap-level effects */
+@keyframes eff-aura {
+  0%,100% { filter: brightness(1); }
+  40%     { filter: brightness(1.12) drop-shadow(0 0 20px rgba(196,77,255,.7)); }
+}
+@keyframes eff-screenglow {
+  0%,100% { filter: brightness(1) saturate(1); }
+  50%     { filter: brightness(1.18) saturate(1.6) drop-shadow(0 0 30px rgba(255,107,157,.5)); }
+}
+
+.candy-game-wrap.candy-eff-aura       { animation: eff-aura       .9s ease-in-out; }
+.candy-game-wrap.candy-eff-screenglow { animation: eff-screenglow .9s ease-in-out; }
+
+/* Premium: wrap-level intense (non-blocking, pointer-events preserved) */
+@keyframes eff-confetti {
+  0%   { filter: hue-rotate(0deg)   brightness(1)    saturate(1); transform: scale(1); }
+  25%  { filter: hue-rotate(90deg)  brightness(1.2)  saturate(2); transform: scale(1.01); }
+  50%  { filter: hue-rotate(180deg) brightness(1.15) saturate(1.8); transform: scale(1.02); }
+  75%  { filter: hue-rotate(270deg) brightness(1.2)  saturate(2); transform: scale(1.01); }
+  100% { filter: hue-rotate(360deg) brightness(1)    saturate(1); transform: scale(1); }
+}
+@keyframes eff-candyaura {
+  0%,100% { filter: brightness(1) drop-shadow(0 0 0px transparent); }
+  30%     { filter: brightness(1.15) drop-shadow(0 0 25px rgba(255,107,157,.8)) drop-shadow(0 0 50px rgba(196,77,255,.5)); }
+  70%     { filter: brightness(1.1)  drop-shadow(0 0 20px rgba(77,157,255,.7))  drop-shadow(0 0 40px rgba(255,220,80,.5)); }
+}
+@keyframes eff-glowborder-anim {
+  0%,100% { opacity: 1; }
+  50%     { opacity: .7; }
+}
+@keyframes eff-celebrate {
+  0%        { transform: scale(1)     rotate(0deg);   filter: brightness(1); }
+  20%       { transform: scale(1.03)  rotate(-1deg);  filter: brightness(1.2) saturate(1.8); }
+  40%       { transform: scale(1.04)  rotate(1deg);   filter: brightness(1.25) hue-rotate(30deg); }
+  60%       { transform: scale(1.03)  rotate(-0.5deg);filter: brightness(1.2) hue-rotate(60deg); }
+  80%       { transform: scale(1.01)  rotate(0.5deg); filter: brightness(1.1); }
+  100%      { transform: scale(1)     rotate(0deg);   filter: brightness(1); }
+}
+@keyframes eff-megablast {
+  0%   { filter: brightness(1)    saturate(1)   hue-rotate(0deg);   transform: scale(1); }
+  15%  { filter: brightness(1.5)  saturate(3)   hue-rotate(60deg);  transform: scale(1.04); }
+  40%  { filter: brightness(1.3)  saturate(2.5) hue-rotate(120deg); transform: scale(1.03); }
+  70%  { filter: brightness(1.15) saturate(1.8) hue-rotate(200deg); transform: scale(1.01); }
+  100% { filter: brightness(1)    saturate(1)   hue-rotate(360deg); transform: scale(1); }
+}
+
+.candy-game-wrap.candy-eff-confetti   { animation: eff-confetti     2.2s ease-in-out; }
+.candy-game-wrap.candy-eff-candyaura  { animation: eff-candyaura    2.2s ease-in-out; }
+.candy-game-wrap.candy-eff-glowborder { animation: eff-glowborder-anim 2.2s ease-in-out; }
+.candy-game-wrap.candy-eff-celebrate  { animation: eff-celebrate    2.2s ease-in-out; }
+.candy-game-wrap.candy-eff-megablast  { animation: eff-megablast    2.2s ease-in-out; }
+
+/* ── Skin-specific visual overrides ──────────────────────────────────── */
+
+/* Holographic: rainbow shimmer cycling on every gem */
+@keyframes holo-shimmer {
+  0%   { filter: hue-rotate(0deg)   brightness(1.1) saturate(1.6); }
+  33%  { filter: hue-rotate(120deg) brightness(1.25) saturate(2); }
+  66%  { filter: hue-rotate(240deg) brightness(1.15) saturate(1.8); }
+  100% { filter: hue-rotate(360deg) brightness(1.1) saturate(1.6); }
+}
+.candy-board.skin-holo .candy-gem {
+  animation: holo-shimmer 3s linear infinite;
+}
+.candy-board.skin-holo .candy-gem::after {
+  background: linear-gradient(135deg, rgba(255,255,255,.8), rgba(180,200,255,.5), rgba(255,180,255,.4));
+  width: 50%;
+  height: 40%;
+}
+.candy-board.candy-low-end.skin-holo .candy-gem { animation: none; filter: none; }
+
+/* Dark Matter / Midnight / Obsidian: deep dark shadow, minimal shine */
+.candy-board.skin-darkmatt .candy-gem,
+.candy-board.skin-midnight .candy-gem,
+.candy-board.skin-obsidian .candy-gem {
+  box-shadow: 0 4px 12px rgba(0,0,0,.7), 0 0 6px rgba(100,80,180,.35) inset, 0 1px 0 rgba(255,255,255,.12) inset;
+}
+.candy-board.skin-darkmatt .candy-gem::after,
+.candy-board.skin-midnight .candy-gem::after,
+.candy-board.skin-obsidian .candy-gem::after {
+  background: rgba(255,255,255,.3);
+  width: 25%;
+  height: 20%;
+}
+
+/* Lava Flow: glowing molten core, dark crust shadow */
+.candy-board.skin-lava .candy-gem {
+  box-shadow: 0 3px 10px rgba(0,0,0,.55), 0 0 8px rgba(255,80,0,.5);
+}
+.candy-board.skin-lava .candy-gem::after {
+  background: rgba(255,220,100,.65);
+  filter: blur(3px);
+  width: 38%;
+  height: 30%;
+}
+
+/* Vintage: desaturated, faded look — warm cream tint over the shine */
+.candy-board.skin-vintage .candy-gem {
+  box-shadow: 0 3px 8px rgba(60,40,0,.5), 0 1px 0 rgba(255,240,200,.3) inset;
+}
+.candy-board.skin-vintage .candy-gem::after {
+  background: rgba(255,240,200,.45);
+  filter: blur(2px);
+}
+
+/* Crystal Clear / Diamond / Crystal Dragon: icy transparent look */
+.candy-board.skin-crystal .candy-gem,
+.candy-board.skin-diamond .candy-gem,
+.candy-board.skin-dragon .candy-gem {
+  box-shadow: 0 3px 12px rgba(100,180,255,.35), 0 1px 0 rgba(255,255,255,.65) inset;
+}
+.candy-board.skin-crystal .candy-gem::after,
+.candy-board.skin-diamond .candy-gem::after,
+.candy-board.skin-dragon .candy-gem::after {
+  background: rgba(255,255,255,.85);
+  width: 42%;
+  height: 35%;
+}
+
+/* Neon Brights: brighter shine, pulsing glow animation */
+@keyframes neon-pulse {
+  0%,100% { filter: drop-shadow(0 0 5px rgba(255,255,255,.5)) drop-shadow(0 0 12px rgba(180,100,255,.4)); }
+  50%     { filter: drop-shadow(0 0 9px rgba(255,255,255,.75)) drop-shadow(0 0 22px rgba(100,200,255,.6)); }
+}
+.candy-board.skin-neon .candy-gem {
+  animation: neon-pulse 1.8s ease-in-out infinite;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.6) inset;
+}
+/* Neon shine = brighter white flare */
+.candy-board.skin-neon .candy-gem::after {
+  background: rgba(255,255,255,.75);
+  width: 40%;
+  height: 32%;
+}
+/* Disable neon pulse in low-end mode */
+.candy-board.candy-low-end.skin-neon .candy-gem {
+  animation: none;
+  filter: none;
+}
+
+/* Earthy Tones: matte/stone look — reduced shine, rougher shadow */
+.candy-board.skin-earthy .candy-gem {
+  box-shadow: 0 3px 6px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.15) inset;
+}
+.candy-board.skin-earthy .candy-gem::after {
+  background: rgba(255,255,255,.18);
+  filter: blur(3px);
+}
+
+/* Forest Fresh: leaf gems have a subtle vein line via ::before on t0 */
+.candy-board.skin-forest .candy-gem.t0::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 65%;
+  background: rgba(0,0,0,.18);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ── Low-end mode — disable non-essential animations ─────────────────── */
+.candy-board.candy-low-end,
+.candy-board.candy-low-end::before,
+.candy-board.candy-low-end .candy-gem,
+.candy-board.candy-low-end .candy-lolly-stick {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.05ms !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPECIAL CANDY SYSTEM — Enhanced Visuals
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cell glow ring — strong neon border pulse */
+@keyframes candy-cell-special-ring {
+  0%,100% {
+    border-color: var(--special-color, #fff);
+    box-shadow: inset 0 0 0 2px var(--special-color, #fff),
+                0 0 10px var(--special-color, #fff),
+                0 0 24px var(--special-color, #fff),
+                0 0 0 3px rgba(0,0,0,.5);
+  }
+  50% {
+    border-color: #fff;
+    box-shadow: inset 0 0 0 2px #fff,
+                0 0 18px var(--special-color, #fff),
+                0 0 40px var(--special-color, #fff),
+                0 0 0 3px rgba(0,0,0,.5);
+  }
+}
+.candy-cell.candy-has-special {
+  animation: candy-cell-special-ring 1.1s ease-in-out infinite;
+  background: radial-gradient(ellipse at 50% 40%,
+    color-mix(in srgb, var(--special-color, #fff) 22%, transparent) 0%,
+    rgba(0,0,0,.04) 70%) !important;
+  border-width: 2.5px;
+  border-style: solid;
+  z-index: 2;
+}
+/* Low-end: static border only */
+.candy-board.candy-low-end .candy-cell.candy-has-special {
+  animation: none !important;
+  border-color: var(--special-color, #fff) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 8px var(--special-color, #fff) !important;
+}
+
+/* Per-type CSS color tokens on the CELL */
+.candy-cell.candy-has-special.candy-stype-row   { --special-color: #ff6b35; }
+.candy-cell.candy-has-special.candy-stype-col   { --special-color: #35b5ff; }
+.candy-cell.candy-has-special.candy-stype-color { --special-color: #cc44ff; }
+.candy-cell.candy-has-special.candy-stype-board { --special-color: #ffdd00; }
+
+/* Base special gem — bright neon pulse */
+@keyframes candy-special-gem-pulse {
+  0%,100% {
+    filter: brightness(1.1) drop-shadow(0 0 6px var(--special-color, #fff))
+            drop-shadow(0 0 14px var(--special-color, #fff));
+  }
+  50% {
+    filter: brightness(1.4) drop-shadow(0 0 12px var(--special-color, #fff))
+            drop-shadow(0 0 28px var(--special-color, #fff))
+            drop-shadow(0 0 48px var(--special-color, #fff));
+  }
+}
+.candy-gem.candy-special {
+  animation: candy-special-gem-pulse 1.1s ease-in-out infinite;
+}
+/* Low-end: keep special visible but stop animation */
+.candy-board.candy-low-end .candy-gem.candy-special {
+  animation: none !important;
+  filter: brightness(1.15) drop-shadow(0 0 5px var(--special-color, #fff));
+}
+
+/* Per-type color tokens on the GEM */
+.candy-gem.candy-special-row   { --special-color: #ff6b35; }
+.candy-gem.candy-special-col   { --special-color: #35b5ff; }
+.candy-gem.candy-special-color { --special-color: #cc44ff; }
+.candy-gem.candy-special-board { --special-color: #ffdd00; }
+
+/* Badge label — large, centered, emoji */
+.candy-special-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 8;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,.9)) drop-shadow(0 0 8px currentColor);
+  letter-spacing: 0;
+}
+
+/* Board-wipe candy: rotating sparkle ring around gem */
+@keyframes candy-board-ring-spin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(360deg); }
+}
+.candy-gem.candy-special-board::before {
+  content: '✦ ✦ ✦ ✦';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 7px;
+  color: #ffee66;
+  white-space: nowrap;
+  width: 130%;
+  text-align: center;
+  animation: candy-board-ring-spin 2s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+  filter: drop-shadow(0 0 4px #ffdd00);
+}
+.candy-board.candy-low-end .candy-gem.candy-special-board::before {
+  animation: none;
+}
+
+/* ── Beam animations ──────────────────────────────────────────────────── */
+@keyframes candy-beam-h-anim {
+  0%   { opacity: 0; transform: scaleX(0); }
+  12%  { opacity: 1; transform: scaleX(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleX(1.06); }
+}
+@keyframes candy-beam-v-anim {
+  0%   { opacity: 0; transform: scaleY(0); }
+  12%  { opacity: 1; transform: scaleY(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: scaleY(1.06); }
+}
+
+.candy-beam-h {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,107,53,.8) 8%,
+    #ff9955 28%,
+    #fff9e6 50%,
+    #ff9955 72%,
+    rgba(255,107,53,.8) 92%,
+    transparent 100%
+  );
+  border-radius: 6px;
+  box-shadow: 0 0 22px rgba(255,107,53,.9), 0 0 44px rgba(255,150,80,.6);
+  animation: candy-beam-h-anim .48s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+.candy-beam-v {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(53,181,255,.8) 8%,
+    #55ccff 28%,
+    #eafaff 50%,
+    #55ccff 72%,
+    rgba(53,181,255,.8) 92%,
+    transparent 100%
+  );
+  border-radius: 6px;
+  box-shadow: 0 0 22px rgba(53,181,255,.9), 0 0 44px rgba(80,160,255,.6);
+  animation: candy-beam-v-anim .48s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+/* ── Color clear chain glow ───────────────────────────────────────────── */
+@keyframes candy-chain-glow-anim {
+  0%   { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+  25%  { filter: brightness(2.2) drop-shadow(0 0 16px #cc44ff) drop-shadow(0 0 32px rgba(204,68,255,.9)); }
+  60%  { filter: brightness(1.6) drop-shadow(0 0 10px #cc44ff) drop-shadow(0 0 22px rgba(204,68,255,.6)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+}
+.candy-gem.candy-chain-glow {
+  animation: candy-chain-glow-anim .6s ease-out forwards !important;
+}
+
+/* ── Board wipe ripple ────────────────────────────────────────────────── */
+@keyframes candy-wipe-ripple {
+  0%   { transform: scale(0);    opacity: 1; }
+  80%  { transform: scale(2);    opacity: .7; }
+  100% { transform: scale(2.8);  opacity: 0; }
+}
+.candy-board-wipe-ripple {
+  position: absolute;
+  inset: 50%;
+  width: 100px;
+  height: 100px;
+  margin: -50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,221,68,.95) 0%, rgba(255,107,157,.7) 40%, transparent 70%);
+  box-shadow: 0 0 50px rgba(255,221,68,.9), 0 0 100px rgba(255,107,157,.6);
+  animation: candy-wipe-ripple .6s ease-out forwards;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Board blast flash */
+@keyframes candy-board-blast-anim {
+  0%   { filter: brightness(1)    saturate(1); }
+  15%  { filter: brightness(3)    saturate(3); }
+  50%  { filter: brightness(1.5)  saturate(2); }
+  100% { filter: brightness(1)    saturate(1); }
+}
+.candy-board.candy-board-blast {
+  animation: candy-board-blast-anim .55s ease-out forwards !important;
+}

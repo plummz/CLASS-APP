@@ -1,0 +1,12 @@
+{
+  "env": { "node": true, "es2020": true, "browser": true },
+  "extends": ["eslint:recommended", "plugin:security/recommended-legacy"],
+  "plugins": ["security"],
+  "rules": {
+    "no-eval": "error",
+    "no-new-func": "error",
+    "security/detect-object-injection": "off",
+    "security/detect-non-literal-fs-filename": "off",
+    "security/detect-non-literal-regexp": "off"
+  }
+}

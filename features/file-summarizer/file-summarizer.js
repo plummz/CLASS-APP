@@ -820,7 +820,7 @@
             <div class="fs-history-title">📄 ${fsEscapeHTML(item.source_name || 'Document')}</div>
             <div class="fs-history-meta">${new Date(item.created_at).toLocaleDateString()} · ${fsEscapeHTML(item.summary_text).substring(0, 60)}...</div>
           </div>
-          <button class="fs-outline-btn danger compact" onclick="window.fsDeleteSummary(${item.id})">Delete</button>
+          <button type="button" class="fs-outline-btn danger compact fs-history-del-summary-btn" data-id="${item.id}">Delete</button>
         </div>
       `).join('');
     } catch (err) {
@@ -865,14 +865,13 @@
 
     listQuiz.innerHTML = allQuizzes.map(item => {
       const pct = item.total ? Math.round((item.score / item.total) * 100) : 0;
-      const delAction = item.isLocal ? `window.fsDeleteLocalQuiz(${item.localIdx})` : `window.fsDeleteQuiz(${item.id})`;
       return `
         <div class="fs-history-item">
           <div class="fs-history-item-main">
             <div class="fs-history-title">❓ ${fsEscapeHTML(item.source_name || 'Document')}</div>
             <div class="fs-history-meta">${new Date(item.taken_at).toLocaleDateString()} · Score: ${item.score}/${item.total} (${pct}%) ${item.isLocal ? ' (Offline)' : ''}</div>
           </div>
-          <button class="fs-outline-btn danger compact" onclick="${delAction}">Delete</button>
+          <button type="button" class="fs-outline-btn danger compact fs-history-del-quiz-btn" data-id="${item.id}" data-is-local="${item.isLocal ? 'true' : 'false'}" data-local-idx="${item.localIdx}">Delete</button>
         </div>
       `;
     }).join('');
@@ -908,6 +907,27 @@
 
   if (tabSummaryHistory) tabSummaryHistory.addEventListener('click', () => { tabSummaryHistory.classList.add('selected'); if (tabQuizHistory) tabQuizHistory.classList.remove('selected'); if (listSummary) listSummary.style.display = 'flex'; if (listQuiz) listQuiz.style.display = 'none'; loadSummaryHistory(); });
   if (tabQuizHistory) tabQuizHistory.addEventListener('click', () => { tabQuizHistory.classList.add('selected'); if (tabSummaryHistory) tabSummaryHistory.classList.remove('selected'); if (listQuiz) listQuiz.style.display = 'flex'; if (listSummary) listSummary.style.display = 'none'; loadQuizHistory(); });
+
+  if (listSummary) {
+    listSummary.addEventListener('click', (e) => {
+      const btn = e.target.closest('.fs-history-del-summary-btn');
+      if (btn) {
+        e.preventDefault();
+        window.fsDeleteSummary(btn.dataset.id);
+      }
+    });
+  }
+  
+  if (listQuiz) {
+    listQuiz.addEventListener('click', (e) => {
+      const btn = e.target.closest('.fs-history-del-quiz-btn');
+      if (btn) {
+        e.preventDefault();
+        if (btn.dataset.isLocal === 'true') window.fsDeleteLocalQuiz(parseInt(btn.dataset.localIdx, 10));
+        else window.fsDeleteQuiz(btn.dataset.id);
+      }
+    });
+  }
 
   window.fileSummarizerModule.refreshHistory = function() {
     if (tabQuizHistory && tabQuizHistory.classList.contains('selected')) loadQuizHistory();

@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.6.8-bug-fixes';
+const CACHE_VERSION = 'v1.6.12-20260502-stability2';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=118',
+  '/index.html?v=123',
   '/style.css?v=48',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -44,9 +44,9 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/file-summarizer/file-summarizer.js?v=16',
-  '/script.js?v=120',
-  '/features/reviewers/reviewers.js?v=17',
+  '/features/file-summarizer/file-summarizer.js?v=17',
+  '/script.js?v=124',
+  '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',
   '/features/personal-tools/alarm-clock.css?v=2',
@@ -74,10 +74,10 @@ const ASSETS = [
   '/coding-educational/coding-educational-data.js?v=10',
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
-  '/features/pokemon/pokemon.js?v=3',
-  '/features/royale/royale.js?v=26',
-  '/features/pacman/pacman.js?v=3',
-  '/features/candy/candy.js?v=10',
+  '/features/pokemon/pokemon.js?v=4',
+  '/features/royale/royale.js?v=27',
+  '/features/pacman/pacman.js?v=4',
+  '/features/candy/candy.js?v=11',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

@@ -1157,8 +1157,8 @@
           <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
         </div>
         <div class="board-toolbar">
-          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
-          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements...">
+          <button id="announcement-refresh-btn" class="board-refresh-btn" type="button">Refresh</button>
         </div>
       </div>
       <div class="announcement-stats" id="announcement-stats"></div>
@@ -1519,10 +1519,13 @@
     }
     draw();
 
-    // Dismiss after 2.8s
+    // Dismiss quickly once the app is usable (or after a short fallback delay).
+    let splashDismissed = false;
     function dismissSplash() {
+      if (splashDismissed) return;
       const splash = document.getElementById('splash-screen');
       if (!splash) return;
+      splashDismissed = true;
       splash.classList.add('splash-out');
       setTimeout(() => {
         splash.remove();
@@ -1530,15 +1533,18 @@
         window.dispatchEvent(new Event('classapp:splash-dismissed'));
       }, 650);
     }
-    setTimeout(dismissSplash, 2800);
+    // Fallback timer (keep brief so login isn't blocked behind branding)
+    setTimeout(dismissSplash, 1200);
     // Also dismiss on tap for impatient users
-    document.getElementById('splash-screen').addEventListener('click', dismissSplash);
+    document.getElementById('splash-screen')?.addEventListener('click', dismissSplash);
+    // App can force-dismiss as soon as it reveals the UI
+    window.addEventListener('classapp:boot-usable', dismissSplash, { once: true });
   })();
   </script>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=120"></script>
+  <script src="script.js?v=124"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1554,18 +1560,18 @@
   <script src="assets/js/codelab.js?v=8" defer></script>
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
-  <script src="features/pokemon/pokemon.js?v=3"></script>
-  <script src="features/royale/royale.js?v=26"></script>
-  <script src="features/pacman/pacman.js?v=3"></script>
-  <script src="features/candy/candy.js?v=10"></script>
+  <script src="features/pokemon/pokemon.js?v=4" defer></script>
+  <script src="features/royale/royale.js?v=27" defer></script>
+  <script src="features/pacman/pacman.js?v=4" defer></script>
+  <script src="features/candy/candy.js?v=11" defer></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=8" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=16" defer></script>
-  <script src="features/reviewers/reviewers.js?v=17" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=17" defer></script>
+  <script src="features/reviewers/reviewers.js?v=18" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

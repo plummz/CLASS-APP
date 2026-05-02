@@ -206,6 +206,7 @@ async function waitForSupabaseClient() {
   }
   return true;
 }
+window.waitForSupabaseClient = waitForSupabaseClient;
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -379,8 +380,44 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.6';
+const APP_VERSION = '1.6.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.6.9',
+    date: 'May 2, 2026',
+    title: 'Startup + Button Stability Repair',
+    summary: 'Made login and initial loading responsive even during server cold starts, and prevented Supabase-dependent buttons from failing when the client is still initializing.',
+    changes: [
+      'Performance: Auth modal and app shell now reveal immediately on DOM ready (no longer blocked behind Supabase init).',
+      'Bug Fix: Login no longer waits for Supabase client readiness before showing the main app UI.',
+      'Bug Fix: Announcements and OUTPUT-AI now wait for Supabase readiness and provide a visible Retry instead of silently failing.',
+      'Bug Fix: Folder/file actions now guard against missing Supabase client during cold start, preventing broken Delete/Upload/Explorer buttons.',
+      'PWA: Splash screen now dismisses as soon as the UI is usable (with a short fallback timer).'
+    ]
+  },
+  {
+    version: '1.6.8',
+    date: 'May 2, 2026',
+    title: 'Fast Boot Optimization',
+    summary: 'Drastically improved app loading time by unblocking the boot sequence and deferring heavy game assets.',
+    changes: [
+      'Performance: Unblocked the boot sequence from waiting on the 3-second splash screen timer.',
+      'Performance: Unblocked the initial boot sequence from waiting on Supabase initialization for logged-out users.',
+      'Performance: Added defer attributes to heavy game scripts so they do not block the browser parser.',
+    ]
+  },
+  {
+    version: '1.6.7',
+    date: 'May 1, 2026',
+    title: 'App Performance & History Button Fixes',
+    summary: 'Fixed slow startup times and repaired broken delete/refresh buttons on the Announcements and File Summarizer history sections.',
+    changes: [
+      'Performance: Added defer to heavy game scripts so the UI loads instantly without blocking the browser.',
+      'Performance: Removed blocking await from App Open tallies so the splash screen drops faster.',
+      'Bug Fix: Repaired the Announcement Refresh button and Search input by replacing inline events with safe delegated listeners.',
+      'Bug Fix: Fixed UUID SyntaxErrors in Announcement and File Summarizer History delete buttons, allowing safe deletion of saved notes and quizzes.',
+    ]
+  },
   {
     version: '1.6.6',
     date: 'May 1, 2026',
@@ -1863,6 +1900,8 @@ function folderAccessLabel(folder) {
 }
 
 async function fetchFolderById(id) {
+    const supabaseReady = await waitForSupabaseClient().catch(() => false);
+    if (!supabaseReady) throw new Error('Folders are still loading. Please try again in a moment.');
     const { data, error } = await sb.from('folders').select('*').eq('id', id).single();
     if (error) throw error;
     return data;
@@ -1914,10 +1953,25 @@ window.openFolderExplorer = async function(parentName) {
 };
 
 function fetchAndRenderFolders() {
-    sb.from('folders').select('*').eq('parent', currentParentContext)
-    .then(({ data: folders, error }) => {
-        const grid = document.getElementById('folder-grid-modal');
-        if(!grid) return;
+    const grid = document.getElementById('folder-grid-modal');
+    if(!grid) return;
+    grid.innerHTML = createInlineLoader('Loading folders...');
+
+    waitForSupabaseClient()
+    .then((ready) => {
+        if (!ready || !sb) {
+            grid.innerHTML = `
+              <div class="empty-state-text">
+                <p style="color: #ff6b6b;">Folders are still loading (server waking up).</p>
+                <button class="btn-secondary mt-10" type="button" onclick="fetchAndRenderFolders()">Retry</button>
+              </div>`;
+            return null;
+        }
+        return sb.from('folders').select('*').eq('parent', currentParentContext);
+    })
+    .then((result) => {
+        if (!result) return;
+        const { data: folders, error } = result;
         grid.innerHTML = '';
 
         if (error) {
@@ -1955,6 +2009,10 @@ function fetchAndRenderFolders() {
             </div>
             `;
         });
+    })
+    .catch((error) => {
+        console.error('Folder fetch failed:', error);
+        grid.innerHTML = `<div class="empty-state-text"><p style="color: #ff6b6b;">Error loading folders. Please try again.</p></div>`;
     });
 }
 
@@ -2114,10 +2172,23 @@ function fetchAndRenderFiles() {
     const allowEdit = canEditFolder(currentFolderContext);
     const uploadArea = document.querySelector('#file-explorer-modal .file-upload-area');
     if (uploadArea) uploadArea.style.display = allowEdit ? '' : 'none';
-    sb.from('files').select('*').eq('folder_id', currentFolderContext.id)
-    .then(({ data: files, error }) => {
-        const list = document.getElementById('file-list-container');
-        if(!list) return;
+    const list = document.getElementById('file-list-container');
+    if(!list) return;
+    list.innerHTML = createInlineLoader('Loading files...');
+
+    waitForSupabaseClient()
+    .then((ready) => {
+        if (!ready || !sb) {
+            list.innerHTML = `
+              <p class="empty-state-text" style="color: #ff6b6b;">Files are still loading (server waking up).</p>
+              <button class="btn-secondary mt-10" type="button" onclick="fetchAndRenderFiles()">Retry</button>`;
+            return null;
+        }
+        return sb.from('files').select('*').eq('folder_id', currentFolderContext.id);
+    })
+    .then((result) => {
+        if (!result) return;
+        const { data: files, error } = result;
         list.innerHTML = '';
 
         if (error) {
@@ -2154,6 +2225,10 @@ function fetchAndRenderFiles() {
             </div>
             `;
         });
+    })
+    .catch((error) => {
+        console.error('File fetch failed:', error);
+        list.innerHTML = `<p class="empty-state-text" style="color: #ff6b6b;">Error loading files. Please try again.</p>`;
     });
 }
 
@@ -2163,10 +2238,23 @@ function fetchAndRenderSubFolders() {
     const parentId = String(currentFolderContext.id);
     const subfolderSection = document.getElementById('subfolder-section');
     if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
-    sb.from('folders').select('*').eq('parent', parentId)
-    .then(({ data: subs, error }) => {
-        const grid = document.getElementById('subfolder-grid-modal');
-        if (!grid) return;
+    const grid = document.getElementById('subfolder-grid-modal');
+    if (!grid) return;
+    grid.innerHTML = createInlineLoader('Loading sub-folders...');
+
+    waitForSupabaseClient()
+    .then((ready) => {
+        if (!ready || !sb) {
+            grid.innerHTML = `
+              <p class="empty-state-text small" style="color: #ff6b6b;">Sub-folders are still loading (server waking up).</p>
+              <button class="btn-secondary mt-10" type="button" onclick="fetchAndRenderSubFolders()">Retry</button>`;
+            return null;
+        }
+        return sb.from('folders').select('*').eq('parent', parentId);
+    })
+    .then((result) => {
+        if (!result) return;
+        const { data: subs, error } = result;
         grid.innerHTML = '';
 
         if (error) {
@@ -2200,6 +2288,10 @@ function fetchAndRenderSubFolders() {
                 </div>` : ''}
             </div>`;
         });
+    })
+    .catch((error) => {
+        console.error('Subfolder fetch failed:', error);
+        grid.innerHTML = `<p class="empty-state-text small" style="color: #ff6b6b;">Error loading sub-folders. Please try again.</p>`;
     });
 }
 
@@ -2265,12 +2357,26 @@ window.uploadFileToFolderAPI = async function() {
           const fd = new FormData();
           fd.append('file', file);
           const r = await authFetch('/api/upload', { method: 'POST', body: fd });
-          if (!r.ok) throw new Error(`R2: ${(await r.json()).error || r.status}`);
-          const rData = await r.json();
+          const ct = r.headers.get('content-type') || '';
+          if (!r.ok) {
+            if (ct.includes('application/json')) {
+              const errData = await r.json().catch(() => ({}));
+              throw new Error(`R2: ${errData.error || r.status}`);
+            }
+            const text = await r.text().catch(() => '');
+            console.error(`[API ERROR] /api/upload returned ${ct} status=${r.status} preview=${text.slice(0, 120)}`);
+            throw new Error(`R2 upload failed (${r.status}). Please try again.`);
+          }
+          const rData = ct.includes('application/json')
+            ? await r.json().catch(() => ({}))
+            : {};
+          if (!rData.url) throw new Error('Upload succeeded but no file URL was returned.');
           fileUrl = rData.url;
           fileSize = rData.size;
         } else {
           // Docs / PDFs / other → Supabase Storage
+          const supabaseReady = await waitForSupabaseClient().catch(() => false);
+          if (!supabaseReady || !sb) throw new Error('Storage is still loading. Please try again in a moment.');
           const filePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
           const { error: storErr } = await sb.storage
               .from('portfolio-assets')
@@ -2314,6 +2420,8 @@ window.uploadFileToFolderAPI = async function() {
 
 window.deleteFileAPI = async function(fileId) {
     if (!currentUser) return customAlert('Please log in.');
+    const supabaseReady = await waitForSupabaseClient().catch(() => false);
+    if (!supabaseReady || !sb) return customAlert('Files are still loading. Please try again in a moment.');
     let file;
     try {
         const { data, error } = await sb.from('files').select('*').eq('id', fileId).single();
@@ -2335,6 +2443,8 @@ window.deleteFileAPI = async function(fileId) {
 };
 
 async function getAllFolders() {
+    const supabaseReady = await waitForSupabaseClient().catch(() => false);
+    if (!supabaseReady) throw new Error('Folders are still loading. Please try again in a moment.');
     const { data, error } = await sb.from('folders').select('*').order('name', { ascending: true });
     if (error) throw error;
     return data || [];
@@ -2418,6 +2528,11 @@ async function renderProfileFolders(username) {
     const container = document.getElementById('profile-folders-container');
     if (!container) return;
     container.innerHTML = createInlineLoader('Loading profile folders...');
+    const supabaseReady = await waitForSupabaseClient().catch(() => false);
+    if (!supabaseReady || !sb) {
+        container.innerHTML = `<p class="empty-state-text small">Profile folders are still loading. Please try again.</p>`;
+        return;
+    }
     const parent = `${PROFILE_FOLDER_PREFIX}${username}`;
     const { data, error } = await sb.from('folders').select('*').eq('parent', parent).order('name', { ascending: true });
     if (error) {
@@ -3519,12 +3634,18 @@ async function finalizeLogin(profile, serverSession) {
   setServerAuthToken(serverSession.token || '');
   if (isAdmin) revealAdminNav();
   saveSession();
+  // Do not block UI on Supabase cold-start: show the shell immediately, then
+  // let establishSession finish wiring realtime features in the background.
+  setInitializing(false);
+  renderAppState();
   try {
     setAuthSuccess('Signed in. Loading your portal...');
     await persistLastSeen({ online: true, force: true });
-    await establishSession();
+    establishSession().catch((error) => {
+      console.warn('[auth] establishSession (post-login) failed:', error?.message || error);
+    });
     logActivity('login');
-    await recordAppOpen();
+    recordAppOpen().catch((error) => console.warn('[AppOpen] post-login record failed:', error?.message || error));
   } catch (error) {
     console.error('[auth] finalizeLogin failed:', error);
     stopLastSeenHeartbeat();
@@ -3696,25 +3817,34 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function establishSession() {
-  await waitForSupabaseClient();
   syncAuthState();
   renderAppState();
   const navLogout = document.getElementById('nav-logout');
   if(navLogout) navLogout.style.display = 'flex';
 
+  // Fast interactive path: anything that does NOT require Supabase realtime
+  // should run immediately after login / session restore.
   fetchUsers();
-  initAppPresence();
   startLastSeenHeartbeat();
   updateChatHeader();
-  initSupabaseRealtimeChat();
-  initSharedRealtime();
-  initAppOpenRealtime();
   ensureAdminUpdateControl();
-  fetchAppUpdates();
   registerPushSubscription(false);
   fetchMessages(currentChat.type, currentChat.target);
   handleNotificationDeepLink();
+
+  // Defer realtime wiring until Supabase is actually ready.
+  const supabaseReady = await waitForSupabaseClient().catch(() => false);
+  if (!supabaseReady) {
+    console.warn('[sb] Supabase client not ready yet; realtime features deferred.');
+    return;
+  }
+
+  initAppPresence();
+  initSupabaseRealtimeChat();
+  initSharedRealtime();
+  initAppOpenRealtime();
   initReactionsRealtime();
+  fetchAppUpdates();
 }
 
 function getInitials(user) {
@@ -4034,8 +4164,17 @@ window.saveProfileEdits = async function(username) {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
-    if (!response.ok) return customAlert(data.error || 'Failed to update profile');
+    const ct = response.headers.get('content-type') || '';
+    const data = ct.includes('application/json')
+      ? await response.json().catch(() => ({}))
+      : {};
+    if (!response.ok) {
+      if (!ct.includes('application/json')) {
+        const text = await response.text().catch(() => '');
+        console.error(`[API ERROR] profile update non-JSON ct=${ct} status=${response.status} preview=${text.slice(0, 120)}`);
+      }
+      return customAlert(data.error || 'Failed to update profile');
+    }
 
     if (data.token) {
       setServerAuthToken(data.token);
@@ -4184,7 +4323,13 @@ async function fetchMessages(chatType, target = null) {
       if (chatType === 'private' && target) params.set('target', `${currentUser.username}||${target}`);
       const response = await authFetch(`/api/messages?${params.toString()}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Messages failed (${response.status})`);
-      const messages = await response.json();
+      const ct = response.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const text = await response.text().catch(() => '');
+        console.error(`[API ERROR] /api/messages non-JSON ct=${ct} status=${response.status} preview=${text.slice(0, 120)}`);
+        throw new Error('Messages are temporarily unavailable. Please try again.');
+      }
+      const messages = await response.json().catch(() => []);
       formattedMessages = Array.isArray(messages) ? messages : [];
     } catch (error) {
       console.warn('[chat] Server message fetch failed:', error.message || error);
@@ -5219,10 +5364,17 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); defe
    ============================================================ */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+  console.log('[BOOT] DOM ready');
   renderAppState();
   bindAuthPortalHandlers();
-  const splashReady = waitForSplashDismissal();
-  await initSupabase();
+  // Reveal auth modal / shell ASAP (do not block on Supabase cold start).
+  setInitializing(false);
+  renderAppState();
+  window.dispatchEvent(new Event('classapp:boot-usable'));
+
+  // Supabase can take time when the backend is cold-starting; run it in the
+  // background and let features call waitForSupabaseClient() when needed.
+  initSupabase().catch((error) => console.warn('[sb] initSupabase failed:', error?.message || error));
   if (currentUser && !getServerAuthToken()) {
     currentUser = null;
     isAdmin = false;
@@ -5396,6 +5548,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.deleteSharedAIOutput?.(deleteBtn.dataset.outputDelete);
     });
   }
+  const announcementFeed = document.getElementById('announcement-feed');
+  if (announcementFeed) {
+    announcementFeed.addEventListener('click', (event) => {
+      const deleteBtn = event.target.closest('.announcement-delete-btn');
+      if (!deleteBtn) return;
+      event.preventDefault();
+      window.deleteSharedAnnouncement?.(deleteBtn.dataset.id);
+    });
+  }
+  const announcementSearchInput = document.getElementById('announcement-search-input');
+  if (announcementSearchInput) {
+    announcementSearchInput.addEventListener('input', () => {
+      window.renderSharedAnnouncements?.();
+    });
+  }
+  const announcementRefreshBtn = document.getElementById('announcement-refresh-btn');
+  if (announcementRefreshBtn) {
+    announcementRefreshBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.fetchSharedAnnouncements?.();
+    });
+  }
   const aiPage = document.getElementById('page-ai');
   if (aiPage) {
     aiPage.addEventListener('click', (event) => {
@@ -5467,7 +5641,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     overlay.addEventListener('click', window.closeMenu);
   }
   document.addEventListener('click', (event) => {
-    console.log('[BUTTON CLICK] Target:', event.target.tagName, event.target.className);
     // Allow any element with data-page to route outside of sidebar
     const pageTrigger = event.target.closest('[data-page]');
     if (pageTrigger && !pageTrigger.closest('#sidebar')) {
@@ -5507,9 +5680,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isAdmin) revealAdminNav();
         await Promise.race([
           establishSession(),
-          new Promise((_, r) => setTimeout(() => r(new Error('establishSession timed out')), 15000))
+          new Promise((_, r) => setTimeout(() => r(new Error('establishSession timed out')), 5000))
         ]);
-        await recordAppOpen();
+        recordAppOpen().catch(e => console.warn('[AppOpen] non-critical error:', e));
         console.log('[BOOT] Session restored successfully.');
       } catch (error) {
         console.error('[auth] Session restore failed:', error);
@@ -5525,8 +5698,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       window.refreshAppOpenCount();
     }
-    console.log('[BOOT] Waiting for splash screen dismissal...');
-    await splashReady;
     console.log('[BOOT] Boot sequence complete.');
   } catch (error) {
     console.error('[BOOT ERROR] Critical failure during startup:', error);
@@ -7047,11 +7218,18 @@ window.closeSocialPage = function() {
 
 async function fetchSharedAIOutputs() {
   const feed = document.getElementById('output-ai-feed');
-  if (!sb) {
-    if (feed) feed.innerHTML = '<p class="empty-state-text">Shared OUTPUT-AI is unavailable right now. Please refresh the app.</p>';
+  if (feed) feed.innerHTML = createInlineLoader('Loading shared AI output...');
+  const supabaseReady = await waitForSupabaseClient().catch(() => false);
+  if (!supabaseReady) {
+    if (feed) {
+      feed.innerHTML = `
+        <div class="board-empty">
+          Shared OUTPUT-AI is still loading (server waking up).<br>
+          <button class="btn-secondary mt-10" type="button" onclick="fetchSharedAIOutputs()">Retry</button>
+        </div>`;
+    }
     return;
   }
-  if (feed) feed.innerHTML = createInlineLoader('Loading shared AI output...');
   const { data, error } = await sb.from('shared_ai_outputs').select('*').order('created_at', { ascending: false }).limit(80);
   if (error) {
     if (feed) feed.innerHTML = `<p class="empty-state-text">${escapeHTML(error.message)}</p>`;
@@ -7116,15 +7294,20 @@ window.deleteSharedAIOutput = function(id) {
 async function fetchSharedAnnouncements() {
   const feed = document.getElementById('announcement-feed');
   const stats = document.getElementById('announcement-stats');
-  if (!sb) {
+  if (feed) feed.innerHTML = createInlineLoader('Loading announcements...');
+  const supabaseReady = await waitForSupabaseClient().catch(() => false);
+  if (!supabaseReady) {
     sharedAnnouncements = [];
     if (stats) stats.innerHTML = '';
     if (feed) {
-      feed.innerHTML = '<div class="board-empty">Announcements are unavailable right now. Please try again after the app reconnects.</div>';
+      feed.innerHTML = `
+        <div class="board-empty">
+          Announcements are still loading (server waking up).<br>
+          <button class="btn-secondary mt-10" type="button" onclick="fetchSharedAnnouncements()">Retry</button>
+        </div>`;
     }
     return;
   }
-  if (feed) feed.innerHTML = createInlineLoader('Loading announcements...');
   const { data, error } = await sb.from('shared_announcements').select('*').order('created_at', { ascending: false }).limit(80);
   if (error) {
     if (feed) feed.innerHTML = `<p class="empty-state-text">${escapeHTML(error.message)}</p>`;
@@ -7176,10 +7359,11 @@ function renderSharedAnnouncements() {
       <div class="board-card-meta">
         <span>Shared by ${escapeHTML(item.sharer || 'Unknown')}</span>
         <span>${new Date(item.created_at).toLocaleString()}</span>
-        ${(currentUser && (item.sharer === currentUser.username || isAdmin)) ? `<button onclick="deleteSharedAnnouncement(${item.id})" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
+        ${(currentUser && (item.sharer === currentUser.username || isAdmin)) ? `<button type="button" class="announcement-delete-btn" data-id="${escapeHTML(String(item.id))}" style="margin-left:auto;padding:4px 12px;background:rgba(255,50,50,0.15);color:#ff4444;border:1px solid rgba(255,50,50,0.3);border-radius:6px;cursor:pointer;font-size:0.8em;font-weight:600;">Delete</button>` : ''}
       </div>
     </article>`).join('');
 }
+window.renderSharedAnnouncements = renderSharedAnnouncements;
 
 window.deleteSharedAnnouncement = async function(id) {
   if (!currentUser) return customAlert('Please log in.');

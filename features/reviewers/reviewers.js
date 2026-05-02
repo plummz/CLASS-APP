@@ -74,7 +74,11 @@ window.reviewersModule = {
   },
 
   loadReviewers: async function() {
-    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    let client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client && typeof window.waitForSupabaseClient === 'function') {
+      await window.waitForSupabaseClient().catch(() => false);
+      client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    }
     if (!client) {
       console.warn('[Reviewers] Supabase client not ready.');
       return;
@@ -96,7 +100,11 @@ window.reviewersModule = {
   },
 
   loadVoteCounts: async function() {
-    const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    let client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    if (!client && typeof window.waitForSupabaseClient === 'function') {
+      await window.waitForSupabaseClient().catch(() => false);
+      client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+    }
     if (!client) return;
 
     try {

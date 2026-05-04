@@ -1513,13 +1513,37 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
 }));
 
 app.get('/api/users', requireAuth, wrap(async (req, res) => {
+  let supabaseRows = [];
   try {
-    const rows = await fetchSupabasePublicProfiles();
-    if (rows.length) return res.json(safeDirectoryUsersFromProfiles(rows));
+    supabaseRows = await fetchSupabasePublicProfiles();
   } catch (error) {
-    console.warn('[users] Falling back to local state:', error.message);
+    console.warn('[users] Supabase fetch failed, using local state only:', error.message);
   }
-  res.json(safeDirectoryUsersFromProfiles(safeUsers()));
+
+  // Merge: include local-state users whose username is not already in Supabase.
+  // These are legacy/past users who registered before the Supabase profile sync.
+  // They are shown as offline (online: false) since we cannot verify their session.
+  const supabaseSet = new Set(supabaseRows.map(r => (r.username || '').toLowerCase()));
+  const localOnlyRows = safeUsers()
+    .filter(u => u.username && !supabaseSet.has(u.username.toLowerCase()))
+    .map(u => ({
+      username: u.username,
+      display_name: u.displayName || u.username,
+      birthday: u.birthday || 'Unknown',
+      address: u.address || 'Unknown',
+      github: u.github || '',
+      email: u.email || '',
+      note: u.note || '',
+      online: false,
+      avatar: u.avatar || '',
+      last_seen_at: u.last_seen_at || null,
+      username_last_changed_at: u.username_last_changed_at || null,
+      updated_at: null,
+    }));
+
+  const allRows = [...supabaseRows, ...localOnlyRows];
+  if (!allRows.length) return res.json([]);
+  return res.json(safeDirectoryUsersFromProfiles(allRows));
 }));
 
 app.put('/api/users/:username', ...requireSelf('username'), wrap(async (req, res) => {
@@ -2457,6 +2481,17 @@ app.post('/api/quiz-history', requireAuth, wrap(async (req, res) => {
   try {
     const inserted = await supabaseQuery('quiz_history', 'POST', [{ username: req.user.username, source_name: source_name || '', score, total }]);
     return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/quiz-history/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('quiz_history', 'GET', null, { id: `eq.${req.params.id}`, select: 'username' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('quiz_history', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 }));
 

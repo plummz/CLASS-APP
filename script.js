@@ -380,8 +380,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.6.9';
+const APP_VERSION = '1.7.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.0',
+    date: 'May 4, 2026',
+    title: 'Battle Royale Blood Skin Picker Fixed',
+    summary: 'Fixed the broken Blood Effect button in Battle Royale — clicking 🩸 Blood now opens a skin picker to choose between Red, Dark Red, Neon, and Black blood effects.',
+    changes: [
+      'Bug Fix: Battle Royale 🩸 Blood button now works — openBloodSkinMenu() was missing from the public API and has been implemented.',
+      'Feature: Blood skin selection (Red, Dark Red, Neon, Black) is now persistent across sessions via localStorage.',
+      'Bug Fix: Selected blood skin is restored on next game launch automatically.',
+    ],
+  },
   {
     version: '1.6.9',
     date: 'May 2, 2026',

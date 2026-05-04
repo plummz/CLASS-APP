@@ -1671,7 +1671,10 @@ window.royaleModule = (function () {
     neon:   { r:200, g:20,  b:255, name:'Neon' },
     black:  { r:20,  g:10,  b:10,  name:'Black' },
   };
-  let bloodSkinColor = BLOOD_SKINS.red;
+  let bloodSkinColor = (() => {
+    try { const k = localStorage.getItem('rl_blood_skin'); if (k && BLOOD_SKINS[k]) return BLOOD_SKINS[k]; } catch(e) {}
+    return BLOOD_SKINS.red;
+  })();
 
   function spawnBlood(x, y) {
     const parts = [];
@@ -3922,5 +3925,39 @@ window.royaleModule = (function () {
   }
 
   // - Public API -
-  return { init, destroy };
+  function openBloodSkinMenu() {
+    const existing = document.getElementById('rl-blood-menu');
+    if (existing) { existing.remove(); return; }
+    const menu = document.createElement('div');
+    menu.id = 'rl-blood-menu';
+    menu.style.cssText = 'position:absolute;top:52px;right:80px;z-index:200;background:rgba(15,0,0,0.95);border:1px solid rgba(180,0,0,0.6);border-radius:10px;padding:8px 6px;display:flex;flex-direction:column;gap:5px;min-width:165px;box-shadow:0 4px 20px rgba(0,0,0,0.7);';
+    Object.entries(BLOOD_SKINS).forEach(([key, val]) => {
+      const active = bloodSkinColor === val;
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.textContent = (active ? '✓ ' : '    ') + val.name;
+      row.style.cssText = `background:${active ? 'rgba(160,0,0,0.45)' : 'rgba(50,0,0,0.35)'};border:1px solid rgba(180,0,0,${active ? '0.8' : '0.25'});border-radius:6px;color:${active ? '#ffa0a0' : '#ddd'};padding:7px 10px;cursor:pointer;text-align:left;font-size:12px;font-weight:${active ? '700' : '500'};touch-action:manipulation;width:100%;`;
+      row.addEventListener('click', () => {
+        bloodSkinColor = val;
+        try { localStorage.setItem('rl_blood_skin', key); } catch(e) {}
+        menu.remove();
+      });
+      menu.appendChild(row);
+    });
+    const wrapper = document.querySelector('.rl-wrapper') || document.body;
+    wrapper.appendChild(menu);
+    const dismiss = (e) => {
+      if (!menu.contains(e.target) && e.target.id !== 'rl-blood-btn') {
+        menu.remove();
+        document.removeEventListener('click', dismiss, true);
+        document.removeEventListener('touchstart', dismiss, true);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', dismiss, true);
+      document.addEventListener('touchstart', dismiss, true);
+    }, 60);
+  }
+
+  return { init, destroy, openBloodSkinMenu };
 })();

@@ -380,8 +380,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.1';
+const APP_VERSION = '1.7.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.2',
+    date: 'May 4, 2026',
+    title: 'Critical Fix: All Buttons Now Working (CSP Root Cause)',
+    summary: 'Found and fixed the true root cause of all buttons failing across the app: Helmet v8 generates a "script-src-attr: none" CSP directive by default, silently blocking every onclick handler on every page.',
+    changes: [
+      'Bug Fix (Critical): Added scriptSrcAttr: ["unsafe-inline"] to the server Content Security Policy. Helmet v8.1.0 sets script-src-attr: none by default, which blocks ALL inline onclick event handlers (goToPage, openChat, switchAdminTab, epSelectYear, etc.) even when scriptSrc has unsafe-inline. This was the root cause of every button being non-functional.',
+      'Bug Fix: Modules modal Back/Close/New Subfolder/Upload/Open/Summarize/Move/Delete buttons now work.',
+      'Bug Fix: Games/Arcade Play Now buttons (Pokemon, Battle Royale, Pac-Man, Candy Match) now work.',
+      'Bug Fix: Event Pictures and Random Pictures year cards (First/Second/Third/Fourth Year) now work.',
+      'Bug Fix: Social Media page Open in App cards now work.',
+      'Bug Fix: Admin Dashboard Users and Activity Log tabs, and Delete User button now work.',
+      'Bug Fix: User Directory Search, filter dropdowns, and Profile buttons now work.',
+    ],
+  },
   {
     version: '1.7.1',
     date: 'May 4, 2026',

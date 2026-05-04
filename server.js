@@ -32,7 +32,7 @@ try {
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// â”€â”€ Cloudflare R2 client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Cloudflare R2 client â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const r2 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -144,12 +144,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: RESOLVED_CORS_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
 
-// Security headers â€” CSP disabled to avoid breaking inline scripts (tighten in later phase)
+// Security headers
+// scriptSrcAttr must be explicitly set to 'unsafe-inline' — Helmet v7+ generates
+// a separate script-src-attr: 'none' directive by default which BLOCKS all inline
+// event handlers (onclick, onchange, onkeydown, etc.) even when scriptSrc includes
+// 'unsafe-inline'. This was the root cause of all buttons failing on mobile/PWA.
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.socket.io', 'https://www.youtube.com', 'https://www.gstatic.com'],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
@@ -209,7 +214,7 @@ app.use(express.json());
 // Wraps sync/async route handlers so any thrown error reaches the global error handler
 const wrap = fn => (req, res, next) => { try { const r = fn(req, res, next); if (r && typeof r.catch === 'function') r.catch(next); } catch (e) { next(e); } };
 
-// â”€â”€ Auth helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Auth helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -581,7 +586,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_O
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
 app.use(express.static(path.join(__dirname)));
-// Serve uploads â€” local disk fallback then R2 (supports /uploads/filename and subfolders)
+// Serve uploads â€" local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
   const filename = req.params[0]; // everything after /uploads/
   const requestedExt = path.extname(filename).toLowerCase();
@@ -644,7 +649,7 @@ app.get('/api/diagnostics', requireAuth, requireAdmin, async (req, res) => {
   try {
     const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
     cacheVersion = sw.match(/CACHE_VERSION\s*=\s*['"`]([^'"`]+)/)?.[1] || cacheVersion;
-  } catch (_e) { /* sw.js unreadable â€” use default */ }
+  } catch (_e) { /* sw.js unreadable â€" use default */ }
 
   let java = { available: false, message: 'Java status not checked.' };
   try {
@@ -693,16 +698,16 @@ app.get('/api/diagnostics', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Redirect old PWA installs that used /CLASS-APP/ as start_url.
-// Users who installed before the manifest fix open to /CLASS-APP/ â€” redirect
+// Users who installed before the manifest fix open to /CLASS-APP/ â€" redirect
 // them to / so the app loads normally without requiring a reinstall.
 app.get('/CLASS-APP', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 
-/* â”€â”€ Wake-up ping (keeps Render free tier warm) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Wake-up ping (keeps Render free tier warm) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
-/* â”€â”€ Client config â€” serves non-secret public keys to frontend â”€â”€ */
+/* â"€â"€ Client config â€" serves non-secret public keys to frontend â"€â"€ */
 app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL || '',
@@ -733,7 +738,7 @@ app.post('/api/app-open-count', requireAuth, wrap((req, res) => {
   res.json(payload);
 }));
 
-/* â”€â”€ Search diagnostics â€” visit /api/search-test?q=test to debug â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Search diagnostics â€" visit /api/search-test?q=test to debug â"€â"€â"€â"€â"€â"€â"€ */
 app.get('/api/search-test', requireAuth, requireAdmin, (req, res) => {
   const q = (req.query.q || 'test').trim();
   const report = { q, ytApi: null, piped: null, scrape: null };
@@ -795,10 +800,10 @@ app.get('/api/search-test', requireAuth, requireAdmin, (req, res) => {
   scrapeReq.setTimeout(10000, () => { scrapeReq.destroy(); report.scrape = { status: 'TIMEOUT' }; finish(); });
 });
 
-/* â”€â”€ YouTube search proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   Key stays on the server â€” the browser never sees it.
+/* â"€â"€ YouTube search proxy â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+   Key stays on the server â€" the browser never sees it.
    Usage: GET /api/yt-search?q=despacito
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.get('/api/yt-search', requireAuth, videoSearchLimiter, async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
@@ -846,9 +851,9 @@ app.get('/api/yt-search', requireAuth, videoSearchLimiter, async (req, res) => {
   });
 });
 
-/* â”€â”€ Piped search proxy (no API key needed, avoids browser CORS blocks) â”€â”€â”€â”€
+/* â"€â"€ Piped search proxy (no API key needed, avoids browser CORS blocks) â"€â"€â"€â"€
    Usage: GET /api/piped-search?q=despacito
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 const PIPED_HOSTS = [
   'pipedapi.kavin.rocks',
   'pipedapi.tokhmi.xyz',
@@ -878,7 +883,7 @@ function pipedSearchRequest(host, q, resolve) {
           })).filter(v => v.videoId);
           if (items.length) return resolve({ items });
         }
-      } catch (_e) { /* unparseable response â€” try next host */ }
+      } catch (_e) { /* unparseable response â€" try next host */ }
       resolve(null);
     });
   });
@@ -910,19 +915,19 @@ app.get('/api/piped-search', requireAuth, videoSearchLimiter, (req, res) => {
   tryNext();
 });
 
-/* â”€â”€ YouTube InnerTube search (no API key â€” uses YouTube's own internal API) â”€
+/* â"€â"€ YouTube InnerTube search (no API key â€" uses YouTube's own internal API) â"€
    The InnerTube API is what youtube.com and the YouTube app use internally.
    All major YouTube scraping libraries (ytsr, youtube-sr) call this same
-   endpoint under the hood. Returns structured JSON â€” no HTML parsing.
+   endpoint under the hood. Returns structured JSON â€" no HTML parsing.
    Usage: GET /api/yt-scrape?q=payphone
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.get('/api/yt-scrape', requireAuth, videoSearchLimiter, (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   console.log('[innertube] Searching for:', q);
 
-  // Use MWEB client â€” simpler JSON structure, less bot-detection than WEB
+  // Use MWEB client â€" simpler JSON structure, less bot-detection than WEB
   const body = JSON.stringify({
     context: {
       client: {
@@ -993,7 +998,7 @@ app.get('/api/yt-scrape', requireAuth, videoSearchLimiter, (req, res) => {
         if (!items.length) {
           const structureKeys = Object.keys(data?.contents || {}).join(',') || 'none';
           console.warn('[innertube] No video results for:', q, '| HTTP:', ytRes.statusCode, '| top-level keys:', structureKeys);
-          return res.status(404).json({ error: 'No results â€” structure: ' + structureKeys });
+          return res.status(404).json({ error: 'No results â€" structure: ' + structureKeys });
         }
         console.log('[innertube] OK, returned', items.length, 'results for:', q);
         res.json({ items });
@@ -1746,7 +1751,7 @@ app.post('/api/messages', requireAuth, wrap(async (req, res) => {
   res.json(message);
 }));
 
-// â”€â”€ Compression helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Compression helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
 const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
@@ -1819,7 +1824,7 @@ async function compressImage(buffer, ext) {
 }
 
 
-// â”€â”€ Upload endpoint (compress â†’ R2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Upload endpoint (compress â†' R2) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 app.post('/api/upload', requireAuth, uploadLimiter, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
 
@@ -1847,7 +1852,7 @@ app.post('/api/upload', requireAuth, uploadLimiter, upload.single('file'), async
     if (isImage) {
       finalBuffer = await compressImage(req.file.buffer, ext);
     }
-    // Videos: skip re-encoding â€” phone videos are already H.264; FFmpeg pass is too slow
+    // Videos: skip re-encoding â€" phone videos are already H.264; FFmpeg pass is too slow
 
     await r2.send(new PutObjectCommand({
       Bucket:      R2_BUCKET,
@@ -2455,14 +2460,14 @@ app.post('/api/quiz-history', requireAuth, wrap(async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 }));
 
-/* â”€â”€ File Summarizer Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ File Summarizer Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;
   const hasText = !!(req.body && req.body.text);
   const ctype   = (req.headers['content-type'] || '').split(';')[0].trim();
   console.log(`[FileSummarizer] HIT | hasFile:${hasFile} hasText:${hasText} ctype:"${ctype}"`);
 
-  // â”€â”€ PATH 1: File upload â†’ extract text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ PATH 1: File upload â†' extract text â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   if (hasFile) {
     const fileName  = req.file.originalname || 'unknown';
     const fileSize  = req.file.size || 0;
@@ -2473,7 +2478,7 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     console.log(`[FileSummarizer] File: "${fileName}" | ${(fileSize/1024).toFixed(1)} KB | mime: ${mimeType} | buffer: ${bufferLen} bytes | ext: "${ext}"`);
 
     if (!req.file.buffer || bufferLen === 0) {
-      console.error('[FileSummarizer] Buffer missing or empty â€” multer may not have received the file');
+      console.error('[FileSummarizer] Buffer missing or empty â€" multer may not have received the file');
       return res.status(400).json({ error: 'File data was not received by the server. Please try again.' });
     }
 
@@ -2513,11 +2518,11 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
 
       const trimmed = extractedText.trim();
       if (!trimmed) {
-        console.log(`[FileSummarizer] No text found in "${fileName}" â€” possibly image-based or empty`);
+        console.log(`[FileSummarizer] No text found in "${fileName}" â€" possibly image-based or empty`);
         return res.status(400).json({ error: 'No readable text found in this file. It may be image-based, empty, or password-protected.' });
       }
 
-      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" â†’ ${trimmed.length} chars`);
+      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" â†' ${trimmed.length} chars`);
       return res.json({ text: trimmed.slice(0, 50000), type: ext });
 
     } catch (parseErr) {
@@ -2527,7 +2532,7 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     }
   }
 
-  // â”€â”€ PATH 2: Text â†’ AI summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ PATH 2: Text â†' AI summary â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   if (hasText) {
     const { text, type, customPrompt } = req.body;
     console.log(`[FileSummarizer] Summarize | type: "${type}" | text: ${text ? text.length : 0} chars`);
@@ -2556,11 +2561,11 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     }
   }
 
-  console.log('[FileSummarizer] Invalid request â€” no file, no text body');
+  console.log('[FileSummarizer] Invalid request â€" no file, no text body');
   return res.status(400).json({ error: 'Invalid request. Please upload a file to summarize.' });
 });
 
-/* â”€â”€ Quiz Generation Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ Quiz Generation Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { text, quizType, count } = req.body || {};
   if (!text || !quizType || !count) {
@@ -2568,7 +2573,7 @@ app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) =
   }
 
   const n = parseInt(count);
-  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1â€“100.' });
+  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1â€"100.' });
 
   const typeDescriptions = {
     'identification': `${n} identification/fill-in-the-blank questions. For each question, ask students to identify a term, person, place, or concept. The answer should be a short word or phrase.`,
@@ -2581,7 +2586,7 @@ app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) =
 
   const prompt = `You are a quiz generator. Generate ${typeDesc} based on the provided text.
 
-IMPORTANT: Return ONLY valid JSON â€” no explanation, no markdown, no code fences. The JSON must follow this exact schema:
+IMPORTANT: Return ONLY valid JSON â€" no explanation, no markdown, no code fences. The JSON must follow this exact schema:
 {
   "questions": [
     {
@@ -2612,7 +2617,7 @@ Rules:
     const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text.slice(0, 30000)}` }];
     const result = await tryWithFallback('gemini', messages);
 
-    // Extract JSON from AI response â€” strip any markdown/text wrapping
+    // Extract JSON from AI response â€" strip any markdown/text wrapping
     let raw = result.text.trim();
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI did not return valid JSON.');
@@ -2628,7 +2633,7 @@ Rules:
   }
 });
 
-/* â”€â”€ AI Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â"€â"€ AI Endpoints â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.post('/api/gemini', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
@@ -2649,12 +2654,12 @@ app.post('/api/groq', requireAuth, aiLimiter, express.json(), async (req, res) =
   }
 });
 
-/* â”€â”€ In-memory lobby player map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const lobbyPlayers = new Map(); // socketId â†’ { username, x, y, dir, color, bodyColor, score }
-const lobbyMoveThrottle = new Map(); // socketId â†’ last broadcast timestamp (50ms / 20fps)
+/* â"€â"€ In-memory lobby player map â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+const lobbyPlayers = new Map(); // socketId â†' { username, x, y, dir, color, bodyColor, score }
+const lobbyMoveThrottle = new Map(); // socketId â†' last broadcast timestamp (50ms / 20fps)
 
-/* â”€â”€ Star Collector mini-game â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const lobbyScores = {}; // username â†’ score
+/* â"€â"€ Star Collector mini-game â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+const lobbyScores = {}; // username â†' score
 Object.assign(lobbyScores, state.lobbyScores || {});
 state.lobbyScores = lobbyScores;
 let lobbyStar = null;
@@ -2750,7 +2755,7 @@ io.on('connection', (socket) => {
     io.to('group').emit('users', safeUsers());
   });
 
-  /* â”€â”€ Lobby events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* â"€â"€ Lobby events â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
   socket.on('lobby:join', (playerData) => {
     const player = {
       username: playerData.username || 'Unknown',
@@ -2847,7 +2852,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// â”€â”€ Global Express error handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Global Express error handler â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('[express error]', err.message || err);
@@ -2855,7 +2860,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// â”€â”€ Process-level safety nets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Process-level safety nets â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
@@ -2863,9 +2868,9 @@ process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
 });
 
-// â”€â”€ Graceful shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Graceful shutdown â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 function shutdown(signal) {
-  console.log(`[shutdown] ${signal} received â€” closing server`);
+  console.log(`[shutdown] ${signal} received â€" closing server`);
   server.close(() => {
     console.log('[shutdown] HTTP server closed');
     process.exit(0);
@@ -2876,7 +2881,7 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
-// â”€â”€ Alarm check scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Alarm check scheduler â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 const ALARM_FUNCTION_URL = process.env.ALARM_FUNCTION_URL ||
   'https://rxpezjhsnqkjydurtayx.supabase.co/functions/v1/check-alarms';
 const ALARM_CHECK_SECRET = process.env.ALARM_CHECK_SECRET || '';
@@ -2896,9 +2901,9 @@ if (ALARM_CHECK_SECRET) {
       console.warn('[alarm-check] failed:', err.message);
     }
   }, 60_000);
-  console.log('[alarm-check] Scheduler started â€” checking every 60s');
+  console.log('[alarm-check] Scheduler started â€" checking every 60s');
 } else {
-  console.warn('[alarm-check] ALARM_CHECK_SECRET not set â€” scheduler disabled');
+  console.warn('[alarm-check] ALARM_CHECK_SECRET not set â€" scheduler disabled');
 }
 
 if (require.main === module) {

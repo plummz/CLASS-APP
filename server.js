@@ -2305,11 +2305,10 @@ app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
   const { title, body, schedule, source_type, date_key, date_label } = req.body || {};
   if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
   try {
-    const inserted = await supabaseQuery('shared_announcements', 'POST', [{ 
-      sharer: req.user.username, 
-      title: title || '', 
-      body: body || '', 
-      text: body || '',
+    const inserted = await supabaseQuery('shared_announcements', 'POST', [{
+      sharer: req.user.username,
+      title: title || '',
+      body: body || '',
       schedule: schedule || null,
       source_type: source_type || null,
       date_key: date_key || null,

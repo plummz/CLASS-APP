@@ -380,8 +380,20 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.1',
+    date: 'May 4, 2026',
+    title: 'Global Mobile Button Fix',
+    summary: 'Fixed widespread button non-responsiveness on mobile/PWA across the entire app. All interactive elements now correctly handle touch events on iOS Safari and Android PWA.',
+    changes: [
+      'Bug Fix: Added touch-action: manipulation globally to all interactive elements — buttons, links, cards, chat items, game cards, folder cards, nav items, and all onclick-bearing elements. This prevents iOS Safari from swallowing taps as scroll gestures inside overflow-y: auto containers.',
+      'Bug Fix: Fixed Announcement/Calendar "Share to Everyone" failing with Supabase PGRST204 error — removed the non-existent text column from the shared_announcements INSERT payload.',
+      'Bug Fix: Added event delegation fallback for chat-item divs so Group Chat, To-Do Group, and Private Chat navigation works even if inline onclick fails on iOS PWA.',
+      'Bug Fix: Restored reliable tap handling for: Modules/Folders, Chat, User Directory, Social Pages, Personal Tools, Music Hub, Gallery, Games/Arcade, and Admin Dashboard buttons.',
+    ],
+  },
   {
     version: '1.7.0',
     date: 'May 4, 2026',
@@ -5682,6 +5694,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       event.preventDefault();
       const overlayEl = trigger.closest('.custom-modal-overlay, .ep-lightbox');
       closeOverlayElement(overlayEl);
+    }
+  });
+
+  // Delegation fallback for .chat-item divs (inline onclick can be swallowed by iOS Safari PWA)
+  document.addEventListener('click', (event) => {
+    const chatItem = event.target.closest('.chat-item');
+    if (!chatItem) return;
+    const chatType = chatItem.dataset.chat || chatItem.getAttribute('onclick')?.match(/openChat\('([^']+)'\)/)?.[1];
+    if (chatType && typeof window.openChat === 'function') {
+      event.preventDefault();
+      window.openChat(chatType);
     }
   });
 

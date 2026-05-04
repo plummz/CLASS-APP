@@ -1605,6 +1605,8 @@ body {
   border-radius: 8px;
   color: white;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.3s ease;
 }
 .chat-item:hover {
@@ -3191,6 +3193,8 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
   border: 1px solid rgba(255,255,255,0.08);
   padding: 28px 18px 22px;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   text-align: center;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -5066,6 +5070,81 @@ body.light-mode .chat-skeleton {
   }
 }
 /* ── PHASE 7: MOBILE RESPONSIVE + OFFLINE (Mobile Fixes) ──────────────────────────────── */
+
+/* ── Global Mobile Tap Fix ──────────────────────────────────────────────────
+   ROOT CAUSE: iOS Safari intercepts taps inside overflow-y:auto containers
+   (.page has overflow-y:auto) and may treat them as scroll gestures.
+   touch-action:manipulation tells iOS to fire the click immediately without
+   the 300ms delay or scroll-gesture capture. This fixes almost all button
+   failures on mobile/PWA reported across the entire app.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* All native interactive elements */
+button,
+a,
+select,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+label,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Interactive div/span elements used as buttons throughout the app */
+.ep-card,
+.game-card,
+.social-game-card,
+.chat-item,
+.chat-user-item,
+.user-card,
+.tool-card,
+.subject-card,
+.folder-card,
+.folder-card-modern,
+.folder-card-main,
+.nav-item,
+.nav-dropdown-header,
+.reaction-pill,
+.reaction-add-btn,
+.fs-chip,
+.fs-tab-btn,
+.bg-choice-card,
+.board-card,
+.announcement-card,
+.reviewer-card,
+.game-play-btn,
+.mini-action-btn,
+.chat-action-button,
+.user-view-btn,
+.ep-back-btn,
+.ep-bc,
+.file-action,
+.profile-folder-open,
+.permission-quick-btn,
+.move-target-card,
+.semester-shortcut-btn,
+.semester-empty-btn,
+.card-action-btn,
+.lobby-quick-action,
+.candy-action-btn,
+[data-page],
+[data-action],
+[data-ai-action],
+[data-folder-open],
+[data-folder-rename],
+[data-folder-delete],
+[data-folder-permissions],
+[data-subfolder-rename],
+[data-subfolder-delete],
+[onclick] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Minimum 44×44px touch targets for all buttons */
 button, a[role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
   min-width: 44px;

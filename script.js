@@ -380,8 +380,22 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.3';
+const APP_VERSION = '1.7.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.4',
+    date: 'May 4, 2026',
+    title: 'Bug Fixes: Quiz Delete, YouTube Search, Past Users Restored',
+    summary: 'Fixed three critical bugs: quiz history items can now be deleted, YouTube/Music Hub search works correctly again, and past/legacy users reappear in the user directory.',
+    changes: [
+      'Bug Fix: Added missing DELETE /api/quiz-history/:id server route — quiz history items can now be deleted from File Summarizer history. Previously the delete button triggered a 404, showing "Delete failed" alert.',
+      'Bug Fix: Quiz history delete errors now show a friendly in-app toast instead of a raw browser alert. Exact Supabase errors are logged to console.',
+      'Bug Fix: Music Hub YouTube search now sends the auth Bearer token with search requests. Previously serverFetch used plain fetch without auth headers, causing all three search methods (YouTube API, Piped, InnerTube) to fail with 401, leaving the search stuck.',
+      'Bug Fix: serverFetch no longer retries indefinitely on JSON 502/503 responses. It now only retries when the server returns an HTML page (Render cold-start), not when the app itself returns a JSON error. Total retry window reduced from 90s to 45s.',
+      'Bug Fix: Past/legacy users (registered before Supabase profile sync) now reappear in the user directory as offline/past users. The /api/users endpoint now merges Supabase profiles with local state entries, so users who exist only in data.json are no longer invisible.',
+      'Safety: Restored past users are shown as offline — they are never shown as online unless they have an active presence session.',
+    ],
+  },
   {
     version: '1.7.3',
     date: 'May 4, 2026',
@@ -2869,32 +2883,34 @@ function extractYouTubeId(val) {
     return null;
 }
 
-// Fetch a server API endpoint, retrying on 503 (Render cold start) until deadline
+// Fetch a server API endpoint (with auth), retrying only on HTML responses
+// (Render cold-start returns an HTML page, not JSON).  JSON 5xx responses are
+// real application errors — return them immediately so the caller can report.
 async function serverFetch(url, onWaking) {
-    const deadline = Date.now() + 90000; // 90s total — Render can take up to ~70s to wake
+    const deadline = Date.now() + 45000; // 45s total — enough for Render cold start
     let firstAttempt = true;
     while (Date.now() < deadline) {
         try {
             const remaining = deadline - Date.now();
             const ctrl = new AbortController();
-            // First attempt: stay open 65s so Render's cold-start connection completes.
-            // Retries: 20s each (server is already awake by then).
-            const attemptTimeout = firstAttempt ? Math.min(65000, remaining) : Math.min(20000, remaining);
+            // First attempt: 40s so Render's cold-start connection can complete.
+            // Retries: 12s each (server is already awake by then).
+            const attemptTimeout = firstAttempt ? Math.min(40000, remaining) : Math.min(12000, remaining);
             const tid = setTimeout(() => ctrl.abort(), attemptTimeout);
-            const r = await fetch(url, { signal: ctrl.signal });
+            // Use authFetch so the Bearer token is included — all search routes require auth.
+            const fetchFn = window.authFetch || fetch;
+            const r = await fetchFn(url, { signal: ctrl.signal });
             clearTimeout(tid);
-            if (r.status === 503 || r.status === 502) {
-                if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
-                await new Promise(res => setTimeout(res, 5000));
-                continue;
-            }
-            // Render sometimes returns a 200 HTML "starting up" page during cold start.
+            // Render sometimes returns a 200 OR 503/502 HTML "starting up" page during cold start.
+            // Distinguish from a real application JSON error by checking content-type.
             const ct = r.headers.get('content-type') || '';
             if (ct.includes('text/html')) {
+                // HTML response = Render cold start page — wait and retry
                 if (firstAttempt && onWaking) { onWaking(); firstAttempt = false; }
                 await new Promise(res => setTimeout(res, 5000));
                 continue;
             }
+            // JSON response (any status) = real server response — return it to caller
             return r;
         } catch (_) {
             // AbortError (timeout) or network error — retry if time remains

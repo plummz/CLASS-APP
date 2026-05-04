@@ -890,9 +890,21 @@
     if (!confirm('Delete this quiz record?')) return;
     try {
       const res = await (window.authFetch ? window.authFetch(`/api/quiz-history/${id}`, { method: 'DELETE' }) : fetch(`/api/quiz-history/${id}`, { method: 'DELETE' }));
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        let errMsg = 'Delete failed';
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch(_) {}
+        console.error('[QuizHistory] Delete failed:', res.status, errMsg);
+        if (window.showToast) { showToast('Could not delete quiz record: ' + errMsg, 'error'); }
+        else { setStatus('Delete failed: ' + errMsg); }
+        return;
+      }
       loadQuizHistory();
-    } catch (err) { alert(err.message); }
+      if (window.showToast) showToast('Quiz record deleted.', 'success');
+    } catch (err) {
+      console.error('[QuizHistory] Delete error:', err);
+      if (window.showToast) { showToast('Could not delete quiz record.', 'error'); }
+      else { setStatus('Delete failed. Please try again.'); }
+    }
   };
 
   window.fsDeleteLocalQuiz = function(idx) {

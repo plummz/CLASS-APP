@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.3-20260504-login-hang-fix';
+const CACHE_VERSION = 'v1.7.4-20260504-three-bug-fixes';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

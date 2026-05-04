@@ -380,8 +380,19 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.2';
+const APP_VERSION = '1.7.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.3',
+    date: 'May 4, 2026',
+    title: 'Fix: Login No Longer Hangs After Successful Sign-In',
+    summary: 'Fixed a critical bug where the app froze after login — the Sign In button stayed disabled as "Signing in..." indefinitely and the dashboard never loaded.',
+    changes: [
+      'Bug Fix (Critical): The presence sync call (persistLastSeen) inside finalizeLogin was awaited with no timeout. On slow connections or cold Render starts, this fetch could hang forever — blocking establishSession(), leaving the dashboard empty, and keeping the Sign In button permanently disabled.',
+      'Fix: persistLastSeen is now fire-and-forget inside finalizeLogin. The app shell and dashboard load immediately after a successful sign-in.',
+      'Resilience: Added a 5-second AbortController timeout to the /api/session/presence fetch inside persistLastSeen, preventing any single slow network call from blocking background presence sync.',
+    ],
+  },
   {
     version: '1.7.2',
     date: 'May 4, 2026',
@@ -3523,11 +3534,15 @@ async function persistLastSeen({ online = true, force = false } = {}) {
   currentUser.online = online;
   saveSession();
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
     await authFetch('/api/session/presence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ online }),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
   } catch (_) {}
 }
 
@@ -3678,7 +3693,7 @@ async function finalizeLogin(profile, serverSession) {
   renderAppState();
   try {
     setAuthSuccess('Signed in. Loading your portal...');
-    await persistLastSeen({ online: true, force: true });
+    persistLastSeen({ online: true, force: true }).catch(() => {});
     establishSession().catch((error) => {
       console.warn('[auth] establishSession (post-login) failed:', error?.message || error);
     });

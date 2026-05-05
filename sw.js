@@ -19,11 +19,11 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.5-20260505-compact-cards-admin-subjects';
+const CACHE_VERSION = 'v1.7.6-20260505-supabase-subjects-server-guard';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=124',
+  '/index.html?v=125',
   '/style.css?v=50',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',

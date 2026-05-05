@@ -285,19 +285,61 @@ const SUBJECT_GRID_LABELS = {
   y4first: '4th Year · First Semester', y4second: '4th Year · Second Semester',
 };
 
-// Load admin-added subjects from localStorage and merge into arrays
-(function loadAdminSubjects() {
+// ── Subject persistence helpers ───────────────────────────────────
+// localStorage is used as a fast first-paint cache only.
+// Supabase (via /api/subjects) is the source of truth after login.
+
+function _mergeSubjectIntoGrid(gridKey, code, teacher, icon) {
+  const arr = SUBJECT_GRID_MAP[gridKey];
+  if (!arr) return false;
+  if (arr.some(s => s.code.toLowerCase() === code.toLowerCase())) return false;
+  arr.push({ code, teacher: teacher || '', icon: icon || '📚' });
+  ACADEMIC_FOLDER_ROOTS.add(code);
+  return true;
+}
+
+function _cacheSubjectsLocally(subjects) {
+  try {
+    // Store as { gridKey, code, teacher, icon } for backwards compat
+    const payload = subjects.map(s => ({ gridKey: s.grid_key, code: s.code, teacher: s.teacher, icon: s.icon }));
+    localStorage.setItem('adminSubjects_v1', JSON.stringify(payload));
+  } catch (_) { /* storage full or private mode — skip */ }
+}
+
+// Step 1: Fast first-paint — load subjects from localStorage cache immediately
+(function loadSubjectsFromCache() {
   try {
     const saved = JSON.parse(localStorage.getItem('adminSubjects_v1') || '[]');
     if (!Array.isArray(saved)) return;
-    saved.forEach(({ gridKey, code, teacher, icon }) => {
-      const arr = SUBJECT_GRID_MAP[gridKey];
-      if (!arr) return;
-      if (arr.some(s => s.code === code)) return; // no duplicate
-      arr.push({ code, teacher: teacher || '', icon: icon || '📚' });
-    });
-  } catch (_) { /* corrupted data — skip silently */ }
+    saved.forEach(({ gridKey, code, teacher, icon }) => _mergeSubjectIntoGrid(gridKey, code, teacher, icon));
+  } catch (_) { /* corrupted cache — skip */ }
 })();
+
+// Step 2: After login, fetch authoritative list from Supabase, refresh grids
+async function syncSubjectsFromServer() {
+  try {
+    const res = await fetch('/api/subjects');
+    if (!res.ok) return;
+    const serverSubjects = await res.json();
+    if (!Array.isArray(serverSubjects) || serverSubjects.length === 0) return;
+
+    // Track which grids were updated so we only re-render those
+    const updatedGrids = new Set();
+    serverSubjects.forEach(s => {
+      if (_mergeSubjectIntoGrid(s.grid_key, s.code, s.teacher, s.icon)) {
+        updatedGrids.add(s.grid_key);
+      }
+    });
+
+    _cacheSubjectsLocally(serverSubjects);
+
+    // Re-render only grids that received new subjects
+    updatedGrids.forEach(gridKey => {
+      const arr = SUBJECT_GRID_MAP[gridKey];
+      buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
+    });
+  } catch (_) { /* server unreachable — cache-loaded subjects remain visible */ }
+}
 
 const ACADEMIC_FOLDER_ROOTS = new Set([
   ...firstSem,
@@ -350,7 +392,6 @@ function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
     <button class="semester-shortcut-btn" onclick="goToPage('file-summarizer')">📄 Summarize a File →</button>
   `;
   grid.appendChild(bar);
-  bar.querySelector("button[onclick*='file-summarizer']")?.remove();
   if (!bar.querySelector('button')) bar.remove();
 
   subjects.forEach((subject) => {
@@ -368,7 +409,6 @@ function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
         <button class="card-action-btn card-action-summarize" onclick="event.stopPropagation(); goToPage('file-summarizer')">📄 Summarize</button>
       </div>
     `;
-    card.querySelector('.card-action-summarize')?.remove();
     grid.appendChild(card);
   });
 }
@@ -395,7 +435,7 @@ window.closeAdminAddSubjectModal = function() {
   if (modal) modal.classList.remove('open');
 };
 
-window.adminSaveNewSubject = function() {
+window.adminSaveNewSubject = async function() {
   if (!isAdmin) { customAlert('Admin only.'); return; }
 
   const gridKey = document.getElementById('add-subject-year').value.trim();
@@ -403,11 +443,11 @@ window.adminSaveNewSubject = function() {
   const rawTeacher = document.getElementById('add-subject-teacher').value.trim();
   const rawIcon = document.getElementById('add-subject-icon').value.trim();
   const errEl = document.getElementById('add-subject-error');
+  const saveBtn = document.querySelector('.add-subject-save-btn');
 
-  // --- Validation ---
+  // --- Client-side validation (mirrors server) ---
   if (!rawCode) { errEl.textContent = 'Subject code / name is required.'; return; }
   if (rawCode.length > 60) { errEl.textContent = 'Subject name is too long (max 60 chars).'; return; }
-  // Basic XSS guard: reject < > " ' ` characters
   if (/[<>"'`]/.test(rawCode) || /[<>"'`]/.test(rawTeacher)) {
     errEl.textContent = 'Subject name contains unsafe characters.'; return;
   }
@@ -415,29 +455,42 @@ window.adminSaveNewSubject = function() {
   const arr = SUBJECT_GRID_MAP[gridKey];
   if (!arr) { errEl.textContent = 'Invalid year/semester selected.'; return; }
 
-  // Duplicate check
   if (arr.some(s => s.code.toLowerCase() === rawCode.toLowerCase())) {
     errEl.textContent = 'A subject with this name already exists in this semester.'; return;
   }
 
   const icon = rawIcon || '📚';
-  const newSubject = { code: rawCode, teacher: rawTeacher, icon };
 
-  // Add to live array
-  arr.push(newSubject);
-  // Register in ACADEMIC_FOLDER_ROOTS so folder explorer works
-  ACADEMIC_FOLDER_ROOTS.add(rawCode);
-
-  // Persist to localStorage
+  // --- POST to server (server enforces admin + Supabase write) ---
+  errEl.textContent = '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
   try {
-    const saved = JSON.parse(localStorage.getItem('adminSubjects_v1') || '[]');
-    saved.push({ gridKey, code: rawCode, teacher: rawTeacher, icon });
-    localStorage.setItem('adminSubjects_v1', JSON.stringify(saved));
-  } catch (_) { /* storage full or private mode — subject is live this session */ }
+    const res = await authFetch('/api/subjects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grid_key: gridKey, code: rawCode, teacher: rawTeacher, icon }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to save subject. Please try again.';
+      return;
+    }
 
-  // Re-render the grid
-  buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
-  window.closeAdminAddSubjectModal();
+    // Merge into live array + roots
+    _mergeSubjectIntoGrid(gridKey, rawCode, rawTeacher, icon);
+
+    // Update localStorage cache with fresh server list (fire-and-forget)
+    fetch('/api/subjects').then(r => r.json()).then(_cacheSubjectsLocally).catch(() => {});
+
+    // Re-render the grid immediately
+    buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
+    window.closeAdminAddSubjectModal();
+  } catch (err) {
+    errEl.textContent = 'Network error. Subject may not have been saved — please check your connection.';
+    console.error('[adminSaveNewSubject]', err);
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Add Subject'; }
+  }
 };
 
 // Close modal when clicking outside the box
@@ -484,8 +537,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.5';
+const APP_VERSION = '1.7.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.6',
+    date: 'May 5, 2026',
+    title: 'Supabase-Backed Subjects + Server Admin Guard + Summarize Restored',
+    summary: 'Admin-created subjects now persist to Supabase instead of localStorage — surviving browser data clears and visible across all devices. Admin writes are enforced server-side. The Summarize button on subject cards is restored.',
+    changes: [
+      'Fix: Admin-added subjects now save to Supabase (subjects table) via /api/subjects POST — no longer localStorage-only. Subjects survive browser data clears and work across all devices.',
+      'Fix: /api/subjects POST and DELETE require a valid admin JWT on the server — a non-admin cannot insert subjects even by calling the API directly from a console.',
+      'Fix: Supabase subjects table uses a unique constraint on (grid_key, code) — duplicate subjects blocked at the database level, not just in the frontend.',
+      'Fix: On login and session restore, subject grids are refreshed from Supabase (/api/subjects) and the localStorage cache is updated. First paint still uses the cache for instant load.',
+      'Fix: "Summarize" button on subject cards is now visible and functional — it correctly navigates to the File Summarizer. Previously it was silently removed immediately after being built.',
+      'Fix: "Summarize a File" quick-action bar button on semester pages is now also visible and functional.',
+      'Security: /api/subjects GET has no auth requirement (subjects are not secret). Write routes (POST, DELETE) require requireAuth + requireAdmin.',
+      'DB Migration: 023_subjects_table.sql creates the subjects table with RLS (public SELECT, server-only writes).',
+    ],
+  },
   {
     version: '1.7.5',
     date: 'May 5, 2026',
@@ -3834,6 +3903,7 @@ async function finalizeLogin(profile, serverSession) {
     });
     logActivity('login');
     recordAppOpen().catch((error) => console.warn('[AppOpen] post-login record failed:', error?.message || error));
+    syncSubjectsFromServer().catch(() => {}); // non-blocking — refresh grids with server subjects
   } catch (error) {
     console.error('[auth] finalizeLogin failed:', error);
     stopLastSeenHeartbeat();
@@ -5882,6 +5952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           new Promise((_, r) => setTimeout(() => r(new Error('establishSession timed out')), 5000))
         ]);
         recordAppOpen().catch(e => console.warn('[AppOpen] non-critical error:', e));
+        syncSubjectsFromServer().catch(() => {}); // refresh grids with server subjects
         console.log('[BOOT] Session restored successfully.');
       } catch (error) {
         console.error('[auth] Session restore failed:', error);

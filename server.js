@@ -19,6 +19,7 @@ const crypto   = require('crypto');
 const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const helmet   = require('helmet');
+const cookieParser = require('cookie-parser');
 const pdfParse = require('pdf-parse');
 const mammoth  = require('mammoth');
 const AdmZip   = require('adm-zip');
@@ -208,8 +209,9 @@ function formatUptime(seconds) {
   return `${minutes}m`;
 }
 
-app.use(cors({ origin: RESOLVED_CORS_ORIGIN }));
+app.use(cors({ origin: RESOLVED_CORS_ORIGIN, credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // Wraps sync/async route handlers so any thrown error reaches the global error handler
 const wrap = fn => (req, res, next) => { try { const r = fn(req, res, next); if (r && typeof r.catch === 'function') r.catch(next); } catch (e) { next(e); } };
@@ -560,7 +562,8 @@ async function ensureAuthProfile(username, passwordHash, overrides = {}) {
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const bearerToken = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = bearerToken || req.cookies?.classAppToken || null;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -618,7 +621,8 @@ app.get('/uploads/*', async (req, res) => {
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `${disposition}; filename="${safeFileName}"`);
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      const isMedia = /^(image|video|audio)\//.test(contentType);
+      res.setHeader('Cache-Control', isMedia ? 'public, max-age=31536000' : 'private, max-age=3600');
       data.Body.pipe(res);
       return;
     } catch { /* try next */ }
@@ -1126,7 +1130,7 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
   if (!PUSH_READY || !sender || !target || !messageId) return { sent: 0, skipped: true };
   if (state.sentPushMessageIds.includes(messageId)) return { sent: 0, duplicate: true };
 
-  const subscriptions = state.pushSubscriptions[target] || [];
+  const subscriptions = await getPushSubscriptions(target);
   if (!subscriptions.length) {
     state.sentPushMessageIds.push(messageId);
     pruneSentPushIds();
@@ -1159,6 +1163,9 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
     }
   }
 
+  for (const sub of subscriptions.filter((s) => !keep.includes(s))) {
+    await removePushSubscription(target, sub.endpoint).catch(() => {});
+  }
   state.pushSubscriptions[target] = keep;
   state.sentPushMessageIds.push(messageId);
   pruneSentPushIds();
@@ -1170,16 +1177,45 @@ app.get('/api/push/public-key', (req, res) => {
   res.json({ enabled: PUSH_READY, publicKey: VAPID_PUBLIC_KEY });
 });
 
+async function getPushSubscriptions(username) {
+  if (SUPABASE_URL) {
+    try {
+      const rows = await supabaseQuery('push_subscriptions', 'GET', null, { username: `eq.${username}`, select: 'subscription' });
+      if (rows) return rows.map((r) => r.subscription);
+    } catch (e) { console.warn('[push] Supabase read failed, using cache:', e.message); }
+  }
+  return state.pushSubscriptions[username] || [];
+}
+
+async function savePushSubscription(username, subscription) {
+  state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
+  const existing = state.pushSubscriptions[username].find((s) => s.endpoint === subscription.endpoint);
+  if (!existing) state.pushSubscriptions[username].push(subscription);
+  if (SUPABASE_URL) {
+    try {
+      await supabaseQuery('push_subscriptions', 'POST', { username, endpoint: subscription.endpoint, subscription }, {});
+    } catch (e) { console.warn('[push] Supabase save failed:', e.message); }
+  }
+  await saveData(state);
+}
+
+async function removePushSubscription(username, endpoint) {
+  state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((s) => s.endpoint !== endpoint);
+  if (SUPABASE_URL) {
+    try {
+      await supabaseQuery('push_subscriptions', 'DELETE', null, { username: `eq.${username}`, endpoint: `eq.${endpoint}` });
+    } catch (e) { console.warn('[push] Supabase delete failed:', e.message); }
+  }
+  await saveData(state);
+}
+
 app.post('/api/push/subscribe', requireAuth, async (req, res) => {
   const { username, subscription } = req.body || {};
   if (!username || !subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'username and subscription are required' });
   }
   if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-  state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
-  const existing = state.pushSubscriptions[username].find((sub) => sub.endpoint === subscription.endpoint);
-  if (!existing) state.pushSubscriptions[username].push(subscription);
-  await saveData(state);
+  await savePushSubscription(username, subscription);
   res.json({ success: true, enabled: PUSH_READY });
 });
 
@@ -1187,8 +1223,7 @@ app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
   const { username, endpoint } = req.body || {};
   if (!username || !endpoint) return res.status(400).json({ error: 'username and endpoint are required' });
   if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-  state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((sub) => sub.endpoint !== endpoint);
-  await saveData(state);
+  await removePushSubscription(username, endpoint);
   res.json({ success: true });
 });
 
@@ -1366,10 +1401,12 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
     adminUser.online = true;
     await saveData(state);
     io.to('group').emit('users', safeUsers());
+    const adminToken = issueToken(adminUser.username, true);
+    res.cookie('classAppToken', adminToken, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
     return res.json({
       user: safeUsers().find((item) => item.username === adminUser.username),
       isAdmin: true,
-      token: issueToken(adminUser.username, true),
+      token: adminToken,
     });
   }
 
@@ -1404,6 +1441,7 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
   io.to('group').emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
+  res.cookie('classAppToken', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
   res.json({
     user: safeUsers().find((item) => item.username === user.username),
     isAdmin: isAdminUser,
@@ -1504,6 +1542,7 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
   io.to('group').emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
+  res.cookie('classAppToken', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
   res.json({
     user: safeUsers().find((item) => item.username === user.username),
     isAdmin: isAdminUser,
@@ -1937,6 +1976,25 @@ const JAVA_COMPILE_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_COMPILE_TIMEOUT
 const JAVA_RUN_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_RUN_TIMEOUT_MS || process.env.CODE_LAB_JAVA_TIMEOUT_MS || 8000);
 const JAVAC_BIN = process.env.JAVAC_BIN || 'javac';
 const JAVA_BIN = process.env.JAVA_BIN || 'java';
+const PYTHON_BIN = process.env.PYTHON_BIN || 'python3';
+const PYTHON_TIMEOUT_MS = Number(process.env.CODE_LAB_PYTHON_TIMEOUT_MS || 8000);
+/* eslint-disable security/detect-unsafe-regex */
+const PYTHON_BLOCKLIST = [
+  /\bimport\s+os\b/,
+  /\bimport\s+subprocess\b/,
+  /\bimport\s+sys\b/,
+  /\b__import__\b/,
+  /\bopen\s*\(/,
+  /\bexec\s*\(/,
+  /\beval\s*\(/,
+  /\bcompile\s*\(/,
+  /\bgetattr\s*\(/,
+  /\bsetattr\s*\(/,
+  /\bsocket\b/,
+  /\burllib\b/,
+  /\brequests\b/,
+];
+/* eslint-enable security/detect-unsafe-regex */
 /* eslint-disable security/detect-unsafe-regex */
 const JAVA_BLOCKLIST = [
   /Runtime\.getRuntime/i,
@@ -2206,7 +2264,7 @@ async function runJavaSource(code) {
   }
 }
 
-app.post('/api/code-lab/run-java', async (req, res) => {
+app.post('/api/code-lab/run-java', requireAuth, async (req, res) => {
   try {
     res.json(await runJavaSource(req.body?.code || ''));
   } catch (error) {
@@ -2214,7 +2272,7 @@ app.post('/api/code-lab/run-java', async (req, res) => {
   }
 });
 
-app.get('/api/code-lab/java-status', async (req, res) => {
+app.get('/api/code-lab/java-status', requireAuth, async (req, res) => {
   try {
     res.json(await checkJavaToolchain(true));
   } catch (error) {
@@ -2257,7 +2315,7 @@ function validateDailyChallenge(challengeId, files = {}) {
   return 'Unknown daily challenge.';
 }
 
-app.post('/api/code-lab/validate', async (req, res) => {
+app.post('/api/code-lab/validate', requireAuth, async (req, res) => {
   try {
     const challengeId = String(req.body?.challengeId || '');
     const files = req.body?.files || {};
@@ -2270,6 +2328,52 @@ app.post('/api/code-lab/validate', async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+async function runPythonSource(code) {
+  if (!code || !code.trim()) return { ok: false, error: 'Enter Python code before running.' };
+  if (PYTHON_BLOCKLIST.some((p) => p.test(code))) {
+    return { ok: false, error: 'This Python sandbox blocks file I/O, network, os, subprocess, eval, exec, and related APIs.' };
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'class-app-py-'));
+  const file = path.join(dir, 'main.py');
+  try {
+    fs.writeFileSync(file, code);
+    const result = await runCommand(PYTHON_BIN, ['-u', file], {
+      cwd: dir,
+      timeoutMs: PYTHON_TIMEOUT_MS,
+      phase: 'running Python',
+    });
+    if (result.code !== 0) {
+      const errMsg = (result.stderr || result.stdout || 'Python execution failed.').slice(0, 2000);
+      return { ok: false, error: errMsg };
+    }
+    return { ok: true, output: (result.stdout || '[No output]').slice(0, 8000) };
+  } finally {
+    fs.rm(dir, { recursive: true, force: true }, () => {});
+  }
+}
+
+app.post('/api/code-lab/run-python', requireAuth, async (req, res) => {
+  try {
+    res.json(await runPythonSource(req.body?.code || ''));
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+app.get('/api/code-lab/python-status', requireAuth, async (req, res) => {
+  try {
+    const result = await runCommand(PYTHON_BIN, ['--version'], { timeoutMs: 5000, phase: 'checking python' });
+    const available = result.code === 0;
+    res.json({
+      available,
+      version: (result.stdout || result.stderr || '').trim(),
+      message: available ? 'Python is available.' : 'Python 3 is not installed on this server.',
+    });
+  } catch (error) {
+    res.status(500).json({ available: false, message: error.message });
   }
 });
 
@@ -2475,11 +2579,13 @@ app.get('/api/quiz-history', requireAuth, wrap(async (req, res) => {
 }));
 
 app.post('/api/quiz-history', requireAuth, wrap(async (req, res) => {
-  const { source_name, score, total } = req.body || {};
+  const { source_name, score, total, questions } = req.body || {};
   if (typeof score !== 'number' || typeof total !== 'number') return res.status(400).json({ error: 'score and total must be numbers' });
   if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
   try {
-    const inserted = await supabaseQuery('quiz_history', 'POST', [{ username: req.user.username, source_name: source_name || '', score, total }]);
+    const record = { username: req.user.username, source_name: source_name || '', score, total };
+    if (Array.isArray(questions) && questions.length) record.questions_json = questions;
+    const inserted = await supabaseQuery('quiz_history', 'POST', [record]);
     return res.json(inserted[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 }));
@@ -2758,11 +2864,18 @@ app.post('/api/groq', requireAuth, aiLimiter, express.json(), async (req, res) =
 /* â"€â"€ In-memory lobby player map â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 const lobbyPlayers = new Map(); // socketId â†' { username, x, y, dir, color, bodyColor, score }
 const lobbyMoveThrottle = new Map(); // socketId â†' last broadcast timestamp (50ms / 20fps)
+const lobbyChatThrottle = new Map(); // socketId â†' last chat timestamp (1 msg/sec)
 
 /* â"€â"€ Star Collector mini-game â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-const lobbyScores = {}; // username â†' score
+const lobbyScores = {}; // username â†' score (seeded from data.json; refreshed from Supabase async)
 Object.assign(lobbyScores, state.lobbyScores || {});
 state.lobbyScores = lobbyScores;
+// Refresh from Supabase if available (best-effort; non-blocking)
+if (SUPABASE_URL) {
+  supabaseQuery('lobby_scores', 'GET', null, { select: 'username,score' })
+    .then((rows) => { if (rows) rows.forEach((r) => { lobbyScores[r.username] = r.score; }); })
+    .catch(() => {});
+}
 let lobbyStar = null;
 
 function spawnStar() {
@@ -2816,10 +2929,11 @@ io.on('connection', (socket) => {
   socket.on('sendMessage', async ({ chat, target, text, attachment }) => {
     const sender = socket.data.username;
     if (!sender || !chat) return;
+    const safeText = String(text || '').slice(0, 500);
     const message = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       sender,
-      text: text || '',
+      text: safeText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       pinned: false,
       edited: false,
@@ -2905,6 +3019,9 @@ io.on('connection', (socket) => {
       socket.to('lobby').emit('lobby:player_joined', player);
     }
     if (!player || !text) return;
+    const nowChat = Date.now();
+    if (nowChat - (lobbyChatThrottle.get(socket.id) || 0) < 1000) return; // 1 msg/sec
+    lobbyChatThrottle.set(socket.id, nowChat);
     const msg = {
       username: player.username,
       text: String(text).slice(0, 100),
@@ -2920,7 +3037,12 @@ io.on('connection', (socket) => {
     lobbyStar = null; // remove immediately to prevent double-collect
     lobbyScores[player.username] = (lobbyScores[player.username] || 0) + 1;
     player.score = lobbyScores[player.username];
+    state.lobbyScores = lobbyScores;
     await saveData(state);
+    if (SUPABASE_URL) {
+      supabaseQuery('lobby_scores', 'POST', { username: player.username, score: player.score, updated_at: new Date().toISOString() }, {})
+        .catch((e) => console.warn('[lobby] Supabase score save failed:', e.message));
+    }
     io.to('lobby').emit('lobby:star_collected', {
       username: player.username,
       score: player.score,
@@ -2950,6 +3072,7 @@ io.on('connection', (socket) => {
       io.to('lobby').emit('lobby:player_left', { username: lobbyPlayer.username });
     }
     lobbyMoveThrottle.delete(socket.id);
+    lobbyChatThrottle.delete(socket.id);
   });
 });
 

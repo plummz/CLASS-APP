@@ -5524,3 +5524,137 @@ body.light-mode .notepad-search-input::placeholder { color: rgba(0,30,100,0.4); 
 body.light-mode .home-trending-card { background: rgba(255,255,255,0.6); border-color: rgba(0,100,200,0.2); }
 body.light-mode .home-trending-title { color: #0b2d6b; }
 body.light-mode .home-trending-by { color: #2a4a8a; }
+
+/* ============================================================
+   LIGHT SCENE BACKGROUNDS (v1.8.0)
+   ============================================================ */
+#bg-mountain {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(74, 180, 89, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%,  rgba(168, 235, 168, 0.25) 0%, transparent 40%),
+    linear-gradient(180deg, #d4f0da 0%, #b8e6c0 25%, #9dd9aa 50%, #86cc96 70%, #72c083 100%);
+}
+#bg-ocean {
+  background:
+    radial-gradient(ellipse at 50% 0%,  rgba(0, 212, 255, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 60%, rgba(0, 140, 240, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, #d0eeff 0%, #b3dfff 20%, #8fceff 45%, #6fbfff 65%, #50b0ff 85%, #38a4f5 100%);
+}
+#bg-aerial {
+  background:
+    radial-gradient(ellipse at 60% 20%, rgba(255, 230, 80, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 70%, rgba(255, 160, 80, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, #fff5d6 0%, #ffeab8 15%, #ffd98a 35%, #ffc85e 55%, #ffb840 75%, #f5a820 100%);
+}
+#bg-galaxy {
+  background:
+    radial-gradient(ellipse at 70% 30%, rgba(210, 170, 255, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 60%, rgba(255, 160, 220, 0.25) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(200, 155, 255, 0.2) 0%, transparent 60%),
+    linear-gradient(180deg, #f0e8ff 0%, #e4d0ff 25%, #d8b8ff 50%, #cca0ff 75%, #c088ff 100%);
+}
+
+/* ── Boost text readability on light backgrounds ── */
+.page-content,
+.page > *:not(.scene-bg):not(.aurora):not(.particles) {
+  text-shadow: none;
+}
+.section-title,
+.page h2, .page h3 {
+  font-weight: 800;
+  color: #0a1a3a;
+}
+.card-title, .card-label {
+  font-weight: 700;
+  color: #0a1a3a;
+}
+
+/* ============================================================
+   SIDEBAR LAVENDER / NEON REDESIGN (v1.8.0)
+   ============================================================ */
+
+/* Sidebar background: deep lavender glassmorphism */
+#sidebar {
+  background: linear-gradient(160deg,
+    rgba(18, 8, 48, 0.97) 0%,
+    rgba(30, 10, 70, 0.97) 40%,
+    rgba(20, 6, 55, 0.97) 100%);
+  border-right: 1px solid rgba(180, 100, 255, 0.25);
+  box-shadow: 4px 0 40px rgba(120, 0, 200, 0.3), 0 0 80px rgba(0, 212, 255, 0.08);
+}
+
+/* Sidebar title: lavender gradient text */
+.sidebar-title {
+  background: linear-gradient(90deg, #c084fc, #a855f7, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+  opacity: 1;
+}
+
+/* Section dividers: faint lavender */
+.nav-section-title {
+  color: rgba(196, 132, 252, 0.85);
+  border-top-color: rgba(168, 85, 247, 0.2);
+}
+
+/* Nav items: glassmorphism hover */
+.nav-item:hover,
+.nav-dropdown-header:hover {
+  background: linear-gradient(90deg,
+    rgba(168, 85, 247, 0.22) 0%,
+    rgba(0, 212, 255, 0.1) 100%) !important;
+  box-shadow:
+    inset 4px 0 16px rgba(168, 85, 247, 0.4),
+    0 0 28px rgba(168, 85, 247, 0.18),
+    0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left-color: #c084fc !important;
+  transform: translateX(5px) scale(1.015) !important;
+}
+
+/* Active nav item: neon lavender accent */
+.nav-item.active {
+  background: linear-gradient(90deg,
+    rgba(168, 85, 247, 0.28) 0%,
+    rgba(129, 140, 248, 0.12) 100%) !important;
+  border-left-color: #c084fc !important;
+  box-shadow:
+    inset 4px 0 20px rgba(168, 85, 247, 0.5),
+    0 0 24px rgba(168, 85, 247, 0.2) !important;
+}
+
+/* Nav icon colors: neon lavender/cyan mix */
+.nav-icon { color: rgba(196, 132, 252, 0.85); }
+.nav-icon:hover { color: #c084fc; }
+
+/* Nav labels: slightly brighter */
+.nav-label {
+  color: rgba(235, 220, 255, 0.95);
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  color: rgba(168, 85, 247, 0.45);
+  border-top-color: rgba(168, 85, 247, 0.15);
+}
+
+/* Dropdown open state: deeper lavender glass */
+.nav-dropdown-group.open {
+  background: linear-gradient(135deg,
+    rgba(168, 85, 247, 0.15) 0%,
+    rgba(0, 0, 0, 0.22) 100%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 85, 247, 0.22),
+    0 12px 38px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ── Fix floating overlay z-index conflicts on narrow screens (375px) ── */
+@media (max-width: 420px) {
+  .chat-bauble { bottom: 18px; right: 14px; width: 50px; height: 50px; font-size: 20px; z-index: 900; }
+  #live-clock { top: auto !important; bottom: 76px !important; right: auto !important; left: 14px !important; z-index: 890; }
+  .custom-bg-btn { z-index: 880; bottom: 76px !important; right: 14px !important; }
+}

@@ -5526,35 +5526,36 @@ body.light-mode .home-trending-title { color: #0b2d6b; }
 body.light-mode .home-trending-by { color: #2a4a8a; }
 
 /* ============================================================
-   LIGHT SCENE BACKGROUNDS (v1.8.0)
+   MEDIUM-LIGHT SCENE BACKGROUNDS (v1.8.1)
+   Darker than v1.8.0 but still lighter than original dark themes.
    ============================================================ */
 #bg-mountain {
   background:
-    radial-gradient(ellipse at 50% 110%, rgba(74, 180, 89, 0.35) 0%, transparent 60%),
-    radial-gradient(ellipse at 20% 80%,  rgba(168, 235, 168, 0.25) 0%, transparent 40%),
-    linear-gradient(180deg, #d4f0da 0%, #b8e6c0 25%, #9dd9aa 50%, #86cc96 70%, #72c083 100%);
+    radial-gradient(ellipse at 50% 110%, rgba(40, 120, 55, 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%,  rgba(80, 160, 90, 0.3) 0%, transparent 40%),
+    linear-gradient(180deg, #2a5c33 0%, #1e4828 25%, #163820 50%, #0f2c18 70%, #0a2214 100%);
 }
 #bg-ocean {
   background:
-    radial-gradient(ellipse at 50% 0%,  rgba(0, 212, 255, 0.25) 0%, transparent 50%),
-    radial-gradient(ellipse at 30% 60%, rgba(0, 140, 240, 0.2) 0%, transparent 40%),
-    linear-gradient(180deg, #d0eeff 0%, #b3dfff 20%, #8fceff 45%, #6fbfff 65%, #50b0ff 85%, #38a4f5 100%);
+    radial-gradient(ellipse at 50% 0%,  rgba(0, 180, 230, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 60%, rgba(0, 100, 200, 0.25) 0%, transparent 40%),
+    linear-gradient(180deg, #0d3a5c 0%, #092d4e 20%, #061f3a 45%, #041628 65%, #020e1c 85%, #010a16 100%);
 }
 #bg-aerial {
   background:
-    radial-gradient(ellipse at 60% 20%, rgba(255, 230, 80, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 30% 70%, rgba(255, 160, 80, 0.2) 0%, transparent 40%),
-    linear-gradient(180deg, #fff5d6 0%, #ffeab8 15%, #ffd98a 35%, #ffc85e 55%, #ffb840 75%, #f5a820 100%);
+    radial-gradient(ellipse at 60% 20%, rgba(220, 180, 40, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 70%, rgba(200, 100, 30, 0.25) 0%, transparent 40%),
+    linear-gradient(180deg, #3d2800 0%, #2e1e00 15%, #221600 35%, #1a1000 55%, #120b00 75%, #0c0700 100%);
 }
 #bg-galaxy {
   background:
-    radial-gradient(ellipse at 70% 30%, rgba(210, 170, 255, 0.35) 0%, transparent 50%),
-    radial-gradient(ellipse at 20% 60%, rgba(255, 160, 220, 0.25) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 50%, rgba(200, 155, 255, 0.2) 0%, transparent 60%),
-    linear-gradient(180deg, #f0e8ff 0%, #e4d0ff 25%, #d8b8ff 50%, #cca0ff 75%, #c088ff 100%);
+    radial-gradient(ellipse at 70% 30%, rgba(160, 100, 240, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 60%, rgba(220, 60, 160, 0.2) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(120, 60, 200, 0.2) 0%, transparent 60%),
+    linear-gradient(180deg, #1a0a35 0%, #120520 25%, #0d0318 50%, #080110 75%, #04000c 100%);
 }
 
-/* ── Boost text readability on light backgrounds ── */
+/* ── Text readability on medium-light backgrounds ── */
 .page-content,
 .page > *:not(.scene-bg):not(.aurora):not(.particles) {
   text-shadow: none;
@@ -5562,11 +5563,11 @@ body.light-mode .home-trending-by { color: #2a4a8a; }
 .section-title,
 .page h2, .page h3 {
   font-weight: 800;
-  color: #0a1a3a;
+  color: rgba(255, 255, 255, 0.95);
 }
 .card-title, .card-label {
   font-weight: 700;
-  color: #0a1a3a;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 /* ============================================================

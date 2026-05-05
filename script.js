@@ -3323,8 +3323,9 @@ window.goToPage = function(targetPage) {
     window[gameLazyMap[pageName].loaded] = true;
     const s = document.createElement('script');
     s.src = gameLazyMap[pageName].src;
+    // On first visit the module doesn't exist yet when init() runs below,
+    // so call init() once the script actually finishes loading.
     s.onload = () => {
-      // init after first load if still on this page
       if (currentPage !== pageName) return;
       if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
       if (pageName === 'royale'  && typeof royaleModule  !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());

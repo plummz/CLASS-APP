@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.8.2-20260505-tetris-game';
+const CACHE_VERSION = 'v1.8.3-20260505-tetris-game';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=2',
+  '/features/updates/changelog.js?v=3',
   '/features/personalization/background-presets.js?v=1',
   '/script.js?v=131',
   '/features/reviewers/reviewers.js?v=18',

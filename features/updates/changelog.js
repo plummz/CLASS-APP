@@ -1,7 +1,7 @@
-const APP_VERSION = '1.8.2';
+const APP_VERSION = '1.8.3';
 const APP_CHANGELOG = [
   {
-    version: '1.8.2',
+    version: '1.8.3',
     date: 'May 5, 2026',
     title: 'Tetris Game',
     summary: 'Fully playable Tetris game added to the Games Hub with standard SRS mechanics, hold piece, ghost piece, hard drop, and mobile D-pad controls.',
@@ -15,6 +15,17 @@ const APP_CHANGELOG = [
       'Feature: Swipe gestures on the canvas — swipe left/right to move, swipe down to soft drop, tap to rotate.',
       'Feature: Keyboard controls — Arrow keys / WASD, Space for hard drop, C for hold, P to pause.',
       'Performance: Tetris script lazy-loaded on first visit like other games.',
+    ],
+  },
+  {
+    version: '1.8.2',
+    date: 'May 5, 2026',
+    title: 'Fix: Games Blank Page & Battle Royale Stuck Loading',
+    summary: 'Fixed first-play blank screen on Pac-Man, Pokémon, and Candy Match, and fixed Battle Royale getting stuck on the loading screen with no way to exit.',
+    changes: [
+      'Fix: Pac-Man, Pokémon, and Candy Match no longer show a blank page on the first play. The game now initialises correctly after its script finishes lazy-loading.',
+      'Fix: Battle Royale no longer gets stuck on the "Generating map…" loading screen — the game initialises on first visit.',
+      'Fix: Battle Royale back button (← Games) is now always visible and clickable even when the loading screen is active, so users can always exit.',
     ],
   },
   {

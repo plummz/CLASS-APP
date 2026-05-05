@@ -1167,50 +1167,76 @@ body {
    ============================================================ */
 .upload-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
   max-width: 1100px;
   margin: 0 auto;
 }
- 
+@media (min-width: 500px) {
+  .upload-grid {
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 14px;
+  }
+}
+@media (min-width: 900px) {
+  .upload-grid {
+    gap: 18px;
+  }
+}
+
 .subject-card {
   background: var(--glass);
   border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  padding: 20px 18px 16px;
+  border-radius: 13px;
+  padding: 13px 11px 11px;
   backdrop-filter: blur(16px);
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.subject-card:hover { transform: translateY(-4px); }
-#page-first  .subject-card:hover { border-color: var(--mountain-accent); box-shadow: 0 8px 32px rgba(74, 124, 89, 0.35); }
-#page-second .subject-card:hover { border-color: var(--ocean-primary);   box-shadow: 0 8px 32px rgba(0, 212, 255, 0.25); }
+.subject-card:hover  { transform: translateY(-3px); }
+.subject-card:active { transform: scale(0.97); opacity: 0.88; }
+
+/* Year-level themed hover colours */
+#page-first   .subject-card:hover { border-color: var(--mountain-accent); box-shadow: 0 6px 24px rgba(74,124,89,0.35); }
+#page-second  .subject-card:hover { border-color: var(--ocean-primary);   box-shadow: 0 6px 24px rgba(0,212,255,0.25); }
+#page-y2first .subject-card:hover,
+#page-y2second .subject-card:hover { border-color: #60a5fa; box-shadow: 0 6px 24px rgba(96,165,250,0.28); }
+#page-y3first .subject-card:hover,
+#page-y3second .subject-card:hover { border-color: #a78bfa; box-shadow: 0 6px 24px rgba(167,139,250,0.28); }
+#page-y4first .subject-card:hover,
+#page-y4second .subject-card:hover { border-color: #f472b6; box-shadow: 0 6px 24px rgba(244,114,182,0.28); }
 
 .card-icon {
-  font-size: 26px;
-  margin-bottom: 10px;
+  font-size: 20px;
+  margin-bottom: 6px;
   display: block;
-  filter: drop-shadow(0 0 8px currentColor);
+  filter: drop-shadow(0 0 6px currentColor);
 }
-#page-first  .card-icon { color: var(--mountain-glow); }
-#page-second .card-icon { color: var(--ocean-glow); }
- 
+#page-first   .card-icon { color: var(--mountain-glow); }
+#page-second  .card-icon { color: var(--ocean-glow); }
+#page-y2first .card-icon, #page-y2second .card-icon { color: #60a5fa; }
+#page-y3first .card-icon, #page-y3second .card-icon { color: #a78bfa; }
+#page-y4first .card-icon, #page-y4second .card-icon { color: #f472b6; }
+
 .card-subject {
   font-family: 'Exo 2', sans-serif;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.95);
   letter-spacing: 0.03em;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
+  word-break: break-word;
 }
 .card-teacher {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.42);
   font-style: italic;
-  line-height: 1.4;
+  line-height: 1.3;
+  word-break: break-word;
 }
 .card-view-label {
   margin-top: 15px;
@@ -1222,29 +1248,151 @@ body {
   padding-top: 10px;
 }
 
-/* Subject card two-action row */
+/* Subject card action row */
 .card-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 14px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  padding-top: 10px;
+  gap: 5px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
 }
 .card-action-btn {
   flex: 1;
-  padding: 6px 4px;
+  padding: 5px 3px;
   border-radius: 7px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.65);
-  font-size: 11px;
+  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
+  -webkit-tap-highlight-color: transparent;
 }
-.card-action-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); color: #fff; }
+.card-action-btn:hover  { background: rgba(255,255,255,0.11); border-color: rgba(255,255,255,0.28); color: #fff; }
+.card-action-btn:active { opacity: 0.75; }
 .card-action-summarize:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.4); color: var(--accent, #00d4ff); }
+
+/* Admin add-subject button strip */
+.admin-add-subject-wrap {
+  max-width: 1100px;
+  margin: 14px auto 0;
+  display: flex;
+  justify-content: flex-end;
+}
+.admin-add-subject-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(167,139,250,0.4);
+  background: rgba(167,139,250,0.1);
+  color: #a78bfa;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-add-subject-btn:hover  { background: rgba(167,139,250,0.22); border-color: #a78bfa; color: #fff; }
+.admin-add-subject-btn:active { opacity: 0.8; transform: scale(0.98); }
+
+/* Admin add-subject modal */
+.add-subject-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.add-subject-modal-overlay.open { display: flex; }
+.add-subject-modal-box {
+  background: linear-gradient(135deg, rgba(20,18,42,0.97) 0%, rgba(11,27,61,0.97) 100%);
+  border: 1px solid rgba(167,139,250,0.35);
+  border-radius: 18px;
+  padding: 28px 24px 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  backdrop-filter: blur(24px);
+}
+.add-subject-modal-title {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #a78bfa;
+  margin-bottom: 20px;
+  letter-spacing: 0.04em;
+}
+.add-subject-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+.add-subject-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.add-subject-field select,
+.add-subject-field input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 9px;
+  color: rgba(255,255,255,0.9);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Exo 2', sans-serif;
+}
+.add-subject-field select:focus,
+.add-subject-field input:focus { border-color: #a78bfa; }
+.add-subject-field select option { background: #14122a; }
+.add-subject-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+.add-subject-cancel-btn {
+  padding: 9px 18px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.add-subject-cancel-btn:hover { border-color: rgba(255,255,255,0.35); color: #fff; }
+.add-subject-save-btn {
+  padding: 9px 22px;
+  border-radius: 9px;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.add-subject-save-btn:hover { opacity: 0.88; }
+.add-subject-error {
+  font-size: 12px;
+  color: #f87171;
+  margin-top: 6px;
+  min-height: 16px;
+}
 
 /* Semester quick-action bar */
 .semester-shortcut {

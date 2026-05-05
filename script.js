@@ -269,6 +269,36 @@ const y3secondSem = [];
 const y4firstSem  = [];
 const y4secondSem = [];
 
+// Map of gridKey → mutable subject array (used by admin subject creation)
+const SUBJECT_GRID_MAP = {
+  first: firstSem, second: secondSem,
+  y2first: y2firstSem, y2second: y2secondSem,
+  y3first: y3firstSem, y3second: y3secondSem,
+  y4first: y4firstSem, y4second: y4secondSem,
+};
+
+// Grid key → human label (for buildSubjectCards folderRootLabel)
+const SUBJECT_GRID_LABELS = {
+  first: 'First Semester', second: 'Second Semester',
+  y2first: '2nd Year · First Semester', y2second: '2nd Year · Second Semester',
+  y3first: '3rd Year · First Semester', y3second: '3rd Year · Second Semester',
+  y4first: '4th Year · First Semester', y4second: '4th Year · Second Semester',
+};
+
+// Load admin-added subjects from localStorage and merge into arrays
+(function loadAdminSubjects() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('adminSubjects_v1') || '[]');
+    if (!Array.isArray(saved)) return;
+    saved.forEach(({ gridKey, code, teacher, icon }) => {
+      const arr = SUBJECT_GRID_MAP[gridKey];
+      if (!arr) return;
+      if (arr.some(s => s.code === code)) return; // no duplicate
+      arr.push({ code, teacher: teacher || '', icon: icon || '📚' });
+    });
+  } catch (_) { /* corrupted data — skip silently */ }
+})();
+
 const ACADEMIC_FOLDER_ROOTS = new Set([
   ...firstSem,
   ...secondSem,
@@ -343,6 +373,80 @@ function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
   });
 }
 
+/* ============================================================
+   ADMIN — ADD SUBJECT (Admin-only, localStorage-backed)
+   ============================================================ */
+window.openAdminAddSubjectModal = function(gridKey) {
+  if (!isAdmin) return; // server-backed guard
+  const modal = document.getElementById('add-subject-modal');
+  if (!modal) return;
+  const yearSel = document.getElementById('add-subject-year');
+  if (yearSel && gridKey && SUBJECT_GRID_MAP[gridKey] !== undefined) yearSel.value = gridKey;
+  document.getElementById('add-subject-code').value = '';
+  document.getElementById('add-subject-teacher').value = '';
+  document.getElementById('add-subject-icon').value = '';
+  document.getElementById('add-subject-error').textContent = '';
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('add-subject-code')?.focus(), 80);
+};
+
+window.closeAdminAddSubjectModal = function() {
+  const modal = document.getElementById('add-subject-modal');
+  if (modal) modal.classList.remove('open');
+};
+
+window.adminSaveNewSubject = function() {
+  if (!isAdmin) { customAlert('Admin only.'); return; }
+
+  const gridKey = document.getElementById('add-subject-year').value.trim();
+  const rawCode = document.getElementById('add-subject-code').value.trim();
+  const rawTeacher = document.getElementById('add-subject-teacher').value.trim();
+  const rawIcon = document.getElementById('add-subject-icon').value.trim();
+  const errEl = document.getElementById('add-subject-error');
+
+  // --- Validation ---
+  if (!rawCode) { errEl.textContent = 'Subject code / name is required.'; return; }
+  if (rawCode.length > 60) { errEl.textContent = 'Subject name is too long (max 60 chars).'; return; }
+  // Basic XSS guard: reject < > " ' ` characters
+  if (/[<>"'`]/.test(rawCode) || /[<>"'`]/.test(rawTeacher)) {
+    errEl.textContent = 'Subject name contains unsafe characters.'; return;
+  }
+
+  const arr = SUBJECT_GRID_MAP[gridKey];
+  if (!arr) { errEl.textContent = 'Invalid year/semester selected.'; return; }
+
+  // Duplicate check
+  if (arr.some(s => s.code.toLowerCase() === rawCode.toLowerCase())) {
+    errEl.textContent = 'A subject with this name already exists in this semester.'; return;
+  }
+
+  const icon = rawIcon || '📚';
+  const newSubject = { code: rawCode, teacher: rawTeacher, icon };
+
+  // Add to live array
+  arr.push(newSubject);
+  // Register in ACADEMIC_FOLDER_ROOTS so folder explorer works
+  ACADEMIC_FOLDER_ROOTS.add(rawCode);
+
+  // Persist to localStorage
+  try {
+    const saved = JSON.parse(localStorage.getItem('adminSubjects_v1') || '[]');
+    saved.push({ gridKey, code: rawCode, teacher: rawTeacher, icon });
+    localStorage.setItem('adminSubjects_v1', JSON.stringify(saved));
+  } catch (_) { /* storage full or private mode — subject is live this session */ }
+
+  // Re-render the grid
+  buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
+  window.closeAdminAddSubjectModal();
+};
+
+// Close modal when clicking outside the box
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('add-subject-modal');
+  if (!modal || !modal.classList.contains('open')) return;
+  if (e.target === modal) window.closeAdminAddSubjectModal();
+});
+
 function buildFolderCards(gridId, count, prefix = "Folder") {
   const grid = document.getElementById(gridId);
   if (!grid) return;
@@ -380,8 +484,23 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.7.4';
+const APP_VERSION = '1.7.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.7.5',
+    date: 'May 5, 2026',
+    title: 'Compact Subject Cards + Admin Subject Creation',
+    summary: 'All year-level pages now use compact glassmorphism subject cards with a 2-column mobile layout. Admins can manually add subjects to any year/semester; new subjects persist across refreshes.',
+    changes: [
+      'UI: Subject cards are now compact — reduced padding, 20px icon, 13px subject name, 11px teacher text. Significantly less vertical space per card.',
+      'UI: Upload grid now defaults to 2 columns on mobile (≤500 px) for better density. Expands to auto-fill (3+) on wider screens.',
+      'UI: Added themed hover glows for 2nd Year (blue), 3rd Year (purple), and 4th Year (pink) subject cards. Tap feedback (scale) added for iOS.',
+      'Feature: Admin-only "Add Subject" button on every year/semester page. Non-admins cannot see or trigger it.',
+      'Feature: Admin add-subject modal with validation — required name, length limit, XSS character guard, duplicate prevention.',
+      'Feature: Admin-created subjects persist via localStorage (adminSubjects_v1) and are loaded on every page open.',
+      'Feature: Newly added subjects appear instantly as clickable glassmorphism cards and are registered in ACADEMIC_FOLDER_ROOTS so folder explorer works.',
+    ],
+  },
   {
     version: '1.7.4',
     date: 'May 4, 2026',

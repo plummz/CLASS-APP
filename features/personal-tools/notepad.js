@@ -52,6 +52,7 @@ window.notepadModule = {
       cloudId: note.cloudId || note.id || null,
       localId: note.localId || this.createLocalId(),
       sharedToReviewers: Boolean(note.sharedToReviewers || note.shared_to_reviewers),
+      tags: note.tags || '',
     };
   },
 
@@ -194,7 +195,8 @@ window.notepadModule = {
         content: record.content,
         date: record.updated_at || record.created_at,
         cloudId: record.id,
-        sharedToReviewers: record.shared_to_reviewers || false
+        sharedToReviewers: record.shared_to_reviewers || false,
+        tags: record.tags || '',
       }));
 
       this.notes = this.mergeLocalAndRemoteNotes(localNotes, remoteNotes);
@@ -246,6 +248,7 @@ window.notepadModule = {
             .update({
               title: note.title,
               content: note.content,
+              tags: note.tags || null,
               updated_at: new Date().toISOString()
             })
             .eq('id', note.cloudId);
@@ -256,6 +259,7 @@ window.notepadModule = {
             .insert([{
               title: note.title,
               content: note.content,
+              tags: note.tags || null,
               user_id: user.username,
               created_at: note.date || new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -321,6 +325,7 @@ window.notepadModule = {
           <h3 style="color: #00d4ff; margin-top: 0;">Create New Note</h3>
           <input type="text" id="note-title" placeholder="Note Title" maxlength="100">
           <textarea id="note-content" placeholder="Write your note here..." maxlength="2000"></textarea>
+          <input type="text" id="note-tags" placeholder="Tags / Subject (e.g. Math, Science)" maxlength="100" style="margin-top:8px;">
           <div class="notepad-form-buttons">
             <button onclick="notepadModule.saveNote()">Save Note</button>
             <button class="cancel" onclick="notepadModule.hideForm()">Cancel</button>
@@ -344,7 +349,7 @@ window.notepadModule = {
     const q = (this.searchQuery || '').toLowerCase().trim();
     const visible = this.notes
       .map((note, index) => ({ note, index }))
-      .filter(({ note }) => !q || (note.title || '').toLowerCase().includes(q) || (note.content || '').toLowerCase().includes(q));
+      .filter(({ note }) => !q || (note.title || '').toLowerCase().includes(q) || (note.content || '').toLowerCase().includes(q) || (note.tags || '').toLowerCase().includes(q));
 
     if (this.notes.length === 0) {
       listEl.innerHTML = '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>';
@@ -368,6 +373,7 @@ window.notepadModule = {
       });
 
       const sharedWarning = note.sharedToReviewers ? '<div class="notepad-shared-warning">⚠️ Shared to Reviewers (local edits won\'t update)</div>' : '';
+      const tagsHtml = note.tags ? `<div class="notepad-item-tags">${note.tags.split(',').map(t => `<span class="notepad-tag">${this.escapeHtml(t.trim())}</span>`).filter(Boolean).join('')}</div>` : '';
 
       return `
         <div class="notepad-item">
@@ -375,6 +381,7 @@ window.notepadModule = {
             <div class="notepad-item-title">${this.escapeHtml(note.title)}</div>
             <div class="notepad-item-date">${dateStr} ${timeStr}</div>
           </div>
+          ${tagsHtml}
           ${sharedWarning}
           <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
           <div class="notepad-item-actions">
@@ -399,10 +406,14 @@ window.notepadModule = {
       const note = this.notes[editIndex];
       document.getElementById('note-title').value = note.title;
       document.getElementById('note-content').value = note.content;
+      const tagsEl = document.getElementById('note-tags');
+      if (tagsEl) tagsEl.value = note.tags || '';
       form.dataset.editIndex = editIndex;
     } else {
       document.getElementById('note-title').value = '';
       document.getElementById('note-content').value = '';
+      const tagsEl = document.getElementById('note-tags');
+      if (tagsEl) tagsEl.value = '';
       delete form.dataset.editIndex;
     }
 
@@ -417,6 +428,8 @@ window.notepadModule = {
   saveNote: async function() {
     const title = document.getElementById('note-title').value.trim();
     const content = document.getElementById('note-content').value.trim();
+    const tagsEl = document.getElementById('note-tags');
+    const tags = tagsEl ? tagsEl.value.trim() : '';
 
     if (!title || !content) {
       customAlert('Please fill in both title and content.');
@@ -429,11 +442,13 @@ window.notepadModule = {
     if (editIndex !== undefined && this.notes[editIndex]) {
       this.notes[editIndex].title = title;
       this.notes[editIndex].content = content;
+      this.notes[editIndex].tags = tags;
       this.notes[editIndex].date = new Date().toISOString();
     } else {
       this.notes.unshift(this.hydrateNote({
         title,
         content,
+        tags,
         date: new Date().toISOString()
       }));
     }

@@ -82,6 +82,7 @@
     css: `body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }\n.hero { min-height: 100vh; display: grid; place-items: center; align-content: center; gap: 14px; }\nbutton { border: 0; border-radius: 999px; padding: 12px 18px; background: #22d3ee; font-weight: 800; cursor: pointer; }`,
     javascript: `document.getElementById('demoBtn')?.addEventListener('click', () => {\n  document.getElementById('status').textContent = 'JavaScript is running inside the sandbox.';\n  console.log('Button clicked');\n});`,
     java: `import javax.swing.JButton;\nimport javax.swing.JFrame;\nimport javax.swing.JLabel;\nimport javax.swing.JPanel;\n\npublic class Main {\n  public static void main(String[] args) {\n    JFrame frame = new JFrame("Swing Practice");\n    JPanel panel = new JPanel();\n    panel.add(new JLabel("Hello Swing"));\n    panel.add(new JButton("Click"));\n    frame.add(panel);\n    frame.setSize(320, 180);\n    System.out.println("Swing source compiled in headless practice mode");\n  }\n}`,
+    python: `# Python 3 Practice\nname = "Class App"\nprint(f"Hello from {name}!")\n\nnumbers = [1, 2, 3, 4, 5]\ntotal = sum(numbers)\nprint(f"Sum of {numbers} = {total}")`,
   };
 
   let codeLabEnvironment = 'web';
@@ -354,7 +355,8 @@
     if (javaStatusChecked && !force) return;
     javaStatusChecked = true;
     try {
-      const res = await fetch('/api/code-lab/java-status');
+      const token = typeof getServerAuthToken === 'function' ? getServerAuthToken() : (localStorage.getItem('classAppToken') || '');
+      const res = await fetch('/api/code-lab/java-status', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data = await res.json();
       if (data.available) {
         codeLabSetConsole(`Java ready: ${data.javacVersion || 'javac'} / ${data.javaVersion || 'java'}`, 'success');
@@ -375,19 +377,24 @@
       shell.classList.toggle('is-java', codeLabEnvironment === 'java');
       shell.classList.toggle('is-web', codeLabEnvironment === 'web');
     }
-    if (envLabel) envLabel.textContent = codeLabEnvironment === 'java' ? 'Java Swing' : 'HTML / CSS / JavaScript';
-    if (title) title.textContent = codeLabEnvironment === 'java' ? 'Java Swing Workspace' : 'Web Workspace';
+    const envLabelMap = { java: 'Java Swing', python: 'Python 3', web: 'HTML / CSS / JavaScript' };
+    if (envLabel) envLabel.textContent = envLabelMap[codeLabEnvironment] || 'HTML / CSS / JavaScript';
+    if (title) title.textContent = codeLabEnvironment === 'java' ? 'Java Swing Workspace' : (codeLabEnvironment === 'python' ? 'Python 3 Workspace' : 'Web Workspace');
     if (previewTitle) previewTitle.textContent = codeLabEnvironment === 'java' ? 'Swing Preview' : 'Preview';
+    if (shell) shell.classList.toggle('is-python', codeLabEnvironment === 'python');
 
     document.querySelectorAll('.code-lab-file-tab').forEach((tab) => {
       const lang = tab.dataset.lang;
-      const visible = codeLabEnvironment === 'java' ? lang === 'java' : lang !== 'java';
+      let visible;
+      if (codeLabEnvironment === 'java') visible = lang === 'java';
+      else if (codeLabEnvironment === 'python') visible = lang === 'python';
+      else visible = lang !== 'java' && lang !== 'python';
       tab.hidden = !visible;
     });
     const previewTab = document.querySelector('[data-code-lab-view="preview"]');
     if (previewTab) {
-      previewTab.hidden = codeLabEnvironment === 'java';
-      if (codeLabEnvironment === 'java' && codeLabView === 'preview') setCodeLabView('console');
+      previewTab.hidden = codeLabEnvironment === 'java' || codeLabEnvironment === 'python';
+      if ((codeLabEnvironment === 'java' || codeLabEnvironment === 'python') && codeLabView === 'preview') setCodeLabView('console');
     }
   }
 
@@ -497,8 +504,8 @@
 
   window.openCodeLabEnvironment = async function (env) {
     saveActiveCodeLabFile();
-    codeLabEnvironment = env === 'java' ? 'java' : 'web';
-    codeLabLanguage = codeLabEnvironment === 'java' ? 'java' : 'html';
+    codeLabEnvironment = env === 'java' ? 'java' : (env === 'python' ? 'python' : 'web');
+    codeLabLanguage = codeLabEnvironment === 'java' ? 'java' : (codeLabEnvironment === 'python' ? 'python' : 'html');
     const shell = document.getElementById('code-lab-shell');
     shell?.classList.remove('is-home');
     shell?.classList.add('is-workbench');
@@ -510,7 +517,8 @@
       codeLabFiles = { ...codeLabPracticeFiles };
       setCodeLabLanguage(codeLabLanguage, false);
     }
-    codeLabSetConsole(`${codeLabEnvironment === 'java' ? 'Java Swing' : 'Web'} workspace ready.`);
+    const envNames = { java: 'Java Swing', python: 'Python 3', web: 'Web' };
+    codeLabSetConsole(`${envNames[codeLabEnvironment] || 'Web'} workspace ready.`);
     if (codeLabEnvironment === 'java') checkJavaStatus(true);
   };
 
@@ -574,15 +582,36 @@
       setCodeLabView('console');
       codeLabSetConsole('Running Java...');
       try {
+        const token = typeof getServerAuthToken === 'function' ? getServerAuthToken() : (localStorage.getItem('classAppToken') || '');
         const res = await fetch('/api/code-lab/run-java', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ code: codeLabFiles.java || '' }),
         });
         const data = await res.json();
         const output = data.ok
           ? (data.output || '[No output]')
           : (data.error || data.output || 'Execution failed.');
+        codeLabSetConsole(output, data.ok ? 'success' : 'error', true);
+      } catch (error) {
+        codeLabSetConsole(error.message, 'error', true);
+      }
+      return;
+    }
+    if (codeLabEnvironment === 'python' || codeLabLanguage === 'python') {
+      setCodeLabView('console');
+      codeLabSetConsole('Running Python...');
+      try {
+        const token = typeof getServerAuthToken === 'function' ? getServerAuthToken() : (localStorage.getItem('classAppToken') || '');
+        const res = await fetch('/api/code-lab/run-python', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ code: codeLabFiles.python || '' }),
+        });
+        const data = await res.json();
+        const output = data.ok
+          ? (data.output || '[No output]')
+          : (data.error || 'Execution failed.');
         codeLabSetConsole(output, data.ok ? 'success' : 'error', true);
       } catch (error) {
         codeLabSetConsole(error.message, 'error', true);

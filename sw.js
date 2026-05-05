@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.4-20260504-three-bug-fixes';
+const CACHE_VERSION = 'v1.8.0-20260505-security-python-light-themes';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=123',
-  '/style.css?v=49',
+  '/style.css?v=50',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -44,14 +44,16 @@ const ASSETS = [
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/file-summarizer/file-summarizer.js?v=17',
-  '/script.js?v=126',
+  '/features/file-summarizer/file-summarizer.js?v=18',
+  '/features/updates/changelog.js?v=1',
+  '/features/personalization/background-presets.js?v=1',
+  '/script.js?v=128',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',
   '/features/personal-tools/alarm-clock.css?v=2',
   '/features/personal-tools/notepad.js?v=8',
-  '/features/personal-tools/notepad.css?v=6',
+  '/features/personal-tools/notepad.css?v=7',
   '/features/personal-tools/calculator.css?v=3',
   '/features/personal-tools/personalization.css?v=2',
   '/features/ai/ai.js?v=1',
@@ -70,7 +72,7 @@ const ASSETS = [
   '/features/updates/updates.js?v=1',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
-  '/assets/js/codelab.js?v=8',
+  '/assets/js/codelab.js?v=9',
   '/coding-educational/coding-educational-data.js?v=10',
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',

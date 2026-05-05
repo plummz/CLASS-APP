@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=49">
+<link rel="stylesheet" href="style.css?v=50">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
-  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
@@ -1207,6 +1207,11 @@
           <strong>Java Swing</strong>
           <small>Java basics, Swing source checks, compile/runtime output, and backend sandbox execution.</small>
         </button>
+        <button class="code-lab-env-card python-env" type="button" data-code-lab-env="python">
+          <span class="code-lab-env-icon">PY</span>
+          <strong>Python 3</strong>
+          <small>Python basics, loops, functions, and console output via backend sandbox execution.</small>
+        </button>
       </div>
 
       <div class="code-lab-workbench" id="code-lab-workbench">
@@ -1266,6 +1271,7 @@
                 <button class="code-lab-file-tab" data-lang="css" type="button">style.css</button>
                 <button class="code-lab-file-tab" data-lang="javascript" type="button">script.js</button>
                 <button class="code-lab-file-tab" data-lang="java" type="button">Main.java</button>
+                <button class="code-lab-file-tab" data-lang="python" type="button">main.py</button>
               </div>
               <div class="code-lab-run-actions">
                 <button class="code-lab-btn ghost" id="code-lab-clear-btn" type="button">Clear</button>
@@ -1544,6 +1550,8 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="features/updates/changelog.js?v=1"></script>
+  <script src="features/personalization/background-presets.js?v=1"></script>
   <script src="script.js?v=128"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
@@ -1557,13 +1565,10 @@
   <script src="features/updates/updates.js?v=1" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>
-  <script src="assets/js/codelab.js?v=8" defer></script>
+  <script src="assets/js/codelab.js?v=9" defer></script>
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
-  <script src="features/pokemon/pokemon.js?v=4" defer></script>
-  <script src="features/royale/royale.js?v=27" defer></script>
-  <script src="features/pacman/pacman.js?v=4" defer></script>
-  <script src="features/candy/candy.js?v=11" defer></script>
+  <!-- Game scripts are lazy-loaded on first page visit via goToPage() -->
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=8" defer></script>

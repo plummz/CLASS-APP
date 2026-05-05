@@ -593,7 +593,7 @@
         window.authFetch('/api/quiz-history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ source_name: quizSourceFile, score: quizScore_val, total })
+          body: JSON.stringify({ source_name: quizSourceFile, score: quizScore_val, total, questions: activeQuestions })
         }).catch(e => console.warn('[Quiz] backend save failed:', e));
       }
     } catch(_) {}
@@ -857,21 +857,26 @@
     });
 
     allQuizzes.sort((a, b) => new Date(b.taken_at).getTime() - new Date(a.taken_at).getTime());
+    cachedQuizHistory = allQuizzes;
 
     if (!allQuizzes.length) {
       listQuiz.innerHTML = '<div class="fs-history-empty">No quiz attempts yet.</div>';
       return;
     }
 
-    listQuiz.innerHTML = allQuizzes.map(item => {
+    listQuiz.innerHTML = allQuizzes.map((item, idx) => {
       const pct = item.total ? Math.round((item.score / item.total) * 100) : 0;
+      const hasQuestions = Array.isArray(item.questions_json) && item.questions_json.length > 0;
       return `
         <div class="fs-history-item">
           <div class="fs-history-item-main">
             <div class="fs-history-title">❓ ${fsEscapeHTML(item.source_name || 'Document')}</div>
             <div class="fs-history-meta">${new Date(item.taken_at).toLocaleDateString()} · Score: ${item.score}/${item.total} (${pct}%) ${item.isLocal ? ' (Offline)' : ''}</div>
           </div>
-          <button type="button" class="fs-outline-btn danger compact fs-history-del-quiz-btn" data-id="${item.id}" data-is-local="${item.isLocal ? 'true' : 'false'}" data-local-idx="${item.localIdx}">Delete</button>
+          <div class="fs-history-item-actions">
+            ${hasQuestions ? `<button type="button" class="fs-outline-btn compact fs-history-retake-btn" data-idx="${idx}">Retake</button>` : ''}
+            <button type="button" class="fs-outline-btn danger compact fs-history-del-quiz-btn" data-id="${item.id}" data-is-local="${item.isLocal ? 'true' : 'false'}" data-local-idx="${item.localIdx}">Delete</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -930,13 +935,34 @@
     });
   }
   
+  let cachedQuizHistory = [];
+
   if (listQuiz) {
     listQuiz.addEventListener('click', (e) => {
-      const btn = e.target.closest('.fs-history-del-quiz-btn');
-      if (btn) {
+      const delBtn = e.target.closest('.fs-history-del-quiz-btn');
+      if (delBtn) {
         e.preventDefault();
-        if (btn.dataset.isLocal === 'true') window.fsDeleteLocalQuiz(parseInt(btn.dataset.localIdx, 10));
-        else window.fsDeleteQuiz(btn.dataset.id);
+        if (delBtn.dataset.isLocal === 'true') window.fsDeleteLocalQuiz(parseInt(delBtn.dataset.localIdx, 10));
+        else window.fsDeleteQuiz(delBtn.dataset.id);
+        return;
+      }
+      const retakeBtn = e.target.closest('.fs-history-retake-btn');
+      if (retakeBtn) {
+        e.preventDefault();
+        const idx = parseInt(retakeBtn.dataset.idx, 10);
+        const item = cachedQuizHistory[idx];
+        if (!item || !Array.isArray(item.questions_json) || !item.questions_json.length) return;
+        activeQuestions = item.questions_json;
+        quizSourceFile = item.source_name || 'History';
+        quizSettings = { type: 'mixed', count: activeQuestions.length };
+        quizScore.classList.remove('active');
+        if (quizReview) quizReview.classList.remove('active');
+        quizCurrent = 0;
+        quizScore_val = 0;
+        userAnswers = [];
+        quizModal.classList.add('active');
+        startTimer();
+        showQuestion();
       }
     });
   }

@@ -23,7 +23,7 @@ const CACHE_VERSION = 'v1.8.0-20260505-security-python-light-themes';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=123',
+  '/index.html?v=125',
   '/style.css?v=50',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -47,7 +47,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=18',
   '/features/updates/changelog.js?v=1',
   '/features/personalization/background-presets.js?v=1',
-  '/script.js?v=128',
+  '/script.js?v=130',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',

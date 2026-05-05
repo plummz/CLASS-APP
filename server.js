@@ -2601,6 +2601,72 @@ app.delete('/api/quiz-history/:id', requireAuth, wrap(async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 }));
 
+/* ── Subjects (year-level subject cards) ─────────────────────── */
+
+// GET /api/subjects — public read, no auth required (subjects are not secret)
+app.get('/api/subjects', wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.json([]);
+  }
+  try {
+    const rows = await supabaseQuery('subjects', 'GET', null, { select: '*', order: 'created_at.asc' });
+    res.json(rows || []);
+  } catch (err) {
+    console.warn('[subjects GET] Supabase error:', err.message);
+    res.json([]);
+  }
+}));
+
+// POST /api/subjects — admin only
+app.post('/api/subjects', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const VALID_GRID_KEYS = new Set(['first','second','y2first','y2second','y3first','y3second','y4first','y4second']);
+  const { grid_key, code, teacher, icon } = req.body || {};
+
+  if (!grid_key || !VALID_GRID_KEYS.has(String(grid_key))) return res.status(400).json({ error: 'Invalid grid_key.' });
+  if (!code || typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Subject code is required.' });
+  if (code.trim().length > 60) return res.status(400).json({ error: 'Subject code too long (max 60 chars).' });
+  if (/[<>"'`]/.test(code) || /[<>"'`]/.test(teacher || '')) return res.status(400).json({ error: 'Subject name contains unsafe characters.' });
+
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
+  }
+
+  const subject = {
+    grid_key: grid_key.trim(),
+    code: code.trim(),
+    teacher: (teacher || '').trim().slice(0, 80),
+    icon: (icon || '📚').slice(0, 4),
+    created_by: req.user.username,
+  };
+
+  try {
+    const inserted = await supabaseQuery('subjects', 'POST', [subject]);
+    res.json(inserted[0]);
+  } catch (err) {
+    if (err.message.includes('subjects_grid_code_unique') || err.message.includes('duplicate key')) {
+      return res.status(409).json({ error: 'A subject with this code already exists in this semester.' });
+    }
+    console.error('[subjects POST] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}));
+
+// DELETE /api/subjects/:id — admin only
+app.delete('/api/subjects/:id', requireAuth, requireAdmin, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
+  }
+  const id = parseInt(req.params.id, 10);
+  if (!id || isNaN(id)) return res.status(400).json({ error: 'Invalid subject id.' });
+  try {
+    await supabaseQuery('subjects', 'DELETE', null, { id: `eq.${id}` });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[subjects DELETE] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}));
+
 /* â"€â"€ File Summarizer Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;

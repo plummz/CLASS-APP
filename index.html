@@ -440,12 +440,18 @@
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-first"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('first')">＋ Add Subject</button>
+    </div>
   </div>
 
   <div class="page" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-second"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('second')">＋ Add Subject</button>
+    </div>
   </div>
 
   <div class="page" id="page-events">
@@ -588,33 +594,88 @@
     <div class="page-header"><h1 class="page-title">2nd Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y2first"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y2first')">＋ Add Subject</button>
+    </div>
   </div>
   <div class="page" id="page-y2second">
     <div class="page-header"><h1 class="page-title">2nd Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y2second"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y2second')">＋ Add Subject</button>
+    </div>
   </div>
   <!-- ── 3RD YEAR ──────────────────────────────────────── -->
   <div class="page" id="page-y3first">
     <div class="page-header"><h1 class="page-title">3rd Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y3first"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y3first')">＋ Add Subject</button>
+    </div>
   </div>
   <div class="page" id="page-y3second">
     <div class="page-header"><h1 class="page-title">3rd Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y3second"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y3second')">＋ Add Subject</button>
+    </div>
   </div>
   <!-- ── 4TH YEAR ──────────────────────────────────────── -->
   <div class="page" id="page-y4first">
     <div class="page-header"><h1 class="page-title">4th Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y4first"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y4first')">＋ Add Subject</button>
+    </div>
   </div>
   <div class="page" id="page-y4second">
     <div class="page-header"><h1 class="page-title">4th Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y4second"></div>
+    <div class="admin-add-subject-wrap admin-only hidden">
+      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y4second')">＋ Add Subject</button>
+    </div>
+  </div>
+
+  <!-- ── ADMIN ADD SUBJECT MODAL ───────────────────────── -->
+  <div class="add-subject-modal-overlay" id="add-subject-modal" role="dialog" aria-modal="true" aria-labelledby="add-subject-modal-title">
+    <div class="add-subject-modal-box">
+      <div class="add-subject-modal-title" id="add-subject-modal-title">🛡️ Add Subject (Admin)</div>
+      <div class="add-subject-field">
+        <label for="add-subject-year">Year &amp; Semester</label>
+        <select id="add-subject-year">
+          <option value="first">1st Year · First Semester</option>
+          <option value="second">1st Year · Second Semester</option>
+          <option value="y2first">2nd Year · First Semester</option>
+          <option value="y2second">2nd Year · Second Semester</option>
+          <option value="y3first">3rd Year · First Semester</option>
+          <option value="y3second">3rd Year · Second Semester</option>
+          <option value="y4first">4th Year · First Semester</option>
+          <option value="y4second">4th Year · Second Semester</option>
+        </select>
+      </div>
+      <div class="add-subject-field">
+        <label for="add-subject-code">Subject Code / Name <span style="color:#f87171">*</span></label>
+        <input id="add-subject-code" type="text" placeholder="e.g. ITCC 211" maxlength="60" autocomplete="off">
+      </div>
+      <div class="add-subject-field">
+        <label for="add-subject-teacher">Teacher (optional)</label>
+        <input id="add-subject-teacher" type="text" placeholder="e.g. Sir Juan dela Cruz" maxlength="80" autocomplete="off">
+      </div>
+      <div class="add-subject-field">
+        <label for="add-subject-icon">Icon (emoji, optional)</label>
+        <input id="add-subject-icon" type="text" placeholder="📚" maxlength="4" autocomplete="off">
+      </div>
+      <div class="add-subject-error" id="add-subject-error"></div>
+      <div class="add-subject-modal-actions">
+        <button class="add-subject-cancel-btn" onclick="closeAdminAddSubjectModal()">Cancel</button>
+        <button class="add-subject-save-btn" onclick="adminSaveNewSubject()">Add Subject</button>
+      </div>
+    </div>
   </div>
 
   <div class="page" id="page-music">
@@ -1552,7 +1613,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/updates/changelog.js?v=1"></script>
   <script src="features/personalization/background-presets.js?v=1"></script>
-  <script src="script.js?v=128"></script>
+  <script src="script.js?v=130"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

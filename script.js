@@ -269,6 +269,78 @@ const y3secondSem = [];
 const y4firstSem  = [];
 const y4secondSem = [];
 
+// Map of gridKey → mutable subject array (used by admin subject creation)
+const SUBJECT_GRID_MAP = {
+  first: firstSem, second: secondSem,
+  y2first: y2firstSem, y2second: y2secondSem,
+  y3first: y3firstSem, y3second: y3secondSem,
+  y4first: y4firstSem, y4second: y4secondSem,
+};
+
+// Grid key → human label (for buildSubjectCards folderRootLabel)
+const SUBJECT_GRID_LABELS = {
+  first: 'First Semester', second: 'Second Semester',
+  y2first: '2nd Year · First Semester', y2second: '2nd Year · Second Semester',
+  y3first: '3rd Year · First Semester', y3second: '3rd Year · Second Semester',
+  y4first: '4th Year · First Semester', y4second: '4th Year · Second Semester',
+};
+
+// ── Subject persistence helpers ───────────────────────────────────
+// localStorage is used as a fast first-paint cache only.
+// Supabase (via /api/subjects) is the source of truth after login.
+
+function _mergeSubjectIntoGrid(gridKey, code, teacher, icon) {
+  const arr = SUBJECT_GRID_MAP[gridKey];
+  if (!arr) return false;
+  if (arr.some(s => s.code.toLowerCase() === code.toLowerCase())) return false;
+  arr.push({ code, teacher: teacher || '', icon: icon || '📚' });
+  ACADEMIC_FOLDER_ROOTS.add(code);
+  return true;
+}
+
+function _cacheSubjectsLocally(subjects) {
+  try {
+    // Store as { gridKey, code, teacher, icon } for backwards compat
+    const payload = subjects.map(s => ({ gridKey: s.grid_key, code: s.code, teacher: s.teacher, icon: s.icon }));
+    localStorage.setItem('adminSubjects_v1', JSON.stringify(payload));
+  } catch (_) { /* storage full or private mode — skip */ }
+}
+
+// Step 1: Fast first-paint — load subjects from localStorage cache immediately
+(function loadSubjectsFromCache() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('adminSubjects_v1') || '[]');
+    if (!Array.isArray(saved)) return;
+    saved.forEach(({ gridKey, code, teacher, icon }) => _mergeSubjectIntoGrid(gridKey, code, teacher, icon));
+  } catch (_) { /* corrupted cache — skip */ }
+})();
+
+// Step 2: After login, fetch authoritative list from Supabase, refresh grids
+async function syncSubjectsFromServer() {
+  try {
+    const res = await fetch('/api/subjects');
+    if (!res.ok) return;
+    const serverSubjects = await res.json();
+    if (!Array.isArray(serverSubjects) || serverSubjects.length === 0) return;
+
+    // Track which grids were updated so we only re-render those
+    const updatedGrids = new Set();
+    serverSubjects.forEach(s => {
+      if (_mergeSubjectIntoGrid(s.grid_key, s.code, s.teacher, s.icon)) {
+        updatedGrids.add(s.grid_key);
+      }
+    });
+
+    _cacheSubjectsLocally(serverSubjects);
+
+    // Re-render only grids that received new subjects
+    updatedGrids.forEach(gridKey => {
+      const arr = SUBJECT_GRID_MAP[gridKey];
+      buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
+    });
+  } catch (_) { /* server unreachable — cache-loaded subjects remain visible */ }
+}
+
 const ACADEMIC_FOLDER_ROOTS = new Set([
   ...firstSem,
   ...secondSem,
@@ -320,7 +392,6 @@ function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
     <button class="semester-shortcut-btn" onclick="goToPage('file-summarizer')">📄 Summarize a File →</button>
   `;
   grid.appendChild(bar);
-  bar.querySelector("button[onclick*='file-summarizer']")?.remove();
   if (!bar.querySelector('button')) bar.remove();
 
   subjects.forEach((subject) => {
@@ -338,10 +409,96 @@ function buildSubjectCards(gridId, subjects, folderRootLabel = '') {
         <button class="card-action-btn card-action-summarize" onclick="event.stopPropagation(); goToPage('file-summarizer')">📄 Summarize</button>
       </div>
     `;
-    card.querySelector('.card-action-summarize')?.remove();
     grid.appendChild(card);
   });
 }
+
+/* ============================================================
+   ADMIN — ADD SUBJECT (Admin-only, localStorage-backed)
+   ============================================================ */
+window.openAdminAddSubjectModal = function(gridKey) {
+  if (!isAdmin) return; // server-backed guard
+  const modal = document.getElementById('add-subject-modal');
+  if (!modal) return;
+  const yearSel = document.getElementById('add-subject-year');
+  if (yearSel && gridKey && SUBJECT_GRID_MAP[gridKey] !== undefined) yearSel.value = gridKey;
+  document.getElementById('add-subject-code').value = '';
+  document.getElementById('add-subject-teacher').value = '';
+  document.getElementById('add-subject-icon').value = '';
+  document.getElementById('add-subject-error').textContent = '';
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('add-subject-code')?.focus(), 80);
+};
+
+window.closeAdminAddSubjectModal = function() {
+  const modal = document.getElementById('add-subject-modal');
+  if (modal) modal.classList.remove('open');
+};
+
+window.adminSaveNewSubject = async function() {
+  if (!isAdmin) { customAlert('Admin only.'); return; }
+
+  const gridKey = document.getElementById('add-subject-year').value.trim();
+  const rawCode = document.getElementById('add-subject-code').value.trim();
+  const rawTeacher = document.getElementById('add-subject-teacher').value.trim();
+  const rawIcon = document.getElementById('add-subject-icon').value.trim();
+  const errEl = document.getElementById('add-subject-error');
+  const saveBtn = document.querySelector('.add-subject-save-btn');
+
+  // --- Client-side validation (mirrors server) ---
+  if (!rawCode) { errEl.textContent = 'Subject code / name is required.'; return; }
+  if (rawCode.length > 60) { errEl.textContent = 'Subject name is too long (max 60 chars).'; return; }
+  if (/[<>"'`]/.test(rawCode) || /[<>"'`]/.test(rawTeacher)) {
+    errEl.textContent = 'Subject name contains unsafe characters.'; return;
+  }
+
+  const arr = SUBJECT_GRID_MAP[gridKey];
+  if (!arr) { errEl.textContent = 'Invalid year/semester selected.'; return; }
+
+  if (arr.some(s => s.code.toLowerCase() === rawCode.toLowerCase())) {
+    errEl.textContent = 'A subject with this name already exists in this semester.'; return;
+  }
+
+  const icon = rawIcon || '📚';
+
+  // --- POST to server (server enforces admin + Supabase write) ---
+  errEl.textContent = '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+  try {
+    const res = await authFetch('/api/subjects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grid_key: gridKey, code: rawCode, teacher: rawTeacher, icon }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Failed to save subject. Please try again.';
+      return;
+    }
+
+    // Merge into live array + roots
+    _mergeSubjectIntoGrid(gridKey, rawCode, rawTeacher, icon);
+
+    // Update localStorage cache with fresh server list (fire-and-forget)
+    fetch('/api/subjects').then(r => r.json()).then(_cacheSubjectsLocally).catch(() => {});
+
+    // Re-render the grid immediately
+    buildSubjectCards(`grid-${gridKey}`, arr, SUBJECT_GRID_LABELS[gridKey] || '');
+    window.closeAdminAddSubjectModal();
+  } catch (err) {
+    errEl.textContent = 'Network error. Subject may not have been saved — please check your connection.';
+    console.error('[adminSaveNewSubject]', err);
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Add Subject'; }
+  }
+};
+
+// Close modal when clicking outside the box
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('add-subject-modal');
+  if (!modal || !modal.classList.contains('open')) return;
+  if (e.target === modal) window.closeAdminAddSubjectModal();
+});
 
 function buildFolderCards(gridId, count, prefix = "Folder") {
   const grid = document.getElementById(gridId);
@@ -2200,6 +2357,7 @@ async function finalizeLogin(profile, serverSession) {
     });
     logActivity('login');
     recordAppOpen().catch((error) => console.warn('[AppOpen] post-login record failed:', error?.message || error));
+    syncSubjectsFromServer().catch(() => {}); // non-blocking — refresh grids with server subjects
   } catch (error) {
     console.error('[auth] finalizeLogin failed:', error);
     stopLastSeenHeartbeat();
@@ -4177,6 +4335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           new Promise((_, r) => setTimeout(() => r(new Error('establishSession timed out')), 5000))
         ]);
         recordAppOpen().catch(e => console.warn('[AppOpen] non-critical error:', e));
+        syncSubjectsFromServer().catch(() => {}); // refresh grids with server subjects
         console.log('[BOOT] Session restored successfully.');
       } catch (error) {
         console.error('[auth] Session restore failed:', error);

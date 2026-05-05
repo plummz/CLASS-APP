@@ -1,5 +1,18 @@
-const APP_VERSION = '1.8.5';
+const APP_VERSION = '1.8.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.6',
+    date: 'May 5, 2026',
+    title: 'Fix: Splash Screen Stuck on Logo (Loading Hang)',
+    summary: 'Fixed a critical bug where the splash screen could get permanently stuck, preventing the app from reaching the login screen. Root cause was the canvas particle animation blocking the entire dismissal system on failure.',
+    changes: [
+      'Fix: Splash dismissal logic is now completely independent of the canvas particle animation. Previously, if canvas.getContext() threw (low memory, canvas limit) or the canvas element was missing, the entire IIFE exited early — no fallback timer, no event listener, no dismiss ever. Splash stayed forever.',
+      'Fix: Canvas animation is now wrapped in try/catch. Any canvas failure is silently ignored and execution always falls through to the dismissal setup.',
+      'Improvement: Added a 10-second hard failsafe that force-removes the splash screen no matter what — catches any edge case where all other dismissal paths fail.',
+      'Improvement: Soft fallback timer increased from 1200ms to 2000ms, giving script.js more time to load on slow mobile connections before the fallback fires (prevents a brief blank-screen flash).',
+      'Improvement: dismissSplash now guards against double-invocation even when the splash element is already gone.',
+    ],
+  },
   {
     version: '1.8.5',
     date: 'May 5, 2026',

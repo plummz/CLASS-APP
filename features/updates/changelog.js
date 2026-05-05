@@ -1,5 +1,20 @@
-const APP_VERSION = '1.8.4';
+const APP_VERSION = '1.8.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.5',
+    date: 'May 5, 2026',
+    title: 'Tetris Leaderboard, Quick-Drop, and Loading Fix',
+    summary: 'Fixed the app not opening due to a corrupted service worker cache version. Added quick-drop (held fast-fall) to Tetris, a persistent database-backed leaderboard, and safeguards to protect all existing scores and tallies from resetting.',
+    changes: [
+      'Fix: Service worker CACHE_VERSION had an embedded carriage return that made the constant undefined in some browsers, causing the app to fail loading after SW cache wipe. Repaired and bumped to v1.8.5.',
+      'Feature: Tetris quick-drop button (⏬) — hold to make the piece fall fast without instantly placing it. Release to return to normal speed. Distinct from hard drop (⬇) which places instantly.',
+      'Feature: Tetris leaderboard — top scores are saved to Supabase and shown on the canvas overlay at idle and after game over. Top 5 displayed; #1 highlighted in gold.',
+      'Feature: Keyboard F key = held quick-drop for keyboard players.',
+      'Improvement: Tetris controls reorganized into 2 rows — movement (hold/left/rotate/right) on top, drops (quick-drop / hard-drop) on bottom, for better touch targets on mobile.',
+      'Improvement: Leaderboard pre-loads on game init so scores are visible before the first play.',
+      'Data safety: All leaderboard scores, lobby star scores, login-count tally, contribution tally, and study streaks are preserved — only INSERT is used for new scores, never DELETE or TRUNCATE.',
+    ],
+  },
   {
     version: '1.8.4',
     date: 'May 5, 2026',

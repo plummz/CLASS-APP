@@ -2861,6 +2861,47 @@ app.post('/api/groq', requireAuth, aiLimiter, express.json(), async (req, res) =
   }
 });
 
+/* ── Tetris Leaderboard ───────────────────────────────── */
+// GET  - top 10 best scores (best-per-user aggregated on server)
+app.get('/api/tetris/leaderboard', async (req, res) => {
+  try {
+    const rows = await supabaseQuery('tetris_scores', 'GET', null, {
+      select: 'username,score,level,lines,played_at',
+      order: 'score.desc',
+      limit: '100',
+    });
+    if (!rows || !rows.length) return res.json([]);
+    const best = {};
+    for (const row of rows) {
+      if (!best[row.username] || row.score > best[row.username].score) {
+        best[row.username] = row;
+      }
+    }
+    const leaderboard = Object.values(best)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+    res.json(leaderboard);
+  } catch (e) {
+    console.warn('[tetris] leaderboard fetch failed:', e.message);
+    res.json([]);
+  }
+});
+
+// POST - save a completed game score (auth required, never deletes existing data)
+app.post('/api/tetris/score', requireAuth, wrap(async (req, res) => {
+  const { score, level, lines } = req.body || {};
+  if (typeof score !== 'number' || score < 0) {
+    return res.status(400).json({ error: 'score must be a non-negative number' });
+  }
+  await supabaseQuery('tetris_scores', 'POST', {
+    username: req.user.username,
+    score:    Math.floor(score),
+    level:    Math.floor(level) || 1,
+    lines:    Math.floor(lines) || 0,
+  }, {});
+  res.json({ ok: true });
+}));
+
 /* â"€â"€ In-memory lobby player map â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 const lobbyPlayers = new Map(); // socketId â†' { username, x, y, dir, color, bodyColor, score }
 const lobbyMoveThrottle = new Map(); // socketId â†' last broadcast timestamp (50ms / 20fps)

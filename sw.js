@@ -18,12 +18,12 @@
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
-const CACHE_VERSION = 'v1.8.5-20260505-tetris-leaderboard';
+const CACHE_VERSION = 'v1.8.6-20260505-splash-fix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=128',
+  '/index.html?v=129',
   '/style.css?v=51',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -45,7 +45,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=5',
+  '/features/updates/changelog.js?v=6',
   '/features/personalization/background-presets.js?v=1',
   '/script.js?v=133',
   '/features/reviewers/reviewers.js?v=18',

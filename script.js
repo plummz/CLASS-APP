@@ -3198,6 +3198,7 @@ pageConfig.pacman = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: fals
 pageConfig.diagnostics = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: 'Diagnostics' };
 pageConfig.admin      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🛠️ Admin' };
 pageConfig.candy      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🍬 Candy Match' };
+pageConfig.tetris     = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🟪 Tetris' };
 pageConfig['personal-tools'] = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '🔧 Personal Tools' };
 pageConfig.alarm      = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '⏰ Alarm Clock' };
 pageConfig.notepad    = { bg: 'bg-galaxy', particles: 'particles-galaxy', wave: false, mountain: false, aurora: false, label: '📝 Notepad' };
@@ -3290,6 +3291,7 @@ window.goToPage = function(targetPage) {
   if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
   if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
   if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
+  if (currentPage === 'tetris' && typeof tetrisModule !== 'undefined') tetrisModule.destroy();
   // Alarm: tear down clock when leaving
   if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
   // File Summarizer: close quiz modal/score screen when navigating away
@@ -3315,17 +3317,27 @@ window.goToPage = function(targetPage) {
     royale:  { src: 'features/royale/royale.js?v=27',  loaded: '_royaleLazyLoaded' },
     pacman:  { src: 'features/pacman/pacman.js?v=4',   loaded: '_pacmanLazyLoaded' },
     candy:   { src: 'features/candy/candy.js?v=11',    loaded: '_candyLazyLoaded' },
+    tetris:  { src: 'features/tetris/tetris.js?v=1',  loaded: '_tetrisLazyLoaded' },
   };
   if (gameLazyMap[pageName] && !window[gameLazyMap[pageName].loaded]) {
     window[gameLazyMap[pageName].loaded] = true;
     const s = document.createElement('script');
     s.src = gameLazyMap[pageName].src;
+    s.onload = () => {
+      // init after first load if still on this page
+      if (currentPage !== pageName) return;
+      if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
+      if (pageName === 'royale'  && typeof royaleModule  !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
+      if (pageName === 'pacman'  && typeof pacmanModule  !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
+      if (pageName === 'candy'   && typeof candyModule   !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
+      if (pageName === 'tetris'  && typeof tetrisModule  !== 'undefined') runSafeUiAction('Tetris', () => tetrisModule.init());
+    };
     document.body.appendChild(s);
   }
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'personal-tools' || pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'personal-tools' || pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'tetris' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
@@ -3380,6 +3392,7 @@ window.goToPage = function(targetPage) {
   if (pageName === 'royale' && typeof royaleModule !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
   if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
+  if (pageName === 'tetris' && typeof tetrisModule !== 'undefined') runSafeUiAction('Tetris', () => tetrisModule.init());
   if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
   if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
   if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());

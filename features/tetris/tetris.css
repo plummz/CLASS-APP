@@ -1,0 +1,189 @@
+#page-tetris {
+  position: fixed !important;
+  inset: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 9994;
+  overflow: hidden !important;
+  background: #02030b;
+  display: none;
+}
+#page-tetris.active { display: block; }
+
+.tetris-wrapper {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr) 100px;
+  place-items: center;
+  gap: 6px;
+  padding: max(58px, calc(env(safe-area-inset-top) + 48px)) 12px max(10px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 25% 18%, rgba(200, 80, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 75% 72%, rgba(0, 212, 255, 0.14), transparent 28%),
+    linear-gradient(135deg, #03040d, #0a0320 58%, #060015);
+  touch-action: none;
+}
+
+.tetris-topbar {
+  width: min(96vw, 360px);
+  align-self: end;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #c950ff;
+  font: 1000 13px monospace;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 12px rgba(200,80,255,0.4);
+  gap: 4px;
+}
+
+.tetris-topbar span {
+  flex: 1;
+  text-align: center;
+}
+
+#tetris-canvas {
+  width: min(88vw, 360px);
+  height: auto;
+  max-height: calc(100vh - 200px);
+  image-rendering: pixelated;
+  border: 2px solid rgba(200, 80, 255, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 0 32px rgba(200, 80, 255, 0.22), 0 0 48px rgba(0, 120, 255, 0.15);
+  background: #050514;
+  touch-action: none;
+  display: block;
+}
+
+.tetris-return-btn,
+.tetris-start-btn {
+  position: absolute;
+  z-index: 10;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.28);
+  color: #fff;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  touch-action: manipulation;
+}
+.tetris-return-btn {
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  padding: 0 13px;
+  background: rgba(0,0,0,0.62);
+}
+.tetris-start-btn {
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+  min-width: 92px;
+  background: linear-gradient(135deg, rgba(200,80,255,0.9), rgba(80,0,200,0.85));
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: 0 0 22px rgba(200,80,255,0.35);
+}
+
+/* Controls row: left | rotate | right | drop */
+.tetris-controls {
+  width: min(88vw, 360px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  align-self: start;
+  margin-top: 4px;
+}
+
+.tetris-btn {
+  flex: 1;
+  max-width: 76px;
+  height: 52px;
+  border-radius: 14px;
+  border: 2px solid rgba(200,80,255,0.4);
+  background: rgba(5,8,30,0.82);
+  color: #c950ff;
+  font: 1000 20px monospace;
+  box-shadow: inset 0 0 14px rgba(200,80,255,0.08), 0 6px 18px rgba(0,0,0,0.3);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms ease, background 120ms ease, color 120ms ease;
+  cursor: pointer;
+}
+.tetris-btn:active,
+.tetris-btn.pressed {
+  transform: scale(0.92);
+  background: rgba(200,80,255,0.85);
+  color: #fff;
+}
+
+/* Hard-drop button slightly highlighted */
+.tetris-btn-drop {
+  border-color: rgba(0,212,255,0.5);
+  color: #00d4ff;
+}
+.tetris-btn-drop:active,
+.tetris-btn-drop.pressed {
+  background: rgba(0,212,255,0.8);
+  color: #fff;
+}
+
+/* Hold button */
+.tetris-btn-hold {
+  border-color: rgba(255,159,28,0.45);
+  color: #ff9f1c;
+}
+.tetris-btn-hold:active,
+.tetris-btn-hold.pressed {
+  background: rgba(255,159,28,0.8);
+  color: #fff;
+}
+
+/* Card thumbnail for game hub */
+.tetris-thumb {
+  background:
+    radial-gradient(circle at 28% 42%, rgba(200,80,255,0.9) 0 14%, transparent 15%),
+    radial-gradient(circle at 68% 44%, rgba(0,212,255,0.9) 0 10%, transparent 11%),
+    linear-gradient(135deg, #05051c, #0a0320 55%, #140012);
+}
+.tetris-card-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.tetris-card-art::before {
+  content: "";
+  position: absolute;
+  inset: 20px;
+  border: 3px solid rgba(200,80,255,0.7);
+  border-radius: 10px;
+  box-shadow: inset 0 0 18px rgba(200,80,255,0.2), 0 0 18px rgba(200,80,255,0.18);
+}
+.tetris-block {
+  position: absolute;
+  border-radius: 3px;
+}
+.tetris-btn-play {
+  background: linear-gradient(135deg, #c950ff, #7b00ff) !important;
+  color: #fff !important;
+}
+
+@media (orientation: landscape) {
+  .tetris-wrapper::after {
+    content: "Tetris is portrait only";
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    background: rgba(0,0,0,0.92);
+    color: #c950ff;
+    font: 1000 20px monospace;
+    letter-spacing: 0.05em;
+    text-align: center;
+    pointer-events: all;
+  }
+}

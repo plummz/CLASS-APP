@@ -26,6 +26,7 @@
 <link rel="stylesheet" href="features/royale/royale.css?v=18">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=4">
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
+  <link rel="stylesheet" href="features/tetris/tetris.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
   <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
@@ -826,6 +827,29 @@
           <div class="game-card-shine"></div>
         </div>
 
+        <!-- Tetris -->
+        <div class="game-card" onclick="goToPage('tetris')">
+          <div class="game-thumb tetris-thumb">
+            <div class="tetris-card-art">
+              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:38%;left:22%"></div>
+              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:38%;left:32%"></div>
+              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:28%;left:32%"></div>
+              <div class="tetris-block" style="width:36px;height:18px;background:#00d4ff;top:55%;left:44%"></div>
+              <div class="tetris-block" style="width:18px;height:36px;background:#ffe600;top:38%;left:60%"></div>
+              <div class="tetris-block" style="width:18px;height:18px;background:#ff3158;top:60%;left:22%"></div>
+              <div class="tetris-block" style="width:18px;height:18px;background:#3ddc72;top:60%;left:32%"></div>
+            </div>
+            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#c950ff,#3a7fff)">CLASSIC</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">STRATEGY</span></div>
+            <h3 class="game-name">Tetris</h3>
+            <p class="game-desc">Stack the blocks, clear the lines, survive!</p>
+            <button class="game-play-btn tetris-btn-play">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -886,6 +910,27 @@
         <div class="candy-coins-display">🪙 <span id="candy-coins-hud">0</span></div>
         <button class="candy-action-btn" onclick="window.candyModule.openShop()">🛍️ Shop</button>
         <button class="candy-action-btn" id="candy-lowend-btn" onclick="window.candyModule.toggleLowEnd()">⚡ FX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TETRIS ─────────────────────────────────────────────── -->
+  <div class="page" id="page-tetris">
+    <div class="tetris-wrapper">
+      <div class="tetris-topbar">
+        <span id="tetris-score">SCORE 0</span>
+        <span id="tetris-level">LVL 1</span>
+        <span id="tetris-lines">LINES 0</span>
+      </div>
+      <canvas id="tetris-canvas"></canvas>
+      <button class="tetris-return-btn" type="button" onclick="goToPage('games')" title="Back to games">← Games</button>
+      <button class="tetris-start-btn" id="tetris-start-btn" type="button">START</button>
+      <div class="tetris-controls">
+        <button class="tetris-btn tetris-btn-hold" data-action="hold" type="button" title="Hold piece">📦</button>
+        <button class="tetris-btn" data-action="left"   type="button">◀</button>
+        <button class="tetris-btn" data-action="rotate" type="button">↻</button>
+        <button class="tetris-btn" data-action="right"  type="button">▶</button>
+        <button class="tetris-btn tetris-btn-drop" data-action="drop" type="button" title="Hard drop">⬇</button>
       </div>
     </div>
   </div>
@@ -1611,9 +1656,9 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="features/updates/changelog.js?v=1"></script>
+  <script src="features/updates/changelog.js?v=2"></script>
   <script src="features/personalization/background-presets.js?v=1"></script>
-  <script src="script.js?v=130"></script>
+  <script src="script.js?v=131"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

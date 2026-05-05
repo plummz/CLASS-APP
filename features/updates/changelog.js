@@ -1,5 +1,34 @@
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.2',
+    date: 'May 5, 2026',
+    title: 'Tetris Game',
+    summary: 'Fully playable Tetris game added to the Games Hub with standard SRS mechanics, hold piece, ghost piece, hard drop, and mobile D-pad controls.',
+    changes: [
+      'Feature: Tetris game added to Games Hub — stack tetrominoes, clear lines, and survive as speed increases with each level.',
+      'Feature: All 7 standard tetrominoes (I, O, T, S, Z, J, L) with bag randomizer for fair distribution.',
+      'Feature: Ghost piece shows where the active piece will land.',
+      'Feature: Hold piece — swap your current piece with a held one using the hold button or C key.',
+      'Feature: Hard drop — instantly drops the piece to the bottom (Space or ⬇ button).',
+      'Feature: DAS (Delayed Auto Shift) — hold left/right to slide pieces smoothly.',
+      'Feature: Swipe gestures on the canvas — swipe left/right to move, swipe down to soft drop, tap to rotate.',
+      'Feature: Keyboard controls — Arrow keys / WASD, Space for hard drop, C for hold, P to pause.',
+      'Performance: Tetris script lazy-loaded on first visit like other games.',
+    ],
+  },
+  {
+    version: '1.8.1',
+    date: 'May 5, 2026',
+    title: 'Background Darkness Fix & Pac-Man Overlap Fix',
+    summary: 'Darkened overly-light page backgrounds for better readability, and fixed Pac-Man return/start buttons overlapping the score/lives topbar.',
+    changes: [
+      'Fix: Page backgrounds darkened — the v1.8.0 pastel backgrounds were too light; replaced with medium-dark hues that still distinguish pages.',
+      'Fix: Text color reverted to white on dark backgrounds for proper contrast.',
+      'Fix: Pac-Man return and start buttons were overlapping the SCORE/LIVES topbar on small screens; fixed with proper top-padding on the wrapper.',
+      'Docs: Updated CLAUDE.md to reflect that changelog entries go in features/updates/changelog.js, not script.js.',
+    ],
+  },
   {
     version: '1.8.0',
     date: 'May 5, 2026',

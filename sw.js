@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.8.0-20260505-security-python-light-themes';
+const CACHE_VERSION = 'v1.8.1-20260505-bg-fix-pacman-overlap';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=125',
-  '/style.css?v=50',
+  '/style.css?v=51',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -41,7 +41,7 @@ const ASSETS = [
   '/features/gallery/gallery.css?v=1',
   '/features/pokemon/pokemon.css?v=3',
   '/features/royale/royale.css?v=18',
-  '/features/pacman/pacman.css?v=3',
+  '/features/pacman/pacman.css?v=4',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',

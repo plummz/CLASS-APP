@@ -62,7 +62,7 @@ If something may break on iOS:
 
 After ANY feature, fix, or UI update:
 
-1. Update the **Software Update page**
+1. Add a new entry to **`features/updates/changelog.js`** (NOT script.js — changelog was extracted there)
 2. Include:
 
 - Update Title
@@ -70,6 +70,8 @@ After ANY feature, fix, or UI update:
 - New Features
 - Improvements
 - Bug Fixes
+
+3. Bump `changelog.js?v=N` in both `index.html` and `sw.js`
 
 ❌ DO NOT SKIP THIS
 Even small UI fixes must be logged.
@@ -80,11 +82,26 @@ Even small UI fixes must be logged.
 
 After ANY change affecting frontend:
 
-You MUST update version identifiers in:
+You MUST bump the version query string (`?v=N`) for each changed file in BOTH:
 
-- `index.html`
-- `script.js`
-- `sw.js`
+- `index.html` — the corresponding `<script>` or `<link>` tag
+- `sw.js` — the ASSETS list entry
+
+### File → version bump rules:
+
+| Changed file | Bump in index.html + sw.js |
+|---|---|
+| `features/updates/changelog.js` | `changelog.js?v=N` |
+| `features/personalization/background-presets.js` | `background-presets.js?v=N` |
+| `script.js` | `script.js?v=N` |
+| `style.css` | `style.css?v=N` |
+| `index.html` | `index.html?v=N` |
+| `features/reviewers/reviewers.js` | `reviewers.js?v=N` AND `reviewers.css?v=N` |
+| `features/file-summarizer/file-summarizer.js` | `file-summarizer.js?v=N` AND `file-summarizer.css?v=N` |
+| `features/personal-tools/notepad.js` | `notepad.js?v=N` AND `notepad.css?v=N` |
+| Any other feature `.js` or `.css` | bump that file's version |
+
+Also update `CACHE_VERSION` in `sw.js` (e.g., `v1.8.2-YYYYMMDD-description`).
 
 This prevents stale cache issues.
 

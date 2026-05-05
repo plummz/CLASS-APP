@@ -1,5 +1,26 @@
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.2',
+    date: 'May 5, 2026',
+    title: 'Fix: Games Blank Page & Battle Royale Stuck Loading',
+    summary: 'Fixed first-play blank screen on Pac-Man, Pokémon, and Candy Match, and fixed Battle Royale getting stuck on the loading screen with no way to exit.',
+    changes: [
+      'Fix: Pac-Man, Pokémon, and Candy Match no longer show a blank page on the first play. The game now initialises correctly after its script finishes lazy-loading.',
+      'Fix: Battle Royale no longer gets stuck on the "Generating map…" loading screen — the game initialises on first visit.',
+      'Fix: Battle Royale back button (← Games) is now always visible and clickable even when the loading screen is active, so users can always exit.',
+    ],
+  },
+  {
+    version: '1.8.1',
+    date: 'May 5, 2026',
+    title: 'Background Fix & Pac-Man Overlap',
+    summary: 'Restored missing background and fixed Pac-Man UI overlap.',
+    changes: [
+      'Fix: Background image restored after regression.',
+      'Fix: Pac-Man score/lives UI no longer overlaps the game canvas.',
+    ],
+  },
   {
     version: '1.8.0',
     date: 'May 5, 2026',

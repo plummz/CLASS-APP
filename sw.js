@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.8.1-20260505-bg-fix-pacman-overlap';
+const CACHE_VERSION = 'v1.8.2-20260505-fix-games-loading-bug';
 const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',

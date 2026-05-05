@@ -14,7 +14,7 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: 52px minmax(0, 1fr) 100px;
+  grid-template-rows: 52px minmax(0, 1fr) auto;
   place-items: center;
   gap: 6px;
   padding: max(58px, calc(env(safe-area-inset-top) + 48px)) 12px max(10px, env(safe-area-inset-bottom));
@@ -47,7 +47,7 @@
 #tetris-canvas {
   width: min(88vw, 360px);
   height: auto;
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 240px);
   image-rendering: pixelated;
   border: 2px solid rgba(200, 80, 255, 0.5);
   border-radius: 10px;
@@ -87,20 +87,28 @@
   box-shadow: 0 0 22px rgba(200,80,255,0.35);
 }
 
-/* Controls row: left | rotate | right | drop */
+/* Controls: two rows — movement row + drop row */
 .tetris-controls {
   width: min(88vw, 360px);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   align-self: start;
   margin-top: 4px;
+  padding-bottom: 4px;
+}
+
+.tetris-controls-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .tetris-btn {
   flex: 1;
-  max-width: 76px;
+  max-width: 80px;
   height: 52px;
   border-radius: 14px;
   border: 2px solid rgba(200,80,255,0.4);
@@ -129,6 +137,23 @@
 .tetris-btn-drop.pressed {
   background: rgba(0,212,255,0.8);
   color: #fff;
+}
+
+/* Quick-drop (fast soft-drop) button — hold to fall fast, release to resume normal */
+.tetris-btn-quickdrop {
+  border-color: rgba(61,220,114,0.5);
+  color: #3ddc72;
+  font-size: 16px;
+}
+.tetris-btn-quickdrop:active,
+.tetris-btn-quickdrop.pressed {
+  background: rgba(61,220,114,0.8);
+  color: #fff;
+}
+
+/* Make drop-row buttons wider since there are only 2 */
+.tetris-controls-row:last-child .tetris-btn {
+  max-width: 140px;
 }
 
 /* Hold button */

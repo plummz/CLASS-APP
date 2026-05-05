@@ -30,7 +30,6 @@ window.tetrisModule = (function () {
 
   const PIECE_KEYS = Object.keys(PIECES);
   const LINE_SCORES = [0, 100, 300, 500, 800];
-
   const STATES = { IDLE: 'idle', PLAYING: 'playing', PAUSED: 'paused', GAME_OVER: 'gameOver' };
 
   let canvas, ctx;
@@ -45,7 +44,14 @@ window.tetrisModule = (function () {
   let score, level, lines, state, bag, gameResult;
   let touchStart = null;
   let touchLast = null;
-  let touchDropTimer = 0;
+
+  // Soft quick-drop: held fast-fall (different from hard drop which is instant)
+  let softDropActive = false;
+  const SOFT_DROP_SPEED = 0.05; // 50 ms per row when quick-drop is held
+
+  // Leaderboard
+  let leaderboard = [];
+  let lbLoading = false;
 
   // ─── Bag randomizer ─────────────────────────────────────────────────────────
   function newBag() {
@@ -138,7 +144,7 @@ window.tetrisModule = (function () {
         board.splice(r, 1);
         board.unshift(Array(COLS).fill(null));
         cleared++;
-        r++; // recheck same row index
+        r++;
       }
     }
     if (cleared) {
@@ -178,6 +184,7 @@ window.tetrisModule = (function () {
     state = STATES.IDLE;
     gameResult = null;
     dropTimer = 0;
+    softDropActive = false;
     next = nextFromBag();
     current = makePiece(nextFromBag());
     updateHud();
@@ -192,8 +199,11 @@ window.tetrisModule = (function () {
   function finishGame() {
     state = STATES.GAME_OVER;
     gameResult = 'lose';
+    softDropActive = false;
     draw();
     stopLoop();
+    // Save score and refresh leaderboard (non-blocking)
+    saveScore().then(() => loadLeaderboard());
   }
 
   function hardDrop() {
@@ -221,14 +231,45 @@ window.tetrisModule = (function () {
     return Math.max(0.08, 1 - (level - 1) * 0.08);
   }
 
+  // ─── Score persistence ───────────────────────────────────────────────────────
+  async function saveScore() {
+    const token = (typeof window !== 'undefined' && window.getAuthToken) ? window.getAuthToken() : '';
+    if (!token || score <= 0) return;
+    try {
+      await fetch('/api/tetris/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ score, level, lines }),
+      });
+    } catch (e) {
+      console.warn('[tetris] score save failed:', e.message);
+    }
+  }
+
+  async function loadLeaderboard() {
+    if (lbLoading) return;
+    lbLoading = true;
+    try {
+      const res = await fetch('/api/tetris/leaderboard');
+      if (res.ok) leaderboard = await res.json();
+    } catch (e) {
+      console.warn('[tetris] leaderboard load failed:', e.message);
+    } finally {
+      lbLoading = false;
+    }
+    draw();
+  }
+
   // ─── Update ──────────────────────────────────────────────────────────────────
   function update(dt) {
     if (state !== STATES.PLAYING) return;
     dropTimer += dt;
-    if (dropTimer >= dropSpeed()) {
+    const speed = softDropActive ? SOFT_DROP_SPEED : dropSpeed();
+    if (dropTimer >= speed) {
       dropTimer = 0;
       if (!collides(current, 0, 1)) {
         current.y++;
+        if (softDropActive) { score += 1; updateHud(); }
       } else {
         lockAndSpawn();
       }
@@ -349,25 +390,75 @@ window.tetrisModule = (function () {
 
     // Overlay for IDLE / GAME OVER
     if (state !== STATES.PLAYING) {
-      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      ctx.fillStyle = 'rgba(0,0,0,0.78)';
       ctx.fillRect(0, 0, COLS * CELL, CH);
       ctx.textAlign = 'center';
 
-      const title = gameResult === 'lose' ? 'GAME OVER' : 'TETRIS';
-      const titleColor = gameResult === 'lose' ? '#ff3158' : '#c950ff';
-      ctx.fillStyle = titleColor;
-      ctx.font = 'bold 30px monospace';
-      ctx.fillText(title, (COLS * CELL) / 2, CH / 2 - 14);
+      const bx = (COLS * CELL) / 2;
 
       if (gameResult === 'lose') {
+        ctx.fillStyle = '#ff3158';
+        ctx.font = 'bold 28px monospace';
+        ctx.fillText('GAME OVER', bx, CH / 2 - 60);
+
         ctx.font = 'bold 13px monospace';
         ctx.fillStyle = '#ffe600';
-        ctx.fillText(`SCORE: ${score}`, (COLS * CELL) / 2, CH / 2 + 14);
+        ctx.fillText(`SCORE: ${score}`, bx, CH / 2 - 36);
+
+        // Leaderboard
+        if (leaderboard.length) {
+          ctx.fillStyle = 'rgba(200,180,255,0.9)';
+          ctx.font = '700 9px monospace';
+          ctx.fillText('─── TOP SCORES ───', bx, CH / 2 - 14);
+          const rankSymbols = ['➀','➁','➂','➃','➄'];
+          leaderboard.slice(0, 5).forEach((entry, i) => {
+            const rank = rankSymbols[i] || `${i + 1}.`;
+            const name = entry.username.length > 9
+              ? entry.username.slice(0, 8) + '…'
+              : entry.username;
+            ctx.fillStyle = i === 0 ? '#ffe600' : i <= 2 ? 'rgba(200,180,255,0.85)' : 'rgba(160,140,210,0.7)';
+            ctx.font = `${i === 0 ? '700' : '600'} 9px monospace`;
+            ctx.fillText(`${rank} ${name}  ${entry.score}`, bx, CH / 2 + 4 + i * 14);
+          });
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText('Press START to play again', bx, CH / 2 + 82);
+        } else {
+          ctx.font = 'bold 11px monospace';
+          ctx.fillStyle = 'rgba(255,255,255,0.65)';
+          ctx.fillText('Press START to play again', bx, CH / 2 - 10);
+        }
+      } else {
+        // IDLE state
+        ctx.fillStyle = '#c950ff';
+        ctx.font = 'bold 30px monospace';
+        ctx.fillText('TETRIS', bx, CH / 2 - 14);
+
+        // Show leaderboard on idle screen too
+        if (leaderboard.length) {
+          ctx.fillStyle = 'rgba(200,180,255,0.7)';
+          ctx.font = '700 9px monospace';
+          ctx.fillText('─── TOP SCORES ───', bx, CH / 2 + 10);
+          const rankSymbols = ['➀','➁','➂','➃','➄'];
+          leaderboard.slice(0, 5).forEach((entry, i) => {
+            const rank = rankSymbols[i] || `${i + 1}.`;
+            const name = entry.username.length > 9
+              ? entry.username.slice(0, 8) + '…'
+              : entry.username;
+            ctx.fillStyle = i === 0 ? '#ffe600' : 'rgba(200,180,255,0.75)';
+            ctx.font = '600 9px monospace';
+            ctx.fillText(`${rank} ${name}  ${entry.score}`, bx, CH / 2 + 24 + i * 14);
+          });
+          ctx.fillStyle = 'rgba(255,255,255,0.55)';
+          ctx.font = 'bold 11px monospace';
+          ctx.fillText('Press START to play', bx, CH / 2 + 98);
+        } else {
+          ctx.font = 'bold 12px monospace';
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.fillText('Press START to play', bx, CH / 2 + 18);
+        }
       }
 
-      ctx.font = 'bold 12px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText('Press START to play', (COLS * CELL) / 2, CH / 2 + (gameResult === 'lose' ? 38 : 18));
       ctx.textAlign = 'left';
     }
   }
@@ -423,6 +514,23 @@ window.tetrisModule = (function () {
     };
 
     document.querySelectorAll('.tetris-btn[data-action]').forEach((btn) => {
+      // Quicken-drop: held soft-drop at max speed (not instant like hard drop)
+      if (btn.dataset.action === 'quickdrop') {
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          btn.classList.add('pressed');
+          softDropActive = true;
+        }, { passive: false });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => {
+          btn.addEventListener(ev, () => {
+            btn.classList.remove('pressed');
+            softDropActive = false;
+          });
+        });
+        return;
+      }
+
       let repeatTimer = null;
       let repeatInterval = null;
 
@@ -437,7 +545,6 @@ window.tetrisModule = (function () {
         e.stopPropagation();
         btn.classList.add('pressed');
         doAction();
-        // DAS: hold left/right to repeat
         if (btn.dataset.action === 'left' || btn.dataset.action === 'right') {
           repeatTimer = setTimeout(() => {
             repeatInterval = setInterval(() => { doAction(); }, 55);
@@ -464,6 +571,7 @@ window.tetrisModule = (function () {
         case 'ArrowUp':    case 'KeyW': case 'KeyX': if (state === STATES.PLAYING) { tryRotate(current); draw(); } break;
         case 'Space':      if (state === STATES.PLAYING) hardDrop(); else if (state !== STATES.PLAYING) startGame(); break;
         case 'KeyC':       holdPiece(); draw(); break;
+        case 'KeyF':       if (state === STATES.PLAYING) { softDropActive = true; } break;
         case 'KeyP':
           if (state === STATES.PLAYING) { state = STATES.PAUSED; stopLoop(); draw(); }
           else if (state === STATES.PAUSED) { state = STATES.PLAYING; startLoop(); }
@@ -473,13 +581,17 @@ window.tetrisModule = (function () {
       e.preventDefault();
     });
 
+    document.addEventListener('keyup', (e) => {
+      if (!document.getElementById('page-tetris')?.classList.contains('active')) return;
+      if (e.code === 'KeyF') softDropActive = false;
+    });
+
     // Touch swipe on canvas
     canvas.addEventListener('touchstart', (e) => {
       if (state !== STATES.PLAYING) return;
       const t = e.changedTouches[0];
       touchStart = { x: t.clientX, y: t.clientY };
       touchLast  = { x: t.clientX, y: t.clientY };
-      touchDropTimer = 0;
       e.preventDefault();
     }, { passive: false });
 
@@ -510,7 +622,6 @@ window.tetrisModule = (function () {
       const t = e.changedTouches[0];
       const totalDx = t.clientX - touchStart.x;
       const totalDy = t.clientY - touchStart.y;
-      // Quick tap = rotate
       if (Math.hypot(totalDx, totalDy) < 14) { tryRotate(current); draw(); }
       touchStart = null;
       touchLast = null;
@@ -531,10 +642,13 @@ window.tetrisModule = (function () {
     bind();
     reset();
     draw();
+    // Pre-load leaderboard so it shows on idle screen
+    loadLeaderboard();
   }
 
   function destroy() {
     stopLoop();
+    softDropActive = false;
   }
 
   return { init, destroy };

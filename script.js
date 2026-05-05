@@ -3317,7 +3317,7 @@ window.goToPage = function(targetPage) {
     royale:  { src: 'features/royale/royale.js?v=27',  loaded: '_royaleLazyLoaded' },
     pacman:  { src: 'features/pacman/pacman.js?v=4',   loaded: '_pacmanLazyLoaded' },
     candy:   { src: 'features/candy/candy.js?v=11',    loaded: '_candyLazyLoaded' },
-    tetris:  { src: 'features/tetris/tetris.js?v=1',  loaded: '_tetrisLazyLoaded' },
+    tetris:  { src: 'features/tetris/tetris.js?v=2',  loaded: '_tetrisLazyLoaded' },
   };
   if (gameLazyMap[pageName] && !window[gameLazyMap[pageName].loaded]) {
     window[gameLazyMap[pageName].loaded] = true;

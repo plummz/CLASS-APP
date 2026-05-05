@@ -17,12 +17,13 @@
 //
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
-// ═══════════════════════════════════════════════════════════════════════════const CACHE_VERSION = 'v1.8.4-20260505-1536';
+// ═══════════════════════════════════════════════════════════════════════════
+const CACHE_VERSION = 'v1.8.5-20260505-tetris-leaderboard';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=127',
+  '/index.html?v=128',
   '/style.css?v=51',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -44,9 +45,9 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=4',
+  '/features/updates/changelog.js?v=5',
   '/features/personalization/background-presets.js?v=1',
-  '/script.js?v=132',
+  '/script.js?v=133',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',
@@ -79,8 +80,8 @@ const ASSETS = [
   '/features/royale/royale.js?v=27',
   '/features/pacman/pacman.js?v=4',
   '/features/candy/candy.js?v=11',
-  '/features/tetris/tetris.css?v=1',
-  '/features/tetris/tetris.js?v=1',
+  '/features/tetris/tetris.css?v=2',
+  '/features/tetris/tetris.js?v=2',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',

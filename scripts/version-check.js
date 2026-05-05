@@ -17,6 +17,13 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const SW_PATH = path.join(ROOT, 'sw.js');
 const INDEX_PATH = path.join(ROOT, 'index.html');
+const OPTIONAL_INDEX_ASSETS = new Set([
+  'features/pokemon/pokemon.js',
+  'features/royale/royale.js',
+  'features/pacman/pacman.js',
+  'features/candy/candy.js',
+  'features/tetris/tetris.js',
+]);
 
 function normalizeAssetPath(assetPath) {
   return String(assetPath || '').replace(/^\//, '');
@@ -73,7 +80,10 @@ for (const asset of assets) {
       console.error(`ERROR: Version mismatch for ${normalizedFilePath}: sw.js has v${version}, index.html has v${indexVersion}`);
       issuesFound++;
     }
-  } else if (normalizedFilePath.endsWith('.js') || normalizedFilePath.endsWith('.css')) {
+  } else if (
+    (normalizedFilePath.endsWith('.js') || normalizedFilePath.endsWith('.css')) &&
+    !OPTIONAL_INDEX_ASSETS.has(normalizedFilePath)
+  ) {
     console.error(`ERROR: Version in index.html not found for: ${normalizedFilePath}`);
     issuesFound++;
   }

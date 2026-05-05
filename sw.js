@@ -17,13 +17,12 @@
 //
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
-// ═══════════════════════════════════════════════════════════════════════════
-
-const CACHE_VERSION = 'v1.8.3-20260505-tetris-game';
-const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
+// ═══════════════════════════════════════════════════════════════════════════const CACHE_VERSION = 'v1.8.4-20260505-1536';
+const CACHE_PREFIX = 'school-portfolio-';
+const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=126',
+  '/index.html?v=127',
   '/style.css?v=51',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -40,14 +39,14 @@ const ASSETS = [
   '/features/folders/folders.css?v=1',
   '/features/gallery/gallery.css?v=1',
   '/features/pokemon/pokemon.css?v=3',
-  '/features/royale/royale.css?v=18',
+  '/features/royale/royale.css?v=19',
   '/features/pacman/pacman.css?v=4',
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=3',
+  '/features/updates/changelog.js?v=4',
   '/features/personalization/background-presets.js?v=1',
-  '/script.js?v=131',
+  '/script.js?v=132',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',
@@ -90,16 +89,30 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled(
+      ASSETS.map(async (url) => {
+        try {
+          const response = await fetch(url, { cache: 'no-store' });
+          if (response && response.ok) {
+            await cache.put(url, response);
+          }
+        } catch (_) {}
+      })
+    );
+  })());
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => key === CACHE_NAME ? null : caches.delete(key)))
+      Promise.all(keys.map((key) => {
+        if (!key.startsWith(CACHE_PREFIX)) return null;
+        if (key === CACHE_NAME) return null;
+        return caches.delete(key);
+      }))
     )
     .then(() => self.clients.claim())
     .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))

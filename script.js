@@ -4051,6 +4051,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
       .then((registration) => {
         registration.update().catch(() => {});
+      })
+      .catch((error) => {
+        console.warn('[sw] registration failed:', error);
       });
   }
 

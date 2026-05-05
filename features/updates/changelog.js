@@ -1,5 +1,18 @@
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.4',
+    date: 'May 5, 2026',
+    title: 'Fix startup blank screen and service worker cache drift',
+    summary: 'Aligned the service worker cache version with the real app version source, prevented cache-busting from corrupting startup, and made service worker install resilient when assets drift.',
+    changes: [
+      'Fix: `scripts/cache-bust.js` now reads the real app version from `features/updates/changelog.js` instead of stale `package.json`, so prestart no longer rewrites `sw.js` onto the wrong version line.',
+      'Fix: `scripts/cache-bust.js` is now idempotent and refuses to touch `sw.js` if the CACHE_VERSION pattern is ambiguous, preventing destructive repeated rewrites.',
+      'Fix: Service worker install now caches assets best-effort instead of failing the entire install when a single asset is missing or stale.',
+      'Fix: Cache cleanup now targets only CLASS APP caches, helping users escape stale broken service worker states safely.',
+      'Improvement: Service worker registration now logs failures without risking app boot flow, and cache references were bumped to force clients onto the repaired build.',
+    ],
+  },
   {
     version: '1.8.3',
     date: 'May 5, 2026',

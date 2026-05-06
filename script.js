@@ -207,6 +207,7 @@ function getAuthHeaders(extraHeaders = {}) {
 }
 
 window.getAuthToken = getServerAuthToken;
+window.setServerAuthToken = setServerAuthToken; // Phase 3.1: exposed for token refresh
 window.authFetch = function(url, options = {}) {
   return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
 };
@@ -2463,6 +2464,7 @@ async function finalizeLogin(profile, serverSession) {
     setAuthSuccess('Signed in. Loading your portal...');
     persistLastSeen({ online: true, force: true }).catch(() => {});
     startAdminValidationPoller(); // Phase 1.2: Start admin status polling
+    window.sessionManager?.init(); // Phase 3: token refresh, idle timeout, multi-tab sync
     establishSession().catch((error) => {
       console.warn('[auth] establishSession (post-login) failed:', error?.message || error);
     });
@@ -2611,6 +2613,7 @@ window.handleLogout = async function() {
     await persistLastSeen({ online: false, force: true });
     stopLastSeenHeartbeat();
     stopAdminValidationPoller(); // Phase 1.2: Stop admin status polling on logout
+    window.sessionManager?.destroy(); // Phase 3: stop token refresh, idle timer, multi-tab sync
     destroyAppPresence();
     currentUser = null;
     isAdmin = false;

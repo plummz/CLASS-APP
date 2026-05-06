@@ -1,7 +1,7 @@
 # CLASS-APP Improvement & Security Audit
 
 **Last Updated**: 2026-05-06  
-**Status**: Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3-4 PENDING
+**Status**: Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 PENDING
 
 ---
 
@@ -94,25 +94,28 @@
 
 ---
 
-### ⏳ PHASE 3: SESSION & LIFECYCLE HARDENING (NOT STARTED)
+### ✅ PHASE 3: SESSION & LIFECYCLE HARDENING (COMPLETE)
 
-**Objective**: Prevent session hijacking and unauthorized access
+**Status**: Fully implemented — commit on `claude/phase-3-session-lifecycle`
 
-#### 3.1 Token Expiration & Refresh
-- Auto-refresh before expiration
-- 7-day token lifecycle
+#### 3.1 Token Expiration & Refresh ✅
+- `POST /api/session/refresh` endpoint added to server.js
+- Client checks JWT `exp` every 30 min; refreshes when <24 h remain
+- Fresh 7-day token stored in HttpOnly cookie + localStorage fallback
 
-#### 3.2 Session Timeout
-- 30-minute idle timeout
-- 5-minute warning before logout
+#### 3.2 Session Timeout ✅
+- 30-minute idle auto-logout via `session-manager.js`
+- Warning banner at 25 minutes: "Session expiring in 5 min — tap to stay"
+- All activity events (click, keydown, touchstart, scroll, mousemove) reset timer
+- iOS-safe fixed positioning with `env(safe-area-inset-bottom)`
 
-#### 3.3 Multi-Tab Session Sync
-- Sync logout across tabs
-- Storage events listener
+#### 3.3 Multi-Tab Session Sync ✅
+- `window.storage` event listener detects logout in another tab
+- Triggers `handleLogout()` in all open tabs simultaneously
 
-#### 3.4 Logout Cleanup
-- Clear all sensitive data
-- Stop background timers
+#### 3.4 Logout Cleanup ✅
+- `sessionManager.destroy()` called in `handleLogout()` — stops token refresh poller, idle timer, and storage listener
+- No timer leaks after logout
 
 ---
 
@@ -193,5 +196,5 @@ See CLAUDE.md for full list.
 
 ---
 
-**Document Version**: 1.1  
-**Status**: Phase 1 ✅ Complete | Phase 2 ✅ Complete | Phase 3-4 Ready
+**Document Version**: 1.2  
+**Status**: Phase 1 ✅ Complete | Phase 2 ✅ Complete | Phase 3 ✅ Complete | Phase 4 Ready

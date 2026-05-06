@@ -18,7 +18,7 @@
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
-const CACHE_VERSION = 'v1.8.9-20260506-phase4-advanced-hardening';
+const CACHE_VERSION = 'v1.9.1-20260506-phase5-remaining-locked-writes';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -45,11 +45,11 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=5',
   '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=9',
+  '/features/updates/changelog.js?v=11',
   '/features/personalization/background-presets.js?v=1',
   '/features/security/form-validation.js?v=1',
   '/features/security/session-manager.js?v=1',
-  '/script.js?v=136',
+  '/script.js?v=138',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',

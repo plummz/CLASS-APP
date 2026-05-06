@@ -1,5 +1,35 @@
-const APP_VERSION = '1.8.9';
+const APP_VERSION = '1.9.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.1',
+    date: 'May 6, 2026',
+    title: 'Phase 5 (Part 2): Complete Migration 021 Lockdown Compliance',
+    summary: 'Fixed all remaining direct Supabase writes that were broken by migration 021. All folder creation, file insertion, message sending, folder permissions, and username renames now route through server-side endpoints using the service key.',
+    changes: [
+      'Fix: insertFileRecord now routes through POST /api/sb/files (server-side, service key) instead of direct sb.from("files").insert() — was broken by migration 021.',
+      'Fix: createProfileFolder now routes through POST /api/sb/folders (server-side, service key) instead of direct sb.from("folders").insert() — was broken by migration 021.',
+      'Fix: setFolderAccessMode (permissions toggle) now routes through PATCH /api/sb/folders/:id/permissions instead of direct sb.from("folders").update() — was broken by migration 021.',
+      'Fix: sendChatMessage now routes through POST /api/sb/messages (server-side, service key) instead of direct sb.from("messages").insert() — was broken by migration 021.',
+      'Fix: editChatMessage now routes through PATCH /api/sb/messages/:id (server-side, service key) instead of direct sb.from("messages").update() — was broken by migration 021.',
+      'Fix: replaceUsernameReferences (username rename cascade) now routes through POST /api/sb/rename-user endpoint which uses service key — all 7 Supabase tables updated atomically including JSONB permission lists.',
+      'New: Added POST /api/sb/folders, PATCH /api/sb/folders/:id/permissions, POST /api/sb/files, POST /api/sb/messages, PATCH /api/sb/messages/:id, POST /api/sb/rename-user server endpoints.',
+    ],
+  },
+  {
+    version: '1.9.0',
+    date: 'May 6, 2026',
+    title: 'Phase 5: Migration 021 Fixes + Security Hardening',
+    summary: 'Fixed all broken direct Supabase writes broken by migration 021 lockdown. Added server endpoints for subject announcements. Hardened reviewer and announcement endpoints with content limits and rate limiting.',
+    changes: [
+      'Fix: Gallery photo delete now routes through /api/files/:id (server-side, service key) instead of direct Supabase client write — previously broken by migration 021.',
+      'Fix: Calendar notes save/delete now routes through /api/calendar-notes (existing server endpoint) instead of direct Supabase client write — previously broken by migration 021.',
+      'Fix: Subject announcements (fetch, post, delete) now route through new /api/subject-announcements server endpoints instead of direct Supabase client write — previously broken by migration 021.',
+      'Security: initSupabase() and finalizeLogin() now attach x-class-username header to Supabase client so RLS header-based identity policies work correctly for read operations.',
+      'Security: POST /api/reviewers now has folderFileLimiter rate limiting and enforces 2000-char limit on summary_content, 200-char limit on title.',
+      'Security: POST /api/shared-announcements now enforces 500-char limit on body, 200-char limit on title.',
+      'Security: New GET/POST/DELETE /api/subject-announcements endpoints with requireAdmin + folderFileLimiter + 200/500 char limits.',
+    ],
+  },
   {
     version: '1.8.9',
     date: 'May 6, 2026',

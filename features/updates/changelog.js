@@ -1,5 +1,19 @@
-const APP_VERSION = '1.8.7';
+const APP_VERSION = '1.8.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.8',
+    date: 'May 6, 2026',
+    title: 'Phase 3: Session & Lifecycle Hardening',
+    summary: 'Added automatic token refresh (7-day JWT lifecycle), 30-minute idle timeout with a 5-minute warning banner, cross-tab logout synchronisation, and clean session teardown on logout.',
+    changes: [
+      'Feature: Token auto-refresh — client checks JWT expiry every 30 minutes and calls /api/session/refresh when less than 24 hours remain. Fresh 7-day token issued server-side and stored in both HttpOnly cookie and localStorage fallback.',
+      'Feature: Idle timeout — 25 minutes idle shows a persistent warning banner ("Session expiring in 5 min — tap to stay logged in"). 30 minutes idle triggers automatic logout. Any interaction resets the timer.',
+      'Feature: Multi-tab logout sync — if another tab clears the auth token from localStorage (logs out), all other open tabs detect the storage event and log out simultaneously.',
+      'Feature: Session manager lifecycle — sessionManager.init() starts all three systems on login; sessionManager.destroy() cleanly stops them on logout, preventing timer leaks.',
+      'Server: New POST /api/session/refresh endpoint — re-issues a fresh 7-day JWT and sets a new HttpOnly cookie for authenticated users.',
+      'Improvement: window.setServerAuthToken now exposed globally so the session-manager module can update the stored token after a refresh.',
+    ],
+  },
   {
     version: '1.8.7',
     date: 'May 6, 2026',

@@ -1815,6 +1815,28 @@ app.get('/api/session/validate', requireAuth, wrap(async (req, res) => {
   }
 }));
 
+// Phase 3.1: Token refresh — re-issue a fresh 7-day token for an already-authenticated user.
+// Called by the client when the current token is within 24 hours of expiry.
+app.post('/api/session/refresh', requireAuth, wrap(async (req, res) => {
+  try {
+    const username = req.user.username;
+    const user = findUser(username);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
+    const newToken = issueToken(username, isAdminUser);
+    res.cookie('classAppToken', newToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return res.json({ token: newToken, refreshed_at: new Date().toISOString() });
+  } catch (error) {
+    console.error('[session/refresh]', error);
+    res.status(500).json({ error: 'Token refresh failed' });
+  }
+}));
+
 app.get('/api/messages', requireAuth, wrap((req, res) => {
   const { chat, target } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);

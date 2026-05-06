@@ -10,50 +10,6 @@ let serverAuthToken = localStorage.getItem('classAppToken') || '';
 const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
-async function initSupabase(username = null) {
-  try {
-    // 5s hard timeout — if the server is still cold-starting the page shouldn't block.
-    // waitForSupabaseClient() retries once on login if credentials are still empty.
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
-    clearTimeout(timer);
-    SUPABASE_URL = cfg.supabaseUrl || '';
-    SUPABASE_KEY = cfg.supabaseKey || '';
-  } catch (error) {
-    console.error('[auth] Failed to load Supabase config:', error);
-  }
-  if (!window.supabase?.createClient || !SUPABASE_URL || !SUPABASE_KEY) {
-    console.error('[auth] Supabase client could not be initialized.');
-    sb = null;
-    window.sb = null;
-    return false;
-  }
-  try {
-    const { createClient } = window.supabase;
-    // Always attach x-class-username header to all Supabase requests so RLS
-    // policies using class_app_username() work for browser SELECT calls.
-    const resolvedUsername = username || (() => {
-      try { return JSON.parse(localStorage.getItem('classAppUser') || 'null')?.username || null; } catch (_) { return null; }
-    })();
-    sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      global: {
-        fetch: (url, options = {}) => {
-          const headers = new Headers(options.headers || {});
-          if (resolvedUsername) headers.set('x-class-username', resolvedUsername);
-          return fetch(url, { ...options, headers });
-        },
-      },
-    });
-    window.sb = sb;
-    return true;
-  } catch (error) {
-    console.error('[auth] Supabase createClient failed:', error);
-    sb = null;
-    window.sb = null;
-    return false;
-  }
-}
 
 function getSupabaseChannel(channelName, config) {
   if (!sb || typeof sb.channel !== 'function') {
@@ -163,71 +119,7 @@ function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
-function setServerAuthToken(token) {
-  serverAuthToken = token || '';
-  if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
-  else localStorage.removeItem('classAppToken');
-}
 
-function getServerAuthToken() {
-  return serverAuthToken || localStorage.getItem('classAppToken') || '';
-}
-
-function getAuthHeaders(extraHeaders = {}) {
-  const headers = new Headers(extraHeaders || {});
-  const token = getServerAuthToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  return headers;
-}
-
-window.getAuthToken = getServerAuthToken;
-window.authFetch = function(url, options = {}) {
-  return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
-};
-
-async function waitForSupabaseClient() {
-  // Wait up to 3s for initSupabase to complete (covers slow page loads).
-  // Also verify credentials are non-empty — sb is always non-null after init
-  // even when credentials failed to load, so checking !sb alone is not enough.
-  // Give initSupabase up to 2s to finish if it's still running
-  const deadline = Date.now() + 2000;
-  while (!sb || !SUPABASE_URL) {
-    if (Date.now() >= deadline) break;
-    await new Promise(r => setTimeout(r, 200));
-  }
-  // If credentials are still missing, the server may have been cold-starting during
-  // page load. Try /api/config once more now that the server should be awake.
-  if (!SUPABASE_URL) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
-      clearTimeout(timer);
-      if (cfg.supabaseUrl && cfg.supabaseKey) {
-        SUPABASE_URL = cfg.supabaseUrl;
-        SUPABASE_KEY = cfg.supabaseKey;
-        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-          global: {
-            fetch: (url, options = {}) => {
-              const headers = new Headers(options.headers || {});
-              try {
-                const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
-                if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
-              } catch (_) {}
-              return fetch(url, { ...options, headers });
-            },
-          },
-        });
-        window.sb = sb;
-      }
-    } catch (_) {}
-  }
-  if (!sb || !SUPABASE_URL) {
-    console.error('[sb] Supabase client unavailable or missing credentials.');
-    return false;
-  }
-  return true;
-}
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -3133,35 +3025,7 @@ let lastSeenWriteAt = 0;
 let authBindingsReady = false;
 let usersLoadState = { loading: false, error: '' };
 
-function syncAuthState() {
-  isAuthenticated = Boolean(currentUser?.username);
-}
 
-function renderAppState() {
-  const showShell = !isInitializing && isAuthenticated;
-  const showAuthModal = !isInitializing && !isAuthenticated;
-  const authModal = document.getElementById('auth-modal');
-  if (authModal) authModal.style.display = showAuthModal ? 'flex' : 'none';
-
-  const shellNodes = [
-    document.getElementById('sidebar'),
-    document.getElementById('menu-toggle'),
-    document.getElementById('overlay'),
-    document.getElementById('live-clock'),
-    document.getElementById('page-indicator'),
-  ];
-  shellNodes.forEach((node) => {
-    if (!node) return;
-    node.style.visibility = showShell ? '' : 'hidden';
-    node.style.pointerEvents = showShell ? '' : 'none';
-  });
-
-  document.querySelectorAll('.page').forEach((page) => {
-    page.style.visibility = showShell ? '' : 'hidden';
-    if (!showShell) page.style.pointerEvents = 'none';
-    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
-  });
-}
 
 function setInitializing(nextValue) {
   isInitializing = Boolean(nextValue);
@@ -3179,25 +3043,6 @@ function runSafeUiAction(label, action, onError) {
   }
 }
 
-function waitForSplashDismissal() {
-  if (!document.getElementById('splash-screen')) return Promise.resolve();
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      observer.disconnect();
-      resolve();
-    };
-    const timer = setTimeout(finish, 4500);
-    const observer = new MutationObserver(() => {
-      if (!document.getElementById('splash-screen')) finish();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('classapp:splash-dismissed', finish, { once: true });
-  });
-}
 
 function saveSession() {
   syncAuthState();
@@ -3339,39 +3184,6 @@ function withAuthTimeout(promise, message = 'Request timed out. Check your conne
   ]);
 }
 
-function bindAuthPortalHandlers() {
-  if (authBindingsReady) return;
-  const signInBtn = document.getElementById('btn-sign-in');
-  const createBtn = document.getElementById('btn-create-account');
-  const usernameInput = document.getElementById('username');
-  const passwordInput = document.getElementById('password');
-  if (!signInBtn || !createBtn || !usernameInput || !passwordInput) {
-    console.error('[auth] Portal controls missing from DOM.');
-    return;
-  }
-  signInBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.login();
-  });
-  createBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.register();
-  });
-  usernameInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      window.login();
-    }
-  });
-  passwordInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      window.login();
-    }
-  });
-  authBindingsReady = true;
-  console.info('[auth] Portal button handlers attached.');
-}
 
 function toSessionUser(profile, serverSession = {}) {
   const { password_hash, ...safeProfile } = profile || {};
@@ -3590,27 +3402,6 @@ document.addEventListener('visibilitychange', () => {
   else persistLastSeen({ online: true, force: true });
 });
 
-async function establishSession() {
-  await waitForSupabaseClient();
-  syncAuthState();
-  renderAppState();
-  const navLogout = document.getElementById('nav-logout');
-  if(navLogout) navLogout.style.display = 'flex';
-
-  fetchUsers();
-  initAppPresence();
-  startLastSeenHeartbeat();
-  updateChatHeader();
-  initSupabaseRealtimeChat();
-  initSharedRealtime();
-  initAppOpenRealtime();
-  ensureAdminUpdateControl();
-  fetchAppUpdates();
-  registerPushSubscription(false);
-  fetchMessages(currentChat.type, currentChat.target);
-  handleNotificationDeepLink();
-  initReactionsRealtime();
-}
 
 function getInitials(user) {
   return String(user.display_name || user.username || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase() || '?';
@@ -4390,108 +4181,6 @@ function applyPageBackground(pageName = currentPage) {
   if (cfg.aurora) document.getElementById('aurora')?.classList.add('active');
 }
 
-window.goToPage = function(pageName) {
-  if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
-  if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
-
-  // Lobby: tear down canvas when leaving
-  if (currentPage === 'lobby') lobbyModule.destroy();
-  // Pokemon: tear down when leaving
-  if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
-  // Royale: tear down when leaving
-  if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
-  if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
-  if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
-  // Alarm: tear down clock when leaving
-  if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
-  // File Summarizer: close quiz modal/score screen when navigating away
-  if (currentPage === 'file-summarizer') {
-    document.getElementById('fs-quiz-modal')?.classList.remove('active');
-    document.getElementById('fs-quiz-score')?.classList.remove('active');
-  }
-
-  // YouTube mini-player: show when leaving music, hide when returning
-  const ytMini = document.getElementById('yt-mini-player');
-  if (ytMini) {
-    if (pageName === 'music') ytMini.classList.add('hidden');
-    else if (ytActive && currentPage === 'music') ytMini.classList.remove('hidden');
-  }
-
-  // Ping server when music page opens so Render wakes up before the user searches
-  if (pageName === 'music') fetch('/api/ping').catch(() => {});
-
-  // Hide chat bauble on pages where it blocks controls or the AI input
-  const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
-
-  // Hide live clock on AI page — it overlaps the chat header
-  const liveClock = document.getElementById('live-clock');
-  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
-
-  const old = pageConfig[currentPage];
-  const oldPage = document.getElementById('page-' + currentPage);
-  if(oldPage) oldPage.classList.remove('active');
-  if (old) {
-    document.getElementById(old.bg)?.classList.remove('active');
-    document.getElementById(old.particles)?.classList.remove('active');
-    if (old.wave) document.getElementById('wave-container')?.classList.remove('active');
-    if (old.mountain) document.getElementById('mountain-svg')?.classList.remove('active');
-    if (old.aurora) document.getElementById('aurora')?.classList.remove('active');
-  }
-
-  currentPage = pageName;
-  if (appPresenceChannel && currentUser?.username) {
-    appPresenceChannel.track({
-      username: currentUser.username,
-      displayName: currentUser.display_name || currentUser.username,
-      page: currentPage,
-      activeAt: new Date().toISOString(),
-    }).catch(() => {});
-    persistLastSeen({ online: true });
-  }
-  const cfg = pageConfig[pageName];
-  const newPage = document.getElementById('page-' + pageName);
-  if(newPage) newPage.classList.add('active');
-
-  applyPageBackground(pageName);
-
-  const indicator = document.getElementById('page-indicator');
-  if (indicator && cfg) indicator.textContent = cfg.label;
-  if(newPage) newPage.scrollTop = 0;
-  document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
-  closeMenu();
-
-  // Lobby: start canvas after page is visible
-  if (pageName === 'lobby') {
-    runSafeUiAction('Lobby', () => { _ensureSocket(); lobbyModule.init(); });
-  }
-  // Pokemon: start after page is visible
-  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
-  // Royale: start after page is visible
-  if (pageName === 'royale' && typeof royaleModule !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
-  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
-  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
-  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
-  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
-  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());
-  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') runSafeUiAction('Calculator', () => calculatorModule.init());
-  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') runSafeUiAction('Personalization', () => personalizationModule.init());
-  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') runSafeUiAction('Reviewers', () => reviewersModule.init());
-  if (pageName === 'diagnostics') runSafeUiAction('Diagnostics', () => loadDiagnostics());
-  // Games hub: draw royale preview canvas
-  if (pageName === 'games') runSafeUiAction('Games', () => drawRoyalePreviewCanvas());
-  // Event Pictures & Random Pictures: reset and render year cards
-  if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
-  if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
-  if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
-  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
-  if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
-  if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
-  if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
-  // AI Assistants hub
-  if (pageName === 'ai') runSafeUiAction('AI Assistants', () => { aiView = 'hub'; renderAI(); });
-  if (pageName === 'admin') runSafeUiAction('Admin', () => loadAdminDashboard());
-};
 
 let backgroundPickerTab = 'coded';
 let backgroundPickerSearch = '';
@@ -4751,8 +4440,6 @@ function drawRoyalePreviewCanvas() {
   ctx.textAlign='left';
 }
 
-window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
-window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
 
 /* ============================================================
    CALENDAR LOGIC (CLOUD BASED)
@@ -5296,44 +4983,6 @@ document.addEventListener('DOMContentLoaded', async () => {
      iOS Safari does not reliably fire click on non-interactive <div>
      elements; we now use role="button" tabindex="0" in HTML and
      attach listeners here with touch-action: manipulation in CSS. */
-  const sidebar = document.getElementById('sidebar');
-  if (sidebar) {
-    sidebar.addEventListener('click', function(event) {
-      const navItem = event.target.closest('.nav-item[data-page]');
-      const dropdownHeader = event.target.closest('.nav-dropdown-header[data-year]');
-      const logoutItem = event.target.closest('#nav-logout');
-
-      const target = navItem || dropdownHeader || logoutItem;
-      if (!target) return;
-
-      // Ripple effect
-      const rect = target.getBoundingClientRect();
-      target.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
-      target.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
-      target.classList.remove('nav-click-flash');
-      void target.offsetWidth;
-      target.classList.add('nav-click-flash');
-      window.setTimeout(() => target.classList.remove('nav-click-flash'), 420);
-
-      // Action
-      if (navItem && navItem.dataset.page) {
-        window.goToPage(navItem.dataset.page);
-      } else if (dropdownHeader && dropdownHeader.dataset.year) {
-        window.toggleYear(dropdownHeader.dataset.year);
-      } else if (logoutItem) {
-        window.handleLogout();
-      }
-    });
-
-    // Keyboard support: Enter / Space triggers click
-    sidebar.addEventListener('keydown', function(event) {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      const target = event.target.closest('.nav-item[data-page], .nav-dropdown-header[data-year], #nav-logout');
-      if (!target) return;
-      event.preventDefault();
-      target.click();
-    });
-  }
 
   // Overlay: close menu on tap (touch + click)
   const overlay = document.getElementById('overlay');

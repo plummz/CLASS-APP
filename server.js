@@ -19,7 +19,6 @@ const crypto   = require('crypto');
 const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const helmet   = require('helmet');
-const cookieParser = require('cookie-parser');
 const pdfParse = require('pdf-parse');
 const mammoth  = require('mammoth');
 const AdmZip   = require('adm-zip');
@@ -33,7 +32,7 @@ try {
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-// â"€â"€ Cloudflare R2 client â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Cloudflare R2 client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const r2 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -145,17 +144,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: RESOLVED_CORS_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
 
-// Security headers
-// scriptSrcAttr must be explicitly set to 'unsafe-inline' — Helmet v7+ generates
-// a separate script-src-attr: 'none' directive by default which BLOCKS all inline
-// event handlers (onclick, onchange, onkeydown, etc.) even when scriptSrc includes
-// 'unsafe-inline'. This was the root cause of all buttons failing on mobile/PWA.
+// Security headers â€” CSP disabled to avoid breaking inline scripts (tighten in later phase)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.socket.io', 'https://www.youtube.com', 'https://www.gstatic.com'],
-      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       frameSrc: ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com'],
@@ -163,24 +157,10 @@ app.use(helmet({
       connectSrc: ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co', 'https://pipedapi.kavin.rocks', 'https://pipedapi.tokhmi.xyz', 'https://piped-api.garudalinux.org', 'https://pipedapi.adminforge.de', 'https://www.googleapis.com'],
       mediaSrc: ["'self'", 'blob:', 'https:'],
       workerSrc: ["'self'", 'blob:'],
-      // Phase 4.3: additional CSP restrictions
-      formAction: ["'self'"],           // block form submission to external URLs
-      baseUri: ["'self'"],              // block base-tag injection
-      objectSrc: ["'none'"],            // disable Flash/plugins
     },
   },
   crossOriginEmbedderPolicy: false,
 }));
-
-// Phase 4.4: Permissions-Policy — restrict dangerous browser features not used by this app
-app.use((req, res, next) => {
-  res.setHeader(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
-  );
-  next();
-});
-
 const STATIC_CACHE_OPTIONS = {
   maxAge: '1y',
   immutable: true,
@@ -223,14 +203,13 @@ function formatUptime(seconds) {
   return `${minutes}m`;
 }
 
-app.use(cors({ origin: RESOLVED_CORS_ORIGIN, credentials: true }));
+app.use(cors({ origin: RESOLVED_CORS_ORIGIN }));
 app.use(express.json());
-app.use(cookieParser());
 
 // Wraps sync/async route handlers so any thrown error reaches the global error handler
 const wrap = fn => (req, res, next) => { try { const r = fn(req, res, next); if (r && typeof r.catch === 'function') r.catch(next); } catch (e) { next(e); } };
 
-// â"€â"€ Auth helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Auth helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -243,50 +222,10 @@ const aiLimiter = rateLimit({
   max: 10,
   message: { error: 'Too many AI requests. Please wait a minute.' },
 });
-const uploadLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-  message: { error: 'Too many uploads. Please wait a minute.' },
-});
-const videoSearchLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  message: { error: 'Too many search requests. Please wait a minute.' },
-});
-const folderFileLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: { error: 'Too many folder/file operations. Please wait a minute.' },
-});
-const messageLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: { error: 'Too many messages. Please wait a minute.' },
-});
 const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
 const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
 const SUPABASE_PUBLIC_PROFILE_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
-
-function validateUsernameFormat(username) {
-  if (username.length < 3 || username.length > 24) return 'Username must be 3 to 24 characters long.';
-  if (!/^[a-zA-Z0-9_@]+$/.test(username)) return 'Username can only use letters, numbers, underscores, and @ symbol.';
-  return '';
-}
-
-function validateFolderName(name) {
-  if (!name || name.length === 0) return 'Folder name is required.';
-  if (name.length > 50) return 'Folder name must be 50 characters or less.';
-  if (!/^[a-zA-Z0-9\s\-_.]{1,50}$/.test(name)) return 'Folder name can only use letters, numbers, spaces, dashes, underscores, and periods.';
-  return '';
-}
-
-function validateFileName(name) {
-  if (!name || name.length === 0) return 'File name is required.';
-  if (name.length > 50) return 'File name must be 50 characters or less.';
-  if (!/^[a-zA-Z0-9\s\-_.]{1,50}$/.test(name)) return 'File name can only use letters, numbers, spaces, dashes, underscores, and periods.';
-  return '';
-}
 
 function hashLegacyPassword(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
@@ -360,30 +299,6 @@ function toStateUserProfile(profile = {}, passwordHash = '') {
     username_last_changed_at: profile.username_last_changed_at || null,
     passwordHash: passwordHash || profile.password_hash || profile.passwordHash || '',
   };
-}
-
-async function supabaseQuery(table, method, body, queryParams = {}) {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return null;
-  const url = new URL(`/rest/v1/${table}`, SUPABASE_URL);
-  for (const [k, v] of Object.entries(queryParams)) url.searchParams.append(k, v);
-  
-  const headers = getSupabaseHeaders({
-    'Accept': 'application/json',
-    'Content-Type': 'application/json'
-  }, { preferService: true });
-  
-  if (method === 'POST' || method === 'PATCH') {
-     headers['Prefer'] = 'return=representation';
-  }
-
-  const response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Supabase ${method} ${table} failed: ${errText.slice(0, 160)}`);
-  }
-  if (method === 'DELETE') return true;
-  const data = await response.json();
-  return Array.isArray(data) ? data : [data];
 }
 
 async function fetchSupabaseProfile(username) {
@@ -600,8 +515,7 @@ async function ensureAuthProfile(username, passwordHash, overrides = {}) {
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const bearerToken = header.startsWith('Bearer ') ? header.slice(7) : null;
-  const token = bearerToken || req.cookies?.classAppToken || null;
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -627,7 +541,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_O
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
 app.use(express.static(path.join(__dirname)));
-// Serve uploads â€" local disk fallback then R2 (supports /uploads/filename and subfolders)
+// Serve uploads â€” local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
   const filename = req.params[0]; // everything after /uploads/
   const requestedExt = path.extname(filename).toLowerCase();
@@ -659,8 +573,7 @@ app.get('/uploads/*', async (req, res) => {
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `${disposition}; filename="${safeFileName}"`);
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      const isMedia = /^(image|video|audio)\//.test(contentType);
-      res.setHeader('Cache-Control', isMedia ? 'public, max-age=31536000' : 'private, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
       data.Body.pipe(res);
       return;
     } catch { /* try next */ }
@@ -676,7 +589,7 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.get('/api/static-check', requireAuth, requireAdmin, (req, res) => {
+app.get('/api/static-check', (req, res) => {
   const files = getStaticAssetStatus();
   res.json({
     ok: files.every((file) => file.exists),
@@ -691,7 +604,7 @@ app.get('/api/diagnostics', requireAuth, requireAdmin, async (req, res) => {
   try {
     const sw = fs.readFileSync(path.join(__dirname, 'sw.js'), 'utf-8');
     cacheVersion = sw.match(/CACHE_VERSION\s*=\s*['"`]([^'"`]+)/)?.[1] || cacheVersion;
-  } catch (_e) { /* sw.js unreadable â€" use default */ }
+  } catch (_e) { /* sw.js unreadable â€” use default */ }
 
   let java = { available: false, message: 'Java status not checked.' };
   try {
@@ -740,16 +653,16 @@ app.get('/api/diagnostics', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Redirect old PWA installs that used /CLASS-APP/ as start_url.
-// Users who installed before the manifest fix open to /CLASS-APP/ â€" redirect
+// Users who installed before the manifest fix open to /CLASS-APP/ â€” redirect
 // them to / so the app loads normally without requiring a reinstall.
 app.get('/CLASS-APP', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/', (req, res) => res.redirect('/'));
 app.get('/CLASS-APP/*', (req, res) => res.redirect('/'));
 
-/* â"€â"€ Wake-up ping (keeps Render free tier warm) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* â”€â”€ Wake-up ping (keeps Render free tier warm) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
-/* â"€â"€ Client config â€" serves non-secret public keys to frontend â"€â"€ */
+/* â”€â”€ Client config â€” serves non-secret public keys to frontend â”€â”€ */
 app.get('/api/config', (req, res) => {
   res.json({
     supabaseUrl: process.env.SUPABASE_URL || '',
@@ -757,7 +670,7 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-app.get('/api/app-open-count', requireAuth, (req, res) => {
+app.get('/api/app-open-count', (req, res) => {
   const users = Object.entries(state.appOpenCounts || {})
     .map(([username, count]) => ({ username, count }))
     .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
@@ -776,12 +689,12 @@ app.post('/api/app-open-count', requireAuth, wrap((req, res) => {
     .map(([name, count]) => ({ username: name, count }))
     .sort((a, b) => b.count - a.count || a.username.localeCompare(b.username));
   const payload = { count: state.appOpenCount, users };
-  io.to('group').emit('appOpenCount', payload);
+  io.emit('appOpenCount', payload);
   res.json(payload);
 }));
 
-/* â"€â"€ Search diagnostics â€" visit /api/search-test?q=test to debug â"€â"€â"€â"€â"€â"€â"€ */
-app.get('/api/search-test', requireAuth, requireAdmin, (req, res) => {
+/* â”€â”€ Search diagnostics â€” visit /api/search-test?q=test to debug â”€â”€â”€â”€â”€â”€â”€ */
+app.get('/api/search-test', (req, res) => {
   const q = (req.query.q || 'test').trim();
   const report = { q, ytApi: null, piped: null, scrape: null };
   let done = 0;
@@ -842,11 +755,11 @@ app.get('/api/search-test', requireAuth, requireAdmin, (req, res) => {
   scrapeReq.setTimeout(10000, () => { scrapeReq.destroy(); report.scrape = { status: 'TIMEOUT' }; finish(); });
 });
 
-/* â"€â"€ YouTube search proxy â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-   Key stays on the server â€" the browser never sees it.
+/* â”€â”€ YouTube search proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Key stays on the server â€” the browser never sees it.
    Usage: GET /api/yt-search?q=despacito
-   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-app.get('/api/yt-search', requireAuth, videoSearchLimiter, async (req, res) => {
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.get('/api/yt-search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
 
@@ -893,9 +806,9 @@ app.get('/api/yt-search', requireAuth, videoSearchLimiter, async (req, res) => {
   });
 });
 
-/* â"€â"€ Piped search proxy (no API key needed, avoids browser CORS blocks) â"€â"€â"€â"€
+/* â”€â”€ Piped search proxy (no API key needed, avoids browser CORS blocks) â”€â”€â”€â”€
    Usage: GET /api/piped-search?q=despacito
-   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const PIPED_HOSTS = [
   'pipedapi.kavin.rocks',
   'pipedapi.tokhmi.xyz',
@@ -925,7 +838,7 @@ function pipedSearchRequest(host, q, resolve) {
           })).filter(v => v.videoId);
           if (items.length) return resolve({ items });
         }
-      } catch (_e) { /* unparseable response â€" try next host */ }
+      } catch (_e) { /* unparseable response â€” try next host */ }
       resolve(null);
     });
   });
@@ -933,7 +846,7 @@ function pipedSearchRequest(host, q, resolve) {
   req.setTimeout(6000, () => { req.destroy(); resolve(null); });
 }
 
-app.get('/api/piped-search', requireAuth, videoSearchLimiter, (req, res) => {
+app.get('/api/piped-search', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query parameter q' });
 
@@ -957,19 +870,19 @@ app.get('/api/piped-search', requireAuth, videoSearchLimiter, (req, res) => {
   tryNext();
 });
 
-/* â"€â"€ YouTube InnerTube search (no API key â€" uses YouTube's own internal API) â"€
+/* â”€â”€ YouTube InnerTube search (no API key â€” uses YouTube's own internal API) â”€
    The InnerTube API is what youtube.com and the YouTube app use internally.
    All major YouTube scraping libraries (ytsr, youtube-sr) call this same
-   endpoint under the hood. Returns structured JSON â€" no HTML parsing.
+   endpoint under the hood. Returns structured JSON â€” no HTML parsing.
    Usage: GET /api/yt-scrape?q=payphone
-   â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-app.get('/api/yt-scrape', requireAuth, videoSearchLimiter, (req, res) => {
+   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+app.get('/api/yt-scrape', (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   console.log('[innertube] Searching for:', q);
 
-  // Use MWEB client â€" simpler JSON structure, less bot-detection than WEB
+  // Use MWEB client â€” simpler JSON structure, less bot-detection than WEB
   const body = JSON.stringify({
     context: {
       client: {
@@ -1040,7 +953,7 @@ app.get('/api/yt-scrape', requireAuth, videoSearchLimiter, (req, res) => {
         if (!items.length) {
           const structureKeys = Object.keys(data?.contents || {}).join(',') || 'none';
           console.warn('[innertube] No video results for:', q, '| HTTP:', ytRes.statusCode, '| top-level keys:', structureKeys);
-          return res.status(404).json({ error: 'No results â€" structure: ' + structureKeys });
+          return res.status(404).json({ error: 'No results â€” structure: ' + structureKeys });
         }
         console.log('[innertube] OK, returned', items.length, 'results for:', q);
         res.json({ items });
@@ -1145,7 +1058,7 @@ function updatePresence(username, online) {
   if (!user) return;
   user.online = online;
   saveData(state);
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
 }
 
 function emitMessage(chat, target, message) {
@@ -1168,7 +1081,7 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
   if (!PUSH_READY || !sender || !target || !messageId) return { sent: 0, skipped: true };
   if (state.sentPushMessageIds.includes(messageId)) return { sent: 0, duplicate: true };
 
-  const subscriptions = await getPushSubscriptions(target);
+  const subscriptions = state.pushSubscriptions[target] || [];
   if (!subscriptions.length) {
     state.sentPushMessageIds.push(messageId);
     pruneSentPushIds();
@@ -1201,9 +1114,6 @@ async function sendPrivatePushNotification({ sender, target, text, messageId }) 
     }
   }
 
-  for (const sub of subscriptions.filter((s) => !keep.includes(s))) {
-    await removePushSubscription(target, sub.endpoint).catch(() => {});
-  }
   state.pushSubscriptions[target] = keep;
   state.sentPushMessageIds.push(messageId);
   pruneSentPushIds();
@@ -1215,45 +1125,16 @@ app.get('/api/push/public-key', (req, res) => {
   res.json({ enabled: PUSH_READY, publicKey: VAPID_PUBLIC_KEY });
 });
 
-async function getPushSubscriptions(username) {
-  if (SUPABASE_URL) {
-    try {
-      const rows = await supabaseQuery('push_subscriptions', 'GET', null, { username: `eq.${username}`, select: 'subscription' });
-      if (rows) return rows.map((r) => r.subscription);
-    } catch (e) { console.warn('[push] Supabase read failed, using cache:', e.message); }
-  }
-  return state.pushSubscriptions[username] || [];
-}
-
-async function savePushSubscription(username, subscription) {
-  state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
-  const existing = state.pushSubscriptions[username].find((s) => s.endpoint === subscription.endpoint);
-  if (!existing) state.pushSubscriptions[username].push(subscription);
-  if (SUPABASE_URL) {
-    try {
-      await supabaseQuery('push_subscriptions', 'POST', { username, endpoint: subscription.endpoint, subscription }, {});
-    } catch (e) { console.warn('[push] Supabase save failed:', e.message); }
-  }
-  await saveData(state);
-}
-
-async function removePushSubscription(username, endpoint) {
-  state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((s) => s.endpoint !== endpoint);
-  if (SUPABASE_URL) {
-    try {
-      await supabaseQuery('push_subscriptions', 'DELETE', null, { username: `eq.${username}`, endpoint: `eq.${endpoint}` });
-    } catch (e) { console.warn('[push] Supabase delete failed:', e.message); }
-  }
-  await saveData(state);
-}
-
 app.post('/api/push/subscribe', requireAuth, async (req, res) => {
   const { username, subscription } = req.body || {};
   if (!username || !subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'username and subscription are required' });
   }
   if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-  await savePushSubscription(username, subscription);
+  state.pushSubscriptions[username] = state.pushSubscriptions[username] || [];
+  const existing = state.pushSubscriptions[username].find((sub) => sub.endpoint === subscription.endpoint);
+  if (!existing) state.pushSubscriptions[username].push(subscription);
+  await saveData(state);
   res.json({ success: true, enabled: PUSH_READY });
 });
 
@@ -1261,7 +1142,8 @@ app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
   const { username, endpoint } = req.body || {};
   if (!username || !endpoint) return res.status(400).json({ error: 'username and endpoint are required' });
   if (username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-  await removePushSubscription(username, endpoint);
+  state.pushSubscriptions[username] = (state.pushSubscriptions[username] || []).filter((sub) => sub.endpoint !== endpoint);
+  await saveData(state);
   res.json({ success: true });
 });
 
@@ -1282,151 +1164,66 @@ app.post('/api/push/private-message', requireAuth, async (req, res) => {
 });
 
 // --- FOLDERS & FILES API ---
-app.get('/api/folders', requireAuth, wrap(async (req, res) => {
+app.get('/api/folders', requireAuth, wrap((req, res) => {
   const parent = req.query.parent;
-  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    try {
-      const params = { select: '*' };
-      if (parent !== undefined) params['parent'] = `eq.${parent === '' ? '' : parent}`;
-      const rows = await supabaseQuery('folders', 'GET', null, params);
-      return res.json(rows || []);
-    } catch (err) {
-      console.warn('[folders GET] Supabase failed, falling back to local state:', err.message);
-    }
-  }
   res.json(state.folders.filter(f => f.parent === parent));
 }));
 
-app.post('/api/folders', requireAuth, folderFileLimiter, wrap(async (req, res) => {
-  const nameError = validateFolderName(req.body.name);
-  if (nameError) return res.status(400).json({ error: nameError });
-  const folder = {
-    parent: req.body.parent,
-    name: req.body.name,
-    owner: req.user.username,
-    permissions: req.body.permissions || { viewers: [], editors: [], everyone: 'edit' },
-    folder_type: req.body.folder_type || null
-  };
-  if (SUPABASE_URL) {
-    try {
-      const inserted = await supabaseQuery('folders', 'POST', [folder]);
-      return res.json(inserted[0]);
-    } catch(e) {
-      return res.status(500).json({ error: e.message });
-    }
-  }
-  folder.id = Date.now().toString();
+app.post('/api/folders', requireAuth, wrap(async (req, res) => {
+  const folder = { id: Date.now().toString(), parent: req.body.parent, name: req.body.name, owner: req.user.username };
   state.folders.push(folder);
   await saveData(state);
   res.json(folder);
 }));
 
-app.put('/api/folders/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
-  if (req.body.name !== undefined) {
-    const nameError = validateFolderName(req.body.name);
-    if (nameError) return res.status(400).json({ error: nameError });
-  }
-  if (SUPABASE_URL) {
-     const existing = await supabaseQuery('folders', 'GET', null, { id: `eq.${req.params.id}`, select: 'owner' });
-     if (!existing || !existing.length) return res.status(404).json({ error: 'Folder not found' });
-     if (!req.user.isAdmin && existing[0].owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-     const updatePayload = {};
-     if (req.body.name !== undefined) updatePayload.name = req.body.name;
-     if (req.body.permissions !== undefined) updatePayload.permissions = req.body.permissions;
-     const updated = await supabaseQuery('folders', 'PATCH', updatePayload, { id: `eq.${req.params.id}` });
-     return res.json(updated[0]);
-  }
+app.put('/api/folders/:id', requireAuth, (req, res) => {
   const folder = state.folders.find(f => f.id === req.params.id);
   if (!folder) return res.status(404).json({ error: 'Folder not found' });
   if (!req.user.isAdmin && folder.owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-  if (req.body.name !== undefined) folder.name = req.body.name;
-  if (req.body.permissions !== undefined) folder.permissions = req.body.permissions;
-  await saveData(state);
+  folder.name = req.body.name;
+  saveData(state);
   res.json(folder);
-}));
+});
 
-app.delete('/api/folders/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
-  if (SUPABASE_URL) {
-     const existing = await supabaseQuery('folders', 'GET', null, { id: `eq.${req.params.id}`, select: 'owner' });
-     if (!existing || !existing.length) return res.status(404).json({ error: 'Folder not found' });
-     if (!req.user.isAdmin && existing[0].owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-     await supabaseQuery('folders', 'DELETE', null, { id: `eq.${req.params.id}` });
-     return res.json({ success: true });
-  }
+app.delete('/api/folders/:id', requireAuth, (req, res) => {
   const folder = state.folders.find(f => f.id === req.params.id);
   if (!folder) return res.status(404).json({ error: 'Folder not found' });
   if (!req.user.isAdmin && folder.owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.folders = state.folders.filter(f => f.id !== req.params.id);
   state.files = state.files.filter(f => f.folderId !== req.params.id);
-  await saveData(state);
+  saveData(state);
   res.json({ success: true });
+});
+
+app.get('/api/files', requireAuth, wrap((req, res) => {
+  res.json(state.files.filter(f => f.folderId === req.query.folderId));
 }));
 
-app.get('/api/files', requireAuth, wrap(async (req, res) => {
-  const folderId = req.query.folderId;
-  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    try {
-      const params = { select: '*' };
-      if (folderId !== undefined) params['folder_id'] = `eq.${folderId}`;
-      const rows = await supabaseQuery('files', 'GET', null, params);
-      return res.json(rows || []);
-    } catch (err) {
-      console.warn('[files GET] Supabase failed, falling back to local state:', err.message);
-    }
-  }
-  res.json(state.files.filter(f => f.folderId === folderId));
-}));
-
-app.post('/api/files', requireAuth, folderFileLimiter, wrap(async (req, res) => {
-  const nameError = validateFileName(req.body.name);
-  if (nameError) return res.status(400).json({ error: nameError });
+app.post('/api/files', requireAuth, wrap(async (req, res) => {
   const file = {
-    folder_id: req.body.folder_id || req.body.folderId,
+    id: Date.now().toString(),
+    folderId: req.body.folderId,
     name: req.body.name,
     url: req.body.url,
     type: req.body.type,
-    uploader: req.body.uploader || req.user.username,
     size: req.body.size,
-    is_original_upload: req.body.is_original_upload !== false,
-    source_file_id: req.body.source_file_id || null,
+    uploadedBy: req.user.username,
+    owner: req.user.username,
+    attachment: req.body.attachment || null,
   };
-  if (SUPABASE_URL) {
-    try {
-      const inserted = await supabaseQuery('files', 'POST', [file]);
-      return res.json(inserted[0]);
-    } catch(e) {
-       if (/is_original_upload|source_file_id/i.test(e.message)) {
-          const { is_original_upload, source_file_id, ...legacyRow } = file;
-          const inserted2 = await supabaseQuery('files', 'POST', [legacyRow]);
-          return res.json(inserted2[0]);
-       }
-       return res.status(500).json({ error: e.message });
-    }
-  }
-  file.id = Date.now().toString();
-  file.folderId = req.body.folder_id || req.body.folderId;
-  file.owner = req.user.username; // legacy
-  file.uploadedBy = req.user.username; // legacy
   state.files.push(file);
   await saveData(state);
   res.json(file);
 }));
 
-app.delete('/api/files/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
-  if (SUPABASE_URL) {
-     const existing = await supabaseQuery('files', 'GET', null, { id: `eq.${req.params.id}`, select: 'uploader' });
-     if (!existing || !existing.length) return res.status(404).json({ error: 'File not found' });
-     if (!req.user.isAdmin && existing[0].uploader !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-     await supabaseQuery('files', 'DELETE', null, { id: `eq.${req.params.id}` });
-     return res.json({ success: true });
-  }
+app.delete('/api/files/:id', requireAuth, (req, res) => {
   const file = state.files.find(f => f.id === req.params.id);
   if (!file) return res.status(404).json({ error: 'File not found' });
-  if (!req.user.isAdmin && file.uploader !== req.user.username && file.uploadedBy !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user.isAdmin && file.uploadedBy !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
   state.files = state.files.filter(f => f.id !== req.params.id);
-  await saveData(state);
+  saveData(state);
   res.json({ success: true });
-}));
+});
 
 // --- AUTH & USERS API ---
 app.post('/api/login', loginLimiter, wrap(async (req, res) => {
@@ -1435,24 +1232,20 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
     return res.status(400).json({ error: 'username and password are required' });
   }
   const normalizedUsername = String(username).trim();
-  if (ADMIN_USERNAME && normalizedUsername === ADMIN_USERNAME) {
-    if (!ADMIN_PASSWORD || !ADMIN_PASSWORD.startsWith('$2')) {
-      console.error('[security] ADMIN_PASSWORD is not set or is not a bcrypt hash. Admin login rejected. Generate one with: node -e "require(\'bcryptjs\').hash(\'yourpassword\',12).then(console.log)"');
-      return res.status(503).json({ error: 'Admin login is not available. Check server configuration.' });
-    }
-    const valid = await bcrypt.compare(password, ADMIN_PASSWORD);
-    if (!valid) return res.status(401).json({ error: 'Invalid admin credentials' });
+  if (ADMIN_USERNAME && ADMIN_PASSWORD && normalizedUsername === ADMIN_USERNAME) {
+    const valid = ADMIN_PASSWORD.startsWith('$2')
+      ? await bcrypt.compare(password, ADMIN_PASSWORD)
+      : password === ADMIN_PASSWORD;
+    if (!valid) return res.status(401).json({ error: 'Invalid admin password' });
     let adminUser = findUser(normalizedUsername);
     if (!adminUser) adminUser = createUser(normalizedUsername);
     adminUser.online = true;
     await saveData(state);
-    io.to('group').emit('users', safeUsers());
-    const adminToken = issueToken(adminUser.username, true);
-    res.cookie('classAppToken', adminToken, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    io.emit('users', safeUsers());
     return res.json({
       user: safeUsers().find((item) => item.username === adminUser.username),
       isAdmin: true,
-      token: adminToken,
+      token: issueToken(adminUser.username, true),
     });
   }
 
@@ -1484,10 +1277,9 @@ app.post('/api/login', loginLimiter, wrap(async (req, res) => {
   else syncStateUserFromProfile(user, effectiveProfile, effectiveProfile.password_hash);
   user.online = true;
   await saveData(state);
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
-  res.cookie('classAppToken', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
   res.json({
     user: safeUsers().find((item) => item.username === user.username),
     isAdmin: isAdminUser,
@@ -1534,7 +1326,7 @@ app.post('/api/password-setup', loginLimiter, wrap(async (req, res) => {
   user.passwordHash = passwordHash;
   user.online = true;
   await saveData(state);
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
 
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const sessionToken = issueToken(user.username, isAdminUser);
@@ -1555,24 +1347,13 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
   const normalizedUsername = String(username).trim();
-  if (ADMIN_USERNAME && normalizedUsername.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
+  if (ADMIN_USERNAME && normalizedUsername === ADMIN_USERNAME) {
     return res.status(409).json({ error: 'That username is reserved.' });
   }
   const passwordHash = await hashPassword(password);
   const authProfile = await resolveAuthProfile(normalizedUsername);
-  // Block registration if the username already exists in any form (with or without password)
-  // to prevent profile hijacking of pre-seeded accounts
-  if (authProfile) {
-    if (authProfile.password_hash) {
-      return res.status(409).json({ error: 'Username already exists. Please sign in instead.' });
-    }
-    // Profile exists but has no password — this is a legacy pre-seeded account.
-    // Require the password-setup flow rather than allowing registration to overwrite it.
-    return res.status(409).json({
-      error: 'An account with that username already exists. Use the password setup flow to claim it.',
-      code: 'ACCOUNT_EXISTS_NO_PASSWORD',
-      setupToken: issueLegacyPasswordSetupToken(normalizedUsername),
-    });
+  if (authProfile?.password_hash) {
+    return res.status(409).json({ error: 'Username already exists. Please sign in instead.' });
   }
   const finalProfile = await ensureAuthProfile(normalizedUsername, passwordHash, {
     display_name: normalizedUsername,
@@ -1585,10 +1366,9 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
   user.passwordHash = passwordHash;
   user.online = true;
   await saveData(state);
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
   const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
   const token = issueToken(user.username, isAdminUser);
-  res.cookie('classAppToken', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 });
   res.json({
     user: safeUsers().find((item) => item.username === user.username),
     isAdmin: isAdminUser,
@@ -1598,151 +1378,24 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
 }));
 
 app.get('/api/users', requireAuth, wrap(async (req, res) => {
-  let supabaseRows = [];
   try {
-    supabaseRows = await fetchSupabasePublicProfiles();
+    const rows = await fetchSupabasePublicProfiles();
+    if (rows.length) return res.json(safeDirectoryUsersFromProfiles(rows));
   } catch (error) {
-    console.warn('[users] Supabase fetch failed, using local state only:', error.message);
+    console.warn('[users] Falling back to local state:', error.message);
   }
-
-  // Merge: include local-state users whose username is not already in Supabase.
-  // These are legacy/past users who registered before the Supabase profile sync.
-  // They are shown as offline (online: false) since we cannot verify their session.
-  const supabaseSet = new Set(supabaseRows.map(r => (r.username || '').toLowerCase()));
-  const localOnlyRows = safeUsers()
-    .filter(u => u.username && !supabaseSet.has(u.username.toLowerCase()))
-    .map(u => ({
-      username: u.username,
-      display_name: u.displayName || u.username,
-      birthday: u.birthday || 'Unknown',
-      address: u.address || 'Unknown',
-      github: u.github || '',
-      email: u.email || '',
-      note: u.note || '',
-      online: false,
-      avatar: u.avatar || '',
-      last_seen_at: u.last_seen_at || null,
-      username_last_changed_at: u.username_last_changed_at || null,
-      updated_at: null,
-    }));
-
-  const allRows = [...supabaseRows, ...localOnlyRows];
-  if (!allRows.length) return res.json([]);
-  return res.json(safeDirectoryUsersFromProfiles(allRows));
+  res.json(safeDirectoryUsersFromProfiles(safeUsers()));
 }));
 
-app.put('/api/users/:username', ...requireSelf('username'), wrap(async (req, res) => {
+app.put('/api/users/:username', ...requireSelf('username'), async (req, res) => {
   const username = req.params.username;
   const user = findUser(username);
   if (!user) return res.status(404).json({ error: 'User not found' });
   applyAllowedProfileFields(user, req.body || {});
   await saveData(state);
-  // Sync allowed profile fields to Supabase
-  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    const sbPayload = {};
-    for (const field of ALLOWED_PROFILE_FIELDS) {
-      if ((req.body || {})[field] !== undefined) {
-        // Map camelCase fields to Supabase snake_case
-        sbPayload[field === 'displayName' ? 'display_name' : field] = (req.body || {})[field];
-      }
-    }
-    if (Object.keys(sbPayload).length > 0) {
-      updateSupabaseProfile(username, sbPayload, { allowCreate: false })
-        .catch((err) => console.warn('[users PUT] Supabase sync failed:', err.message));
-    }
-  }
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
   res.json(user);
-}));
-
-app.put('/api/users/:username/profile', ...requireSelf('username'), wrap(async (req, res) => {
-  const oldUsername = req.params.username;
-  const payload = req.body || {};
-  const newUsername = payload.username ? String(payload.username).trim() : oldUsername;
-  const usernameChanged = newUsername.toLowerCase() !== oldUsername.toLowerCase();
-
-  if (usernameChanged) {
-    const formatError = validateUsernameFormat(newUsername);
-    if (formatError) return res.status(400).json({ error: formatError });
-
-    const existing = await resolveAuthProfile(newUsername);
-    if (existing) return res.status(409).json({ error: 'That username is already taken.' });
-
-    const currentProfile = await resolveAuthProfile(oldUsername);
-    if (currentProfile?.username_last_changed_at) {
-        const nextChange = new Date(new Date(currentProfile.username_last_changed_at).getTime() + 3 * 24 * 60 * 60 * 1000);
-        if (Date.now() < nextChange.getTime()) {
-            return res.status(403).json({ error: 'You cannot change your username yet.' });
-        }
-    }
-  }
-
-  const sbPayload = {
-    display_name: payload.display_name || payload.displayName || newUsername,
-    birthday: payload.birthday,
-    address: payload.address,
-    github: payload.github,
-    email: payload.email,
-    note: payload.note,
-    avatar: payload.avatar
-  };
-
-  if (usernameChanged) {
-    sbPayload.username = newUsername;
-    sbPayload.username_last_changed_at = new Date().toISOString();
-  }
-
-  const updated = await updateSupabaseProfile(oldUsername, sbPayload, { allowCreate: false });
-  if (!updated) return res.status(500).json({ error: 'Failed to update profile.' });
-
-  if (usernameChanged && SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    const patch = async (table, col, val, data) => {
-      const url = new URL(`/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}`, SUPABASE_URL);
-      await fetch(url, { method: 'PATCH', headers: getSupabaseHeaders({ 'Content-Type': 'application/json' }, { preferService: true }), body: JSON.stringify(data) });
-    };
-    await patch('folders', 'owner', oldUsername, { owner: newUsername });
-    await patch('files', 'uploader', oldUsername, { uploader: newUsername });
-    await patch('messages', 'sender', oldUsername, { sender: newUsername });
-    await patch('messages', 'target', oldUsername, { target: newUsername });
-    await patch('calendar_notes', 'updated_by', oldUsername, { updated_by: newUsername });
-    await patch('shared_ai_outputs', 'sharer', oldUsername, { sharer: newUsername });
-    await patch('shared_announcements', 'sharer', oldUsername, { sharer: newUsername });
-
-    const url = new URL(`/rest/v1/folders?select=id,permissions`, SUPABASE_URL);
-    const fRes = await fetch(url, { headers: getSupabaseHeaders({}, { preferService: true }) });
-    if (fRes.ok) {
-      const folders = await fRes.json();
-      for (const f of folders) {
-        let changed = false;
-        let p;
-        try { p = typeof f.permissions === 'string' ? JSON.parse(f.permissions) : f.permissions; } catch(e) { p = null; }
-        if (p) {
-          if (p.viewers && p.viewers.includes(oldUsername)) { p.viewers = p.viewers.map(v => v === oldUsername ? newUsername : v); changed = true; }
-          if (p.editors && p.editors.includes(oldUsername)) { p.editors = p.editors.map(e => e === oldUsername ? newUsername : e); changed = true; }
-          if (changed) await patch('folders', 'id', f.id, { permissions: p });
-        }
-      }
-    }
-  }
-
-  let user = findUser(oldUsername);
-  if (user) {
-    user.username = newUsername;
-    user.displayName = sbPayload.display_name;
-    user.birthday = sbPayload.birthday;
-    user.address = sbPayload.address;
-    user.github = sbPayload.github;
-    user.email = sbPayload.email;
-    user.note = sbPayload.note;
-    user.avatar = sbPayload.avatar;
-    if (usernameChanged) user.username_last_changed_at = sbPayload.username_last_changed_at;
-    await saveData(state);
-    io.to('group').emit('users', safeUsers());
-  }
-
-  const token = usernameChanged ? issueToken(newUsername, req.user.isAdmin) : undefined;
-  res.json({ profile: sanitizeAuthProfile(updated), token, usernameChanged });
-}));
+});
 
 app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
   const username = req.params.username;
@@ -1750,25 +1403,9 @@ app.delete('/api/users/:username', ...requireSelf('username'), (req, res) => {
   state.users = state.users.filter(u => u.username !== username);
   if (state.users.length === initialLength) return res.status(404).json({ error: 'User not found' });
   saveData(state);
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
   res.json({ success: true });
 });
-
-app.delete('/api/users/:username/admin', requireAuth, requireAdmin, wrap(async (req, res) => {
-  const username = req.params.username;
-  state.users = state.users.filter(u => u.username !== username);
-  await saveData(state);
-  io.to('group').emit('users', safeUsers());
-
-  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    const url = new URL(`/rest/v1/profiles?username=eq.${encodeURIComponent(username)}`, SUPABASE_URL);
-    await fetch(url, {
-      method: 'DELETE',
-      headers: getSupabaseHeaders({}, { preferService: true })
-    });
-  }
-  res.json({ success: true });
-}));
 
 // --- CHAT & FILE UPLOAD API ---
 app.post('/api/session/presence', requireAuth, wrap(async (req, res) => {
@@ -1788,67 +1425,8 @@ app.post('/api/session/presence', requireAuth, wrap(async (req, res) => {
   } catch (error) {
     console.warn('[presence] Supabase profile sync failed:', error.message);
   }
-  io.to('group').emit('users', safeUsers());
+  io.emit('users', safeUsers());
   res.json({ ok: true, online, last_seen_at: timestamp });
-}));
-
-// Phase 1.2: Session Validation — Server-Driven Admin Status
-// Returns authenticated user info + admin status from Supabase admins table
-app.get('/api/session/validate', requireAuth, wrap(async (req, res) => {
-  try {
-    const username = req.user.username;
-    const isAdminUser = req.user.isAdmin || false; // req.user.isAdmin set by requireAuth middleware
-
-    // Fetch current user profile for fresh data
-    const user = findUser(username);
-    const profile = user ? {
-      username: user.username,
-      display_name: user.display_name || user.username,
-      avatar: user.avatar,
-      online: user.online,
-      last_seen_at: user.last_seen_at,
-      isAdmin: isAdminUser
-    } : null;
-
-    if (!profile) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    return res.json({
-      username: profile.username,
-      display_name: profile.display_name,
-      avatar: profile.avatar,
-      online: profile.online,
-      last_seen_at: profile.last_seen_at,
-      isAdmin: isAdminUser,
-      validated_at: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('[session/validate]', error);
-    res.status(500).json({ error: 'Session validation failed' });
-  }
-}));
-
-// Phase 3.1: Token refresh — re-issue a fresh 7-day token for an already-authenticated user.
-// Called by the client when the current token is within 24 hours of expiry.
-app.post('/api/session/refresh', requireAuth, wrap(async (req, res) => {
-  try {
-    const username = req.user.username;
-    const user = findUser(username);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const isAdminUser = Boolean(ADMIN_USERNAME && user.username === ADMIN_USERNAME);
-    const newToken = issueToken(username, isAdminUser);
-    res.cookie('classAppToken', newToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    return res.json({ token: newToken, refreshed_at: new Date().toISOString() });
-  } catch (error) {
-    console.error('[session/refresh]', error);
-    res.status(500).json({ error: 'Token refresh failed' });
-  }
 }));
 
 app.get('/api/messages', requireAuth, wrap((req, res) => {
@@ -1872,23 +1450,11 @@ app.get('/api/messages', requireAuth, wrap((req, res) => {
   return res.json(sliceHistory(getHistory(chat)));
 }));
 
-app.post('/api/messages', requireAuth, messageLimiter, wrap(async (req, res) => {
+app.post('/api/messages', requireAuth, wrap(async (req, res) => {
   const { chat, text, target, attachment } = req.body || {};
   const sender = req.user.username;
   if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });
-  
-  let dbMessage = null;
-  if (SUPABASE_URL) {
-    const row = { chat_type: chat, target: chat === 'private' ? target : null, sender, text: text || '', attachment: attachment || null };
-    try {
-       const inserted = await supabaseQuery('messages', 'POST', [row]);
-       dbMessage = inserted[0];
-    } catch(e) {
-       return res.status(500).json({ error: e.message });
-    }
-  }
-
-  const message = dbMessage || {
+  const message = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     sender,
     text: text || '',
@@ -1919,7 +1485,7 @@ app.post('/api/messages', requireAuth, messageLimiter, wrap(async (req, res) => 
   res.json(message);
 }));
 
-// â"€â"€ Compression helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Compression helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const IMAGE_EXTS = new Set(['.jpg','.jpeg','.png','.gif','.webp']);
 const VIDEO_EXTS = new Set(['.mp4','.mov','.webm','.avi','.mkv','.m4v']);
 const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
@@ -1992,8 +1558,8 @@ async function compressImage(buffer, ext) {
 }
 
 
-// â"€â"€ Upload endpoint (compress â†' R2) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-app.post('/api/upload', requireAuth, uploadLimiter, upload.single('file'), async (req, res) => {
+// â”€â”€ Upload endpoint (compress â†’ R2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+app.post('/api/upload', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File required' });
 
   const ext      = path.extname(req.file.originalname).toLowerCase();
@@ -2020,7 +1586,7 @@ app.post('/api/upload', requireAuth, uploadLimiter, upload.single('file'), async
     if (isImage) {
       finalBuffer = await compressImage(req.file.buffer, ext);
     }
-    // Videos: skip re-encoding â€" phone videos are already H.264; FFmpeg pass is too slow
+    // Videos: skip re-encoding â€” phone videos are already H.264; FFmpeg pass is too slow
 
     await r2.send(new PutObjectCommand({
       Bucket:      R2_BUCKET,
@@ -2081,25 +1647,6 @@ const JAVA_COMPILE_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_COMPILE_TIMEOUT
 const JAVA_RUN_TIMEOUT_MS = Number(process.env.CODE_LAB_JAVA_RUN_TIMEOUT_MS || process.env.CODE_LAB_JAVA_TIMEOUT_MS || 8000);
 const JAVAC_BIN = process.env.JAVAC_BIN || 'javac';
 const JAVA_BIN = process.env.JAVA_BIN || 'java';
-const PYTHON_BIN = process.env.PYTHON_BIN || 'python3';
-const PYTHON_TIMEOUT_MS = Number(process.env.CODE_LAB_PYTHON_TIMEOUT_MS || 8000);
-/* eslint-disable security/detect-unsafe-regex */
-const PYTHON_BLOCKLIST = [
-  /\bimport\s+os\b/,
-  /\bimport\s+subprocess\b/,
-  /\bimport\s+sys\b/,
-  /\b__import__\b/,
-  /\bopen\s*\(/,
-  /\bexec\s*\(/,
-  /\beval\s*\(/,
-  /\bcompile\s*\(/,
-  /\bgetattr\s*\(/,
-  /\bsetattr\s*\(/,
-  /\bsocket\b/,
-  /\burllib\b/,
-  /\brequests\b/,
-];
-/* eslint-enable security/detect-unsafe-regex */
 /* eslint-disable security/detect-unsafe-regex */
 const JAVA_BLOCKLIST = [
   /Runtime\.getRuntime/i,
@@ -2369,7 +1916,7 @@ async function runJavaSource(code) {
   }
 }
 
-app.post('/api/code-lab/run-java', requireAuth, async (req, res) => {
+app.post('/api/code-lab/run-java', async (req, res) => {
   try {
     res.json(await runJavaSource(req.body?.code || ''));
   } catch (error) {
@@ -2377,7 +1924,7 @@ app.post('/api/code-lab/run-java', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/code-lab/java-status', requireAuth, async (req, res) => {
+app.get('/api/code-lab/java-status', async (req, res) => {
   try {
     res.json(await checkJavaToolchain(true));
   } catch (error) {
@@ -2420,7 +1967,7 @@ function validateDailyChallenge(challengeId, files = {}) {
   return 'Unknown daily challenge.';
 }
 
-app.post('/api/code-lab/validate', requireAuth, async (req, res) => {
+app.post('/api/code-lab/validate', async (req, res) => {
   try {
     const challengeId = String(req.body?.challengeId || '');
     const files = req.body?.files || {};
@@ -2436,68 +1983,9 @@ app.post('/api/code-lab/validate', requireAuth, async (req, res) => {
   }
 });
 
-async function runPythonSource(code) {
-  if (!code || !code.trim()) return { ok: false, error: 'Enter Python code before running.' };
-  if (PYTHON_BLOCKLIST.some((p) => p.test(code))) {
-    return { ok: false, error: 'This Python sandbox blocks file I/O, network, os, subprocess, eval, exec, and related APIs.' };
-  }
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'class-app-py-'));
-  const file = path.join(dir, 'main.py');
-  try {
-    fs.writeFileSync(file, code);
-    const result = await runCommand(PYTHON_BIN, ['-u', file], {
-      cwd: dir,
-      timeoutMs: PYTHON_TIMEOUT_MS,
-      phase: 'running Python',
-    });
-    if (result.code !== 0) {
-      const errMsg = (result.stderr || result.stdout || 'Python execution failed.').slice(0, 2000);
-      return { ok: false, error: errMsg };
-    }
-    return { ok: true, output: (result.stdout || '[No output]').slice(0, 8000) };
-  } finally {
-    fs.rm(dir, { recursive: true, force: true }, () => {});
-  }
-}
-
-app.post('/api/code-lab/run-python', requireAuth, async (req, res) => {
-  try {
-    res.json(await runPythonSource(req.body?.code || ''));
-  } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-app.get('/api/code-lab/python-status', requireAuth, async (req, res) => {
-  try {
-    const result = await runCommand(PYTHON_BIN, ['--version'], { timeoutMs: 5000, phase: 'checking python' });
-    const available = result.code === 0;
-    res.json({
-      available,
-      version: (result.stdout || result.stderr || '').trim(),
-      message: available ? 'Python is available.' : 'Python 3 is not installed on this server.',
-    });
-  } catch (error) {
-    res.status(500).json({ available: false, message: error.message });
-  }
-});
-
-app.put('/api/messages/:id', requireAuth, wrap(async (req, res) => {
+app.put('/api/messages/:id', requireAuth, (req, res) => {
   const { text, pinned } = req.body;
   const id = req.params.id;
-  
-  if (SUPABASE_URL) {
-     const existing = await supabaseQuery('messages', 'GET', null, { id: `eq.${id}`, select: 'sender' });
-     if (!existing || !existing.length) return res.status(404).json({ error: 'Message not found' });
-     if (!req.user.isAdmin && existing[0].sender !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-     const updatePayload = {};
-     if (typeof text === 'string') { updatePayload.text = text; updatePayload.edited = true; }
-     if (typeof pinned === 'boolean') updatePayload.pinned = pinned;
-     const updated = await supabaseQuery('messages', 'PATCH', updatePayload, { id: `eq.${id}` });
-     if (updated && updated.length) io.to('group').emit('messageUpdated', updated[0]);
-     return res.json(updated[0]);
-  }
-
   const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
   Object.values(state.chatHistory.private).forEach((room) => room.forEach((message) => allMessages.push(message)));
   const message = allMessages.find((msg) => msg.id === id);
@@ -2507,21 +1995,13 @@ app.put('/api/messages/:id', requireAuth, wrap(async (req, res) => {
   }
   if (typeof text === 'string') { message.text = text; message.edited = true; }
   if (typeof pinned === 'boolean') message.pinned = pinned;
-  await saveData(state);
-  io.to('group').emit('messageUpdated', message);
+  saveData(state);
+  io.emit('messageUpdated', message);
   res.json(message);
-}));
+});
 
-app.delete('/api/messages/:id', requireAuth, wrap(async (req, res) => {
+app.delete('/api/messages/:id', requireAuth, (req, res) => {
   const id = req.params.id;
-  if (SUPABASE_URL) {
-     const existing = await supabaseQuery('messages', 'GET', null, { id: `eq.${id}`, select: 'sender' });
-     if (!existing || !existing.length) return res.status(404).json({ error: 'Message not found' });
-     if (!req.user.isAdmin && existing[0].sender !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-     await supabaseQuery('messages', 'DELETE', null, { id: `eq.${id}` });
-     io.to('group').emit('messageDeleted', { id });
-     return res.json({ success: true });
-  }
   const allMessages = [...state.chatHistory.group, ...state.chatHistory.todo];
   Object.values(state.chatHistory.private).forEach((room) => allMessages.push(...room));
   const message = allMessages.find((msg) => msg.id === id);
@@ -2533,253 +2013,19 @@ app.delete('/api/messages/:id', requireAuth, wrap(async (req, res) => {
   removeFrom(state.chatHistory.group);
   removeFrom(state.chatHistory.todo);
   Object.values(state.chatHistory.private).forEach(removeFrom);
-  await saveData(state);
-  io.to('group').emit('messageDeleted', { id });
+  saveData(state);
+  io.emit('messageDeleted', { id });
   res.json({ success: true });
-}));
+});
 
-// -- Shared Boards API (Announcements, AI Outputs, Reviewers) ----------------
-app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
-  const { title, body, schedule, source_type, date_key, date_label } = req.body || {};
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const inserted = await supabaseQuery('shared_announcements', 'POST', [{
-      sharer: req.user.username,
-      title: title || '',
-      body: body || '',
-      schedule: schedule || null,
-      source_type: source_type || null,
-      date_key: date_key || null,
-      date_label: date_label || null
-    }]);
-    return res.json(inserted[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.delete('/api/shared-announcements/:id', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const existing = await supabaseQuery('shared_announcements', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
-    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
-    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-    await supabaseQuery('shared_announcements', 'DELETE', null, { id: `eq.${req.params.id}` });
-    return res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.post('/api/shared-ai-outputs', requireAuth, wrap(async (req, res) => {
-  const { provider, prompt, output } = req.body || {};
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const inserted = await supabaseQuery('shared_ai_outputs', 'POST', [{ 
-      sharer: req.user.username, 
-      provider: provider || 'AI', 
-      prompt: prompt || '', 
-      output: output || '' 
-    }]);
-    return res.json(inserted[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.delete('/api/shared-ai-outputs/:id', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const existing = await supabaseQuery('shared_ai_outputs', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
-    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
-    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-    await supabaseQuery('shared_ai_outputs', 'DELETE', null, { id: `eq.${req.params.id}` });
-    return res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.post('/api/reviewers', requireAuth, wrap(async (req, res) => {
-  const record = req.body || {};
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    record.user_id = req.user.username; // Enforce user identity
-    if (!record.contributor_name) record.contributor_name = req.user.username;
-    const inserted = await supabaseQuery('reviewers', 'POST', [record]);
-    return res.json(inserted[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.delete('/api/reviewers/:id', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const existing = await supabaseQuery('reviewers', 'GET', null, { id: `eq.${req.params.id}`, select: 'user_id' });
-    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
-    if (!req.user.isAdmin && existing[0].user_id !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-    await supabaseQuery('reviewers', 'DELETE', null, { id: `eq.${req.params.id}` });
-    return res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-// -- Calendar Notes API --------------------------------------------------
-app.get('/api/calendar-notes', requireAuth, wrap(async (req, res) => {
-  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
-    try {
-      const rows = await supabaseQuery('calendar_notes', 'GET', null, { select: '*', order: 'date_key.asc' });
-      return res.json(rows || []);
-    } catch (err) { console.warn('[calendar-notes GET] Supabase failed:', err.message); }
-  }
-  res.json([]);
-}));
-
-app.post('/api/calendar-notes', requireAuth, wrap(async (req, res) => {
-  const { date_key, note } = req.body || {};
-  if (!date_key) return res.status(400).json({ error: 'date_key is required' });
-  if (typeof note !== 'string') return res.status(400).json({ error: 'note must be a string' });
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Calendar notes require Supabase' });
-  try {
-    if (note === '') {
-      await supabaseQuery('calendar_notes', 'DELETE', null, { date_key: `eq.${date_key}` });
-      return res.json({ ok: true, deleted: true });
-    }
-    const url = new URL('/rest/v1/calendar_notes', SUPABASE_URL);
-    const headers = getSupabaseHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=representation' }, { preferService: true });
-    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ date_key, note, updated_by: req.user.username, updated_at: new Date().toISOString() }) });
-    if (!response.ok) { const t = await response.text(); return res.status(500).json({ error: t.slice(0, 120) }); }
-    const rows = await response.json();
-    return res.json(Array.isArray(rows) ? rows[0] : rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-// -- Summary History API -------------------------------------------------
-app.get('/api/summary-history', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.json([]);
-  try {
-    const rows = await supabaseQuery('summary_history', 'GET', null, { select: '*', username: `eq.${req.user.username}`, order: 'created_at.desc', limit: '20' });
-    return res.json(rows || []);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.post('/api/summary-history', requireAuth, wrap(async (req, res) => {
-  const { source_name, summary_text } = req.body || {};
-  if (!summary_text) return res.status(400).json({ error: 'summary_text is required' });
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const inserted = await supabaseQuery('summary_history', 'POST', [{ username: req.user.username, source_name: source_name || '', summary_text }]);
-    return res.json(inserted[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.delete('/api/summary-history/:id', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const existing = await supabaseQuery('summary_history', 'GET', null, { id: `eq.${req.params.id}`, select: 'username' });
-    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
-    if (!req.user.isAdmin && existing[0].username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-    await supabaseQuery('summary_history', 'DELETE', null, { id: `eq.${req.params.id}` });
-    return res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-// -- Quiz History API ----------------------------------------------------
-app.get('/api/quiz-history', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.json([]);
-  try {
-    const rows = await supabaseQuery('quiz_history', 'GET', null, { select: '*', username: `eq.${req.user.username}`, order: 'taken_at.desc', limit: '50' });
-    return res.json(rows || []);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.post('/api/quiz-history', requireAuth, wrap(async (req, res) => {
-  const { source_name, score, total, questions } = req.body || {};
-  if (typeof score !== 'number' || typeof total !== 'number') return res.status(400).json({ error: 'score and total must be numbers' });
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const record = { username: req.user.username, source_name: source_name || '', score, total };
-    if (Array.isArray(questions) && questions.length) record.questions_json = questions;
-    const inserted = await supabaseQuery('quiz_history', 'POST', [record]);
-    return res.json(inserted[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-app.delete('/api/quiz-history/:id', requireAuth, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
-  try {
-    const existing = await supabaseQuery('quiz_history', 'GET', null, { id: `eq.${req.params.id}`, select: 'username' });
-    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
-    if (!req.user.isAdmin && existing[0].username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
-    await supabaseQuery('quiz_history', 'DELETE', null, { id: `eq.${req.params.id}` });
-    return res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-}));
-
-/* ── Subjects (year-level subject cards) ─────────────────────── */
-
-// GET /api/subjects — public read, no auth required (subjects are not secret)
-app.get('/api/subjects', wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
-    return res.json([]);
-  }
-  try {
-    const rows = await supabaseQuery('subjects', 'GET', null, { select: '*', order: 'created_at.asc' });
-    res.json(rows || []);
-  } catch (err) {
-    console.warn('[subjects GET] Supabase error:', err.message);
-    res.json([]);
-  }
-}));
-
-// POST /api/subjects — admin only
-app.post('/api/subjects', requireAuth, requireAdmin, wrap(async (req, res) => {
-  const VALID_GRID_KEYS = new Set(['first','second','y2first','y2second','y3first','y3second','y4first','y4second']);
-  const { grid_key, code, teacher, icon } = req.body || {};
-
-  if (!grid_key || !VALID_GRID_KEYS.has(String(grid_key))) return res.status(400).json({ error: 'Invalid grid_key.' });
-  if (!code || typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Subject code is required.' });
-  if (code.trim().length > 60) return res.status(400).json({ error: 'Subject code too long (max 60 chars).' });
-  if (/[<>"'`]/.test(code) || /[<>"'`]/.test(teacher || '')) return res.status(400).json({ error: 'Subject name contains unsafe characters.' });
-
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
-    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
-  }
-
-  const subject = {
-    grid_key: grid_key.trim(),
-    code: code.trim(),
-    teacher: (teacher || '').trim().slice(0, 80),
-    icon: (icon || '📚').slice(0, 4),
-    created_by: req.user.username,
-  };
-
-  try {
-    const inserted = await supabaseQuery('subjects', 'POST', [subject]);
-    res.json(inserted[0]);
-  } catch (err) {
-    if (err.message.includes('subjects_grid_code_unique') || err.message.includes('duplicate key')) {
-      return res.status(409).json({ error: 'A subject with this code already exists in this semester.' });
-    }
-    console.error('[subjects POST] error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-}));
-
-// DELETE /api/subjects/:id — admin only
-app.delete('/api/subjects/:id', requireAuth, requireAdmin, wrap(async (req, res) => {
-  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
-    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
-  }
-  const id = parseInt(req.params.id, 10);
-  if (!id || isNaN(id)) return res.status(400).json({ error: 'Invalid subject id.' });
-  try {
-    await supabaseQuery('subjects', 'DELETE', null, { id: `eq.${id}` });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[subjects DELETE] error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-}));
-
-/* â"€â"€ File Summarizer Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* â”€â”€ File Summarizer Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;
   const hasText = !!(req.body && req.body.text);
   const ctype   = (req.headers['content-type'] || '').split(';')[0].trim();
   console.log(`[FileSummarizer] HIT | hasFile:${hasFile} hasText:${hasText} ctype:"${ctype}"`);
 
-  // â"€â"€ PATH 1: File upload â†' extract text â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // â”€â”€ PATH 1: File upload â†’ extract text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (hasFile) {
     const fileName  = req.file.originalname || 'unknown';
     const fileSize  = req.file.size || 0;
@@ -2790,7 +2036,7 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     console.log(`[FileSummarizer] File: "${fileName}" | ${(fileSize/1024).toFixed(1)} KB | mime: ${mimeType} | buffer: ${bufferLen} bytes | ext: "${ext}"`);
 
     if (!req.file.buffer || bufferLen === 0) {
-      console.error('[FileSummarizer] Buffer missing or empty â€" multer may not have received the file');
+      console.error('[FileSummarizer] Buffer missing or empty â€” multer may not have received the file');
       return res.status(400).json({ error: 'File data was not received by the server. Please try again.' });
     }
 
@@ -2830,11 +2076,11 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
 
       const trimmed = extractedText.trim();
       if (!trimmed) {
-        console.log(`[FileSummarizer] No text found in "${fileName}" â€" possibly image-based or empty`);
+        console.log(`[FileSummarizer] No text found in "${fileName}" â€” possibly image-based or empty`);
         return res.status(400).json({ error: 'No readable text found in this file. It may be image-based, empty, or password-protected.' });
       }
 
-      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" â†' ${trimmed.length} chars`);
+      console.log(`[FileSummarizer] EXTRACTION SUCCESS: "${fileName}" â†’ ${trimmed.length} chars`);
       return res.json({ text: trimmed.slice(0, 50000), type: ext });
 
     } catch (parseErr) {
@@ -2844,7 +2090,7 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     }
   }
 
-  // â"€â"€ PATH 2: Text â†' AI summary â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // â”€â”€ PATH 2: Text â†’ AI summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (hasText) {
     const { text, type, customPrompt } = req.body;
     console.log(`[FileSummarizer] Summarize | type: "${type}" | text: ${text ? text.length : 0} chars`);
@@ -2873,11 +2119,11 @@ app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), a
     }
   }
 
-  console.log('[FileSummarizer] Invalid request â€" no file, no text body');
+  console.log('[FileSummarizer] Invalid request â€” no file, no text body');
   return res.status(400).json({ error: 'Invalid request. Please upload a file to summarize.' });
 });
 
-/* â"€â"€ Quiz Generation Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* â”€â”€ Quiz Generation Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { text, quizType, count } = req.body || {};
   if (!text || !quizType || !count) {
@@ -2885,7 +2131,7 @@ app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) =
   }
 
   const n = parseInt(count);
-  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1â€"100.' });
+  if (!n || n < 1 || n > 100) return res.status(400).json({ error: 'count must be 1â€“100.' });
 
   const typeDescriptions = {
     'identification': `${n} identification/fill-in-the-blank questions. For each question, ask students to identify a term, person, place, or concept. The answer should be a short word or phrase.`,
@@ -2898,7 +2144,7 @@ app.post('/api/quiz', requireAuth, aiLimiter, express.json(), async (req, res) =
 
   const prompt = `You are a quiz generator. Generate ${typeDesc} based on the provided text.
 
-IMPORTANT: Return ONLY valid JSON â€" no explanation, no markdown, no code fences. The JSON must follow this exact schema:
+IMPORTANT: Return ONLY valid JSON â€” no explanation, no markdown, no code fences. The JSON must follow this exact schema:
 {
   "questions": [
     {
@@ -2929,7 +2175,7 @@ Rules:
     const messages = [{ role: 'user', content: `${prompt}\n\nTEXT:\n${text.slice(0, 30000)}` }];
     const result = await tryWithFallback('gemini', messages);
 
-    // Extract JSON from AI response â€" strip any markdown/text wrapping
+    // Extract JSON from AI response â€” strip any markdown/text wrapping
     let raw = result.text.trim();
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI did not return valid JSON.');
@@ -2945,7 +2191,7 @@ Rules:
   }
 });
 
-/* â"€â"€ AI Endpoints â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* â”€â”€ AI Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/gemini', requireAuth, aiLimiter, express.json(), async (req, res) => {
   const { messages } = req.body || {};
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
@@ -2966,62 +2212,14 @@ app.post('/api/groq', requireAuth, aiLimiter, express.json(), async (req, res) =
   }
 });
 
-/* ── Tetris Leaderboard ───────────────────────────────── */
-// GET  - top 10 best scores (best-per-user aggregated on server)
-app.get('/api/tetris/leaderboard', async (req, res) => {
-  try {
-    const rows = await supabaseQuery('tetris_scores', 'GET', null, {
-      select: 'username,score,level,lines,played_at',
-      order: 'score.desc',
-      limit: '100',
-    });
-    if (!rows || !rows.length) return res.json([]);
-    const best = {};
-    for (const row of rows) {
-      if (!best[row.username] || row.score > best[row.username].score) {
-        best[row.username] = row;
-      }
-    }
-    const leaderboard = Object.values(best)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-    res.json(leaderboard);
-  } catch (e) {
-    console.warn('[tetris] leaderboard fetch failed:', e.message);
-    res.json([]);
-  }
-});
+/* â”€â”€ In-memory lobby player map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const lobbyPlayers = new Map(); // socketId â†’ { username, x, y, dir, color, bodyColor, score }
+const lobbyMoveThrottle = new Map(); // socketId â†’ last broadcast timestamp (50ms / 20fps)
 
-// POST - save a completed game score (auth required, never deletes existing data)
-app.post('/api/tetris/score', requireAuth, wrap(async (req, res) => {
-  const { score, level, lines } = req.body || {};
-  if (typeof score !== 'number' || score < 0) {
-    return res.status(400).json({ error: 'score must be a non-negative number' });
-  }
-  await supabaseQuery('tetris_scores', 'POST', {
-    username: req.user.username,
-    score:    Math.floor(score),
-    level:    Math.floor(level) || 1,
-    lines:    Math.floor(lines) || 0,
-  }, {});
-  res.json({ ok: true });
-}));
-
-/* â"€â"€ In-memory lobby player map â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-const lobbyPlayers = new Map(); // socketId â†' { username, x, y, dir, color, bodyColor, score }
-const lobbyMoveThrottle = new Map(); // socketId â†' last broadcast timestamp (50ms / 20fps)
-const lobbyChatThrottle = new Map(); // socketId â†' last chat timestamp (1 msg/sec)
-
-/* â"€â"€ Star Collector mini-game â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
-const lobbyScores = {}; // username â†' score (seeded from data.json; refreshed from Supabase async)
+/* â”€â”€ Star Collector mini-game â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const lobbyScores = {}; // username â†’ score
 Object.assign(lobbyScores, state.lobbyScores || {});
 state.lobbyScores = lobbyScores;
-// Refresh from Supabase if available (best-effort; non-blocking)
-if (SUPABASE_URL) {
-  supabaseQuery('lobby_scores', 'GET', null, { select: 'username,score' })
-    .then((rows) => { if (rows) rows.forEach((r) => { lobbyScores[r.username] = r.score; }); })
-    .catch(() => {});
-}
 let lobbyStar = null;
 
 function spawnStar() {
@@ -3057,7 +2255,7 @@ io.on('connection', (socket) => {
         existing.online = true;
         await saveData(state);
       }
-      io.to('group').emit('users', safeUsers());
+      io.emit('users', safeUsers());
     }
   });
 
@@ -3075,11 +2273,10 @@ io.on('connection', (socket) => {
   socket.on('sendMessage', async ({ chat, target, text, attachment }) => {
     const sender = socket.data.username;
     if (!sender || !chat) return;
-    const safeText = String(text || '').slice(0, 500);
     const message = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       sender,
-      text: safeText,
+      text: text || '',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       pinned: false,
       edited: false,
@@ -3113,10 +2310,10 @@ io.on('connection', (socket) => {
     if (!user) return;
     applyAllowedProfileFields(user, payload);
     await saveData(state);
-    io.to('group').emit('users', safeUsers());
+    io.emit('users', safeUsers());
   });
 
-  /* â"€â"€ Lobby events â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+  /* â”€â”€ Lobby events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   socket.on('lobby:join', (playerData) => {
     const player = {
       username: playerData.username || 'Unknown',
@@ -3165,9 +2362,6 @@ io.on('connection', (socket) => {
       socket.to('lobby').emit('lobby:player_joined', player);
     }
     if (!player || !text) return;
-    const nowChat = Date.now();
-    if (nowChat - (lobbyChatThrottle.get(socket.id) || 0) < 1000) return; // 1 msg/sec
-    lobbyChatThrottle.set(socket.id, nowChat);
     const msg = {
       username: player.username,
       text: String(text).slice(0, 100),
@@ -3183,12 +2377,7 @@ io.on('connection', (socket) => {
     lobbyStar = null; // remove immediately to prevent double-collect
     lobbyScores[player.username] = (lobbyScores[player.username] || 0) + 1;
     player.score = lobbyScores[player.username];
-    state.lobbyScores = lobbyScores;
     await saveData(state);
-    if (SUPABASE_URL) {
-      supabaseQuery('lobby_scores', 'POST', { username: player.username, score: player.score, updated_at: new Date().toISOString() }, {})
-        .catch((e) => console.warn('[lobby] Supabase score save failed:', e.message));
-    }
     io.to('lobby').emit('lobby:star_collected', {
       username: player.username,
       score: player.score,
@@ -3218,11 +2407,10 @@ io.on('connection', (socket) => {
       io.to('lobby').emit('lobby:player_left', { username: lobbyPlayer.username });
     }
     lobbyMoveThrottle.delete(socket.id);
-    lobbyChatThrottle.delete(socket.id);
   });
 });
 
-// â"€â"€ Global Express error handler â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Global Express error handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('[express error]', err.message || err);
@@ -3230,7 +2418,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// â"€â"€ Process-level safety nets â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Process-level safety nets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
@@ -3238,9 +2426,9 @@ process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
 });
 
-// â"€â"€ Graceful shutdown â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Graceful shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function shutdown(signal) {
-  console.log(`[shutdown] ${signal} received â€" closing server`);
+  console.log(`[shutdown] ${signal} received â€” closing server`);
   server.close(() => {
     console.log('[shutdown] HTTP server closed');
     process.exit(0);
@@ -3251,7 +2439,7 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
-// â"€â"€ Alarm check scheduler â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// â”€â”€ Alarm check scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ALARM_FUNCTION_URL = process.env.ALARM_FUNCTION_URL ||
   'https://rxpezjhsnqkjydurtayx.supabase.co/functions/v1/check-alarms';
 const ALARM_CHECK_SECRET = process.env.ALARM_CHECK_SECRET || '';
@@ -3271,9 +2459,9 @@ if (ALARM_CHECK_SECRET) {
       console.warn('[alarm-check] failed:', err.message);
     }
   }, 60_000);
-  console.log('[alarm-check] Scheduler started â€" checking every 60s');
+  console.log('[alarm-check] Scheduler started â€” checking every 60s');
 } else {
-  console.warn('[alarm-check] ALARM_CHECK_SECRET not set â€" scheduler disabled');
+  console.warn('[alarm-check] ALARM_CHECK_SECRET not set â€” scheduler disabled');
 }
 
 if (require.main === module) {

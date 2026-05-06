@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=51">
+<link rel="stylesheet" href="style.css?v=41">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -23,18 +23,17 @@
   <link rel="stylesheet" href="features/folders/folders.css?v=1">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
-<link rel="stylesheet" href="features/royale/royale.css?v=19">
-  <link rel="stylesheet" href="features/pacman/pacman.css?v=4">
+<link rel="stylesheet" href="features/royale/royale.css?v=18">
+  <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
-  <link rel="stylesheet" href="features/tetris/tetris.css?v=2">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
-  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
-  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=5">
-  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=8">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -378,17 +377,6 @@
         </div>
       </div>
 
-      <!-- History Section -->
-      <div class="fs-card fs-history-card">
-        <div class="fs-section-label">History</div>
-        <div class="fs-chip-row" style="margin-bottom: 12px;">
-          <button class="fs-chip selected" id="fs-tab-summary-history">Summaries</button>
-          <button class="fs-chip" id="fs-tab-quiz-history">Quizzes</button>
-        </div>
-        <div id="fs-summary-history-list" class="fs-history-list"></div>
-        <div id="fs-quiz-history-list" class="fs-history-list" style="display:none;"></div>
-      </div>
-
       <div class="fs-error" id="fs-error"></div>
     </div>
 
@@ -441,18 +429,12 @@
     <div class="page-header"><h1 class="page-title">First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-first"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('first')">＋ Add Subject</button>
-    </div>
   </div>
 
   <div class="page" id="page-second">
     <div class="page-header"><h1 class="page-title">Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-second"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('second')">＋ Add Subject</button>
-    </div>
   </div>
 
   <div class="page" id="page-events">
@@ -470,8 +452,8 @@
     <div class="chat-container">
       <div class="chat-sidebar">
         <div class="chat-list">
-          <div class="chat-item" data-chat="group" onclick="openChat('group')">Group Chat</div>
-          <div class="chat-item" data-chat="todo" onclick="openChat('todo')">To-Do Group</div>
+          <div class="chat-item" onclick="openChat('group')">Group Chat</div>
+          <div class="chat-item" onclick="openChat('todo')">To-Do Group</div>
           <div class="chat-section-label">Private Contacts</div>
           <div id="chat-user-list" class="chat-user-list"></div>
         </div>
@@ -595,88 +577,33 @@
     <div class="page-header"><h1 class="page-title">2nd Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y2first"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y2first')">＋ Add Subject</button>
-    </div>
   </div>
   <div class="page" id="page-y2second">
     <div class="page-header"><h1 class="page-title">2nd Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y2second"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y2second')">＋ Add Subject</button>
-    </div>
   </div>
   <!-- ── 3RD YEAR ──────────────────────────────────────── -->
   <div class="page" id="page-y3first">
     <div class="page-header"><h1 class="page-title">3rd Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y3first"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y3first')">＋ Add Subject</button>
-    </div>
   </div>
   <div class="page" id="page-y3second">
     <div class="page-header"><h1 class="page-title">3rd Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y3second"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y3second')">＋ Add Subject</button>
-    </div>
   </div>
   <!-- ── 4TH YEAR ──────────────────────────────────────── -->
   <div class="page" id="page-y4first">
     <div class="page-header"><h1 class="page-title">4th Year · First Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y4first"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y4first')">＋ Add Subject</button>
-    </div>
   </div>
   <div class="page" id="page-y4second">
     <div class="page-header"><h1 class="page-title">4th Year · Second Semester</h1></div>
     <div class="section-label">CLICK A SUBJECT TO VIEW FOLDERS</div>
     <div class="upload-grid" id="grid-y4second"></div>
-    <div class="admin-add-subject-wrap admin-only hidden">
-      <button class="admin-add-subject-btn" onclick="openAdminAddSubjectModal('y4second')">＋ Add Subject</button>
-    </div>
-  </div>
-
-  <!-- ── ADMIN ADD SUBJECT MODAL ───────────────────────── -->
-  <div class="add-subject-modal-overlay" id="add-subject-modal" role="dialog" aria-modal="true" aria-labelledby="add-subject-modal-title">
-    <div class="add-subject-modal-box">
-      <div class="add-subject-modal-title" id="add-subject-modal-title">🛡️ Add Subject (Admin)</div>
-      <div class="add-subject-field">
-        <label for="add-subject-year">Year &amp; Semester</label>
-        <select id="add-subject-year">
-          <option value="first">1st Year · First Semester</option>
-          <option value="second">1st Year · Second Semester</option>
-          <option value="y2first">2nd Year · First Semester</option>
-          <option value="y2second">2nd Year · Second Semester</option>
-          <option value="y3first">3rd Year · First Semester</option>
-          <option value="y3second">3rd Year · Second Semester</option>
-          <option value="y4first">4th Year · First Semester</option>
-          <option value="y4second">4th Year · Second Semester</option>
-        </select>
-      </div>
-      <div class="add-subject-field">
-        <label for="add-subject-code">Subject Code / Name <span style="color:#f87171">*</span></label>
-        <input id="add-subject-code" type="text" placeholder="e.g. ITCC 211" maxlength="60" autocomplete="off">
-      </div>
-      <div class="add-subject-field">
-        <label for="add-subject-teacher">Teacher (optional)</label>
-        <input id="add-subject-teacher" type="text" placeholder="e.g. Sir Juan dela Cruz" maxlength="80" autocomplete="off">
-      </div>
-      <div class="add-subject-field">
-        <label for="add-subject-icon">Icon (emoji, optional)</label>
-        <input id="add-subject-icon" type="text" placeholder="📚" maxlength="4" autocomplete="off">
-      </div>
-      <div class="add-subject-error" id="add-subject-error"></div>
-      <div class="add-subject-modal-actions">
-        <button class="add-subject-cancel-btn" onclick="closeAdminAddSubjectModal()">Cancel</button>
-        <button class="add-subject-save-btn" onclick="adminSaveNewSubject()">Add Subject</button>
-      </div>
-    </div>
   </div>
 
   <div class="page" id="page-music">
@@ -827,29 +754,6 @@
           <div class="game-card-shine"></div>
         </div>
 
-        <!-- Tetris -->
-        <div class="game-card" onclick="goToPage('tetris')">
-          <div class="game-thumb tetris-thumb">
-            <div class="tetris-card-art">
-              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:38%;left:22%"></div>
-              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:38%;left:32%"></div>
-              <div class="tetris-block" style="width:18px;height:18px;background:#c950ff;top:28%;left:32%"></div>
-              <div class="tetris-block" style="width:36px;height:18px;background:#00d4ff;top:55%;left:44%"></div>
-              <div class="tetris-block" style="width:18px;height:36px;background:#ffe600;top:38%;left:60%"></div>
-              <div class="tetris-block" style="width:18px;height:18px;background:#ff3158;top:60%;left:22%"></div>
-              <div class="tetris-block" style="width:18px;height:18px;background:#3ddc72;top:60%;left:32%"></div>
-            </div>
-            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#c950ff,#3a7fff)">CLASSIC</div>
-          </div>
-          <div class="game-info">
-            <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">STRATEGY</span></div>
-            <h3 class="game-name">Tetris</h3>
-            <p class="game-desc">Stack the blocks, clear the lines, survive!</p>
-            <button class="game-play-btn tetris-btn-play">▶  PLAY NOW</button>
-          </div>
-          <div class="game-card-shine"></div>
-        </div>
-
       </div>
     </div>
   </div>
@@ -910,32 +814,6 @@
         <div class="candy-coins-display">🪙 <span id="candy-coins-hud">0</span></div>
         <button class="candy-action-btn" onclick="window.candyModule.openShop()">🛍️ Shop</button>
         <button class="candy-action-btn" id="candy-lowend-btn" onclick="window.candyModule.toggleLowEnd()">⚡ FX</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── TETRIS ─────────────────────────────────────────────── -->
-  <div class="page" id="page-tetris">
-    <div class="tetris-wrapper">
-      <div class="tetris-topbar">
-        <span id="tetris-score">SCORE 0</span>
-        <span id="tetris-level">LVL 1</span>
-        <span id="tetris-lines">LINES 0</span>
-      </div>
-      <canvas id="tetris-canvas"></canvas>
-      <button class="tetris-return-btn" type="button" onclick="goToPage('games')" title="Back to games">← Games</button>
-      <button class="tetris-start-btn" id="tetris-start-btn" type="button">START</button>
-      <div class="tetris-controls">
-        <div class="tetris-controls-row">
-          <button class="tetris-btn tetris-btn-hold" data-action="hold" type="button" title="Hold piece">📦</button>
-          <button class="tetris-btn" data-action="left"   type="button">◀</button>
-          <button class="tetris-btn" data-action="rotate" type="button">↻</button>
-          <button class="tetris-btn" data-action="right"  type="button">▶</button>
-        </div>
-        <div class="tetris-controls-row">
-          <button class="tetris-btn tetris-btn-quickdrop" data-action="quickdrop" type="button" title="Hold to fast-drop (not instant)">⏬</button>
-          <button class="tetris-btn tetris-btn-drop" data-action="drop" type="button" title="Hard drop — instantly places piece">⬇</button>
-        </div>
       </div>
     </div>
   </div>
@@ -1222,7 +1100,7 @@
             </button>
                 <button class="lobby-open-count-btn" type="button" id="lobby-header-updates-btn">
               <span>View Updates</span>
-              <strong id="lobby-dash-update-version">1.8.4</strong>
+              <strong id="lobby-dash-update-version">1.5.1</strong>
             </button>
           </div>
         </div>
@@ -1268,8 +1146,8 @@
           <p class="shared-board-subtitle">Class-wide calendar posts, reminders, and weekly notices in one place.</p>
         </div>
         <div class="board-toolbar">
-          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements...">
-          <button id="announcement-refresh-btn" class="board-refresh-btn" type="button">Refresh</button>
+          <input id="announcement-search-input" class="board-search-input" type="search" placeholder="Search announcements..." oninput="renderSharedAnnouncements()">
+          <button class="board-refresh-btn" onclick="fetchSharedAnnouncements()">Refresh</button>
         </div>
       </div>
       <div class="announcement-stats" id="announcement-stats"></div>
@@ -1317,11 +1195,6 @@
           <span class="code-lab-env-icon">JAVA</span>
           <strong>Java Swing</strong>
           <small>Java basics, Swing source checks, compile/runtime output, and backend sandbox execution.</small>
-        </button>
-        <button class="code-lab-env-card python-env" type="button" data-code-lab-env="python">
-          <span class="code-lab-env-icon">PY</span>
-          <strong>Python 3</strong>
-          <small>Python basics, loops, functions, and console output via backend sandbox execution.</small>
         </button>
       </div>
 
@@ -1382,7 +1255,6 @@
                 <button class="code-lab-file-tab" data-lang="css" type="button">style.css</button>
                 <button class="code-lab-file-tab" data-lang="javascript" type="button">script.js</button>
                 <button class="code-lab-file-tab" data-lang="java" type="button">Main.java</button>
-                <button class="code-lab-file-tab" data-lang="python" type="button">main.py</button>
               </div>
               <div class="code-lab-run-actions">
                 <button class="code-lab-btn ghost" id="code-lab-clear-btn" type="button">Clear</button>
@@ -1589,87 +1461,73 @@
   <div id="chat-bauble" class="chat-bauble" onclick="window.goToPage('chat')">💬</div>
 
   <script>
+  // ── Splash screen particle canvas + auto-dismiss ──────────
   (function() {
-    // ── Particle canvas (visual only — wrapped in try/catch so a canvas
-    //    failure NEVER prevents the splash from being dismissed) ──────
-    var _raf = null;
-    try {
-      var canvas = document.getElementById('splash-canvas');
-      if (canvas) {
-        var ctx = canvas.getContext('2d');
-        var W, H, particles = [];
-        function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-        resize();
-        window.addEventListener('resize', resize);
-        for (var i = 0; i < 60; i++) {
-          particles.push({
-            x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
-            r: Math.random() * 1.8 + 0.4,
-            vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-            color: ['#00d4ff','#00ff88','#a855f7','#ff6b35'][Math.floor(Math.random()*4)],
-            alpha: Math.random() * 0.6 + 0.2,
-          });
-        }
-        function draw() {
-          ctx.clearRect(0, 0, W, H);
-          particles.forEach(function(p) {
-            p.x += p.vx; p.y += p.vy;
-            if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
-            if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-            ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-            ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha;
-            ctx.shadowColor = p.color; ctx.shadowBlur = 8;
-            ctx.fill(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-          });
-          _raf = requestAnimationFrame(draw);
-        }
-        draw();
-      }
-    } catch(e) { /* canvas unavailable — dismissal still runs below */ }
+    const canvas = document.getElementById('splash-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, particles = [], raf;
 
-    // ── Splash dismissal — ALWAYS runs, zero dependency on canvas ──
-    // This is the only code that matters for preventing a stuck splash.
-    var splashDismissed = false;
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Neon floating particles
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.8 + 0.4,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        color: ['#00d4ff','#00ff88','#a855f7','#ff6b35'][Math.floor(Math.random()*4)],
+        alpha: Math.random() * 0.6 + 0.2,
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      });
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Dismiss after 2.8s
     function dismissSplash() {
-      if (splashDismissed) return;
-      var splash = document.getElementById('splash-screen');
-      if (!splash) { splashDismissed = true; return; }
-      splashDismissed = true;
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
       splash.classList.add('splash-out');
-      setTimeout(function() {
-        var s = document.getElementById('splash-screen');
-        if (s) s.remove();
-        if (_raf) cancelAnimationFrame(_raf);
+      setTimeout(() => {
+        splash.remove();
+        cancelAnimationFrame(raf);
         window.dispatchEvent(new Event('classapp:splash-dismissed'));
       }, 650);
     }
-
-    // Path 1: app signals it's ready (fastest, ~100-300ms after DOM ready)
-    window.addEventListener('classapp:boot-usable', dismissSplash, { once: true });
-    // Path 2: tap to dismiss (impatient users)
-    var splashEl = document.getElementById('splash-screen');
-    if (splashEl) splashEl.addEventListener('click', dismissSplash);
-    // Path 3: soft fallback — fires if classapp:boot-usable never comes
-    //         (2s gives script.js time to load even on slow connections)
-    setTimeout(dismissSplash, 2000);
-    // Path 4: hard failsafe — force-removes after 10s no matter what
-    setTimeout(function() {
-      var s = document.getElementById('splash-screen');
-      if (!s) return;
-      s.style.transition = 'opacity 0.4s ease';
-      s.style.opacity = '0';
-      setTimeout(function() { if (s.parentNode) s.parentNode.removeChild(s); }, 450);
-    }, 10000);
+    setTimeout(dismissSplash, 2800);
+    // Also dismiss on tap for impatient users
+    document.getElementById('splash-screen').addEventListener('click', dismissSplash);
   })();
   </script>
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="features/updates/changelog.js?v=9"></script>
-  <script src="features/personalization/background-presets.js?v=1"></script>
-  <script src="features/security/form-validation.js?v=1"></script>
-  <script src="features/security/session-manager.js?v=1"></script>
-  <script src="script.js?v=136"></script>
+  <script src="script.js?v=111"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1682,18 +1540,21 @@
   <script src="features/updates/updates.js?v=1" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>
-  <script src="assets/js/codelab.js?v=9" defer></script>
+  <script src="assets/js/codelab.js?v=8" defer></script>
   <script src="coding-educational/coding-educational-data.js?v=10" defer></script>
   <script src="coding-educational/coding-educational.js?v=9" defer></script>
-  <!-- Game scripts are lazy-loaded on first page visit via goToPage() -->
+  <script src="features/pokemon/pokemon.js?v=3"></script>
+  <script src="features/royale/royale.js?v=26"></script>
+  <script src="features/pacman/pacman.js?v=3"></script>
+  <script src="features/candy/candy.js?v=10"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=8" defer></script>
+  <script src="features/personal-tools/notepad.js?v=7" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=2" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=18" defer></script>
-  <script src="features/reviewers/reviewers.js?v=18" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=11" defer></script>
+  <script src="features/reviewers/reviewers.js?v=15" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

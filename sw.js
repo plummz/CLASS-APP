@@ -18,13 +18,13 @@
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
-const CACHE_VERSION = 'v1.8.9-20260506-phase4-advanced-hardening';
-const CACHE_PREFIX = 'school-portfolio-';
-const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
+
+const CACHE_VERSION = 'v1.5.66-20260430-fix-version-drift-and-presence';
+const CACHE_NAME = `school-portfolio-${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=129',
-  '/style.css?v=51',
+  '/index.html?v=109',
+  '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -40,22 +40,18 @@ const ASSETS = [
   '/features/folders/folders.css?v=1',
   '/features/gallery/gallery.css?v=1',
   '/features/pokemon/pokemon.css?v=3',
-  '/features/royale/royale.css?v=19',
-  '/features/pacman/pacman.css?v=4',
+  '/features/royale/royale.css?v=18',
+  '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
-  '/features/file-summarizer/file-summarizer.css?v=5',
-  '/features/file-summarizer/file-summarizer.js?v=18',
-  '/features/updates/changelog.js?v=9',
-  '/features/personalization/background-presets.js?v=1',
-  '/features/security/form-validation.js?v=1',
-  '/features/security/session-manager.js?v=1',
-  '/script.js?v=136',
-  '/features/reviewers/reviewers.js?v=18',
-  '/features/reviewers/reviewers.css?v=8',
+  '/features/file-summarizer/file-summarizer.css?v=4',
+  '/features/file-summarizer/file-summarizer.js?v=11',
+  '/script.js?v=111',
+  '/features/reviewers/reviewers.js?v=15',
+  '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',
   '/features/personal-tools/alarm-clock.css?v=2',
-  '/features/personal-tools/notepad.js?v=8',
-  '/features/personal-tools/notepad.css?v=7',
+  '/features/personal-tools/notepad.js?v=7',
+  '/features/personal-tools/notepad.css?v=6',
   '/features/personal-tools/calculator.css?v=3',
   '/features/personal-tools/personalization.css?v=2',
   '/features/ai/ai.js?v=1',
@@ -74,16 +70,14 @@ const ASSETS = [
   '/features/updates/updates.js?v=1',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
-  '/assets/js/codelab.js?v=9',
+  '/assets/js/codelab.js?v=8',
   '/coding-educational/coding-educational-data.js?v=10',
   '/coding-educational/coding-educational.js?v=9',
   '/coding-educational/assets/fallback-card.jpg',
-  '/features/pokemon/pokemon.js?v=4',
-  '/features/royale/royale.js?v=27',
-  '/features/pacman/pacman.js?v=4',
-  '/features/candy/candy.js?v=11',
-  '/features/tetris/tetris.css?v=2',
-  '/features/tetris/tetris.js?v=2',
+  '/features/pokemon/pokemon.js?v=3',
+  '/features/royale/royale.js?v=26',
+  '/features/pacman/pacman.js?v=3',
+  '/features/candy/candy.js?v=10',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
   '/manifest.json',
@@ -92,30 +86,16 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    await Promise.allSettled(
-      ASSETS.map(async (url) => {
-        try {
-          const response = await fetch(url, { cache: 'no-store' });
-          if (response && response.ok) {
-            await cache.put(url, response);
-          }
-        } catch (_) {}
-      })
-    );
-  })());
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => {
-        if (!key.startsWith(CACHE_PREFIX)) return null;
-        if (key === CACHE_NAME) return null;
-        return caches.delete(key);
-      }))
+      Promise.all(keys.map((key) => key === CACHE_NAME ? null : caches.delete(key)))
     )
     .then(() => self.clients.claim())
     .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))

@@ -2,6 +2,19 @@
    SCRIPT.JS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
 
+// Phase 1.6: Global Error Handler — Catch unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[unhandled-rejection]', event.reason);
+  const msg = event.reason?.message || String(event.reason) || 'Unknown error';
+  showToast(`Error: ${msg}`, 'error');
+  // Don't preventDefault — still log to console for debugging
+});
+
+window.addEventListener('error', (event) => {
+  console.error('[error]', event.message, event.filename, event.lineno);
+  showToast(`Error: ${event.message}`, 'error');
+});
+
 // 1. SUPABASE CONNECTION INFO — loaded from server to avoid hardcoding in source
 let SUPABASE_URL = '';
 let SUPABASE_KEY = '';
@@ -150,16 +163,40 @@ function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
-// TODO (Phase 3): Migrate token storage from localStorage to secure HttpOnly cookies
-// to prevent token theft via XSS.
+// Phase 1.1: Token Storage — HttpOnly cookies + localStorage fallback
+// Server sets HttpOnly cookie on login. Frontend reads cookie first (secure),
+// falls back to localStorage (backwards compat).
+function getCookieValue(name) {
+  const nameEQ = name + '=';
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    cookie = cookie.trim();
+    if (cookie.indexOf(nameEQ) === 0) return cookie.substring(nameEQ.length);
+  }
+  return '';
+}
+
 function setServerAuthToken(token) {
   serverAuthToken = token || '';
+  // Store in both localStorage (fallback) and in-memory (cache)
   if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
   else localStorage.removeItem('classAppToken');
 }
 
 function getServerAuthToken() {
-  return serverAuthToken || localStorage.getItem('classAppToken') || '';
+  // Priority: 1) HttpOnly cookie (secure), 2) in-memory cache, 3) localStorage (fallback)
+  const cookieToken = getCookieValue('classAppToken');
+  if (cookieToken) {
+    serverAuthToken = cookieToken;
+    return cookieToken;
+  }
+  if (serverAuthToken) return serverAuthToken;
+  const storedToken = localStorage.getItem('classAppToken') || '';
+  if (storedToken) {
+    serverAuthToken = storedToken;
+    console.warn('[auth] Using localStorage token — consider logging in again for secure HttpOnly cookie storage');
+  }
+  return storedToken;
 }
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -2145,6 +2182,68 @@ function saveSession() {
   }
 }
 
+// Phase 1.2: Validate Admin Status from Server
+// Called on page load + every 60 seconds to ensure admin status is current
+let adminValidationPollerID = null;
+let lastAdminValidationAt = 0;
+const ADMIN_VALIDATION_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+
+async function validateAdminStatus() {
+  if (!currentUser?.username) return;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch('/api/session/validate', {
+      headers: getAuthHeaders(),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+
+    if (!response.ok) {
+      console.warn('[admin-validation] Server returned', response.status);
+      // Don't update isAdmin on error; keep cached value
+      return;
+    }
+
+    const data = await response.json();
+    const wasAdmin = isAdmin;
+    isAdmin = Boolean(data.isAdmin);
+    lastAdminValidationAt = Date.now();
+
+    // Update currentUser with latest admin status
+    if (currentUser) {
+      currentUser.isAdmin = isAdmin;
+      currentUser._adminValidatedAt = lastAdminValidationAt;
+      saveSession();
+    }
+
+    // If admin status changed, refresh UI
+    if (wasAdmin !== isAdmin) {
+      console.log(`[admin-validation] Admin status changed: ${wasAdmin} → ${isAdmin}`);
+      renderAppState(); // Re-render to hide/show admin UI
+    }
+  } catch (error) {
+    console.warn('[admin-validation] Failed:', error.message);
+    // Keep using cached admin status if validation fails
+  }
+}
+
+function startAdminValidationPoller() {
+  if (adminValidationPollerID) return;
+  validateAdminStatus(); // Validate immediately
+  adminValidationPollerID = window.setInterval(() => {
+    validateAdminStatus();
+  }, 60 * 1000); // 60 seconds
+}
+
+function stopAdminValidationPoller() {
+  if (!adminValidationPollerID) return;
+  clearInterval(adminValidationPollerID);
+  adminValidationPollerID = null;
+}
+
 function isUserLiveOnline(user) {
   const username = typeof user === 'string' ? user : user?.username;
   return Boolean(username && livePresenceUsers.has(username));
@@ -2352,6 +2451,7 @@ async function finalizeLogin(profile, serverSession) {
   try {
     setAuthSuccess('Signed in. Loading your portal...');
     persistLastSeen({ online: true, force: true }).catch(() => {});
+    startAdminValidationPoller(); // Phase 1.2: Start admin status polling
     establishSession().catch((error) => {
       console.warn('[auth] establishSession (post-login) failed:', error?.message || error);
     });
@@ -2361,6 +2461,7 @@ async function finalizeLogin(profile, serverSession) {
   } catch (error) {
     console.error('[auth] finalizeLogin failed:', error);
     stopLastSeenHeartbeat();
+    stopAdminValidationPoller(); // Phase 1.2: Stop admin polling on login failure
     destroyAppPresence();
     currentUser = null;
     isAdmin = false;
@@ -2498,6 +2599,7 @@ window.register = async function() {
 window.handleLogout = async function() {
     await persistLastSeen({ online: false, force: true });
     stopLastSeenHeartbeat();
+    stopAdminValidationPoller(); // Phase 1.2: Stop admin status polling on logout
     destroyAppPresence();
     currentUser = null;
     isAdmin = false;

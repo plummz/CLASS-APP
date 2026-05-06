@@ -3015,8 +3015,10 @@ window.toggleRepeat = function() {
 let users = [];
 let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
 let isAdmin = Boolean(currentUser?.isAdmin);
-let isInitializing = true;
-let isAuthenticated = Boolean(currentUser?.username);
+// NOTE: Must be global object bindings so startup modules loaded before this
+// file (features/logging-in/*) can reliably read them without ReferenceError.
+var isInitializing = true;
+var isAuthenticated = Boolean(currentUser?.username);
 let authRequestInFlight = false;
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();

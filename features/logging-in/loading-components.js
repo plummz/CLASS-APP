@@ -1,6 +1,14 @@
 // features/logging-in/loading-components.js
 // Startup-critical: Auth bootstrap, session restore, loading screen, splash
 
+// Ensure shared startup state exists as a global-object binding.
+// This file is loaded before `script.js`, so it cannot rely on `let` bindings
+// that may not exist yet. Using a global object binding prevents
+// `ReferenceError: isInitializing/isAuthenticated is not defined` which can
+// abort DOMContentLoaded initialization and leave buttons unbound.
+if (typeof isInitializing === 'undefined') window.isInitializing = true;
+if (typeof isAuthenticated === 'undefined') window.isAuthenticated = false;
+
 async function initSupabase(username = null) {
   try {
     // 5s hard timeout — if the server is still cold-starting the page shouldn't block.

@@ -1,5 +1,15 @@
-const APP_VERSION = '1.9.2';
+const APP_VERSION = '1.9.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.3',
+    date: 'May 6, 2026',
+    title: 'Fix: Buttons Dead After Login',
+    summary: 'Fixed a startup ReferenceError that could abort DOMContentLoaded initialization, leaving the hamburger menu and other buttons unresponsive after signing in.',
+    changes: [
+      'Fix: Ensure `isInitializing` and `isAuthenticated` exist as global bindings early during startup so `renderAppState()` cannot throw a ReferenceError.',
+      'Fix: Updated script/cache versions to prevent stale mixed-assets from the service worker.',
+    ],
+  },
   {
     version: '1.9.2',
     date: 'May 6, 2026',

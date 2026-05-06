@@ -6,6 +6,18 @@ ALWAYS READ THIS FILE FIRST BEFORE MAKING ANY CHANGES.
 
 If this file is ignored, the implementation is considered INVALID.
 
+## 🚫 DO NOT CODE RULE
+
+If the user says **"do not code"**, **"do not implement"**, **"do not change anything"**, or any equivalent phrase:
+
+- ❌ DO NOT edit any file
+- ❌ DO NOT run any git commands that modify history (reset, revert, force push)
+- ❌ DO NOT delete or create files
+- ✅ ONLY read, analyze, and respond with findings or plans
+- ✅ Wait for explicit permission before touching any code
+
+Violating this rule when the user has said "do not code" is considered a CRITICAL FAILURE.
+
 ## 📌 PROJECT CONTEXT
 
 This is the CLASS-APP repository.

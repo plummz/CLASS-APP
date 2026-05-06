@@ -190,3 +190,8 @@ function bindAuthPortalHandlers() {
   authBindingsReady = true;
   console.info('[auth] Portal button handlers attached.');
 }
+
+window.getAuthToken = getServerAuthToken;
+window.authFetch = function(url, options = {}) {
+  return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
+};

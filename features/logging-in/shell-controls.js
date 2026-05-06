@@ -170,3 +170,5 @@ async function establishSession() {
   handleNotificationDeepLink();
   initReactionsRealtime();
 }
+
+document.addEventListener('DOMContentLoaded', sidebarNavHandler);

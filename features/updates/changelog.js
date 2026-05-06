@@ -1,5 +1,18 @@
-const APP_VERSION = '1.9.1';
+const APP_VERSION = '1.9.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.2',
+    date: 'May 6, 2026',
+    title: 'Startup Isolation: Extract Auth & Shell Logic Into Modules',
+    summary: 'Separated startup-critical logic from feature code to prevent future edits from breaking login, loading, splash, or navigation. Created two new modular files for better code organization and maintainability.',
+    changes: [
+      'Feature: Created features/logging-in/loading-components.js — owns login, auth bootstrap, session restore, splash/loading-screen, and app initialization logic.',
+      'Feature: Created features/logging-in/shell-controls.js — owns global app-shell controls (menu toggle, sidebar, page switching, session establishment).',
+      'Refactor: Moved 351 lines of startup/shell code from script.js into the two new modules. script.js is now lighter and decoupled from core bootstrap logic.',
+      'Architecture: Established clear separation of concerns — startup code, global shell controls, and page-specific feature buttons are now isolated.',
+      'Docs: Updated CLAUDE.md with new 🔥 STARTUP ISOLATION RULE section to enforce this split going forward.',
+    ],
+  },
   {
     version: '1.9.1',
     date: 'May 6, 2026',

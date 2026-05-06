@@ -118,6 +118,42 @@ Claude MUST perform a regression check after every edit:
 
 If Claude cannot verify these checks in a real browser, it MUST clearly say so and provide exact manual verification steps.
 
+
+## 🔥 STARTUP ISOLATION RULE
+
+The following separation of concerns is MANDATORY and MUST NOT be broken:
+
+- `features/logging-in/loading-components.js` owns ONLY:
+  - Login / auth bootstrap (Supabase client init, session token restore)
+  - App initialization (DOMContentLoaded bootstrap)
+  - Loading screen / splash logic
+  - Auth portal handlers (sign-in / register button bindings)
+  - Session establishment on successful login
+  - Do NOT add page-specific feature code into this file
+  - Do NOT move unrelated button logic into this file
+
+- `features/logging-in/shell-controls.js` owns ONLY:
+  - Global menu toggle (hamburger button, sidebar open/close)
+  - Page switching navigation (goToPage function, nav item click handlers)
+  - Sidebar control logic
+  - Do NOT add page-specific feature code into this file
+  - Do NOT add auth/session management code into this file
+
+- Feature page buttons MUST stay inside their feature folders:
+  - File Summarizer buttons → `features/file-summarizer/`
+  - Reviewers buttons → `features/reviewers/`
+  - Notepad buttons → `features/personal-tools/notepad.js`
+  - Announcements buttons → announcement-related feature modules
+  - Do NOT move page-specific actions into bootstrap or shell-control files
+  - Do NOT merge startup code with feature code for convenience
+
+**VIOLATIONS = FAILED IMPLEMENTATION**
+
+- If a change risks startup, login, loading screen, menu, sidebar, or page navigation, STOP and isolate the change first
+- Any regression in login / loading / menu / sidebar / navigation is a FAILED implementation
+- Do not "just move everything together" for convenience — separation must be respected
+- When editing startup code, NEVER modify feature-specific logic
+- When editing features, NEVER modify startup or shell logic
 ## 📱 iOS COMPATIBILITY (MANDATORY)
 
 Every change MUST be verified for iOS Safari behavior.

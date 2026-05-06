@@ -18,7 +18,7 @@
 // Use scripts/version-check.js to verify consistency:
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
-const CACHE_VERSION = 'v1.9.1-20260506-phase5-remaining-locked-writes';
+const CACHE_VERSION = 'v1.9.2-20260506-startup-isolation';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -49,7 +49,9 @@ const ASSETS = [
   '/features/personalization/background-presets.js?v=1',
   '/features/security/form-validation.js?v=1',
   '/features/security/session-manager.js?v=1',
-  '/script.js?v=138',
+  '/features/logging-in/loading-components.js?v=1',
+  '/features/logging-in/shell-controls.js?v=1',
+  '/script.js?v=139',
   '/features/reviewers/reviewers.js?v=18',
   '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=1',

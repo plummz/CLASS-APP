@@ -222,6 +222,13 @@ const aiLimiter = rateLimit({
   max: 10,
   message: { error: 'Too many AI requests. Please wait a minute.' },
 });
+const folderFileLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a minute.' },
+});
 const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
 const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';

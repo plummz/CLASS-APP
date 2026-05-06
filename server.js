@@ -2018,7 +2018,292 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-/* â”€â”€ File Summarizer Endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// -- Shared Boards API (Announcements, AI Outputs, Reviewers) ----------------
+app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
+  const { title, body, schedule, source_type, date_key, date_label } = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  if (body && body.length > 500) return res.status(400).json({ error: 'Announcement body must be 500 characters or fewer' });
+  if (title && title.length > 200) return res.status(400).json({ error: 'Title must be 200 characters or fewer' });
+  try {
+    const inserted = await supabaseQuery('shared_announcements', 'POST', [{
+      sharer: req.user.username,
+      title: title || '',
+      body: body || '',
+      schedule: schedule || null,
+      source_type: source_type || null,
+      date_key: date_key || null,
+      date_label: date_label || null
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/shared-announcements/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('shared_announcements', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('shared_announcements', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/shared-ai-outputs', requireAuth, wrap(async (req, res) => {
+  const { provider, prompt, output } = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const inserted = await supabaseQuery('shared_ai_outputs', 'POST', [{ 
+      sharer: req.user.username, 
+      provider: provider || 'AI', 
+      prompt: prompt || '', 
+      output: output || '' 
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/shared-ai-outputs/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('shared_ai_outputs', 'GET', null, { id: `eq.${req.params.id}`, select: 'sharer' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].sharer !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('shared_ai_outputs', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/reviewers', requireAuth, folderFileLimiter, wrap(async (req, res) => {
+  const record = req.body || {};
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  // Server-side content limits
+  if (record.summary_content && record.summary_content.length > 2000) {
+    return res.status(400).json({ error: 'Summary content must be 2000 characters or fewer' });
+  }
+  if (record.title && record.title.length > 200) {
+    return res.status(400).json({ error: 'Title must be 200 characters or fewer' });
+  }
+  try {
+    record.user_id = req.user.username; // Enforce user identity
+    if (!record.contributor_name) record.contributor_name = req.user.username;
+    const inserted = await supabaseQuery('reviewers', 'POST', [record]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/reviewers/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('reviewers', 'GET', null, { id: `eq.${req.params.id}`, select: 'user_id' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].user_id !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('reviewers', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// -- Calendar Notes API --------------------------------------------------
+app.get('/api/calendar-notes', requireAuth, wrap(async (req, res) => {
+  if (SUPABASE_URL && getSupabaseApiKey({ preferService: true })) {
+    try {
+      const rows = await supabaseQuery('calendar_notes', 'GET', null, { select: '*', order: 'date_key.asc' });
+      return res.json(rows || []);
+    } catch (err) { console.warn('[calendar-notes GET] Supabase failed:', err.message); }
+  }
+  res.json([]);
+}));
+
+app.post('/api/calendar-notes', requireAuth, wrap(async (req, res) => {
+  const { date_key, note } = req.body || {};
+  if (!date_key) return res.status(400).json({ error: 'date_key is required' });
+  if (typeof note !== 'string') return res.status(400).json({ error: 'note must be a string' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Calendar notes require Supabase' });
+  try {
+    if (note === '') {
+      await supabaseQuery('calendar_notes', 'DELETE', null, { date_key: `eq.${date_key}` });
+      return res.json({ ok: true, deleted: true });
+    }
+    const url = new URL('/rest/v1/calendar_notes', SUPABASE_URL);
+    const headers = getSupabaseHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=representation' }, { preferService: true });
+    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ date_key, note, updated_by: req.user.username, updated_at: new Date().toISOString() }) });
+    if (!response.ok) { const t = await response.text(); return res.status(500).json({ error: t.slice(0, 120) }); }
+    const rows = await response.json();
+    return res.json(Array.isArray(rows) ? rows[0] : rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// -- Summary History API -------------------------------------------------
+app.get('/api/summary-history', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.json([]);
+  try {
+    const rows = await supabaseQuery('summary_history', 'GET', null, { select: '*', username: `eq.${req.user.username}`, order: 'created_at.desc', limit: '20' });
+    return res.json(rows || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/summary-history', requireAuth, wrap(async (req, res) => {
+  const { source_name, summary_text } = req.body || {};
+  if (!summary_text) return res.status(400).json({ error: 'summary_text is required' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const inserted = await supabaseQuery('summary_history', 'POST', [{ username: req.user.username, source_name: source_name || '', summary_text }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/summary-history/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('summary_history', 'GET', null, { id: `eq.${req.params.id}`, select: 'username' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('summary_history', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// -- Quiz History API ----------------------------------------------------
+app.get('/api/quiz-history', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.json([]);
+  try {
+    const rows = await supabaseQuery('quiz_history', 'GET', null, { select: '*', username: `eq.${req.user.username}`, order: 'taken_at.desc', limit: '50' });
+    return res.json(rows || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/quiz-history', requireAuth, wrap(async (req, res) => {
+  const { source_name, score, total, questions } = req.body || {};
+  if (typeof score !== 'number' || typeof total !== 'number') return res.status(400).json({ error: 'score and total must be numbers' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const record = { username: req.user.username, source_name: source_name || '', score, total };
+    if (Array.isArray(questions) && questions.length) record.questions_json = questions;
+    const inserted = await supabaseQuery('quiz_history', 'POST', [record]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/quiz-history/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const existing = await supabaseQuery('quiz_history', 'GET', null, { id: `eq.${req.params.id}`, select: 'username' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Not found' });
+    if (!req.user.isAdmin && existing[0].username !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('quiz_history', 'DELETE', null, { id: `eq.${req.params.id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+/* ── Subjects (year-level subject cards) ─────────────────────── */
+
+// GET /api/subjects — public read, no auth required (subjects are not secret)
+app.get('/api/subjects', wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.json([]);
+  }
+  try {
+    const rows = await supabaseQuery('subjects', 'GET', null, { select: '*', order: 'created_at.asc' });
+    res.json(rows || []);
+  } catch (err) {
+    console.warn('[subjects GET] Supabase error:', err.message);
+    res.json([]);
+  }
+}));
+
+// POST /api/subjects — admin only
+app.post('/api/subjects', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const VALID_GRID_KEYS = new Set(['first','second','y2first','y2second','y3first','y3second','y4first','y4second']);
+  const { grid_key, code, teacher, icon } = req.body || {};
+
+  if (!grid_key || !VALID_GRID_KEYS.has(String(grid_key))) return res.status(400).json({ error: 'Invalid grid_key.' });
+  if (!code || typeof code !== 'string' || !code.trim()) return res.status(400).json({ error: 'Subject code is required.' });
+  if (code.trim().length > 60) return res.status(400).json({ error: 'Subject code too long (max 60 chars).' });
+  if (/[<>"'`]/.test(code) || /[<>"'`]/.test(teacher || '')) return res.status(400).json({ error: 'Subject name contains unsafe characters.' });
+
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
+  }
+
+  const subject = {
+    grid_key: grid_key.trim(),
+    code: code.trim(),
+    teacher: (teacher || '').trim().slice(0, 80),
+    icon: (icon || '📚').slice(0, 4),
+    created_by: req.user.username,
+  };
+
+  try {
+    const inserted = await supabaseQuery('subjects', 'POST', [subject]);
+    res.json(inserted[0]);
+  } catch (err) {
+    if (err.message.includes('subjects_grid_code_unique') || err.message.includes('duplicate key')) {
+      return res.status(409).json({ error: 'A subject with this code already exists in this semester.' });
+    }
+    console.error('[subjects POST] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}));
+
+// DELETE /api/subjects/:id — admin only
+app.delete('/api/subjects/:id', requireAuth, requireAdmin, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) {
+    return res.status(503).json({ error: 'Supabase is not configured on this server.' });
+  }
+  const id = parseInt(req.params.id, 10);
+  if (!id || isNaN(id)) return res.status(400).json({ error: 'Invalid subject id.' });
+  try {
+    await supabaseQuery('subjects', 'DELETE', null, { id: `eq.${id}` });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[subjects DELETE] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}));
+
+// -- Subject Announcements API ------------------------------------------
+app.get('/api/subject-announcements', requireAuth, wrap(async (req, res) => {
+  const { subject_code } = req.query || {};
+  if (!subject_code) return res.status(400).json({ error: 'subject_code is required' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const rows = await supabaseQuery('subject_announcements', 'GET', null, {
+      subject_code: `eq.${subject_code}`,
+      select: '*',
+      order: 'created_at.desc',
+    });
+    return res.json(rows || []);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.post('/api/subject-announcements', requireAuth, requireAdmin, folderFileLimiter, wrap(async (req, res) => {
+  const { subject_code, title, body } = req.body || {};
+  if (!subject_code || !title) return res.status(400).json({ error: 'subject_code and title are required' });
+  if (title.length > 200) return res.status(400).json({ error: 'Title must be 200 characters or fewer' });
+  if (body && body.length > 500) return res.status(400).json({ error: 'Body must be 500 characters or fewer' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    const inserted = await supabaseQuery('subject_announcements', 'POST', [{
+      subject_code,
+      posted_by: req.user.username,
+      title: title.trim(),
+      body: (body || '').trim(),
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+app.delete('/api/subject-announcements/:id', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id || isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase' });
+  try {
+    await supabaseQuery('subject_announcements', 'DELETE', null, { id: `eq.${id}` });
+    return res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+/* â"€â"€ File Summarizer Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
 app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;
   const hasText = !!(req.body && req.body.text);

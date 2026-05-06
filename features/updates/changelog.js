@@ -1,5 +1,20 @@
-const APP_VERSION = '1.8.9';
+const APP_VERSION = '1.9.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.0',
+    date: 'May 6, 2026',
+    title: 'Phase 5: Migration 021 Fixes + Security Hardening',
+    summary: 'Fixed all broken direct Supabase writes broken by migration 021 lockdown. Added server endpoints for subject announcements. Hardened reviewer and announcement endpoints with content limits and rate limiting.',
+    changes: [
+      'Fix: Gallery photo delete now routes through /api/files/:id (server-side, service key) instead of direct Supabase client write — previously broken by migration 021.',
+      'Fix: Calendar notes save/delete now routes through /api/calendar-notes (existing server endpoint) instead of direct Supabase client write — previously broken by migration 021.',
+      'Fix: Subject announcements (fetch, post, delete) now route through new /api/subject-announcements server endpoints instead of direct Supabase client write — previously broken by migration 021.',
+      'Security: initSupabase() and finalizeLogin() now attach x-class-username header to Supabase client so RLS header-based identity policies work correctly for read operations.',
+      'Security: POST /api/reviewers now has folderFileLimiter rate limiting and enforces 2000-char limit on summary_content, 200-char limit on title.',
+      'Security: POST /api/shared-announcements now enforces 500-char limit on body, 200-char limit on title.',
+      'Security: New GET/POST/DELETE /api/subject-announcements endpoints with requireAdmin + folderFileLimiter + 200/500 char limits.',
+    ],
+  },
   {
     version: '1.8.9',
     date: 'May 6, 2026',

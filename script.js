@@ -10,7 +10,7 @@ let serverAuthToken = localStorage.getItem('classAppToken') || '';
 const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
-async function initSupabase() {
+async function initSupabase(username = null) {
   try {
     // 5s hard timeout — if the server is still cold-starting the page shouldn't block.
     // waitForSupabaseClient() retries once on login if credentials are still empty.
@@ -31,14 +31,16 @@ async function initSupabase() {
   }
   try {
     const { createClient } = window.supabase;
+    // Always attach x-class-username header to all Supabase requests so RLS
+    // policies using class_app_username() work for browser SELECT calls.
+    const resolvedUsername = username || (() => {
+      try { return JSON.parse(localStorage.getItem('classAppUser') || 'null')?.username || null; } catch (_) { return null; }
+    })();
     sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
       global: {
         fetch: (url, options = {}) => {
           const headers = new Headers(options.headers || {});
-          try {
-            const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
-            if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
-          } catch (_) {}
+          if (resolvedUsername) headers.set('x-class-username', resolvedUsername);
           return fetch(url, { ...options, headers });
         },
       },
@@ -3415,6 +3417,16 @@ async function finalizeLogin(profile, serverSession) {
   syncAuthState();
   setServerAuthToken(serverSession.token || '');
   if (isAdmin) revealAdminNav();
+  // Reinitialize Supabase client with username header so RLS policies that
+  // read x-class-username() work correctly for reads that still use sb directly.
+  if (currentUser?.username && SUPABASE_URL && SUPABASE_KEY && window.supabase?.createClient) {
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        global: { headers: { 'x-class-username': currentUser.username } }
+      });
+      window.sb = sb;
+    } catch (e) { console.warn('[auth] Could not reinitialize sb with username header:', e?.message); }
+  }
   saveSession();
   try {
     setAuthSuccess('Signed in. Loading your portal...');
@@ -4828,8 +4840,8 @@ window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
         if(!currentUser) return customAlert("Login to save notes.");
-        if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
-        else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
+        if (note === '') { delete calendarNotes[dateKey]; await authFetch('/api/calendar-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date_key: dateKey, note: '' }) }); }
+        else { calendarNotes[dateKey] = note; await authFetch('/api/calendar-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date_key: dateKey, note: note }) }); }
         renderCalendar(); document.getElementById('edit-note-modal').remove();
     };
 };
@@ -5115,7 +5127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAppState();
   bindAuthPortalHandlers();
   const splashReady = waitForSplashDismissal();
-  await initSupabase();
+  await initSupabase(currentUser?.username || null);
   if (currentUser && !getServerAuthToken()) {
     currentUser = null;
     isAdmin = false;
@@ -5974,13 +5986,13 @@ async function loadActivityLog() {
 let subjectAnnouncements = {}; // subject_code → [rows]
 
 async function fetchSubjectAnnouncements(subjectCode) {
-  if (!sb) return [];
-  const { data, error } = await sb.from('subject_announcements')
-    .select('*').eq('subject_code', subjectCode)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  subjectAnnouncements[subjectCode] = data || [];
-  return subjectAnnouncements[subjectCode];
+  try {
+    const res = await authFetch(`/api/subject-announcements?subject_code=${encodeURIComponent(subjectCode)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    subjectAnnouncements[subjectCode] = data || [];
+    return subjectAnnouncements[subjectCode];
+  } catch (e) { return []; }
 }
 
 function buildSubjectAnnouncementsHTML(subjectCode) {
@@ -6027,13 +6039,15 @@ window.submitSubjectAnnouncement = async function(subjectCode) {
   const title = document.getElementById('sann-title')?.value.trim();
   const body  = document.getElementById('sann-body')?.value.trim() || '';
   if (!title) return customAlert('Title is required.');
-  const { error } = await sb.from('subject_announcements').insert([{
-    subject_code: subjectCode,
-    posted_by: currentUser.username,
-    title,
-    body,
-  }]);
-  if (error) return customAlert(error.message);
+  const res = await authFetch('/api/subject-announcements', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subject_code: subjectCode, title, body }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return customAlert(err.error || 'Failed to post announcement.');
+  }
   removeDynamicModal('subj-ann-modal');
   showToast('Announcement posted.');
   logActivity('post_subject_announcement', subjectCode);
@@ -6043,8 +6057,11 @@ window.submitSubjectAnnouncement = async function(subjectCode) {
 
 window.deleteSubjectAnnouncement = async function(id, subjectCode) {
   if (!isAdmin) return;
-  const { error } = await sb.from('subject_announcements').delete().eq('id', id);
-  if (error) return customAlert(error.message);
+  const res = await authFetch(`/api/subject-announcements/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return customAlert(err.error || 'Failed to delete announcement.');
+  }
   showToast('Announcement deleted.');
   window.openFolderExplorer?.(subjectCode);
 };
@@ -6805,7 +6822,7 @@ function gDeleteFile(pfx, id) {
   fetchFolderById(folderId).then((folder) => {
   if (!canEditFolder(folder)) return customAlert('You do not have permission to delete files here.');
   customConfirm('Delete this photo?', function() {
-    sb.from('files').delete().eq('id', id).then(() => { showToast('File deleted.', 'warning'); renderGallery(pfx); });
+    authFetch(`/api/files/${id}`, { method: 'DELETE' }).then(() => { showToast('File deleted.', 'warning'); renderGallery(pfx); });
   });
   }).catch((error) => customAlert(error.message));
 }

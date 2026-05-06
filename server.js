@@ -239,6 +239,16 @@ const videoSearchLimiter = rateLimit({
   max: 30,
   message: { error: 'Too many search requests. Please wait a minute.' },
 });
+const folderFileLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many folder/file operations. Please wait a minute.' },
+});
+const messageLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many messages. Please wait a minute.' },
+});
 const ALLOWED_PROFILE_FIELDS = ['displayName', 'birthday', 'address', 'github', 'email', 'note', 'avatar'];
 const ALLOWED_CHATS = new Set(['group', 'todo']);
 const SUPABASE_AUTH_SELECT = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,password_hash,username_last_changed_at';
@@ -246,7 +256,21 @@ const SUPABASE_PUBLIC_PROFILE_SELECT = 'username,display_name,birthday,address,g
 
 function validateUsernameFormat(username) {
   if (username.length < 3 || username.length > 24) return 'Username must be 3 to 24 characters long.';
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only use letters, numbers, and underscores.';
+  if (!/^[a-zA-Z0-9_@]+$/.test(username)) return 'Username can only use letters, numbers, underscores, and @ symbol.';
+  return '';
+}
+
+function validateFolderName(name) {
+  if (!name || name.length === 0) return 'Folder name is required.';
+  if (name.length > 50) return 'Folder name must be 50 characters or less.';
+  if (!/^[a-zA-Z0-9\s\-_.]{1,50}$/.test(name)) return 'Folder name can only use letters, numbers, spaces, dashes, underscores, and periods.';
+  return '';
+}
+
+function validateFileName(name) {
+  if (!name || name.length === 0) return 'File name is required.';
+  if (name.length > 50) return 'File name must be 50 characters or less.';
+  if (!/^[a-zA-Z0-9\s\-_.]{1,50}$/.test(name)) return 'File name can only use letters, numbers, spaces, dashes, underscores, and periods.';
   return '';
 }
 
@@ -1259,10 +1283,12 @@ app.get('/api/folders', requireAuth, wrap(async (req, res) => {
   res.json(state.folders.filter(f => f.parent === parent));
 }));
 
-app.post('/api/folders', requireAuth, wrap(async (req, res) => {
-  const folder = { 
-    parent: req.body.parent, 
-    name: req.body.name, 
+app.post('/api/folders', requireAuth, folderFileLimiter, wrap(async (req, res) => {
+  const nameError = validateFolderName(req.body.name);
+  if (nameError) return res.status(400).json({ error: nameError });
+  const folder = {
+    parent: req.body.parent,
+    name: req.body.name,
     owner: req.user.username,
     permissions: req.body.permissions || { viewers: [], editors: [], everyone: 'edit' },
     folder_type: req.body.folder_type || null
@@ -1281,7 +1307,11 @@ app.post('/api/folders', requireAuth, wrap(async (req, res) => {
   res.json(folder);
 }));
 
-app.put('/api/folders/:id', requireAuth, wrap(async (req, res) => {
+app.put('/api/folders/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
+  if (req.body.name !== undefined) {
+    const nameError = validateFolderName(req.body.name);
+    if (nameError) return res.status(400).json({ error: nameError });
+  }
   if (SUPABASE_URL) {
      const existing = await supabaseQuery('folders', 'GET', null, { id: `eq.${req.params.id}`, select: 'owner' });
      if (!existing || !existing.length) return res.status(404).json({ error: 'Folder not found' });
@@ -1301,7 +1331,7 @@ app.put('/api/folders/:id', requireAuth, wrap(async (req, res) => {
   res.json(folder);
 }));
 
-app.delete('/api/folders/:id', requireAuth, wrap(async (req, res) => {
+app.delete('/api/folders/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
   if (SUPABASE_URL) {
      const existing = await supabaseQuery('folders', 'GET', null, { id: `eq.${req.params.id}`, select: 'owner' });
      if (!existing || !existing.length) return res.status(404).json({ error: 'Folder not found' });
@@ -1333,7 +1363,9 @@ app.get('/api/files', requireAuth, wrap(async (req, res) => {
   res.json(state.files.filter(f => f.folderId === folderId));
 }));
 
-app.post('/api/files', requireAuth, wrap(async (req, res) => {
+app.post('/api/files', requireAuth, folderFileLimiter, wrap(async (req, res) => {
+  const nameError = validateFileName(req.body.name);
+  if (nameError) return res.status(400).json({ error: nameError });
   const file = {
     folder_id: req.body.folder_id || req.body.folderId,
     name: req.body.name,
@@ -1366,7 +1398,7 @@ app.post('/api/files', requireAuth, wrap(async (req, res) => {
   res.json(file);
 }));
 
-app.delete('/api/files/:id', requireAuth, wrap(async (req, res) => {
+app.delete('/api/files/:id', requireAuth, folderFileLimiter, wrap(async (req, res) => {
   if (SUPABASE_URL) {
      const existing = await supabaseQuery('files', 'GET', null, { id: `eq.${req.params.id}`, select: 'uploader' });
      if (!existing || !existing.length) return res.status(404).json({ error: 'File not found' });
@@ -1746,6 +1778,43 @@ app.post('/api/session/presence', requireAuth, wrap(async (req, res) => {
   res.json({ ok: true, online, last_seen_at: timestamp });
 }));
 
+// Phase 1.2: Session Validation — Server-Driven Admin Status
+// Returns authenticated user info + admin status from Supabase admins table
+app.get('/api/session/validate', requireAuth, wrap(async (req, res) => {
+  try {
+    const username = req.user.username;
+    const isAdminUser = req.user.isAdmin || false; // req.user.isAdmin set by requireAuth middleware
+
+    // Fetch current user profile for fresh data
+    const user = findUser(username);
+    const profile = user ? {
+      username: user.username,
+      display_name: user.display_name || user.username,
+      avatar: user.avatar,
+      online: user.online,
+      last_seen_at: user.last_seen_at,
+      isAdmin: isAdminUser
+    } : null;
+
+    if (!profile) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.json({
+      username: profile.username,
+      display_name: profile.display_name,
+      avatar: profile.avatar,
+      online: profile.online,
+      last_seen_at: profile.last_seen_at,
+      isAdmin: isAdminUser,
+      validated_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[session/validate]', error);
+    res.status(500).json({ error: 'Session validation failed' });
+  }
+}));
+
 app.get('/api/messages', requireAuth, wrap((req, res) => {
   const { chat, target } = req.query;
   const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
@@ -1767,7 +1836,7 @@ app.get('/api/messages', requireAuth, wrap((req, res) => {
   return res.json(sliceHistory(getHistory(chat)));
 }));
 
-app.post('/api/messages', requireAuth, wrap(async (req, res) => {
+app.post('/api/messages', requireAuth, messageLimiter, wrap(async (req, res) => {
   const { chat, text, target, attachment } = req.body || {};
   const sender = req.user.username;
   if (!chat || !sender) return res.status(400).json({ error: 'chat and sender are required' });

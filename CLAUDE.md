@@ -254,6 +254,48 @@ For EVERY task:
 - Lazy load when possible
 - Optimize images/assets
 
+## 🔐 RLS POLICY REFERENCE (Supabase Row-Level Security)
+
+All sensitive data is protected at the database level via RLS policies (migration 003_rls_policies.sql & 015_admin_table_and_rls_hardening.sql). Frontend checks are UX only; database enforcement is the real security boundary.
+
+### Critical Policies:
+
+**1. Folders (class_app_can_view_folder)**
+- ✅ Owner can always view
+- ✅ Admins can always view
+- ✅ Profile folders blocked unless you're the owner
+- ✅ Public/everyone folders viewable if permissions allow
+- ✅ Whitelisted viewers/editors can view
+
+**2. Files (depends on parent folder access)**
+- ✅ Access controlled by folder permissions
+- ✅ Uploader can edit their files
+- ✅ Only users with folder edit permission can modify files
+
+**3. Shared AI Outputs**
+- ✅ Anyone can view (public board)
+- ✅ Only sharer can delete (or admin)
+
+**4. Shared Announcements**
+- ✅ Anyone can view if active=true
+- ✅ Only sharer can create
+
+**5. Messages**
+- ✅ Only messages in allowed chats visible
+- ✅ Users can only send to allowed channels
+
+**6. Admins Table (migration 015)**
+- ✅ Anyone can view admin list
+- ✅ Only admins can add new admins
+- ✅ Only admins can remove admins
+- ✅ `class_app_is_admin()` checks this table + 'Marquillero' fallback (temporary in 015, removed in 017)
+
+### Validation:
+- RLS is database-enforced; bypassing frontend does NOT bypass RLS
+- Admin status must be validated server-side via `class_app_is_admin()` function
+- All modifying operations (POST, PATCH, DELETE) require auth + RLS check
+- Supabase automatically enforces RLS on queries if enabled (alter table ... enable row level security)
+
 ## 📦 OUTPUT FORMAT (MANDATORY)
 
 After completing a task, ALWAYS respond with:

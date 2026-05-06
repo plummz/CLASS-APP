@@ -2018,6 +2018,27 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// -- Supabase service-key helper (bypasses RLS, server-side only) ----------------
+async function supabaseQuery(table, method, body, queryParams = {}) {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) throw new Error('Supabase service key not configured');
+  const url = new URL(`/rest/v1/${table}`, SUPABASE_URL);
+  for (const [k, v] of Object.entries(queryParams)) url.searchParams.append(k, v);
+  const headers = getSupabaseHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' }, { preferService: true });
+  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
+  if (method === 'DELETE') headers['Prefer'] = 'return=representation';
+  const response = await fetch(url.toString(), {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase ${method} ${table} failed (${response.status}): ${text.slice(0, 200)}`);
+  }
+  const text = await response.text();
+  return text ? JSON.parse(text) : [];
+}
+
 // -- Shared Boards API (Announcements, AI Outputs, Reviewers) ----------------
 app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
   const { title, body, schedule, source_type, date_key, date_label } = req.body || {};
@@ -2304,6 +2325,122 @@ app.delete('/api/subject-announcements/:id', requireAuth, requireAdmin, wrap(asy
 }));
 
 /* â"€â"€ File Summarizer Endpoint â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */
+/* ── Supabase-backed Folder/File/Message writes (bypass RLS via service key) ── */
+
+// POST /api/sb/folders — create folder in Supabase
+app.post('/api/sb/folders', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { name, parent, folder_type, permissions } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const inserted = await supabaseQuery('folders', 'POST', [{
+      name,
+      parent: parent || null,
+      owner: req.user.username,
+      folder_type: folder_type || null,
+      permissions: permissions || { viewers: [], editors: [], everyone: 'restricted' },
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// PATCH /api/sb/folders/:id/permissions — update folder permissions in Supabase
+app.patch('/api/sb/folders/:id/permissions', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { permissions } = req.body || {};
+  if (!permissions) return res.status(400).json({ error: 'permissions is required' });
+  const id = req.params.id;
+  try {
+    const existing = await supabaseQuery('folders', 'GET', null, { id: `eq.${id}`, select: 'owner' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Folder not found' });
+    if (!req.user.isAdmin && existing[0].owner !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('folders', 'PATCH', { permissions }, { id: `eq.${id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// POST /api/sb/files — insert file record in Supabase
+app.post('/api/sb/files', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { folder_id, name, url, type, size, is_original_upload, source_file_id } = req.body || {};
+  if (!folder_id || !name || !url) return res.status(400).json({ error: 'folder_id, name, and url are required' });
+  try {
+    const row = { folder_id, name, url, type: type || null, size: size || null, uploader: req.user.username };
+    if (is_original_upload !== undefined) row.is_original_upload = is_original_upload;
+    if (source_file_id !== undefined) row.source_file_id = source_file_id;
+    try {
+      const inserted = await supabaseQuery('files', 'POST', [row]);
+      return res.json(inserted[0]);
+    } catch (innerErr) {
+      if (/is_original_upload|source_file_id/i.test(innerErr.message)) {
+        const { is_original_upload: _a, source_file_id: _b, ...legacyRow } = row;
+        const inserted = await supabaseQuery('files', 'POST', [legacyRow]);
+        return res.json(inserted[0]);
+      }
+      throw innerErr;
+    }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// POST /api/sb/messages — send message via Supabase (bypasses RLS)
+app.post('/api/sb/messages', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { chat_type, target, text, attachment } = req.body || {};
+  if (!chat_type || !text) return res.status(400).json({ error: 'chat_type and text are required' });
+  try {
+    const inserted = await supabaseQuery('messages', 'POST', [{
+      chat_type,
+      target: target || null,
+      sender: req.user.username,
+      text,
+      attachment: attachment || null,
+    }]);
+    return res.json(inserted[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// PATCH /api/sb/messages/:id — edit message text via Supabase (bypasses RLS)
+app.patch('/api/sb/messages/:id', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { text } = req.body || {};
+  if (!text) return res.status(400).json({ error: 'text is required' });
+  const id = req.params.id;
+  try {
+    const existing = await supabaseQuery('messages', 'GET', null, { id: `eq.${id}`, select: 'sender' });
+    if (!existing || !existing.length) return res.status(404).json({ error: 'Message not found' });
+    if (!req.user.isAdmin && existing[0].sender !== req.user.username) return res.status(403).json({ error: 'Forbidden' });
+    await supabaseQuery('messages', 'PATCH', { text }, { id: `eq.${id}` });
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
+// POST /api/sb/rename-user — cascade-rename username across all Supabase tables
+app.post('/api/sb/rename-user', requireAuth, wrap(async (req, res) => {
+  if (!SUPABASE_URL || !getSupabaseApiKey({ preferService: true })) return res.status(503).json({ error: 'Requires Supabase service key' });
+  const { oldUsername, newUsername } = req.body || {};
+  if (!oldUsername || !newUsername) return res.status(400).json({ error: 'oldUsername and newUsername are required' });
+  if (req.user.username !== oldUsername && !req.user.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await supabaseQuery('folders', 'PATCH', { owner: newUsername }, { owner: `eq.${oldUsername}` });
+    await supabaseQuery('files', 'PATCH', { uploader: newUsername }, { uploader: `eq.${oldUsername}` });
+    await supabaseQuery('messages', 'PATCH', { sender: newUsername }, { sender: `eq.${oldUsername}` });
+    await supabaseQuery('messages', 'PATCH', { target: newUsername }, { target: `eq.${oldUsername}` });
+    await supabaseQuery('calendar_notes', 'PATCH', { updated_by: newUsername }, { updated_by: `eq.${oldUsername}` });
+    await supabaseQuery('shared_ai_outputs', 'PATCH', { sharer: newUsername }, { sharer: `eq.${oldUsername}` });
+    await supabaseQuery('shared_announcements', 'PATCH', { sharer: newUsername }, { sharer: `eq.${oldUsername}` });
+    const folders = await supabaseQuery('folders', 'GET', null, { select: 'id,permissions' });
+    for (const folder of folders || []) {
+      const perms = folder.permissions || { viewers: [], editors: [], everyone: 'restricted' };
+      const viewers = (perms.viewers || []).map(n => n === oldUsername ? newUsername : n);
+      const editors = (perms.editors || []).map(n => n === oldUsername ? newUsername : n);
+      if (JSON.stringify(viewers) !== JSON.stringify(perms.viewers || []) || JSON.stringify(editors) !== JSON.stringify(perms.editors || [])) {
+        await supabaseQuery('folders', 'PATCH', { permissions: { viewers, editors, everyone: perms.everyone } }, { id: `eq.${folder.id}` });
+      }
+    }
+    return res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}));
+
 app.post('/api/summarize-file', requireAuth, aiLimiter, upload.single('file'), async (req, res) => {
   const hasFile = !!req.file;
   const hasText = !!(req.body && req.body.text);

@@ -1,5 +1,20 @@
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.1',
+    date: 'May 6, 2026',
+    title: 'Phase 5 (Part 2): Complete Migration 021 Lockdown Compliance',
+    summary: 'Fixed all remaining direct Supabase writes that were broken by migration 021. All folder creation, file insertion, message sending, folder permissions, and username renames now route through server-side endpoints using the service key.',
+    changes: [
+      'Fix: insertFileRecord now routes through POST /api/sb/files (server-side, service key) instead of direct sb.from("files").insert() — was broken by migration 021.',
+      'Fix: createProfileFolder now routes through POST /api/sb/folders (server-side, service key) instead of direct sb.from("folders").insert() — was broken by migration 021.',
+      'Fix: setFolderAccessMode (permissions toggle) now routes through PATCH /api/sb/folders/:id/permissions instead of direct sb.from("folders").update() — was broken by migration 021.',
+      'Fix: sendChatMessage now routes through POST /api/sb/messages (server-side, service key) instead of direct sb.from("messages").insert() — was broken by migration 021.',
+      'Fix: editChatMessage now routes through PATCH /api/sb/messages/:id (server-side, service key) instead of direct sb.from("messages").update() — was broken by migration 021.',
+      'Fix: replaceUsernameReferences (username rename cascade) now routes through POST /api/sb/rename-user endpoint which uses service key — all 7 Supabase tables updated atomically including JSONB permission lists.',
+      'New: Added POST /api/sb/folders, PATCH /api/sb/folders/:id/permissions, POST /api/sb/files, POST /api/sb/messages, PATCH /api/sb/messages/:id, POST /api/sb/rename-user server endpoints.',
+    ],
+  },
   {
     version: '1.9.0',
     date: 'May 6, 2026',

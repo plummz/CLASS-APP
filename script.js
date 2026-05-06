@@ -1856,14 +1856,13 @@ function fetchAndRenderFolders() {
 
 window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
-    customPrompt("Enter new folder name:", function(name) {
+    customPrompt("Enter new folder name:", async function(name) {
         if(!name) return;
-        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            fetchAndRenderFolders();
-            showToast('Folder created.');
-        });
+        const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: currentParentContext, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Folder creation failed');
+        fetchAndRenderFolders();
+        showToast('Folder created.');
     });
 };
 
@@ -1871,17 +1870,16 @@ window.renameFolderAPI = async function(id, oldName, isSub) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can rename this folder.');
-    customPrompt("Enter new name for folder:", function(newName) {
+    customPrompt("Enter new name for folder:", async function(newName) {
         if(!newName || newName === oldName) return;
-        sb.from('folders').update({ name: newName }).eq('id', id)
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders();
-            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
-                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
-            }
-            showToast('Folder renamed.');
-        });
+        const response = await authFetch(`/api/folders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Rename failed');
+        isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders();
+        if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+            renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+        }
+        showToast('Folder renamed.');
     }, oldName);
 };
 
@@ -1889,16 +1887,15 @@ window.deleteFolderAPI = async function(id) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this folder.');
-    customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", function() {
-        sb.from('folders').delete().eq('id', id)
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            fetchAndRenderFolders();
-            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
-                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
-            }
-            showToast('Folder deleted.', 'warning');
-        });
+    customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", async function() {
+        const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Folder delete failed');
+        fetchAndRenderFolders();
+        if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+            renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+        }
+        showToast('Folder deleted.', 'warning');
     });
 };
 
@@ -2105,20 +2102,13 @@ window.createSubFolderAPI = function() {
     if (!currentUser) return customAlert("Please log in to create a sub-folder.");
     if (!currentFolderContext || !currentFolderContext.id) return customAlert("No folder selected.");
     if (!canEditFolder(currentFolderContext)) return customAlert('You do not have permission to add sub-folders here.');
-    customPrompt("Enter sub-folder name:", function(name) {
+    customPrompt("Enter sub-folder name:", async function(name) {
         if (!name) return;
-        sb.from('folders').insert([{
-            parent: String(currentFolderContext.id),
-            name,
-            owner: currentUser.username,
-            permissions: { viewers: [], editors: [], everyone: 'edit' },
-            folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null,
-        }])
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            fetchAndRenderSubFolders();
-            showToast('Sub-folder created.');
-        });
+        const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: String(currentFolderContext.id), name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' }, folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Sub-folder creation failed');
+        fetchAndRenderSubFolders();
+        showToast('Sub-folder created.');
     });
 };
 
@@ -2126,13 +2116,12 @@ window.deleteSubFolderAPI = async function(id) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this sub-folder.');
-    customConfirm("Delete this sub-folder and all files inside it?", function() {
-        sb.from('folders').delete().eq('id', id)
-        .then(({ error }) => {
-            if (error) return customAlert(error.message);
-            fetchAndRenderSubFolders();
-            showToast('Sub-folder deleted.', 'warning');
-        });
+    customConfirm("Delete this sub-folder and all files inside it?", async function() {
+        const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Sub-folder delete failed');
+        fetchAndRenderSubFolders();
+        showToast('Sub-folder deleted.', 'warning');
     });
 };
 
@@ -2226,8 +2215,9 @@ window.deleteFileAPI = async function(fileId) {
         || !!(currentUser && (file?.uploader === currentUser.username || isAdmin));
     if (!canDeleteFile) return customAlert('You do not have permission to delete this file.');
     customConfirm("Delete this file?", async function() {
-        const { error } = await sb.from('files').delete().eq('id', fileId);
-        if (error) return customAlert(error.message);
+        const response = await authFetch(`/api/files/${fileId}`, { method: 'DELETE' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return customAlert(data.error || 'Delete failed');
         fetchAndRenderFiles();
         showToast('File deleted.', 'warning');
     });
@@ -2240,13 +2230,10 @@ async function getAllFolders() {
 }
 
 async function insertFileRecord(row) {
-    const { error } = await sb.from('files').insert([row]);
-    if (!error) return { error: null };
-    if (/is_original_upload|source_file_id/i.test(error.message || '')) {
-        const { is_original_upload, source_file_id, ...legacyRow } = row;
-        return sb.from('files').insert([legacyRow]);
-    }
-    return { error };
+    const res = await authFetch('/api/sb/files', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(row) });
+    const data = await res.json();
+    if (!res.ok) return { error: { message: data.error || 'Failed to insert file' } };
+    return { error: null, data };
 }
 
 function removeDynamicModal(id) {
@@ -2303,8 +2290,8 @@ window.setFolderAccessMode = async function(folderId, mode) {
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can manage permissions.');
     const nextMode = mode === 'restricted' ? 'restricted' : 'edit';
     const permissions = { viewers: [], editors: [], everyone: nextMode };
-    const { error } = await sb.from('folders').update({ permissions }).eq('id', folderId);
-    if (error) return customAlert(error.message);
+    const res = await authFetch(`/api/sb/folders/${folderId}/permissions`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions }) });
+    if (!res.ok) { const d = await res.json(); return customAlert(d.error || 'Failed to update permissions'); }
     removeDynamicModal('folder-permission-modal');
     showToast(nextMode === 'edit' ? 'Everyone now has edit access.' : 'Folder restricted to the owner.');
     if (currentFolderContext?.id === folderId) currentFolderContext = { ...currentFolderContext, permissions };
@@ -2359,14 +2346,13 @@ window.createProfileFolder = function(username) {
     if (!currentUser || currentUser.username !== username) return customAlert('You can only create folders under your own profile.');
     customPrompt('Profile folder name:', async function(name) {
         if (!name) return;
-        const { error } = await sb.from('folders').insert([{
+        const res = await authFetch('/api/sb/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
             parent: `${PROFILE_FOLDER_PREFIX}${username}`,
             name,
-            owner: username,
-            permissions: { viewers: [], editors: [], everyone: 'edit' },
             folder_type: 'profile',
-        }]);
-        if (error) return customAlert(error.message);
+            permissions: { viewers: [], editors: [], everyone: 'edit' },
+        }) });
+        if (!res.ok) { const d = await res.json(); return customAlert(d.error || 'Failed to create folder'); }
         showToast('Profile folder created.');
         renderProfileFolders(username);
     });
@@ -3904,23 +3890,8 @@ function validateUsernameFormat(username) {
 }
 
 async function replaceUsernameReferences(oldUsername, newUsername) {
-  await sb.from('folders').update({ owner: newUsername }).eq('owner', oldUsername);
-  await sb.from('files').update({ uploader: newUsername }).eq('uploader', oldUsername);
-  await sb.from('messages').update({ sender: newUsername }).eq('sender', oldUsername);
-  await sb.from('messages').update({ target: newUsername }).eq('target', oldUsername);
-  await sb.from('calendar_notes').update({ updated_by: newUsername }).eq('updated_by', oldUsername);
-  await sb.from('shared_ai_outputs').update({ sharer: newUsername }).eq('sharer', oldUsername);
-  await sb.from('shared_announcements').update({ sharer: newUsername }).eq('sharer', oldUsername);
-
-  const { data: permissionFolders } = await sb.from('folders').select('id,permissions');
-  for (const folder of permissionFolders || []) {
-    const permissions = normalizeFolderPermissions(folder);
-    const viewers = permissions.viewers.map((name) => name === oldUsername ? newUsername : name);
-    const editors = permissions.editors.map((name) => name === oldUsername ? newUsername : name);
-    if (JSON.stringify(viewers) !== JSON.stringify(permissions.viewers) || JSON.stringify(editors) !== JSON.stringify(permissions.editors)) {
-      await sb.from('folders').update({ permissions: { viewers, editors, everyone: permissions.everyone } }).eq('id', folder.id);
-    }
-  }
+  const res = await authFetch('/api/sb/rename-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldUsername, newUsername }) });
+  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Username cascade rename failed'); }
 }
 
 window.saveProfileEdits = async function(username) {
@@ -4197,11 +4168,9 @@ window.sendMessage = async function() {
       const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
       if (!error) { const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath); attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl }; }
   }
-  const { data: savedMessage, error: sendError } = await sb.from('messages')
-    .insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }])
-    .select('*')
-    .single();
-  if (sendError) return customAlert(sendError.message);
+  const msgRes = await authFetch('/api/sb/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, text, attachment: attachmentData }) });
+  if (!msgRes.ok) { const d = await msgRes.json(); return customAlert(d.error || 'Failed to send message'); }
+  const savedMessage = await msgRes.json();
   logActivity('send_message', currentChat.type === 'private' ? `dm:${currentChat.target}` : currentChat.type);
   if (currentChat.type === 'private' && currentChat.target && savedMessage?.id) {
     notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
@@ -4214,10 +4183,10 @@ window.sendMessage = async function() {
 window.editChatMessage = function(id) {
   const message = getCurrentHistory().find(m => m.id === id);
   if (!message) return;
-  customPrompt('Edit:', async function(updated) { if (updated !== null) await sb.from('messages').update({ text: updated }).eq('id', id); }, message.text);
+  customPrompt('Edit:', async function(updated) { if (updated !== null) await authFetch(`/api/sb/messages/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: updated }) }); }, message.text);
 };
 
-window.deleteMessageForEveryone = async function(id) { customConfirm("Delete message?", async function() { await sb.from('messages').delete().eq('id', id); }); };
+window.deleteMessageForEveryone = async function(id) { customConfirm("Delete message?", async function() { await authFetch(`/api/messages/${id}`, { method: 'DELETE' }); }); };
 
 /* ============================================================
    UI & DROPDOWN NAVIGATION LOGIC
@@ -6752,33 +6721,37 @@ function renderGFiles(pfx, view) {
 // ── Folder / File actions ─────────────────────────────────────
 function gCreateFolder(pfx, parentKey) {
   if (!currentUser) return customAlert('Please log in.');
-  customPrompt('Album name:', function(name) {
+  customPrompt('Album name:', async function(name) {
     if (!name) return;
-    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
-      .then(({ error }) => {
-        if (error) return customAlert(error.message);
-        showToast('Album created.');
-        renderGallery(pfx);
-      });
+    const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return customAlert(data.error || 'Album creation failed');
+    showToast('Album created.');
+    renderGallery(pfx);
   });
 }
 function gRenameFolder(pfx, id, currentName) {
   fetchFolderById(id).then((folder) => {
   if (!canManageFolder(folder)) return customAlert('Only the album owner can rename this album.');
-  customPrompt('New album name:', function(name) {
+  customPrompt('New album name:', async function(name) {
     if (!name || name === currentName) return;
-    sb.from('folders').update({ name }).eq('id', id)
-      .then(({ error }) => { if (error) return customAlert(error.message); showToast('Album renamed.'); renderGallery(pfx); });
+    const response = await authFetch(`/api/folders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return customAlert(data.error || 'Rename failed');
+    showToast('Album renamed.');
+    renderGallery(pfx);
   }, currentName);
   }).catch((error) => customAlert(error.message));
 }
 function gDeleteFolder(pfx, id) {
   fetchFolderById(id).then((folder) => {
   if (!canManageFolder(folder)) return customAlert('Only the album owner can delete this album.');
-  customConfirm('Delete this album and all its photos?', function() {
-    sb.from('files').delete().eq('folder_id', id)
-      .then(() => sb.from('folders').delete().eq('id', id))
-      .then(() => { showToast('Album deleted.', 'warning'); renderGallery(pfx); });
+  customConfirm('Delete this album and all its photos?', async function() {
+    const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return customAlert(data.error || 'Album delete failed');
+    showToast('Album deleted.', 'warning');
+    renderGallery(pfx);
   });
   }).catch((error) => customAlert(error.message));
 }

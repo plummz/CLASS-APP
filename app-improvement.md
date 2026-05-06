@@ -1,7 +1,7 @@
 # CLASS-APP Improvement & Security Audit
 
 **Last Updated**: 2026-05-06  
-**Status**: Phase 1 ✅ COMPLETE | Phase 2-4 PENDING
+**Status**: Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3-4 PENDING
 
 ---
 
@@ -71,27 +71,26 @@
 
 ---
 
-### ⏳ PHASE 2: FRONTEND HARDENING (NOT STARTED)
+### ✅ PHASE 2: FRONTEND HARDENING (COMPLETE)
 
-**Objective**: Prevent client-side injection and enforce data contracts
+**Status**: Fully implemented — commit on `claude/phase-2-form-validation-BAXnU`
 
-#### 2.1 Form Input Validation (Frontend)
-- Validate before API calls
-- Show error messages
-- Disable buttons during submission
+#### 2.1 Form Input Validation (Frontend) ✅
+- `validateFolderName()` runs before all folder/subfolder/profile-folder create & rename
+- `validateChatMessage()` enforces 2,000-char limit before send
+- Invalid inputs get `customAlert` error before the API call fires
 
-#### 2.2 Data Type Enforcement
-- Validate API responses
-- Type checking on deserialization
-- Fallback to empty state on error
+#### 2.2 Data Type Enforcement ✅
+- Folder, subfolder, and file render loops skip items missing required `id`/`name`
+- `validateAPIResponse()`, `safeString()`, `safeArray()`, `safeObject()` available in `window.formValidation`
 
-#### 2.3 Sanitize Display Data
-- Max length enforcement
-- Prevent UI breakage
-- Add ellipsis if truncated
+#### 2.3 Sanitize Display Data ✅
+- Folder titles truncated at 40 chars (main + sub + profile)
+- File names truncated at 55 chars
+- Full name preserved in `title` attribute for accessibility/tooltip
 
-#### 2.4 CSRF Token (Optional)
-- Add if server supports
+#### 2.4 CSRF Token ✅ SKIPPED
+- No server-side CSRF support found — skipped as noted in plan
 
 ---
 
@@ -194,5 +193,5 @@ See CLAUDE.md for full list.
 
 ---
 
-**Document Version**: 1.0  
-**Status**: Phase 1 ✅ Complete | Phase 2-4 Ready
+**Document Version**: 1.1  
+**Status**: Phase 1 ✅ Complete | Phase 2 ✅ Complete | Phase 3-4 Ready

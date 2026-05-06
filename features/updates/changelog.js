@@ -1,5 +1,19 @@
-const APP_VERSION = '1.8.6';
+const APP_VERSION = '1.8.7';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.7',
+    date: 'May 6, 2026',
+    title: 'Phase 2: Frontend Hardening — Form Validation & Data Safety',
+    summary: 'Added a centralized form-validation module that validates folder names before API calls, enforces chat message length limits, guards rendering against malformed API data, and truncates long names in the UI to prevent layout breakage.',
+    changes: [
+      'Feature: New `features/security/form-validation.js` — centralized validation utility module (Phase 2).',
+      'Security: Folder name validation runs client-side before all folder/subfolder/profile-folder creation and rename operations. Rejects empty names, names over 50 characters, and names with unsafe characters (< > " \' ` \\).',
+      'Security: Chat message length is now validated client-side (max 2,000 characters) before the send request is made.',
+      'Improvement: Folder and file render loops now skip malformed API items that are missing required id or name fields, preventing JS errors and blank cards.',
+      'Improvement: Long folder names (>40 chars), file names (>55 chars), and profile folder names (>40 chars) are now truncated with an ellipsis in the UI. Full name is preserved in the title attribute for accessibility.',
+      'Improvement: All validation in `form-validation.js` is optional-chained — app degrades safely if the module fails to load.',
+    ],
+  },
   {
     version: '1.8.6',
     date: 'May 5, 2026',

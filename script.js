@@ -729,6 +729,7 @@ function fetchAndRenderFolders() {
         }
 
         visibleFolders.forEach(f => {
+            if (!f?.id || typeof f.name !== 'string') return; // Phase 2.2: skip malformed API data
             const canManage = canManageFolder(f);
             const canEdit = canEditFolder(f);
             const safeId = escapeJS(f.id);
@@ -737,7 +738,7 @@ function fetchAndRenderFolders() {
             <div class="folder-card-modern">
                 <div class="folder-card-main" role="button" tabindex="0" data-folder-open="${safeId}" data-folder-name="${safeName}">
                     <div class="folder-card-icon">📁</div>
-                    <div class="folder-card-title">${escapeHTML(f.name)}</div>
+                    <div class="folder-card-title" title="${escapeHTML(f.name)}">${escapeHTML(window.formValidation?.truncateDisplay(f.name, 40) ?? f.name)}</div>
                     <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
                     <div class="folder-access-pill ${canEdit ? 'editor' : 'viewer'}">${folderAccessLabel(f)}</div>
                 </div>
@@ -762,6 +763,8 @@ window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
     customPrompt("Enter new folder name:", async function(name) {
         if(!name) return;
+        const nameErr = window.formValidation?.validateFolderName(name);
+        if (nameErr) return customAlert(nameErr);
         const payload = { parent: currentParentContext, name: name, permissions: { viewers: [], editors: [], everyone: 'edit' } };
         const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await response.json().catch(() => ({}));
@@ -777,6 +780,8 @@ window.renameFolderAPI = async function(id, oldName, isSub) {
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can rename this folder.');
     customPrompt("Enter new name for folder:", async function(newName) {
         if(!newName || newName === oldName) return;
+        const nameErr = window.formValidation?.validateFolderName(newName);
+        if (nameErr) return customAlert(nameErr);
         const response = await authFetch(`/api/folders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) return customAlert(data.error || 'Folder rename failed');
@@ -946,6 +951,7 @@ function fetchAndRenderFiles() {
             return;
         }
         files.forEach(f => {
+            if (!f?.id || typeof f.name !== 'string') return; // Phase 2.2: skip malformed API data
             const canModifyFile = allowEdit || (currentUser && (f.uploader === currentUser.username || isAdmin));
             const canSummarizeFile = isSummarizableFileName(f.name);
             const safeName = escapeJS(f.name);
@@ -955,7 +961,7 @@ function fetchAndRenderFiles() {
             list.innerHTML += `
             <div class="file-row-modern">
                 <div class="file-row-meta">
-                    <div class="file-row-name">📄 ${escapeHTML(f.name)}</div>
+                    <div class="file-row-name" title="${escapeHTML(f.name)}">📄 ${escapeHTML(window.formValidation?.truncateDisplay(f.name, 55) ?? f.name)}</div>
                     <div class="file-row-sub">${f.size ? `<span>${formatFileSize(f.size)}</span> · ` : ''}${getUploaderAvatarHTML(f.uploader)}${escapeHTML(f.uploader || 'Unknown')}</div>
                 </div>
                 <div class="file-row-actions">
@@ -1011,6 +1017,7 @@ function fetchAndRenderSubFolders() {
             return;
         }
         visibleSubs.forEach(f => {
+            if (!f?.id || typeof f.name !== 'string') return; // Phase 2.2: skip malformed API data
             const canManage = canManageFolder(f);
             const safeId = escapeJS(f.id);
             const safeName = escapeJS(f.name);
@@ -1018,7 +1025,7 @@ function fetchAndRenderSubFolders() {
             <div class="folder-card-modern compact">
                 <div class="folder-card-main" role="button" tabindex="0" data-folder-open="${safeId}" data-folder-name="${safeName}">
                     <div class="folder-card-icon">📂</div>
-                    <div class="folder-card-title">${escapeHTML(f.name)}</div>
+                    <div class="folder-card-title" title="${escapeHTML(f.name)}">${escapeHTML(window.formValidation?.truncateDisplay(f.name, 40) ?? f.name)}</div>
                     <div class="folder-card-owner">Owned by ${escapeHTML(f.owner || 'Unknown')}</div>
                     <div class="folder-access-pill ${canEditFolder(f) ? 'editor' : 'viewer'}">${folderAccessLabel(f)}</div>
                 </div>
@@ -1043,6 +1050,8 @@ window.createSubFolderAPI = function() {
     if (!canEditFolder(currentFolderContext)) return customAlert('You do not have permission to add sub-folders here.');
     customPrompt("Enter sub-folder name:", async function(name) {
         if (!name) return;
+        const nameErr = window.formValidation?.validateFolderName(name);
+        if (nameErr) return customAlert(nameErr);
         const payload = {
             parent: String(currentFolderContext.id),
             name,
@@ -1296,7 +1305,7 @@ async function renderProfileFolders(username) {
               <div class="profile-folder-card">
                 <button class="profile-folder-open" onclick="openFileExplorer('${safeId}','${safeName}')">
                   <span class="profile-folder-icon">📁</span>
-                  <span class="profile-folder-name">${escapeHTML(folder.name)}</span>
+                  <span class="profile-folder-name" title="${escapeHTML(folder.name)}">${escapeHTML(window.formValidation?.truncateDisplay(folder.name, 40) ?? folder.name)}</span>
                   <span class="profile-folder-owner">Owner: ${escapeHTML(folder.owner)}</span>
                   <span class="folder-access-pill ${canEditFolder(folder) ? 'editor' : 'viewer'}">${folderAccessLabel(folder)}</span>
                 </button>
@@ -1315,6 +1324,8 @@ window.createProfileFolder = function(username) {
     if (!currentUser || currentUser.username !== username) return customAlert('You can only create folders under your own profile.');
     customPrompt('Profile folder name:', async function(name) {
         if (!name) return;
+        const nameErr = window.formValidation?.validateFolderName(name);
+        if (nameErr) return customAlert(nameErr);
         const payload = {
             parent: `${PROFILE_FOLDER_PREFIX}${username}`,
             name,
@@ -3219,6 +3230,8 @@ window.sendMessage = async function() {
   if (!text && !file) return;
   if (!currentUser) return customAlert('Please login first.');
   if (currentChat.type === 'private' && !currentChat.target) return customAlert('Select a contact.');
+  const msgErr = window.formValidation?.validateChatMessage(text);
+  if (msgErr) return customAlert(msgErr);
 
   let attachmentData = null;
   if (file) {

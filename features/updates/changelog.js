@@ -1,5 +1,18 @@
-const APP_VERSION = '1.8.8';
+const APP_VERSION = '1.8.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.8.9',
+    date: 'May 6, 2026',
+    title: 'Phase 4: Advanced Hardening & Monitoring',
+    summary: 'Extended the activity audit trail, added a lightweight suspicious-activity detector, tightened the Content Security Policy, and added an explicit Permissions-Policy header to restrict unused browser features.',
+    changes: [
+      'Feature: Activity audit trail extended — folder create/rename/delete, subfolder create/delete, file upload/delete, profile update, and logout are now all recorded in the activity_log table.',
+      'Security: Suspicious-activity detector (Phase 4.2) — a rolling 60-second window tracks destructive actions. If ≥4 folder deletes or ≥5 file deletes occur in a minute, the pattern is logged as "suspicious_activity" for admin review.',
+      'Security (CSP): Added formAction "\'self\'" — blocks form submissions to external URLs. Added baseUri "\'self\'" — blocks base-tag injection attacks. Added objectSrc "\'none\'" — disables Flash and browser plugins.',
+      'Security (Headers): Added Permissions-Policy response header — explicitly disables camera, microphone, geolocation, and interest-cohort (FLoC) for all responses.',
+      'Assessment (Dependencies): 5 moderate npm vulnerabilities identified. 4 are in transitive AWS SDK/bn.js dependencies with no exploit path in this app. 1 (ip-address XSS via express-rate-limit) has no safe non-breaking fix available; IP addresses are never rendered as HTML in this codebase so actual risk is negligible.',
+    ],
+  },
   {
     version: '1.8.8',
     date: 'May 6, 2026',

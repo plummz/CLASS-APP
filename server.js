@@ -163,10 +163,24 @@ app.use(helmet({
       connectSrc: ["'self'", 'https://*.supabase.co', 'wss://*.supabase.co', 'https://pipedapi.kavin.rocks', 'https://pipedapi.tokhmi.xyz', 'https://piped-api.garudalinux.org', 'https://pipedapi.adminforge.de', 'https://www.googleapis.com'],
       mediaSrc: ["'self'", 'blob:', 'https:'],
       workerSrc: ["'self'", 'blob:'],
+      // Phase 4.3: additional CSP restrictions
+      formAction: ["'self'"],           // block form submission to external URLs
+      baseUri: ["'self'"],              // block base-tag injection
+      objectSrc: ["'none'"],            // disable Flash/plugins
     },
   },
   crossOriginEmbedderPolicy: false,
 }));
+
+// Phase 4.4: Permissions-Policy — restrict dangerous browser features not used by this app
+app.use((req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+  );
+  next();
+});
+
 const STATIC_CACHE_OPTIONS = {
   maxAge: '1y',
   immutable: true,

@@ -772,6 +772,7 @@ window.createFolderAPI = function() {
         if (!response.ok) return customAlert(data.error || 'Folder creation failed');
         fetchAndRenderFolders();
         showToast('Folder created.');
+        logActivity('create_folder', name);
     });
 };
 
@@ -791,6 +792,7 @@ window.renameFolderAPI = async function(id, oldName, isSub) {
             renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
         }
         showToast('Folder renamed.');
+        logActivity('rename_folder', `${oldName} → ${newName}`);
     }, oldName);
 };
 
@@ -807,6 +809,8 @@ window.deleteFolderAPI = async function(id) {
             renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
         }
         showToast('Folder deleted.', 'warning');
+        logActivity('delete_folder', folder.name || id);
+        _activityTracker.check('delete_folder', 4);
     });
 };
 
@@ -1064,6 +1068,7 @@ window.createSubFolderAPI = function() {
         if (!response.ok) return customAlert(data.error || 'Sub-folder creation failed');
         fetchAndRenderSubFolders();
         showToast('Sub-folder created.');
+        logActivity('create_subfolder', name);
     });
 };
 
@@ -1077,6 +1082,8 @@ window.deleteSubFolderAPI = async function(id) {
         if (!response.ok) return customAlert(data.error || 'Sub-folder delete failed');
         fetchAndRenderSubFolders();
         showToast('Sub-folder deleted.', 'warning');
+        logActivity('delete_subfolder', folder.name || id);
+        _activityTracker.check('delete_folder', 4);
     });
 };
 
@@ -1168,6 +1175,7 @@ window.uploadFileToFolderAPI = async function() {
         customAlert(`${failed} file(s) failed to upload:\n${failNames.join('\n')}\n\nCheck the browser console for details.`);
     }
     fetchAndRenderFiles();
+    if (done > 0) logActivity('upload_file', `${done} file(s) to folder:${folderId}`);
 };
 
 window.deleteFileAPI = async function(fileId) {
@@ -1191,6 +1199,8 @@ window.deleteFileAPI = async function(fileId) {
         if (!response.ok) return customAlert(data.error || 'Delete failed');
         fetchAndRenderFiles();
         showToast('File deleted.', 'warning');
+        logActivity('delete_file', file?.name || fileId);
+        _activityTracker.check('delete_file', 5);
     });
 };
 
@@ -2611,6 +2621,7 @@ window.register = async function() {
 
 window.handleLogout = async function() {
     await persistLastSeen({ online: false, force: true });
+    logActivity('logout').catch(() => {}); // Phase 4.1: log before session cleared
     stopLastSeenHeartbeat();
     stopAdminValidationPoller(); // Phase 1.2: Stop admin status polling on logout
     window.sessionManager?.destroy(); // Phase 3: stop token refresh, idle timer, multi-tab sync
@@ -3013,6 +3024,7 @@ window.saveProfileEdits = async function(username) {
     users = users.map((user) => user.username === username ? data.profile : user);
     fetchUsers();
     showToast('Profile updated.');
+    logActivity('update_profile', username);
     openUserProfile(currentUser.username);
   } catch (err) {
     customAlert('Network error while updating profile.');
@@ -5039,6 +5051,30 @@ async function logActivity(action, details = '') {
   if (!currentUser || !sb) return;
   sb.from('activity_log').insert([{ username: currentUser.username, action, details }]).then(() => {});
 }
+
+// Phase 4.2: Lightweight suspicious-activity detector — tracks destructive actions
+// within a 60-second rolling window and logs anomalies without blocking the user.
+const _activityTracker = (function () {
+  const _windows = {};
+  const WINDOW_MS = 60 * 1000;
+  function record(action) {
+    const now = Date.now();
+    if (!_windows[action]) _windows[action] = [];
+    _windows[action] = _windows[action].filter(t => now - t < WINDOW_MS);
+    _windows[action].push(now);
+    return _windows[action].length;
+  }
+  return {
+    check(action, threshold) {
+      const count = record(action);
+      if (count >= threshold) {
+        const detail = `${action}:${count}_in_60s`;
+        console.warn('[security] Suspicious activity:', detail);
+        logActivity('suspicious_activity', detail).catch(() => {});
+      }
+    },
+  };
+})();
 
 let adminActiveTab = 'users';
 

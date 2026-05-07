@@ -1,5 +1,18 @@
-﻿const APP_VERSION = '1.9.6';
-const APP_CHANGELOG = [\n  {
+﻿const APP_VERSION = '1.9.7';
+const APP_CHANGELOG = [
+  {
+    version: '1.9.7',
+    date: 'May 7, 2026',
+    title: 'Emergency Hamburger Menu Fix',
+    summary: 'Restored hamburger/sidebar click behavior after a regression that made the menu button unresponsive and blocked navigation.',
+    changes: [
+      'Restored hamburger/sidebar click behavior.',
+      'Fixed menu open/close handling after dynamic page renders.',
+      'Checked z-index and pointer-event conflicts.',
+      'Bumped cache version so the fixed script loads correctly.',
+    ],
+  },
+  {
     version: '1.9.6',
     date: 'May 7, 2026',
     title: 'Button Logic Stability Fix',
@@ -1782,4 +1795,8 @@ const APP_CHANGELOG = [\n  {
     ],
   },
 ];
-\n\n// Expose version/changelog for the Updates feature module.\nwindow.CLASS_APP_VERSION = APP_VERSION;\nwindow.CLASS_APP_CHANGELOG = APP_CHANGELOG;\n
+
+
+// Expose version/changelog for the Updates feature module.
+window.CLASS_APP_VERSION = APP_VERSION;
+window.CLASS_APP_CHANGELOG = APP_CHANGELOG;

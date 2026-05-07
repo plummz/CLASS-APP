@@ -169,3 +169,45 @@ Lobby:
 - If any page buttons are still dead *after* navigation is stabilized, those pages likely need explicit event delegation rebinding after dynamic render.
 - Tallies (app-open/contribution) require verifying the current data source (server `data.json` vs Supabase tables) and ensuring no mock values override real values.
 - Some “dead” interactions may be caused by overlays/pointer-events from auth gating; verify `renderAppState()` toggles and mobile overlay layers.
+
+## Emergency Follow-up: Hamburger Menu Regression
+
+Date: May 7, 2026
+
+### Root cause
+- eatures/updates/changelog.js contained literal \\n tokens outside of strings (introduced during the previous merge), causing a JavaScript parse error when the file loaded. On affected browsers/PWA builds this prevented reliable app initialization and left the hamburger/menu toggle unbound.
+
+### What was changed (emergency-only)
+- Repaired eatures/updates/changelog.js so it is valid JavaScript (removed the injected literal \\n tokens, restored real newlines).
+- Added a new Software Update entry: **Emergency Hamburger Menu Fix** (version 1.9.7).
+- Bumped cache versions so the fixed JS is not stuck behind the service worker.
+
+### Files / functions touched
+- eatures/updates/changelog.js (APP_VERSION, APP_CHANGELOG, window exports)
+- index.html (bumped eatures/updates/changelog.js?v=)
+- sw.js (CACHE_VERSION, index.html?v, changelog.js?v)
+
+### Why the previous fix broke it
+- The changelog entry was inserted with escaped newlines (\\n) instead of real newlines, making the script invalid JS.
+
+### Testing results (browser + mobile viewport)
+- Not yet run in this coding session. See checklist below.
+
+#### Checklist
+- [ ] Hamburger opens menu on Announcement page
+- [ ] Hamburger opens menu on Shared Reviewers page
+- [ ] Hamburger opens menu on My Classes page
+- [ ] Hamburger opens menu on Chat page
+- [ ] Hamburger opens menu on User Directory page
+- [ ] Hamburger opens menu on Social Media Pages
+- [ ] Hamburger opens menu on Personal Tools page
+- [ ] Hamburger opens menu on Calendar page
+- [ ] Hamburger opens menu on Games page
+- [ ] Menu links navigate correctly
+- [ ] Close button/backdrop closes menu
+- [ ] Theme button still works
+- [ ] Chat bubble still works
+- [ ] No console error appears when hamburger is clicked
+
+### Cache/version updates applied
+- index.html: eatures/updates/changelog.js?v=1 → =2`n- sw.js: CACHE_VERSION bumped to 1.5.71-20260507-emergency-hamburger-menu-fix`n- sw.js: index.html?v=112 → =113`n- sw.js: eatures/updates/changelog.js?v=1 → =2`n

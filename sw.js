@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.71-20260507-emergency-hamburger-menu-fix';
+const CACHE_VERSION = 'v1.5.74-20260507-emergency-hamburger-menu-fix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=113',
+  '/index.html?v=116',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -47,8 +47,8 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=1',
-  '/features/logging-in/shell-controls.js?v=1',
-  '/features/updates/changelog.js?v=2',
+  '/features/logging-in/shell-controls.js?v=3',
+  '/features/updates/changelog.js?v=3',
   '/script.js?v=115',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
@@ -274,4 +274,7 @@ self.addEventListener('notificationclick', (event) => {
     await clients.openWindow(targetUrl);
   })());
 });
+
+
+
 

@@ -175,25 +175,30 @@ Lobby:
 Date: May 7, 2026
 
 ### Root cause
-- eatures/updates/changelog.js contained literal \\n tokens outside of strings (introduced during the previous merge), causing a JavaScript parse error when the file loaded. On affected browsers/PWA builds this prevented reliable app initialization and left the hamburger/menu toggle unbound.
+- `features/updates/changelog.js` was loaded before `script.js` and declared `const APP_VERSION` / `const APP_CHANGELOG` in the global scope, but `script.js` already declares the same constants. This caused a runtime error ("Identifier 'APP_CHANGELOG' has already been declared"), aborting `script.js` before it could bind the hamburger click handler.
+- Even after fixing syntax, caching could still serve stale `shell-controls.js` unless its `?v=` value and the service worker cache were bumped.
 
 ### What was changed (emergency-only)
-- Repaired eatures/updates/changelog.js so it is valid JavaScript (removed the injected literal \\n tokens, restored real newlines).
-- Added a new Software Update entry: **Emergency Hamburger Menu Fix** (version 1.9.7).
-- Bumped cache versions so the fixed JS is not stuck behind the service worker.
+- Updated `features/updates/changelog.js` to avoid global-const collisions by wrapping it in an IIFE and exporting only to `window.CLASS_APP_VERSION` / `window.CLASS_APP_CHANGELOG`.
+- Added a dedicated hamburger binding in `features/logging-in/shell-controls.js` using a window-level capture click handler so the hamburger works across dynamic page renders and does not depend on other modules finishing initialization.
+- Bumped cache versions so PWA/Render updates pick up the fixed JS immediately.
 
 ### Files / functions touched
-- eatures/updates/changelog.js (APP_VERSION, APP_CHANGELOG, window exports)
-- index.html (bumped eatures/updates/changelog.js?v=)
-- sw.js (CACHE_VERSION, index.html?v, changelog.js?v)
+- `features/logging-in/shell-controls.js` (Emergency hamburger binding)
+- `features/updates/changelog.js` (`APP_VERSION`, `APP_CHANGELOG`, window exports)
+- `index.html` (bumped `shell-controls.js?v=` and `changelog.js?v=`)
+- `sw.js` (`CACHE_VERSION` and asset version list)
 
 ### Why the previous fix broke it
-- The changelog entry was inserted with escaped newlines (\\n) instead of real newlines, making the script invalid JS.
+- The changelog was extracted to a separate file and loaded before `script.js`, but `script.js` still declares `APP_VERSION` / `APP_CHANGELOG`, so the second declaration crashed `script.js` at runtime.
 
-### Testing results (browser + mobile viewport)
-- Not yet run in this coding session. See checklist below.
+### Testing results
+Automated (headless Chromium via Playwright, viewport 390?844):
+- [x] Menu open works (click dispatched on `#menu-toggle`)
+- [x] Menu close works (click dispatched on `#overlay`)
+- [x] No console error on hamburger click (after the collision fix)
 
-#### Checklist
+Manual verification still required (real logged-in session, real clicks):
 - [ ] Hamburger opens menu on Announcement page
 - [ ] Hamburger opens menu on Shared Reviewers page
 - [ ] Hamburger opens menu on My Classes page
@@ -210,4 +215,9 @@ Date: May 7, 2026
 - [ ] No console error appears when hamburger is clicked
 
 ### Cache/version updates applied
-- index.html: eatures/updates/changelog.js?v=1 → =2`n- sw.js: CACHE_VERSION bumped to 1.5.71-20260507-emergency-hamburger-menu-fix`n- sw.js: index.html?v=112 → =113`n- sw.js: eatures/updates/changelog.js?v=1 → =2`n
+- `index.html`: `features/logging-in/shell-controls.js?v=1` ? `v=3`
+- `index.html`: `features/updates/changelog.js?v=1` ? `v=3`
+- `sw.js`: `CACHE_VERSION` ? `v1.5.74-20260507-emergency-hamburger-menu-fix`
+- `sw.js`: `index.html?v=112` ? `v=116`
+- `sw.js`: `features/logging-in/shell-controls.js?v=1` ? `v=3`
+- `sw.js`: `features/updates/changelog.js?v=1` ? `v=3`

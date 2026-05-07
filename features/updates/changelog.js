@@ -1,4 +1,5 @@
-﻿const APP_VERSION = '1.9.7';
+﻿(function () {
+const APP_VERSION = '1.9.7';
 const APP_CHANGELOG = [
   {
     version: '1.9.7',
@@ -1796,7 +1797,7 @@ const APP_CHANGELOG = [
   },
 ];
 
-
 // Expose version/changelog for the Updates feature module.
 window.CLASS_APP_VERSION = APP_VERSION;
 window.CLASS_APP_CHANGELOG = APP_CHANGELOG;
+})();

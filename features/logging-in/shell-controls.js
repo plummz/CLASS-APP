@@ -1,4 +1,4 @@
-// features/logging-in/shell-controls.js
+﻿// features/logging-in/shell-controls.js
 // Global shell: menu toggle, sidebar, page switching, session establishment
 
 // Many pages are rendered dynamically and initialized during navigation.
@@ -196,3 +196,40 @@ async function establishSession() {
 }
 
 document.addEventListener('DOMContentLoaded', sidebarNavHandler);
+
+// Emergency regression guard: keep hamburger menu clickable even if other scripts fail.
+// Use document-level delegation so it survives dynamic page renders.
+(function initHamburgerMenuBindings() {
+  if (window.__classAppMenuBindingsAttached) return;
+  window.__classAppMenuBindingsAttached = true;
+
+  window.addEventListener('click', function (event) {
+    const targetEl = (event.target && event.target.nodeType === 1)
+      ? event.target
+      : (event.target && event.target.parentElement ? event.target.parentElement : null);
+
+    const toggleBtn = targetEl && targetEl.closest ? targetEl.closest('#menu-toggle') : null;
+    if (toggleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof window.toggleMenu === 'function') window.toggleMenu();
+      return;
+    }
+
+    const overlay = targetEl && targetEl.closest ? targetEl.closest('#overlay') : null;
+    if (overlay && event.target === overlay) {
+      event.preventDefault();
+      if (typeof window.closeMenu === 'function') window.closeMenu();
+      return;
+    }
+
+    const closeBtn = targetEl && targetEl.closest
+      ? targetEl.closest('[data-menu-close], .sidebar-close, #closeSidebar')
+      : null;
+    if (closeBtn) {
+      event.preventDefault();
+      if (typeof window.closeMenu === 'function') window.closeMenu();
+    }
+  }, true);
+})();
+

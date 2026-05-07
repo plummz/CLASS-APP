@@ -1,6 +1,24 @@
 // features/logging-in/shell-controls.js
 // Global shell: menu toggle, sidebar, page switching, session establishment
 
+// Many pages are rendered dynamically and initialized during navigation.
+// A single thrown error inside goToPage() can abort the rest of the function
+// and make the app feel like “buttons do nothing”. Keep this helper generic.
+if (typeof window.runSafeUiAction !== 'function') {
+  window.runSafeUiAction = function runSafeUiAction(label, fn) {
+    try {
+      if (typeof fn === 'function') fn();
+    } catch (error) {
+      console.error(`[ui] ${label} init failed:`, error);
+      if (typeof window.showToast === 'function') {
+        window.showToast(`${label} failed. Check console.`, 'error');
+      } else if (typeof window.customAlert === 'function') {
+        window.customAlert(`${label} failed. Check console.`);
+      }
+    }
+  };
+}
+
 window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
 window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
 
@@ -67,7 +85,13 @@ window.goToPage = function(pageName) {
   const newPage = document.getElementById('page-' + pageName);
   if(newPage) newPage.classList.add('active');
 
-  applyPageBackground(pageName);
+  // Some builds define applyPageBackground globally; others only inside personalization.
+  // Missing hook must not crash navigation.
+  if (typeof window.applyPageBackground === 'function') {
+    window.applyPageBackground(pageName);
+  } else if (window.personalizationModule && typeof window.personalizationModule.applyPageBackground === 'function') {
+    window.personalizationModule.applyPageBackground(pageName);
+  }
 
   const indicator = document.getElementById('page-indicator');
   if (indicator && cfg) indicator.textContent = cfg.label;
@@ -77,34 +101,34 @@ window.goToPage = function(pageName) {
 
   // Lobby: start canvas after page is visible
   if (pageName === 'lobby') {
-    runSafeUiAction('Lobby', () => { _ensureSocket(); lobbyModule.init(); });
+    window.runSafeUiAction('Lobby', () => { _ensureSocket(); lobbyModule.init(); });
   }
   // Pokemon: start after page is visible
-  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
+  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') window.runSafeUiAction('Pokemon', () => pokemonModule.init());
   // Royale: start after page is visible
-  if (pageName === 'royale' && typeof royaleModule !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
-  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
-  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
-  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
-  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
-  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());
-  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') runSafeUiAction('Calculator', () => calculatorModule.init());
-  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') runSafeUiAction('Personalization', () => personalizationModule.init());
-  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') runSafeUiAction('Reviewers', () => reviewersModule.init());
-  if (pageName === 'diagnostics') runSafeUiAction('Diagnostics', () => loadDiagnostics());
+  if (pageName === 'royale' && typeof royaleModule !== 'undefined') window.runSafeUiAction('Battle Royale', () => royaleModule.init());
+  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') window.runSafeUiAction('Pac-Man', () => pacmanModule.init());
+  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') window.runSafeUiAction('Candy Match', () => candyModule.init());
+  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') window.runSafeUiAction('Personal Tools', () => personalToolsModule.init());
+  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') window.runSafeUiAction('Alarm Clock', () => alarmModule.init());
+  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') window.runSafeUiAction('Notepad', () => notepadModule.init());
+  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') window.runSafeUiAction('Calculator', () => calculatorModule.init());
+  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') window.runSafeUiAction('Personalization', () => personalizationModule.init());
+  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') window.runSafeUiAction('Reviewers', () => reviewersModule.init());
+  if (pageName === 'diagnostics') window.runSafeUiAction('Diagnostics', () => loadDiagnostics());
   // Games hub: draw royale preview canvas
-  if (pageName === 'games') runSafeUiAction('Games', () => drawRoyalePreviewCanvas());
+  if (pageName === 'games') window.runSafeUiAction('Games', () => drawRoyalePreviewCanvas());
   // Event Pictures & Random Pictures: reset and render year cards
-  if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
-  if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
-  if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
-  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
-  if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
-  if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
-  if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
+  if (pageName === 'events') window.runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
+  if (pageName === 'random') window.runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
+  if (pageName === 'announcement') window.runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
+  if (pageName === 'witfb') window.runSafeUiAction('Social Media Pages', () => closeSocialPage());
+  if (pageName === 'outputai') window.runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
+  if (pageName === 'codelab') window.runSafeUiAction('Code Lab', () => window.initCodeLab?.());
+  if (pageName === 'coding-educational') window.runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
   // AI Assistants hub
-  if (pageName === 'ai') runSafeUiAction('AI Assistants', () => { aiView = 'hub'; renderAI(); });
-  if (pageName === 'admin') runSafeUiAction('Admin', () => loadAdminDashboard());
+  if (pageName === 'ai') window.runSafeUiAction('AI Assistants', () => { aiView = 'hub'; renderAI(); });
+  if (pageName === 'admin') window.runSafeUiAction('Admin', () => loadAdminDashboard());
 }
 
 // Sidebar nav item click delegation handler with ripple effect and keyboard support

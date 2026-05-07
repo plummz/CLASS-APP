@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.69-20260507-fix-pointer-events-buttons';
+const CACHE_VERSION = 'v1.5.69-20260507-fix-rls-writes-csp-facebook';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -46,7 +46,7 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
-  '/script.js?v=114',
+  '/script.js?v=115',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',

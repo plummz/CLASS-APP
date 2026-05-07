@@ -399,8 +399,24 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.68';
+const APP_VERSION = '1.5.69';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.69',
+    date: 'May 7, 2026',
+    title: 'Fix: RLS Errors on Share/Send/Calendar + Facebook Embeds',
+    summary: 'Fixed all remaining direct Supabase writes that bypassed server-side RLS — share to Announcements, share/delete AI Output, delete Announcement, send chat message, and save/delete calendar notes now all route through authenticated server endpoints. Also fixed Facebook page embeds blocked by CSP.',
+    changes: [
+      'Fix: shareAnnouncementPayload() routes through /api/shared-announcements — was failing with RLS violation.',
+      'Fix: deleteSharedAnnouncement() routes through /api/shared-announcements/:id — was failing with RLS violation.',
+      'Fix: shareAIMessage() routes through /api/shared-ai-outputs — was failing with RLS violation.',
+      'Fix: deleteSharedAIOutput() routes through /api/shared-ai-outputs/:id — was failing with RLS violation.',
+      'Fix: sendMessage() routes through /api/sb/messages — was failing with RLS violation.',
+      'Fix: Calendar notes fetch/save/delete now use /api/calendar-notes — was failing with RLS violation.',
+      'Fix: Added Facebook to CSP frameSrc — Facebook page embeds were blocked.',
+      'Fix: Corrected broken pointer-events ternary in loading-components.js renderAppState().',
+    ],
+  },
   {
     version: '1.5.68',
     date: 'May 7, 2026',
@@ -4221,11 +4237,17 @@ window.sendMessage = async function() {
       const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
       if (!error) { const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath); attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl }; }
   }
-  const { data: savedMessage, error: sendError } = await sb.from('messages')
-    .insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }])
-    .select('*')
-    .single();
-  if (sendError) return customAlert(sendError.message);
+  let savedMessage = null;
+  try {
+    const res = await authFetch('/api/sb/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, text, attachment: attachmentData }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return customAlert(data.error || 'Failed to send message.');
+    savedMessage = data;
+  } catch (err) { return customAlert(err.message); }
   logActivity('send_message', currentChat.type === 'private' ? `dm:${currentChat.target}` : currentChat.type);
   if (currentChat.type === 'private' && currentChat.target && savedMessage?.id) {
     notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
@@ -4816,12 +4838,13 @@ let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
 async function fetchCalendarNotes() {
-    if (!sb) return;
-    const { data, error } = await sb.from('calendar_notes').select('*');
-    if (!error && data) {
+    try {
+        const res = await authFetch('/api/calendar-notes', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
         calendarNotes = {}; data.forEach(row => { calendarNotes[row.date_key] = row.note; });
         renderCalendar();
-    }
+    } catch (_) {}
 }
 
 function renderCalendar() {
@@ -4864,8 +4887,16 @@ window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
         if(!currentUser) return customAlert("Login to save notes.");
-        if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
-        else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
+        try {
+          const res = await authFetch('/api/calendar-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date_key: dateKey, note: note }),
+          });
+          const data = await res.json();
+          if (!res.ok || data.error) { customAlert(data.error || 'Failed to save note.'); return; }
+          if (note === '') { delete calendarNotes[dateKey]; } else { calendarNotes[dateKey] = note; }
+        } catch (err) { customAlert(err.message); return; }
         renderCalendar(); document.getElementById('edit-note-modal').remove();
     };
 };
@@ -6979,11 +7010,14 @@ window.deleteSharedAIOutput = function(id) {
     return customAlert('Only the sharer can delete this OUTPUT-AI post.');
   }
   customConfirm('Delete this shared OUTPUT-AI post for everyone?', async function() {
-    const { error } = await sb.from('shared_ai_outputs').delete().eq('id', id);
-    if (error) return customAlert(error.message);
-    sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
-    renderSharedAIOutputs();
-    showToast('Shared AI output deleted.', 'warning');
+    try {
+      const res = await authFetch(`/api/shared-ai-outputs/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || data.error) return customAlert(data.error || 'Failed to delete.');
+      sharedAIOutputs = sharedAIOutputs.filter((entry) => String(entry.id) !== String(id));
+      renderSharedAIOutputs();
+      showToast('Shared AI output deleted.', 'warning');
+    } catch (err) { customAlert(err.message); }
   });
 }
 
@@ -7058,21 +7092,28 @@ function renderSharedAnnouncements() {
 window.deleteSharedAnnouncement = async function(id) {
   if (!isAdmin) return;
   if (!confirm('Delete this announcement?')) return;
-  const { error } = await sb.from('shared_announcements').delete().eq('id', id);
-  if (error) return customAlert(error.message);
-  showToast('Announcement deleted.');
-  fetchSharedAnnouncements();
+  try {
+    const res = await authFetch(`/api/shared-announcements/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok || data.error) return customAlert(data.error || 'Failed to delete announcement.');
+    showToast('Announcement deleted.');
+    fetchSharedAnnouncements();
+  } catch (err) { customAlert(err.message); }
 };
 
 async function shareAnnouncementPayload(payload) {
   if (!currentUser) return customAlert('Please log in to share announcements.');
-  const { error } = await sb.from('shared_announcements').insert([{
-    ...payload,
-    sharer: currentUser.username,
-  }]);
-  if (error) return customAlert(error.message);
-  showToast('Shared to ANNOUNCEMENT.');
-  fetchSharedAnnouncements();
+  try {
+    const res = await authFetch('/api/shared-announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return customAlert(data.error || 'Failed to share announcement.');
+    showToast('Shared to ANNOUNCEMENT.');
+    fetchSharedAnnouncements();
+  } catch (err) { customAlert(err.message); }
 }
 
 window.shareCalendarNote = function(dateKey, displayDate, text) {
@@ -7301,15 +7342,17 @@ window.shareAIMessage = async function(provider, index) {
   const previousPrompt = [...aiChats[provider].slice(0, index)].reverse().find((item) => item.role === 'user')?.content || '';
   const prompt = message.role === 'user' ? message.content : previousPrompt;
   const output = message.role === 'assistant' ? message.content : '';
-  const { error } = await sb.from('shared_ai_outputs').insert([{
-    sharer: currentUser.username,
-    provider: AI_PROVIDERS[provider]?.name || provider,
-    prompt,
-    output,
-  }]);
-  if (error) return customAlert(error.message);
-  showToast('Shared to OUTPUT-AI.');
-  fetchSharedAIOutputs();
+  try {
+    const res = await authFetch('/api/shared-ai-outputs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: AI_PROVIDERS[provider]?.name || provider, prompt, output }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return customAlert(data.error || 'Failed to share AI output.');
+    showToast('Shared to OUTPUT-AI.');
+    fetchSharedAIOutputs();
+  } catch (err) { customAlert(err.message); }
 };
 
 /* ── PHASE 7: OFFLINE GRACEFUL DEGRADATION ──────────────────────────── */

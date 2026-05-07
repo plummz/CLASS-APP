@@ -10,6 +10,48 @@ let serverAuthToken = localStorage.getItem('classAppToken') || '';
 const PROFILE_SELECT_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 const PROFILE_PUBLIC_FIELDS = 'username,display_name,birthday,address,github,email,note,online,avatar,last_seen_at,username_last_changed_at,updated_at';
 
+async function initSupabase() {
+  try {
+    // 5s hard timeout — if the server is still cold-starting the page shouldn't block.
+    // waitForSupabaseClient() retries once on login if credentials are still empty.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
+    clearTimeout(timer);
+    SUPABASE_URL = cfg.supabaseUrl || '';
+    SUPABASE_KEY = cfg.supabaseKey || '';
+  } catch (error) {
+    console.error('[auth] Failed to load Supabase config:', error);
+  }
+  if (!window.supabase?.createClient || !SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('[auth] Supabase client could not be initialized.');
+    sb = null;
+    window.sb = null;
+    return false;
+  }
+  try {
+    const { createClient } = window.supabase;
+    sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: {
+        fetch: (url, options = {}) => {
+          const headers = new Headers(options.headers || {});
+          try {
+            const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+            if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+          } catch (_) {}
+          return fetch(url, { ...options, headers });
+        },
+      },
+    });
+    window.sb = sb;
+    return true;
+  } catch (error) {
+    console.error('[auth] Supabase createClient failed:', error);
+    sb = null;
+    window.sb = null;
+    return false;
+  }
+}
 
 function getSupabaseChannel(channelName, config) {
   if (!sb || typeof sb.channel !== 'function') {
@@ -119,7 +161,71 @@ function escapeJS(value) {
   return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
 }
 
+function setServerAuthToken(token) {
+  serverAuthToken = token || '';
+  if (serverAuthToken) localStorage.setItem('classAppToken', serverAuthToken);
+  else localStorage.removeItem('classAppToken');
+}
 
+function getServerAuthToken() {
+  return serverAuthToken || localStorage.getItem('classAppToken') || '';
+}
+
+function getAuthHeaders(extraHeaders = {}) {
+  const headers = new Headers(extraHeaders || {});
+  const token = getServerAuthToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return headers;
+}
+
+window.getAuthToken = getServerAuthToken;
+window.authFetch = function(url, options = {}) {
+  return fetch(url, { ...options, headers: getAuthHeaders(options.headers) });
+};
+
+async function waitForSupabaseClient() {
+  // Wait up to 3s for initSupabase to complete (covers slow page loads).
+  // Also verify credentials are non-empty — sb is always non-null after init
+  // even when credentials failed to load, so checking !sb alone is not enough.
+  // Give initSupabase up to 2s to finish if it's still running
+  const deadline = Date.now() + 2000;
+  while (!sb || !SUPABASE_URL) {
+    if (Date.now() >= deadline) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  // If credentials are still missing, the server may have been cold-starting during
+  // page load. Try /api/config once more now that the server should be awake.
+  if (!SUPABASE_URL) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
+      clearTimeout(timer);
+      if (cfg.supabaseUrl && cfg.supabaseKey) {
+        SUPABASE_URL = cfg.supabaseUrl;
+        SUPABASE_KEY = cfg.supabaseKey;
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          global: {
+            fetch: (url, options = {}) => {
+              const headers = new Headers(options.headers || {});
+              try {
+                const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
+                if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
+              } catch (_) {}
+              return fetch(url, { ...options, headers });
+            },
+          },
+        });
+        window.sb = sb;
+      }
+    } catch (_) {}
+  }
+  if (!sb || !SUPABASE_URL) {
+    console.error('[sb] Supabase client unavailable or missing credentials.');
+    return false;
+  }
+  return true;
+}
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -293,8 +399,31 @@ let currentTrackIndex = -1;
 let isLoop = true;
 let isRepeat = false;
 
-const APP_VERSION = '1.5.66';
+const APP_VERSION = '1.5.68';
 const APP_CHANGELOG = [
+  {
+    version: '1.5.68',
+    date: 'May 7, 2026',
+    title: 'Fix splash screen hang + ensure startup always reaches auth/shell',
+    summary: 'The splash screen now always dismisses (even if its canvas animation fails), and startup now guarantees initialization completes so login UI and shell buttons never stay hidden behind a stuck splash gate.',
+    changes: [
+      'Fixed: Splash screen dismissal now runs even when the splash canvas is missing or fails to initialize, preventing the app from getting stuck on the logo.',
+      'Fixed: `waitForSplashDismissal()` now force-removes the splash after a hard timeout so startup cannot remain blocked behind the splash overlay.',
+      'Improved: Startup now guarantees `setInitializing(false)` runs via a finally-based failsafe, so auth modal/shell UI becomes interactive even if a non-critical init step errors.',
+    ],
+  },
+  {
+    version: '1.5.67',
+    date: 'May 5, 2026',
+    title: 'Fix startup blank-load caused by cache-bust + service worker edge cases',
+    summary: 'Startup no longer fails when cache-busting cannot write to sw.js, and the service worker now installs in a best-effort mode so a single missing asset cannot trap users on a broken cached build.',
+    changes: [
+      'Fixed: `scripts/cache-bust.js` is now idempotent and non-fatal — it will never block `npm start` if sw.js is not writable, and it refuses to modify sw.js if it detects multiple CACHE_VERSION matches.',
+      'Fixed: Service worker install now caches assets best-effort (all-settled) so a single 404 cannot brick updates; activation cleanup now only deletes CLASS-APP caches by prefix.',
+      'Improved: Service worker registration now logs a single warning on failure instead of leaving an unhandled rejection.',
+      'Improved: Cache/version identifiers were bumped across index.html, script.js, and sw.js to force clients off any stale broken cache.',
+    ],
+  },
   {
     version: '1.5.66',
     date: 'April 30, 2026',
@@ -1748,13 +1877,14 @@ function fetchAndRenderFolders() {
 
 window.createFolderAPI = function() {
     if(!currentUser) return customAlert("Please log in to create a folder.");
-    customPrompt("Enter new folder name:", async function(name) {
+    customPrompt("Enter new folder name:", function(name) {
         if(!name) return;
-        const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: currentParentContext, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }) });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Folder creation failed');
-        fetchAndRenderFolders();
-        showToast('Folder created.');
+        sb.from('folders').insert([{ parent: currentParentContext, name: name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderFolders();
+            showToast('Folder created.');
+        });
     });
 };
 
@@ -1762,16 +1892,17 @@ window.renameFolderAPI = async function(id, oldName, isSub) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can rename this folder.');
-    customPrompt("Enter new name for folder:", async function(newName) {
+    customPrompt("Enter new name for folder:", function(newName) {
         if(!newName || newName === oldName) return;
-        const response = await authFetch(`/api/folders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Rename failed');
-        isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders();
-        if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
-            renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
-        }
-        showToast('Folder renamed.');
+        sb.from('folders').update({ name: newName }).eq('id', id)
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            isSub ? fetchAndRenderSubFolders() : fetchAndRenderFolders();
+            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+            }
+            showToast('Folder renamed.');
+        });
     }, oldName);
 };
 
@@ -1779,15 +1910,16 @@ window.deleteFolderAPI = async function(id) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this folder.');
-    customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", async function() {
-        const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Folder delete failed');
-        fetchAndRenderFolders();
-        if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
-            renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
-        }
-        showToast('Folder deleted.', 'warning');
+    customConfirm("Are you sure? This will delete the folder AND all files inside it forever.", function() {
+        sb.from('folders').delete().eq('id', id)
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderFolders();
+            if (String(folder.parent || '').startsWith(PROFILE_FOLDER_PREFIX)) {
+                renderProfileFolders(folder.parent.replace(PROFILE_FOLDER_PREFIX, ''));
+            }
+            showToast('Folder deleted.', 'warning');
+        });
     });
 };
 
@@ -1994,13 +2126,20 @@ window.createSubFolderAPI = function() {
     if (!currentUser) return customAlert("Please log in to create a sub-folder.");
     if (!currentFolderContext || !currentFolderContext.id) return customAlert("No folder selected.");
     if (!canEditFolder(currentFolderContext)) return customAlert('You do not have permission to add sub-folders here.');
-    customPrompt("Enter sub-folder name:", async function(name) {
+    customPrompt("Enter sub-folder name:", function(name) {
         if (!name) return;
-        const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: String(currentFolderContext.id), name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' }, folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null }) });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Sub-folder creation failed');
-        fetchAndRenderSubFolders();
-        showToast('Sub-folder created.');
+        sb.from('folders').insert([{
+            parent: String(currentFolderContext.id),
+            name,
+            owner: currentUser.username,
+            permissions: { viewers: [], editors: [], everyone: 'edit' },
+            folder_type: isProfileFolder(currentFolderContext) ? 'profile' : null,
+        }])
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderSubFolders();
+            showToast('Sub-folder created.');
+        });
     });
 };
 
@@ -2008,12 +2147,13 @@ window.deleteSubFolderAPI = async function(id) {
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this sub-folder.');
-    customConfirm("Delete this sub-folder and all files inside it?", async function() {
-        const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Sub-folder delete failed');
-        fetchAndRenderSubFolders();
-        showToast('Sub-folder deleted.', 'warning');
+    customConfirm("Delete this sub-folder and all files inside it?", function() {
+        sb.from('folders').delete().eq('id', id)
+        .then(({ error }) => {
+            if (error) return customAlert(error.message);
+            fetchAndRenderSubFolders();
+            showToast('Sub-folder deleted.', 'warning');
+        });
     });
 };
 
@@ -2107,9 +2247,8 @@ window.deleteFileAPI = async function(fileId) {
         || !!(currentUser && (file?.uploader === currentUser.username || isAdmin));
     if (!canDeleteFile) return customAlert('You do not have permission to delete this file.');
     customConfirm("Delete this file?", async function() {
-        const response = await authFetch(`/api/files/${fileId}`, { method: 'DELETE' });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) return customAlert(data.error || 'Delete failed');
+        const { error } = await sb.from('files').delete().eq('id', fileId);
+        if (error) return customAlert(error.message);
         fetchAndRenderFiles();
         showToast('File deleted.', 'warning');
     });
@@ -2122,10 +2261,13 @@ async function getAllFolders() {
 }
 
 async function insertFileRecord(row) {
-    const res = await authFetch('/api/sb/files', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(row) });
-    const data = await res.json();
-    if (!res.ok) return { error: { message: data.error || 'Failed to insert file' } };
-    return { error: null, data };
+    const { error } = await sb.from('files').insert([row]);
+    if (!error) return { error: null };
+    if (/is_original_upload|source_file_id/i.test(error.message || '')) {
+        const { is_original_upload, source_file_id, ...legacyRow } = row;
+        return sb.from('files').insert([legacyRow]);
+    }
+    return { error };
 }
 
 function removeDynamicModal(id) {
@@ -2182,8 +2324,8 @@ window.setFolderAccessMode = async function(folderId, mode) {
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can manage permissions.');
     const nextMode = mode === 'restricted' ? 'restricted' : 'edit';
     const permissions = { viewers: [], editors: [], everyone: nextMode };
-    const res = await authFetch(`/api/sb/folders/${folderId}/permissions`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions }) });
-    if (!res.ok) { const d = await res.json(); return customAlert(d.error || 'Failed to update permissions'); }
+    const { error } = await sb.from('folders').update({ permissions }).eq('id', folderId);
+    if (error) return customAlert(error.message);
     removeDynamicModal('folder-permission-modal');
     showToast(nextMode === 'edit' ? 'Everyone now has edit access.' : 'Folder restricted to the owner.');
     if (currentFolderContext?.id === folderId) currentFolderContext = { ...currentFolderContext, permissions };
@@ -2238,13 +2380,14 @@ window.createProfileFolder = function(username) {
     if (!currentUser || currentUser.username !== username) return customAlert('You can only create folders under your own profile.');
     customPrompt('Profile folder name:', async function(name) {
         if (!name) return;
-        const res = await authFetch('/api/sb/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        const { error } = await sb.from('folders').insert([{
             parent: `${PROFILE_FOLDER_PREFIX}${username}`,
             name,
-            folder_type: 'profile',
+            owner: username,
             permissions: { viewers: [], editors: [], everyone: 'edit' },
-        }) });
-        if (!res.ok) { const d = await res.json(); return customAlert(d.error || 'Failed to create folder'); }
+            folder_type: 'profile',
+        }]);
+        if (error) return customAlert(error.message);
         showToast('Profile folder created.');
         renderProfileFolders(username);
     });
@@ -3015,10 +3158,8 @@ window.toggleRepeat = function() {
 let users = [];
 let currentUser = JSON.parse(localStorage.getItem('classAppUser')) || null;
 let isAdmin = Boolean(currentUser?.isAdmin);
-// NOTE: Must be global object bindings so startup modules loaded before this
-// file (features/logging-in/*) can reliably read them without ReferenceError.
-var isInitializing = true;
-var isAuthenticated = Boolean(currentUser?.username);
+let isInitializing = true;
+let isAuthenticated = Boolean(currentUser?.username);
 let authRequestInFlight = false;
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();
@@ -3027,7 +3168,35 @@ let lastSeenWriteAt = 0;
 let authBindingsReady = false;
 let usersLoadState = { loading: false, error: '' };
 
+function syncAuthState() {
+  isAuthenticated = Boolean(currentUser?.username);
+}
 
+function renderAppState() {
+  const showShell = !isInitializing && isAuthenticated;
+  const showAuthModal = !isInitializing && !isAuthenticated;
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) authModal.style.display = showAuthModal ? 'flex' : 'none';
+
+  const shellNodes = [
+    document.getElementById('sidebar'),
+    document.getElementById('menu-toggle'),
+    document.getElementById('overlay'),
+    document.getElementById('live-clock'),
+    document.getElementById('page-indicator'),
+  ];
+  shellNodes.forEach((node) => {
+    if (!node) return;
+    node.style.visibility = showShell ? '' : 'hidden';
+    node.style.pointerEvents = showShell ? '' : 'none';
+  });
+
+  document.querySelectorAll('.page').forEach((page) => {
+    page.style.visibility = showShell ? '' : 'hidden';
+    if (!showShell) page.style.pointerEvents = 'none';
+    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
+  });
+}
 
 function setInitializing(nextValue) {
   isInitializing = Boolean(nextValue);
@@ -3045,6 +3214,38 @@ function runSafeUiAction(label, action, onError) {
   }
 }
 
+function waitForSplashDismissal() {
+  if (!document.getElementById('splash-screen')) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const forceDismissSplash = () => {
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      try {
+        splash.remove();
+      } catch (_) {}
+      try {
+        window.dispatchEvent(new Event('classapp:splash-dismissed'));
+      } catch (_) {}
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      observer.disconnect();
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      forceDismissSplash();
+      finish();
+    }, 4500);
+    const observer = new MutationObserver(() => {
+      if (!document.getElementById('splash-screen')) finish();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('classapp:splash-dismissed', finish, { once: true });
+  });
+}
 
 function saveSession() {
   syncAuthState();
@@ -3186,6 +3387,39 @@ function withAuthTimeout(promise, message = 'Request timed out. Check your conne
   ]);
 }
 
+function bindAuthPortalHandlers() {
+  if (authBindingsReady) return;
+  const signInBtn = document.getElementById('btn-sign-in');
+  const createBtn = document.getElementById('btn-create-account');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  if (!signInBtn || !createBtn || !usernameInput || !passwordInput) {
+    console.error('[auth] Portal controls missing from DOM.');
+    return;
+  }
+  signInBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.login();
+  });
+  createBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.register();
+  });
+  usernameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      window.login();
+    }
+  });
+  passwordInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      window.login();
+    }
+  });
+  authBindingsReady = true;
+  console.info('[auth] Portal button handlers attached.');
+}
 
 function toSessionUser(profile, serverSession = {}) {
   const { password_hash, ...safeProfile } = profile || {};
@@ -3217,16 +3451,6 @@ async function finalizeLogin(profile, serverSession) {
   syncAuthState();
   setServerAuthToken(serverSession.token || '');
   if (isAdmin) revealAdminNav();
-  // Reinitialize Supabase client with username header so RLS policies that
-  // read x-class-username() work correctly for reads that still use sb directly.
-  if (currentUser?.username && SUPABASE_URL && SUPABASE_KEY && window.supabase?.createClient) {
-    try {
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        global: { headers: { 'x-class-username': currentUser.username } }
-      });
-      window.sb = sb;
-    } catch (e) { console.warn('[auth] Could not reinitialize sb with username header:', e?.message); }
-  }
   saveSession();
   try {
     setAuthSuccess('Signed in. Loading your portal...');
@@ -3404,6 +3628,27 @@ document.addEventListener('visibilitychange', () => {
   else persistLastSeen({ online: true, force: true });
 });
 
+async function establishSession() {
+  await waitForSupabaseClient();
+  syncAuthState();
+  renderAppState();
+  const navLogout = document.getElementById('nav-logout');
+  if(navLogout) navLogout.style.display = 'flex';
+
+  fetchUsers();
+  initAppPresence();
+  startLastSeenHeartbeat();
+  updateChatHeader();
+  initSupabaseRealtimeChat();
+  initSharedRealtime();
+  initAppOpenRealtime();
+  ensureAdminUpdateControl();
+  fetchAppUpdates();
+  registerPushSubscription(false);
+  fetchMessages(currentChat.type, currentChat.target);
+  handleNotificationDeepLink();
+  initReactionsRealtime();
+}
 
 function getInitials(user) {
   return String(user.display_name || user.username || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0] || '').join('').toUpperCase() || '?';
@@ -3683,8 +3928,23 @@ function validateUsernameFormat(username) {
 }
 
 async function replaceUsernameReferences(oldUsername, newUsername) {
-  const res = await authFetch('/api/sb/rename-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldUsername, newUsername }) });
-  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Username cascade rename failed'); }
+  await sb.from('folders').update({ owner: newUsername }).eq('owner', oldUsername);
+  await sb.from('files').update({ uploader: newUsername }).eq('uploader', oldUsername);
+  await sb.from('messages').update({ sender: newUsername }).eq('sender', oldUsername);
+  await sb.from('messages').update({ target: newUsername }).eq('target', oldUsername);
+  await sb.from('calendar_notes').update({ updated_by: newUsername }).eq('updated_by', oldUsername);
+  await sb.from('shared_ai_outputs').update({ sharer: newUsername }).eq('sharer', oldUsername);
+  await sb.from('shared_announcements').update({ sharer: newUsername }).eq('sharer', oldUsername);
+
+  const { data: permissionFolders } = await sb.from('folders').select('id,permissions');
+  for (const folder of permissionFolders || []) {
+    const permissions = normalizeFolderPermissions(folder);
+    const viewers = permissions.viewers.map((name) => name === oldUsername ? newUsername : name);
+    const editors = permissions.editors.map((name) => name === oldUsername ? newUsername : name);
+    if (JSON.stringify(viewers) !== JSON.stringify(permissions.viewers) || JSON.stringify(editors) !== JSON.stringify(permissions.editors)) {
+      await sb.from('folders').update({ permissions: { viewers, editors, everyone: permissions.everyone } }).eq('id', folder.id);
+    }
+  }
 }
 
 window.saveProfileEdits = async function(username) {
@@ -3961,9 +4221,11 @@ window.sendMessage = async function() {
       const { error } = await sb.storage.from('portfolio-assets').upload(filePath, file, { contentType: file.type });
       if (!error) { const { data: urlData } = sb.storage.from('portfolio-assets').getPublicUrl(filePath); attachmentData = { name: file.name, type: file.type, url: urlData.publicUrl }; }
   }
-  const msgRes = await authFetch('/api/sb/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, text, attachment: attachmentData }) });
-  if (!msgRes.ok) { const d = await msgRes.json(); return customAlert(d.error || 'Failed to send message'); }
-  const savedMessage = await msgRes.json();
+  const { data: savedMessage, error: sendError } = await sb.from('messages')
+    .insert([{ chat_type: currentChat.type, target: currentChat.type === 'private' ? currentChat.target : null, sender: currentUser.username, text: text, attachment: attachmentData }])
+    .select('*')
+    .single();
+  if (sendError) return customAlert(sendError.message);
   logActivity('send_message', currentChat.type === 'private' ? `dm:${currentChat.target}` : currentChat.type);
   if (currentChat.type === 'private' && currentChat.target && savedMessage?.id) {
     notifyPrivateMessagePush(savedMessage).catch((error) => console.warn('Push trigger failed:', error.message));
@@ -3976,10 +4238,10 @@ window.sendMessage = async function() {
 window.editChatMessage = function(id) {
   const message = getCurrentHistory().find(m => m.id === id);
   if (!message) return;
-  customPrompt('Edit:', async function(updated) { if (updated !== null) await authFetch(`/api/sb/messages/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: updated }) }); }, message.text);
+  customPrompt('Edit:', async function(updated) { if (updated !== null) await sb.from('messages').update({ text: updated }).eq('id', id); }, message.text);
 };
 
-window.deleteMessageForEveryone = async function(id) { customConfirm("Delete message?", async function() { await authFetch(`/api/messages/${id}`, { method: 'DELETE' }); }); };
+window.deleteMessageForEveryone = async function(id) { customConfirm("Delete message?", async function() { await sb.from('messages').delete().eq('id', id); }); };
 
 /* ============================================================
    UI & DROPDOWN NAVIGATION LOGIC
@@ -4183,6 +4445,108 @@ function applyPageBackground(pageName = currentPage) {
   if (cfg.aurora) document.getElementById('aurora')?.classList.add('active');
 }
 
+window.goToPage = function(pageName) {
+  if (pageName === currentPage) { const p = document.getElementById('page-' + pageName); if(p) p.scrollTop = 0; closeMenu(); return; }
+  if (pageName === 'chat') { const dot = document.getElementById('chat-notif-dot'); if (dot) dot.classList.add('hidden'); }
+
+  // Lobby: tear down canvas when leaving
+  if (currentPage === 'lobby') lobbyModule.destroy();
+  // Pokemon: tear down when leaving
+  if (currentPage === 'pokemon' && typeof pokemonModule !== 'undefined') pokemonModule.destroy();
+  // Royale: tear down when leaving
+  if (currentPage === 'royale' && typeof royaleModule !== 'undefined') royaleModule.destroy();
+  if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
+  if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
+  // Alarm: tear down clock when leaving
+  if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
+  // File Summarizer: close quiz modal/score screen when navigating away
+  if (currentPage === 'file-summarizer') {
+    document.getElementById('fs-quiz-modal')?.classList.remove('active');
+    document.getElementById('fs-quiz-score')?.classList.remove('active');
+  }
+
+  // YouTube mini-player: show when leaving music, hide when returning
+  const ytMini = document.getElementById('yt-mini-player');
+  if (ytMini) {
+    if (pageName === 'music') ytMini.classList.add('hidden');
+    else if (ytActive && currentPage === 'music') ytMini.classList.remove('hidden');
+  }
+
+  // Ping server when music page opens so Render wakes up before the user searches
+  if (pageName === 'music') fetch('/api/ping').catch(() => {});
+
+  // Hide chat bauble on pages where it blocks controls or the AI input
+  const chatBauble = document.getElementById('chat-bauble');
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+
+  // Hide live clock on AI page — it overlaps the chat header
+  const liveClock = document.getElementById('live-clock');
+  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+
+  const old = pageConfig[currentPage];
+  const oldPage = document.getElementById('page-' + currentPage);
+  if(oldPage) oldPage.classList.remove('active');
+  if (old) {
+    document.getElementById(old.bg)?.classList.remove('active');
+    document.getElementById(old.particles)?.classList.remove('active');
+    if (old.wave) document.getElementById('wave-container')?.classList.remove('active');
+    if (old.mountain) document.getElementById('mountain-svg')?.classList.remove('active');
+    if (old.aurora) document.getElementById('aurora')?.classList.remove('active');
+  }
+
+  currentPage = pageName;
+  if (appPresenceChannel && currentUser?.username) {
+    appPresenceChannel.track({
+      username: currentUser.username,
+      displayName: currentUser.display_name || currentUser.username,
+      page: currentPage,
+      activeAt: new Date().toISOString(),
+    }).catch(() => {});
+    persistLastSeen({ online: true });
+  }
+  const cfg = pageConfig[pageName];
+  const newPage = document.getElementById('page-' + pageName);
+  if(newPage) newPage.classList.add('active');
+
+  applyPageBackground(pageName);
+
+  const indicator = document.getElementById('page-indicator');
+  if (indicator && cfg) indicator.textContent = cfg.label;
+  if(newPage) newPage.scrollTop = 0;
+  document.querySelectorAll('.nav-item').forEach(item => { if(item.dataset.page) item.classList.toggle('active', item.dataset.page === pageName); });
+  closeMenu();
+
+  // Lobby: start canvas after page is visible
+  if (pageName === 'lobby') {
+    runSafeUiAction('Lobby', () => { _ensureSocket(); lobbyModule.init(); });
+  }
+  // Pokemon: start after page is visible
+  if (pageName === 'pokemon' && typeof pokemonModule !== 'undefined') runSafeUiAction('Pokemon', () => pokemonModule.init());
+  // Royale: start after page is visible
+  if (pageName === 'royale' && typeof royaleModule !== 'undefined') runSafeUiAction('Battle Royale', () => royaleModule.init());
+  if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
+  if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
+  if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
+  if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
+  if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());
+  if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') runSafeUiAction('Calculator', () => calculatorModule.init());
+  if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') runSafeUiAction('Personalization', () => personalizationModule.init());
+  if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') runSafeUiAction('Reviewers', () => reviewersModule.init());
+  if (pageName === 'diagnostics') runSafeUiAction('Diagnostics', () => loadDiagnostics());
+  // Games hub: draw royale preview canvas
+  if (pageName === 'games') runSafeUiAction('Games', () => drawRoyalePreviewCanvas());
+  // Event Pictures & Random Pictures: reset and render year cards
+  if (pageName === 'events') runSafeUiAction('Event Pictures', () => { galleryStates.ep = { level:'years', year:null, sem:null, folder:null }; renderGallery('ep'); });
+  if (pageName === 'random') runSafeUiAction('Random Pictures', () => { galleryStates.rp = { level:'years', year:null, sem:null, folder:null }; renderGallery('rp'); });
+  if (pageName === 'announcement') runSafeUiAction('Announcement', () => fetchSharedAnnouncements());
+  if (pageName === 'witfb') runSafeUiAction('Social Media Pages', () => closeSocialPage());
+  if (pageName === 'outputai') runSafeUiAction('Output-AI', () => fetchSharedAIOutputs());
+  if (pageName === 'codelab') runSafeUiAction('Code Lab', () => window.initCodeLab?.());
+  if (pageName === 'coding-educational') runSafeUiAction('Coding Lessons', () => window.initCodingEducational?.());
+  // AI Assistants hub
+  if (pageName === 'ai') runSafeUiAction('AI Assistants', () => { aiView = 'hub'; renderAI(); });
+  if (pageName === 'admin') runSafeUiAction('Admin', () => loadAdminDashboard());
+};
 
 let backgroundPickerTab = 'coded';
 let backgroundPickerSearch = '';
@@ -4442,6 +4806,8 @@ function drawRoyalePreviewCanvas() {
   ctx.textAlign='left';
 }
 
+window.toggleMenu = function() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('menu-toggle').classList.toggle('open'); document.getElementById('overlay').classList.toggle('active'); };
+window.closeMenu = function() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('menu-toggle').classList.remove('open'); document.getElementById('overlay').classList.remove('active'); };
 
 /* ============================================================
    CALENDAR LOGIC (CLOUD BASED)
@@ -4498,8 +4864,8 @@ window.openNotePrompt = function(dateKey, displayDate, existingNote) {
     document.getElementById('save-note-btn').onclick = async function() {
         const note = document.getElementById('note-textarea').value.trim();
         if(!currentUser) return customAlert("Login to save notes.");
-        if (note === '') { delete calendarNotes[dateKey]; await authFetch('/api/calendar-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date_key: dateKey, note: '' }) }); }
-        else { calendarNotes[dateKey] = note; await authFetch('/api/calendar-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date_key: dateKey, note: note }) }); }
+        if (note === '') { delete calendarNotes[dateKey]; await sb.from('calendar_notes').delete().eq('date_key', dateKey); }
+        else { calendarNotes[dateKey] = note; await sb.from('calendar_notes').upsert([{ date_key: dateKey, note: note, updated_by: currentUser.username }]); }
         renderCalendar(); document.getElementById('edit-note-modal').remove();
     };
 };
@@ -4785,33 +5151,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAppState();
   bindAuthPortalHandlers();
   const splashReady = waitForSplashDismissal();
-  await initSupabase(currentUser?.username || null);
-  if (currentUser && !getServerAuthToken()) {
-    currentUser = null;
-    isAdmin = false;
-    saveSession();
-    showToast('Please sign in again to refresh your secure session.', 'info');
-  }
+  try {
+    await initSupabase();
+    if (currentUser && !getServerAuthToken()) {
+      currentUser = null;
+      isAdmin = false;
+      saveSession();
+      showToast('Please sign in again to refresh your secure session.', 'info');
+    }
 
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
-  updateFooterYear();
-  ensureAdminUpdateControl();
-  initAppOpenRealtime();
-  const dashVersion = document.getElementById('lobby-dash-update-version');
-  if (dashVersion) dashVersion.textContent = APP_VERSION;
-  fetchSharedAnnouncements();
-  refreshContributionTally();
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
+    updateFooterYear();
+    ensureAdminUpdateControl();
+    initAppOpenRealtime();
+    const dashVersion = document.getElementById('lobby-dash-update-version');
+    if (dashVersion) dashVersion.textContent = APP_VERSION;
+    fetchSharedAnnouncements();
+    refreshContributionTally();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
-      .then((registration) => {
-        registration.update().catch(() => {});
-      });
-  }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then((registration) => {
+          registration.update().catch(() => {});
+        })
+        .catch((err) => {
+          console.warn('[sw] registration failed:', err);
+        });
+    }
 
-  const attachmentInput = document.getElementById('attachment-input');
-  if (attachmentInput) attachmentInput.addEventListener('change', () => { const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = attachmentInput.files[0]?.name || 'No file chosen'; });
+    const attachmentInput = document.getElementById('attachment-input');
+    if (attachmentInput) attachmentInput.addEventListener('change', () => { const lbl = document.getElementById('attachment-selected'); if(lbl) lbl.textContent = attachmentInput.files[0]?.name || 'No file chosen'; });
 
   // Save message draft to localStorage as user types
   const msgInput = document.getElementById('message-input');
@@ -4985,6 +5355,44 @@ document.addEventListener('DOMContentLoaded', async () => {
      iOS Safari does not reliably fire click on non-interactive <div>
      elements; we now use role="button" tabindex="0" in HTML and
      attach listeners here with touch-action: manipulation in CSS. */
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('click', function(event) {
+      const navItem = event.target.closest('.nav-item[data-page]');
+      const dropdownHeader = event.target.closest('.nav-dropdown-header[data-year]');
+      const logoutItem = event.target.closest('#nav-logout');
+
+      const target = navItem || dropdownHeader || logoutItem;
+      if (!target) return;
+
+      // Ripple effect
+      const rect = target.getBoundingClientRect();
+      target.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
+      target.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
+      target.classList.remove('nav-click-flash');
+      void target.offsetWidth;
+      target.classList.add('nav-click-flash');
+      window.setTimeout(() => target.classList.remove('nav-click-flash'), 420);
+
+      // Action
+      if (navItem && navItem.dataset.page) {
+        window.goToPage(navItem.dataset.page);
+      } else if (dropdownHeader && dropdownHeader.dataset.year) {
+        window.toggleYear(dropdownHeader.dataset.year);
+      } else if (logoutItem) {
+        window.handleLogout();
+      }
+    });
+
+    // Keyboard support: Enter / Space triggers click
+    sidebar.addEventListener('keydown', function(event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target.closest('.nav-item[data-page], .nav-dropdown-header[data-year], #nav-logout');
+      if (!target) return;
+      event.preventDefault();
+      target.click();
+    });
+  }
 
   // Overlay: close menu on tap (touch + click)
   const overlay = document.getElementById('overlay');
@@ -5036,8 +5444,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     window.refreshAppOpenCount();
   }
-  await splashReady;
-  setInitializing(false);
+  } catch (error) {
+    console.error('[startup] Initialization failed:', error);
+  } finally {
+    try {
+      await Promise.race([splashReady, new Promise((resolve) => setTimeout(resolve, 1200))]);
+    } catch (_) {}
+    setInitializing(false);
+  }
 
   // Push chat input above the soft keyboard on mobile
   if ('visualViewport' in window) {
@@ -5606,13 +6020,13 @@ async function loadActivityLog() {
 let subjectAnnouncements = {}; // subject_code → [rows]
 
 async function fetchSubjectAnnouncements(subjectCode) {
-  try {
-    const res = await authFetch(`/api/subject-announcements?subject_code=${encodeURIComponent(subjectCode)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    subjectAnnouncements[subjectCode] = data || [];
-    return subjectAnnouncements[subjectCode];
-  } catch (e) { return []; }
+  if (!sb) return [];
+  const { data, error } = await sb.from('subject_announcements')
+    .select('*').eq('subject_code', subjectCode)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  subjectAnnouncements[subjectCode] = data || [];
+  return subjectAnnouncements[subjectCode];
 }
 
 function buildSubjectAnnouncementsHTML(subjectCode) {
@@ -5659,15 +6073,13 @@ window.submitSubjectAnnouncement = async function(subjectCode) {
   const title = document.getElementById('sann-title')?.value.trim();
   const body  = document.getElementById('sann-body')?.value.trim() || '';
   if (!title) return customAlert('Title is required.');
-  const res = await authFetch('/api/subject-announcements', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subject_code: subjectCode, title, body }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    return customAlert(err.error || 'Failed to post announcement.');
-  }
+  const { error } = await sb.from('subject_announcements').insert([{
+    subject_code: subjectCode,
+    posted_by: currentUser.username,
+    title,
+    body,
+  }]);
+  if (error) return customAlert(error.message);
   removeDynamicModal('subj-ann-modal');
   showToast('Announcement posted.');
   logActivity('post_subject_announcement', subjectCode);
@@ -5677,11 +6089,8 @@ window.submitSubjectAnnouncement = async function(subjectCode) {
 
 window.deleteSubjectAnnouncement = async function(id, subjectCode) {
   if (!isAdmin) return;
-  const res = await authFetch(`/api/subject-announcements/${id}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    return customAlert(err.error || 'Failed to delete announcement.');
-  }
+  const { error } = await sb.from('subject_announcements').delete().eq('id', id);
+  if (error) return customAlert(error.message);
   showToast('Announcement deleted.');
   window.openFolderExplorer?.(subjectCode);
 };
@@ -6372,37 +6781,33 @@ function renderGFiles(pfx, view) {
 // ── Folder / File actions ─────────────────────────────────────
 function gCreateFolder(pfx, parentKey) {
   if (!currentUser) return customAlert('Please log in.');
-  customPrompt('Album name:', async function(name) {
+  customPrompt('Album name:', function(name) {
     if (!name) return;
-    const response = await authFetch('/api/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) return customAlert(data.error || 'Album creation failed');
-    showToast('Album created.');
-    renderGallery(pfx);
+    sb.from('folders').insert([{ parent: parentKey, name, owner: currentUser.username, permissions: { viewers: [], editors: [], everyone: 'edit' } }])
+      .then(({ error }) => {
+        if (error) return customAlert(error.message);
+        showToast('Album created.');
+        renderGallery(pfx);
+      });
   });
 }
 function gRenameFolder(pfx, id, currentName) {
   fetchFolderById(id).then((folder) => {
   if (!canManageFolder(folder)) return customAlert('Only the album owner can rename this album.');
-  customPrompt('New album name:', async function(name) {
+  customPrompt('New album name:', function(name) {
     if (!name || name === currentName) return;
-    const response = await authFetch(`/api/folders/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) return customAlert(data.error || 'Rename failed');
-    showToast('Album renamed.');
-    renderGallery(pfx);
+    sb.from('folders').update({ name }).eq('id', id)
+      .then(({ error }) => { if (error) return customAlert(error.message); showToast('Album renamed.'); renderGallery(pfx); });
   }, currentName);
   }).catch((error) => customAlert(error.message));
 }
 function gDeleteFolder(pfx, id) {
   fetchFolderById(id).then((folder) => {
   if (!canManageFolder(folder)) return customAlert('Only the album owner can delete this album.');
-  customConfirm('Delete this album and all its photos?', async function() {
-    const response = await authFetch(`/api/folders/${id}`, { method: 'DELETE' });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) return customAlert(data.error || 'Album delete failed');
-    showToast('Album deleted.', 'warning');
-    renderGallery(pfx);
+  customConfirm('Delete this album and all its photos?', function() {
+    sb.from('files').delete().eq('folder_id', id)
+      .then(() => sb.from('folders').delete().eq('id', id))
+      .then(() => { showToast('Album deleted.', 'warning'); renderGallery(pfx); });
   });
   }).catch((error) => customAlert(error.message));
 }
@@ -6446,7 +6851,7 @@ function gDeleteFile(pfx, id) {
   fetchFolderById(folderId).then((folder) => {
   if (!canEditFolder(folder)) return customAlert('You do not have permission to delete files here.');
   customConfirm('Delete this photo?', function() {
-    authFetch(`/api/files/${id}`, { method: 'DELETE' }).then(() => { showToast('File deleted.', 'warning'); renderGallery(pfx); });
+    sb.from('files').delete().eq('id', id).then(() => { showToast('File deleted.', 'warning'); renderGallery(pfx); });
   });
   }).catch((error) => customAlert(error.message));
 }

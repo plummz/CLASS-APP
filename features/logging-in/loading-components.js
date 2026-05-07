@@ -161,7 +161,7 @@ function renderAppState() {
   document.querySelectorAll('.page').forEach((page) => {
     page.style.visibility = showShell ? '' : 'hidden';
     if (!showShell) page.style.pointerEvents = 'none';
-    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
+    else page.style.pointerEvents = page.classList.contains('active') ? 'auto' : 'none';
   });
 }
 

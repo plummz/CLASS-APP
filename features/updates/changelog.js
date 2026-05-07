@@ -1,5 +1,22 @@
-const APP_VERSION = '1.9.4';
+const APP_VERSION = '1.9.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.5',
+    date: 'May 7, 2026',
+    title: 'Fix: RLS Errors on Share/Send + Facebook Embed + Pointer-Events Cleanup',
+    summary: 'Fixed all remaining direct Supabase writes that bypassed server-side RLS enforcement — share to Announcements, share AI Output, delete AI Output, delete Announcement, send chat message, and save/delete calendar notes now all route through authenticated server endpoints using the service key. Also fixed Facebook page embeds being blocked by CSP, and corrected a broken pointer-events ternary in loading-components.js.',
+    changes: [
+      'Fix: shareAnnouncementPayload() now POSTs to /api/shared-announcements instead of direct sb.from("shared_announcements").insert() — was failing with RLS violation.',
+      'Fix: deleteSharedAnnouncement() now DELETEs via /api/shared-announcements/:id instead of direct sb.from("shared_announcements").delete() — was failing with RLS violation.',
+      'Fix: shareAIMessage() now POSTs to /api/shared-ai-outputs instead of direct sb.from("shared_ai_outputs").insert() — was failing with RLS violation.',
+      'Fix: deleteSharedAIOutput() now DELETEs via /api/shared-ai-outputs/:id instead of direct sb.from("shared_ai_outputs").delete() — was failing with RLS violation.',
+      'Fix: sendMessage() now POSTs to /api/sb/messages instead of direct sb.from("messages").insert() — was failing with RLS violation.',
+      'Fix: fetchCalendarNotes() now fetches from /api/calendar-notes instead of direct sb.from("calendar_notes").select() — now uses service key consistently.',
+      'Fix: Calendar note save/delete now POSTs to /api/calendar-notes (note:"" = delete) instead of direct sb.from("calendar_notes").upsert()/.delete() — was failing with RLS violation.',
+      'Fix: Added https://www.facebook.com and https://web.facebook.com to server CSP frameSrc — Facebook page embeds were being blocked.',
+      'Fix: Corrected broken pointer-events ternary in loading-components.js renderAppState() — both branches incorrectly returned empty string instead of "auto"/"none".',
+    ],
+  },
   {
     version: '1.9.4',
     date: 'May 7, 2026',

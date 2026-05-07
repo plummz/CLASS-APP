@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════════════════
 // SERVICE WORKER - Cache Management & Asset Versioning
 // ═══════════════════════════════════════════════════════════════════════════
 //
@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.69-20260507-fix-rls-writes-csp-facebook';
+const CACHE_VERSION = 'v1.5.70-20260507-button-logic-stability-fix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=111',
+  '/index.html?v=112',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -46,6 +46,9 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
+  '/features/logging-in/loading-components.js?v=1',
+  '/features/logging-in/shell-controls.js?v=1',
+  '/features/updates/changelog.js?v=1',
   '/script.js?v=115',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

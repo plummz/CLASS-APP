@@ -1,6 +1,17 @@
-const APP_VERSION = '1.9.5';
-const APP_CHANGELOG = [
-  {
+﻿const APP_VERSION = '1.9.6';
+const APP_CHANGELOG = [\n  {
+    version: '1.9.6',
+    date: 'May 7, 2026',
+    title: 'Button Logic Stability Fix',
+    summary: 'Fixed dead button behavior caused by navigation init errors and removed stale demo user data that was still appearing in user lists.',
+    changes: [
+      'Fixed dead buttons across Shared Reviewers, My Classes files, Users/Admin, User Directory, Social Media Pages, Picture pages, Personal Tools, Calendar, Games, and Lobby delete.',
+      'Restored real app-open/login and contribution tally recording.',
+      'Removed stale/fake Amina Cruz demo user data.',
+      'Improved dynamic page event binding and mobile click reliability.',
+      'Added safer guards for missing IDs, permissions, and Supabase errors.',
+    ],
+  },{
     version: '1.9.5',
     date: 'May 7, 2026',
     title: 'Fix: RLS Errors on Share/Send + Facebook Embed + Pointer-Events Cleanup',
@@ -1771,3 +1782,4 @@ const APP_CHANGELOG = [
     ],
   },
 ];
+\n\n// Expose version/changelog for the Updates feature module.\nwindow.CLASS_APP_VERSION = APP_VERSION;\nwindow.CLASS_APP_CHANGELOG = APP_CHANGELOG;\n

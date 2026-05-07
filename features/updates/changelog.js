@@ -1,5 +1,16 @@
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.9.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.4',
+    date: 'May 7, 2026',
+    title: 'Fix: Buttons Not Working on All Pages (3-Phase Fix)',
+    summary: 'Fixed the root cause of buttons being unresponsive across almost all pages. The broken pointer-events logic in renderAppState() and the incomplete page transition code in goToPage() were both patched. Also removed all hardcoded demo profile name references from the coding-educational module.',
+    changes: [
+      'Fix (Phase 1): Corrected broken ternary in renderAppState() — both branches were returning empty string, so non-active pages never received pointer-events:none. Changed to explicitly set auto for active pages and none for inactive pages.',
+      'Fix (Phase 2): Restored explicit inline pointer-events assignments in goToPage() — old pages now get pointer-events:none immediately on deactivation, new pages get pointer-events:auto immediately on activation, ensuring CSS transitions and inline styles work together.',
+      'Cleanup (Phase 3): Replaced all hardcoded "Ana Cruz" / "Ana" demo profile name references in coding-educational module with "Sam Rivera" / "Sam" to remove any confusion with real users.',
+    ],
+  },
   {
     version: '1.9.3',
     date: 'May 6, 2026',

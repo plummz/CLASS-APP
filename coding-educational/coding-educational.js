@@ -417,12 +417,12 @@ window.codingEducationalModule = (function () {
     if (!query) return '<div class="coding-edu-error-output">[ERROR] Write a SELECT query first.</div>';
     if (!/^select\b/i.test(query)) return '<div class="coding-edu-error-output">[ERROR] This lesson simulator supports beginner SELECT queries.</div>';
     const rows = /where\s+score\s*>=\s*90/i.test(query)
-      ? [{ id: 1, name: 'Ana', score: 95 }, { id: 3, name: 'Mika', score: 92 }]
+      ? [{ id: 1, name: 'Sam', score: 95 }, { id: 3, name: 'Mika', score: 92 }]
       : /count\s*\(/i.test(query)
         ? [{ count: 3 }]
         : /'([^']+)'\s+as\s+(\w+)/i.test(query)
           ? [{ [query.match(/'([^']+)'\s+as\s+(\w+)/i)[2]]: query.match(/'([^']+)'\s+as\s+(\w+)/i)[1] }]
-          : [{ id: 1, name: 'Ana', score: 95 }, { id: 2, name: 'Leo', score: 88 }, { id: 3, name: 'Mika', score: 92 }];
+          : [{ id: 1, name: 'Sam', score: 95 }, { id: 2, name: 'Leo', score: 88 }, { id: 3, name: 'Mika', score: 92 }];
     const columns = Object.keys(rows[0] || {});
     return `<table class="coding-edu-result-table"><thead><tr>${columns.map((col) => `<th>${escapeHTML(col)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((col) => `<td>${escapeHTML(row[col])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   }
@@ -432,9 +432,9 @@ window.codingEducationalModule = (function () {
     if (model === 'form') return '<form class="demo-form"><label>Name <input value="Mika"></label><button type="button">Save</button></form>';
     if (model === 'alert') return '<div class="demo-alert"><strong>Notice</strong><span> Review your entry before sending.</span></div>';
     if (model === 'gallery') return '<section class="demo-gallery"><figure>Image 1</figure><figure>Image 2</figure><figure>Image 3</figure></section>';
-    if (model === 'table') return '<table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Ana</td><td>95</td></tr></table>';
+    if (model === 'table') return '<table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Sam</td><td>95</td></tr></table>';
     if (model === 'hero') return '<section class="demo-hero"><h2>Build Better Pages</h2><p>Practice one change at a time.</p><button>Start</button></section>';
-    if (model === 'profile') return '<article class="demo-profile"><div class="avatar">A</div><h3>Ana Cruz</h3><p>Frontend student</p></article>';
+    if (model === 'profile') return '<article class="demo-profile"><div class="avatar">S</div><h3>Sam Rivera</h3><p>Frontend student</p></article>';
     if (model === 'menu') return '<aside class="demo-menu"><button>Dashboard</button><button>Files</button><button>Settings</button></aside>';
     if (model === 'dashboard') return '<section class="demo-dashboard"><div>Tasks<br><b>12</b></div><div>Done<br><b>8</b></div><div>Score<br><b>92</b></div></section>';
     if (model === 'banner') return '<section class="demo-banner">Enrollment reminder: submit requirements this week.</section>';

@@ -195,7 +195,7 @@ const codingEducationalData = (function () {
     ['Links', 'Links let users move to another page, section, or resource.', ['a creates a link.', 'href stores the destination.', 'Link text should describe where it goes.'], '<a href="https://developer.mozilla.org/">Visit MDN</a>', 'Links connect pages and resources.'],
     ['Images', 'Images add visual information to a page.', ['img uses src for the file path.', 'alt explains the image.', 'Use images that support the content.'], '<img src="photo.jpg" alt="Student coding">', 'Images need clear alt text for accessibility.'],
     ['Lists', 'Lists organize related items.', ['ul creates unordered lists.', 'ol creates numbered lists.', 'li is each list item.'], '<ul>\n  <li>HTML</li>\n  <li>CSS</li>\n</ul>', 'Lists make grouped information neat.'],
-    ['Tables', 'Tables show data in rows and columns.', ['table wraps the data.', 'tr is a row.', 'th and td are header and data cells.'], '<table>\n  <tr><th>Name</th><th>Score</th></tr>\n  <tr><td>Ana</td><td>95</td></tr>\n</table>', 'Tables are for tabular data, not page layout.'],
+    ['Tables', 'Tables show data in rows and columns.', ['table wraps the data.', 'tr is a row.', 'th and td are header and data cells.'], '<table>\n  <tr><th>Name</th><th>Score</th></tr>\n  <tr><td>Sam</td><td>95</td></tr>\n</table>', 'Tables are for tabular data, not page layout.'],
     ['Forms', 'Forms collect user input.', ['input collects short values.', 'label explains an input.', 'button submits or triggers actions.'], '<label>Name <input name="name"></label>\n<button>Save</button>', 'Forms are how users send data.'],
     ['Semantic HTML', 'Semantic HTML uses tags that describe meaning, like header, main, section, and footer.', ['Semantic tags improve structure.', 'They help accessibility.', 'They make code easier to understand.'], '<main>\n  <section>\n    <h2>Lessons</h2>\n  </section>\n</main>', 'Semantic HTML makes pages clearer for people and tools.'],
   ].map(([title, summary, points, code, recap]) => lesson('html', title, summary, points, code, recap, [source.mdn], ['HTML']));
@@ -214,7 +214,7 @@ const codingEducationalData = (function () {
 
   const jsLessons = [
     ['Introduction', 'JavaScript adds behavior to webpages. It can update content, react to clicks, validate forms, and talk to APIs.', ['JavaScript runs in browsers.', 'It can change the DOM.', 'It is also used on servers with Node.js.'], 'console.log("Hello JavaScript");', 'JavaScript makes webpages interactive.'],
-    ['Variables', 'Variables store values so a program can use them later.', ['let is used for changeable values.', 'const is used when reassignment is not needed.', 'Use clear names.'], 'const name = "Ana";\nlet score = 90;', 'Variables help programs remember information.'],
+    ['Variables', 'Variables store values so a program can use them later.', ['let is used for changeable values.', 'const is used when reassignment is not needed.', 'Use clear names.'], 'const name = "Sam";\nlet score = 90;', 'Variables help programs remember information.'],
     ['Data Types', 'JavaScript values can be strings, numbers, booleans, arrays, objects, null, or undefined.', ['Strings store text.', 'Numbers store numeric values.', 'Booleans store true or false.'], 'const passed = true;\nconst grade = 95;', 'Knowing data types helps avoid confusing bugs.'],
     ['Operators', 'Operators perform actions like math, comparison, and logic.', ['+ can add or join strings.', '=== checks strict equality.', '&& means both conditions are true.'], 'const total = 10 + 5;\nconst passed = total >= 15;', 'Operators are small symbols that make decisions and calculations possible.'],
     ['Functions', 'Functions group reusable instructions.', ['Functions can receive parameters.', 'Functions can return values.', 'Use functions to avoid repeated code.'], 'function add(a, b) {\n  return a + b;\n}', 'Functions keep code organized.'],
@@ -228,7 +228,7 @@ const codingEducationalData = (function () {
 
   const pythonLessons = [
     ['Introduction', 'Python is a beginner-friendly programming language used for automation, web apps, data work, AI, and scripting.', ['Python uses indentation.', 'It has readable syntax.', 'It is popular in schools and industry.'], 'print("Hello, Python!")', 'Python is a good first language because the code is easy to read.'],
-    ['Variables', 'Python variables store values without writing the type first.', ['Names should be clear.', 'Values can change.', 'Python detects the type from the value.'], 'name = "Ana"\nage = 19', 'Python variables are quick to write and easy to read.'],
+    ['Variables', 'Python variables store values without writing the type first.', ['Names should be clear.', 'Values can change.', 'Python detects the type from the value.'], 'name = "Sam"\nage = 19', 'Python variables are quick to write and easy to read.'],
     ['Data Types', 'Python has strings, integers, floats, booleans, lists, dictionaries, and more.', ['str stores text.', 'int stores whole numbers.', 'bool stores True or False.'], 'grade = 95.5\npassed = True', 'Data types describe what kind of value you are using.'],
     ['Input/Output', 'Input lets users type values, and output shows results.', ['input() reads text.', 'print() displays output.', 'Convert input when you need numbers.'], 'name = input("Name: ")\nprint("Hello", name)', 'Input and output make programs interactive.'],
     ['Conditions', 'Python conditions use if, elif, and else.', ['Indentation matters.', 'Use comparison operators.', 'elif checks another case.'], 'if grade >= 75:\n    print("Passed")\nelse:\n    print("Try again")', 'Conditions let Python make decisions.'],
@@ -258,7 +258,7 @@ const codingEducationalData = (function () {
   const sqlBasics = [
     ['What is SQL', 'SQL is a language used to work with relational databases. It can read, add, update, and delete records.', ['SQL works with tables.', 'Rows are records.', 'Columns are fields.'], 'SELECT * FROM students;', 'SQL helps apps talk to databases.'],
     ['SELECT', 'SELECT reads data from a table.', ['Choose columns instead of always using *.', 'WHERE filters results.', 'ORDER BY sorts results.'], 'SELECT name, course\nFROM students\nWHERE year_level = 1;', 'SELECT is the main command for reading data.'],
-    ['INSERT', 'INSERT adds a new row to a table.', ['List the columns.', 'Provide matching values.', 'Validate data before inserting.'], "INSERT INTO students (name, course)\nVALUES ('Ana', 'BSIT');", 'INSERT stores new records.'],
+    ['INSERT', 'INSERT adds a new row to a table.', ['List the columns.', 'Provide matching values.', 'Validate data before inserting.'], "INSERT INTO students (name, course)\nVALUES ('Sam', 'BSIT');", 'INSERT stores new records.'],
     ['UPDATE', 'UPDATE changes existing rows.', ['Use WHERE to avoid updating every row.', 'Update only needed columns.', 'Check the target record first.'], "UPDATE students\nSET course = 'BSIT'\nWHERE id = 1;", 'UPDATE edits existing data.'],
     ['DELETE', 'DELETE removes rows from a table.', ['Use WHERE carefully.', 'Backups are important.', 'Some apps use soft delete instead.'], 'DELETE FROM students\nWHERE id = 1;', 'DELETE should be used carefully because it removes data.'],
     ['Keys and Relationships', 'Keys connect tables and keep records organized.', ['Primary keys identify rows.', 'Foreign keys refer to another table.', 'Relationships reduce repeated data.'], 'CREATE TABLE enrollments (\n  student_id INT,\n  subject_id INT\n);', 'Keys help databases model real information.'],
@@ -633,7 +633,7 @@ const codingEducationalData = (function () {
       title: 'grade table',
       target: '.demo-table-wrap',
       child: '.demo-table td:nth-child(2)',
-      markup: '<div class="demo-table-wrap"><table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Ana</td><td>95</td></tr><tr><td>Leo</td><td>88</td></tr></table></div>',
+      markup: '<div class="demo-table-wrap"><table class="demo-table"><tr><th>Name</th><th>Score</th></tr><tr><td>Sam</td><td>95</td></tr><tr><td>Leo</td><td>88</td></tr></table></div>',
       baseCss: '.demo-table{width:100%;border-collapse:collapse}.demo-table th,.demo-table td{border:1px solid #38bdf8;padding:8px;text-align:left}.demo-table-wrap{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:12px}',
     },
     {
@@ -649,7 +649,7 @@ const codingEducationalData = (function () {
       title: 'profile card',
       target: '.demo-profile',
       child: '.demo-profile .avatar',
-      markup: '<article class="demo-profile"><div class="avatar">A</div><h3>Ana Cruz</h3><p>Frontend student</p></article>',
+      markup: '<article class="demo-profile"><div class="avatar">S</div><h3>Sam Rivera</h3><p>Frontend student</p></article>',
       baseCss: '.demo-profile{border:2px solid #38bdf8;border-radius:16px;background:#fff;padding:14px;max-width:260px}.demo-profile .avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#bae6fd;font-weight:900}',
     },
     {

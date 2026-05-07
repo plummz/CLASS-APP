@@ -3194,7 +3194,7 @@ function renderAppState() {
   document.querySelectorAll('.page').forEach((page) => {
     page.style.visibility = showShell ? '' : 'hidden';
     if (!showShell) page.style.pointerEvents = 'none';
-    else page.style.pointerEvents = page.classList.contains('active') ? '' : '';
+    else page.style.pointerEvents = page.classList.contains('active') ? 'auto' : 'none';
   });
 }
 
@@ -4485,7 +4485,7 @@ window.goToPage = function(pageName) {
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
-  if(oldPage) oldPage.classList.remove('active');
+  if(oldPage) { oldPage.classList.remove('active'); oldPage.style.pointerEvents = 'none'; }
   if (old) {
     document.getElementById(old.bg)?.classList.remove('active');
     document.getElementById(old.particles)?.classList.remove('active');
@@ -4506,7 +4506,7 @@ window.goToPage = function(pageName) {
   }
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
-  if(newPage) newPage.classList.add('active');
+  if(newPage) { newPage.classList.add('active'); newPage.style.pointerEvents = 'auto'; }
 
   applyPageBackground(pageName);
 

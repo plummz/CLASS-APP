@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.9.7';
+const APP_VERSION = '1.9.8';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.8',
+    date: 'May 8, 2026',
+    title: 'Button Click Logic Stability Fix',
+    summary: 'Fixed critical button unresponsiveness caused by incomplete pointer-events management during page transitions.',
+    changes: [
+      'Fixed: Restored explicit inline pointer-events assignments in goToPage() — old pages now get pointer-events:none, new pages get pointer-events:auto on transition.',
+      'Verified: renderAppState() correctly sets pointer-events:auto for active pages and pointer-events:none for inactive pages.',
+      'Improved: Dynamic page event binding and mobile click reliability across all pages.',
+      'Bumped cache version to ensure fixed shell-controls.js loads correctly in PWA and browser cache.',
+      'Result: All buttons across Shared Reviewers, My Classes, Users, Calendar, Games, Social Media, and other pages should now respond immediately on click.',
+    ],
+  },
   {
     version: '1.9.7',
     date: 'May 7, 2026',

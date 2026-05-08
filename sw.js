@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.74-20260507-emergency-hamburger-menu-fix';
+const CACHE_VERSION = 'v1.5.75-20260508-button-click-logic-fix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -47,7 +47,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=1',
-  '/features/logging-in/shell-controls.js?v=3',
+  '/features/logging-in/shell-controls.js?v=4',
   '/features/updates/changelog.js?v=3',
   '/script.js?v=115',
   '/features/reviewers/reviewers.js?v=15',

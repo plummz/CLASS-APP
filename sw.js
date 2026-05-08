@@ -19,13 +19,13 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.78-20260508-startup-timeout-hotfix';
+const CACHE_VERSION = 'v1.5.79-20260508-splash-failsafe';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=117',
-  '/style.css?v=41',
+  '/index.html?v=118',
+  '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -48,7 +48,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=2',
   '/features/logging-in/shell-controls.js?v=4',
-  '/features/updates/changelog.js?v=5',
+  '/features/updates/changelog.js?v=6',
   '/script.js?v=117',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
@@ -274,6 +274,7 @@ self.addEventListener('notificationclick', (event) => {
     await clients.openWindow(targetUrl);
   })());
 });
+
 
 
 

@@ -1,7 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.10';
+const APP_VERSION = '1.9.11';
 const APP_CHANGELOG = [
   {
+    version: '1.9.11',
+    date: 'May 8, 2026',
+    title: 'Fix: Splash Screen Failsafe for Android PWA',
+    summary: 'Prevents the Android PWA from getting stuck on the app logo if an older cached JS bundle fails to run by adding a CSS auto-hide failsafe to the splash screen.',
+    changes: [
+      'Fix: Added a CSS failsafe animation that hides the splash screen after ~6 seconds even if JS initialization crashes or the PWA is serving stale cached assets.',
+      'Kept: Previous startup timeout protection for /api/config and folder/file Supabase readiness guards.',
+      'Bumped cache versions so Android PWA receives the updated styles immediately.',
+    ],
+  },  {
     version: '1.9.10',
     date: 'May 8, 2026',
     title: 'Fix: Startup No Longer Hangs on Render Cold Start',
@@ -1839,4 +1849,5 @@ const APP_CHANGELOG = [
 window.CLASS_APP_VERSION = APP_VERSION;
 window.CLASS_APP_CHANGELOG = APP_CHANGELOG;
 })();
+
 

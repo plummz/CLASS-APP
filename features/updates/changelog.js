@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.12';
+const APP_VERSION = '1.9.13';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.13',
+    date: 'May 9, 2026',
+    title: 'Fix: Safe Auth Fallback for Stalled Startup',
+    summary: 'Startup recovery now falls back to the login portal instead of exposing a half-initialized shell, and Android PWA startup assets are force-refreshed with new cache versions.',
+    bullets: [
+      'Fixed: Startup watchdog now trusts a saved session only when both user and token exist and logout controls are already active.',
+      'Improved: If startup stalls, the splash is removed and the auth portal is shown instead of revealing a dead sidebar/menu state.',
+      'Improved: Manifest, startup shell scripts, main script, changelog, and service worker cache versions were bumped together for a stronger Android PWA refresh.'
+    ]
+  },
   {
     version: '1.9.12',
     date: 'May 9, 2026',

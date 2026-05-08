@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.80-20260509-startup-watchdog';
+const CACHE_VERSION = 'v1.5.81-20260509-auth-fallback';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=119',
+  '/index.html?v=120',
   '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -46,10 +46,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
-  '/features/logging-in/loading-components.js?v=2',
-  '/features/logging-in/shell-controls.js?v=4',
-  '/features/updates/changelog.js?v=7',
-  '/script.js?v=118',
+  '/features/logging-in/loading-components.js?v=3',
+  '/features/logging-in/shell-controls.js?v=5',
+  '/features/updates/changelog.js?v=8',
+  '/script.js?v=119',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',
@@ -84,7 +84,7 @@ const ASSETS = [
   '/features/candy/candy.js?v=10',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',
-  '/manifest.json',
+  '/manifest.json?v=2',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];

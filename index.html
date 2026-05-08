@@ -34,7 +34,7 @@
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
   <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
   <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=2">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1540,32 +1540,44 @@
 
     function hasStoredSession() {
       try {
-        return Boolean(localStorage.getItem('classAppUser'));
+        return Boolean(localStorage.getItem('classAppUser') && localStorage.getItem('classAppToken'));
       } catch (_) {
         return false;
       }
     }
 
     function promoteInteractiveLayer() {
+      const splash = document.getElementById('splash-screen');
+      if (splash) splash.remove();
       const authModal = document.getElementById('auth-modal');
       const shellNodes = ['sidebar', 'menu-toggle', 'overlay', 'live-clock', 'page-indicator']
         .map((id) => document.getElementById(id))
         .filter(Boolean);
 
-      if (hasStoredSession()) {
+      const logout = document.getElementById('nav-logout');
+      const canTrustShell = hasStoredSession() && logout && getComputedStyle(logout).display !== 'none';
+
+      if (canTrustShell) {
         if (authModal) authModal.style.display = 'none';
         shellNodes.forEach((node) => {
           node.style.visibility = '';
           node.style.pointerEvents = '';
         });
-        const logout = document.getElementById('nav-logout');
-        if (logout) logout.style.display = 'flex';
         document.querySelectorAll('.page').forEach((page) => {
           page.style.visibility = '';
           page.style.pointerEvents = page.classList.contains('active') ? 'auto' : 'none';
         });
-      } else if (authModal) {
-        authModal.style.display = 'flex';
+      } else {
+        shellNodes.forEach((node) => {
+          node.style.visibility = 'hidden';
+          node.style.pointerEvents = 'none';
+        });
+        if (logout) logout.style.display = 'none';
+        document.querySelectorAll('.page').forEach((page) => {
+          page.style.visibility = 'hidden';
+          page.style.pointerEvents = 'none';
+        });
+        if (authModal) authModal.style.display = 'flex';
       }
     }
 
@@ -1615,10 +1627,10 @@
 
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="features/logging-in/loading-components.js?v=2"></script>
-  <script src="features/logging-in/shell-controls.js?v=4"></script>
-  <script src="features/updates/changelog.js?v=7"></script>
-  <script src="script.js?v=118"></script>
+  <script src="features/logging-in/loading-components.js?v=3"></script>
+  <script src="features/logging-in/shell-controls.js?v=5"></script>
+  <script src="features/updates/changelog.js?v=8"></script>
+  <script src="script.js?v=119"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

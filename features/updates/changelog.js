@@ -1,7 +1,18 @@
 ﻿(function () {
-const APP_VERSION = '1.9.9';
+const APP_VERSION = '1.9.10';
 const APP_CHANGELOG = [
   {
+    version: '1.9.10',
+    date: 'May 8, 2026',
+    title: 'Fix: Startup No Longer Hangs on Render Cold Start',
+    summary: 'Prevents the app shell from stalling for 1–2 minutes when Render is cold-starting by using a hard Promise.race timeout for /api/config fetch. Keeps the earlier folder/file button guards intact.',
+    changes: [
+      'Fix: Replaced AbortController-based /api/config timeouts with Promise.race timeouts in both startup init paths (script.js + loading-components.js) for better mobile Safari/WebView reliability.',
+      'Fix: Supabase config fetch now fails fast (5s/8s) instead of hanging indefinitely; app proceeds to show the auth UI and keeps navigation responsive.',
+      'Kept: Folder/file action guards that prevent silent failures when sb is not ready yet.',
+      'Bumped cache versions so mobile/PWA receives the fix immediately.',
+    ],
+  },  {
     version: '1.9.9',
     date: 'May 8, 2026',
     title: 'Fix: Missing Page Init Calls for User Directory & File Summarizer',
@@ -1828,3 +1839,4 @@ const APP_CHANGELOG = [
 window.CLASS_APP_VERSION = APP_VERSION;
 window.CLASS_APP_CHANGELOG = APP_CHANGELOG;
 })();
+

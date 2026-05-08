@@ -14,10 +14,10 @@ async function initSupabase() {
   try {
     // 5s hard timeout — if the server is still cold-starting the page shouldn't block.
     // waitForSupabaseClient() retries once on login if credentials are still empty.
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
-    clearTimeout(timer);
+    const cfg = await Promise.race([
+      fetch('/api/config').then(r => r.json()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase config timeout')), 5000)),
+    ]);
     SUPABASE_URL = cfg.supabaseUrl || '';
     SUPABASE_KEY = cfg.supabaseKey || '';
   } catch (error) {
@@ -203,10 +203,10 @@ async function waitForSupabaseClient() {
   // page load. Try /api/config once more now that the server should be awake.
   if (!SUPABASE_URL) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const cfg = await fetch('/api/config', { signal: controller.signal }).then(r => r.json());
-      clearTimeout(timer);
+      const cfg = await Promise.race([
+      fetch('/api/config').then(r => r.json()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase config timeout')), 8000)),
+    ]);
       if (cfg.supabaseUrl && cfg.supabaseKey) {
         SUPABASE_URL = cfg.supabaseUrl;
         SUPABASE_KEY = cfg.supabaseKey;
@@ -7534,3 +7534,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+

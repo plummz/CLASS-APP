@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.9.8';
+const APP_VERSION = '1.9.9';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.9',
+    date: 'May 8, 2026',
+    title: 'Fix: Missing Page Init Calls for User Directory & File Summarizer',
+    summary: 'Added missing goToPage() init triggers for User Directory and File Summarizer so both pages reliably render fresh data every time they are navigated to.',
+    changes: [
+      'Fix: Added renderUserDirectory() call in goToPage() for the "users" page — previously the user grid could appear stale or empty if users loaded before the page was first visited.',
+      'Fix: Added fileSummarizerModule.refreshHistory() call in goToPage() for the "file-summarizer" page — summary and quiz history now reload on each page visit.',
+      'Verified: All other pages with module init calls (personal-tools, alarm, notepad, calculator, personalization, reviewers, lobby, pokemon, royale, pacman, candy, games, events, random, announcement, witfb, outputai, codelab, coding-educational, ai, admin, diagnostics) were already wired correctly.',
+      'Confirmed: All button-level functions (sendMessage, openChat, openFolderExplorer, handleYtInput, searchMusicFiles, openSocialPage, fetchSharedAnnouncements, deleteSharedAnnouncement, openUserProfile, renderUserDirectory) are globally accessible on window.',
+      'Confirmed: pointer-events management in goToPage() and renderAppState() is correct — active pages receive pointer-events:auto, inactive pages get pointer-events:none.',
+      'Bumped cache version so fixed script.js loads correctly across PWA and browser cache.',
+    ],
+  },
   {
     version: '1.9.8',
     date: 'May 8, 2026',

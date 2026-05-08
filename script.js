@@ -4554,6 +4554,8 @@ window.goToPage = function(pageName) {
   if (pageName === 'calculator' && typeof calculatorModule !== 'undefined') runSafeUiAction('Calculator', () => calculatorModule.init());
   if (pageName === 'personalization' && typeof personalizationModule !== 'undefined') runSafeUiAction('Personalization', () => personalizationModule.init());
   if (pageName === 'reviewers' && typeof reviewersModule !== 'undefined') runSafeUiAction('Reviewers', () => reviewersModule.init());
+  if (pageName === 'users') runSafeUiAction('User Directory', () => renderUserDirectory());
+  if (pageName === 'file-summarizer') runSafeUiAction('File Summarizer', () => window.fileSummarizerModule?.refreshHistory?.());
   if (pageName === 'diagnostics') runSafeUiAction('Diagnostics', () => loadDiagnostics());
   // Games hub: draw royale preview canvas
   if (pageName === 'games') runSafeUiAction('Games', () => drawRoyalePreviewCanvas());

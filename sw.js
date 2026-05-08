@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════════════════════
+﻿﻿// ═══════════════════════════════════════════════════════════════════════════
 // SERVICE WORKER - Cache Management & Asset Versioning
 // ═══════════════════════════════════════════════════════════════════════════
 //
@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.76-20260508-user-dir-filesummarizer-init-fix';
+const CACHE_VERSION = 'v1.5.77-20260508-supabase-guards-hotfix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [

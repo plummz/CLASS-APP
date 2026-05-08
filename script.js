@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    SCRIPT.JS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
 
@@ -51,6 +51,12 @@ async function initSupabase() {
     window.sb = null;
     return false;
   }
+}
+function ensureSupabaseReady(context = "This action") {
+  if (sb) return true;
+  console.warn(`[auth] ${context}: Supabase client not ready.`);
+  customAlert("Server is still starting (or Supabase config failed to load). Please refresh and try again in a few seconds.");
+  return false;
 }
 
 function getSupabaseChannel(channelName, config) {
@@ -1796,6 +1802,7 @@ function folderAccessLabel(folder) {
 }
 
 async function fetchFolderById(id) {
+    if (!sb) throw new Error('Supabase is not ready yet. Please refresh and try again.');
     const { data, error } = await sb.from('folders').select('*').eq('id', id).single();
     if (error) throw error;
     return data;
@@ -1847,6 +1854,11 @@ window.openFolderExplorer = async function(parentName) {
 };
 
 function fetchAndRenderFolders() {
+    if (!sb) {
+        const grid = document.getElementById('folder-grid-modal');
+        if (grid) grid.innerHTML = '<div class="empty-state-text"><p style="color:#ffb74d;">Server is still starting. Please refresh and try again.</p></div>';
+        return;
+    }
     sb.from('folders').select('*').eq('parent', currentParentContext)
     .then(({ data: folders, error }) => {
         const grid = document.getElementById('folder-grid-modal');
@@ -1892,6 +1904,7 @@ function fetchAndRenderFolders() {
 }
 
 window.createFolderAPI = function() {
+    if (!ensureSupabaseReady('Create folder')) return;
     if(!currentUser) return customAlert("Please log in to create a folder.");
     customPrompt("Enter new folder name:", function(name) {
         if(!name) return;
@@ -1905,6 +1918,7 @@ window.createFolderAPI = function() {
 };
 
 window.renameFolderAPI = async function(id, oldName, isSub) {
+    if (!ensureSupabaseReady('Rename folder')) return;
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can rename this folder.');
@@ -1923,6 +1937,7 @@ window.renameFolderAPI = async function(id, oldName, isSub) {
 };
 
 window.deleteFolderAPI = async function(id) {
+    if (!ensureSupabaseReady('Delete folder')) return;
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this folder.');
@@ -1940,6 +1955,7 @@ window.deleteFolderAPI = async function(id) {
 };
 
 window.openFileExplorer = async function(folderId, folderName, parentId) {
+    if (!ensureSupabaseReady('Open folder')) return;
     let folder;
     try {
         folder = await fetchFolderById(folderId);
@@ -2094,6 +2110,11 @@ function fetchAndRenderFiles() {
 
 /* ── Sub-folder support ── */
 function fetchAndRenderSubFolders() {
+    if (!sb) {
+        const grid = document.getElementById('subfolder-grid');
+        if (grid) grid.innerHTML = '<div class="empty-state-text"><p style="color:#ffb74d;">Server is still starting. Please refresh and try again.</p></div>';
+        return;
+    }
     if (!currentFolderContext || !currentFolderContext.id) return;
     const parentId = String(currentFolderContext.id);
     const subfolderSection = document.getElementById('subfolder-section');
@@ -2139,6 +2160,7 @@ function fetchAndRenderSubFolders() {
 }
 
 window.createSubFolderAPI = function() {
+    if (!ensureSupabaseReady('Create sub-folder')) return;
     if (!currentUser) return customAlert("Please log in to create a sub-folder.");
     if (!currentFolderContext || !currentFolderContext.id) return customAlert("No folder selected.");
     if (!canEditFolder(currentFolderContext)) return customAlert('You do not have permission to add sub-folders here.');
@@ -2160,6 +2182,7 @@ window.createSubFolderAPI = function() {
 };
 
 window.deleteSubFolderAPI = async function(id) {
+    if (!ensureSupabaseReady('Delete sub-folder')) return;
     let folder;
     try { folder = await fetchFolderById(id); } catch (error) { return customAlert(error.message); }
     if (!canManageFolder(folder)) return customAlert('Only the folder owner can delete this sub-folder.');
@@ -2174,6 +2197,7 @@ window.deleteSubFolderAPI = async function(id) {
 };
 
 window.uploadFileToFolderAPI = async function() {
+    if (!ensureSupabaseReady('Upload file')) return;
     if(!currentUser) return customAlert("Log in to upload files.");
     if (!currentFolderContext || !canEditFolder(currentFolderContext)) return customAlert('You do not have permission to upload files here.');
     const input  = document.getElementById('file-upload-input');
@@ -2250,6 +2274,7 @@ window.uploadFileToFolderAPI = async function() {
 };
 
 window.deleteFileAPI = async function(fileId) {
+    if (!ensureSupabaseReady('Delete file')) return;
     if (!currentUser) return customAlert('Please log in.');
     let file;
     try {
@@ -2480,6 +2505,7 @@ window.openCopyMoveFileModal = async function(fileId, currentFolderId, refreshMo
 window.openMoveFileModal = window.openCopyMoveFileModal;
 
 window.copyFileToFolder = async function(fileId, targetFolderId, refreshMode = 'folder') {
+    if (!ensureSupabaseReady('Copy file')) return;
     let sourceFile;
     let target;
     try {

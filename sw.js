@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.77-20260508-supabase-guards-hotfix';
+const CACHE_VERSION = 'v1.5.78-20260508-startup-timeout-hotfix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=116',
+  '/index.html?v=117',
   '/style.css?v=41',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -46,10 +46,10 @@ const ASSETS = [
   '/features/candy/candy.css?v=11',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
-  '/features/logging-in/loading-components.js?v=1',
+  '/features/logging-in/loading-components.js?v=2',
   '/features/logging-in/shell-controls.js?v=4',
-  '/features/updates/changelog.js?v=4',
-  '/script.js?v=116',
+  '/features/updates/changelog.js?v=5',
+  '/script.js?v=117',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',
@@ -274,6 +274,8 @@ self.addEventListener('notificationclick', (event) => {
     await clients.openWindow(targetUrl);
   })());
 });
+
+
 
 
 

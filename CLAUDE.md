@@ -102,6 +102,79 @@ Claude must treat these as regression-prone areas:
 - Service worker not updating after frontend changes
 - Changelog not loading because of version mismatch
 
+## 🚨 MAY 9, 2026 STABILITY LOCK — DO NOT TOUCH CASUALLY
+
+The following fixes are now considered **LOCKED STABILITY PATCHES**.
+
+Claude / Codex / any future editor MUST NOT remove, weaken, bypass, or casually rewrite them unless the task is **explicitly** about replacing them with a safer verified system:
+
+### 1. Startup / loading / auth recovery protections
+
+These include the fixes that prevent:
+
+- app stuck on logo / splash
+- app opening into a half-started shell
+- stale saved session restoring a broken signed-in state
+- login screen failing to recover after invalid token/session state
+
+Protected files / logic:
+
+- `script.js` saved-session validation logic
+- `/api/session` validation route in `server.js`
+- startup fallback / recovery logic related to loading, auth, and shell visibility
+
+### 2. Button interaction protections
+
+These include the fixes that prevent:
+
+- dead buttons
+- hamburger menu not opening
+- chat bubble not opening chat
+- game cards not opening games
+- personal tool cards not opening tools
+- any inline `onclick`-driven control silently failing
+
+Critical rule:
+
+- `server.js` CSP / Helmet settings MUST NOT block inline handler attributes while the app still uses inline `onclick`, `oninput`, `onkeydown`, or similar attributes in `index.html` or rendered feature HTML.
+- If a future editor wants to tighten CSP again, they MUST first migrate every affected inline handler to verified event listeners, then test all affected buttons in a real browser before restoring any restrictive `script-src-attr` policy.
+
+### 3. Startup and shell ownership protections
+
+Future editors MUST NOT casually merge or reshuffle:
+
+- loading / auth bootstrap
+- splash / startup recovery
+- shell navigation
+- sidebar / hamburger controls
+- page switching state
+
+If editing these areas is unavoidable:
+
+1. Change the smallest possible amount
+2. Explain why the edit is necessary
+3. Test login, splash, sidebar, chat bubble, game cards, tool cards, and at least 3 unrelated buttons
+4. Verify mobile behavior in a real browser
+5. Verify stale-session behavior, fresh login behavior, and post-refresh behavior
+
+### 4. Forbidden unsafe behavior
+
+Future editors MUST NOT:
+
+- remove session validation because it “seems redundant”
+- remove startup fallback logic for convenience
+- rewrite shell/menu code without proving all menu buttons still work
+- modify CSP blindly
+- assume hover animation means click logic works
+- push startup/menu/auth changes without real browser verification
+
+If unsure:
+
+➡️ STOP  
+➡️ inspect live behavior first  
+➡️ patch minimally  
+➡️ verify before pushing
+
 Claude MUST perform a regression check after every edit:
 
 - Open the app in a real browser

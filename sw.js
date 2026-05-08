@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.75-20260508-button-click-logic-fix';
+const CACHE_VERSION = 'v1.5.76-20260508-user-dir-filesummarizer-init-fix';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -48,8 +48,8 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=1',
   '/features/logging-in/shell-controls.js?v=4',
-  '/features/updates/changelog.js?v=3',
-  '/script.js?v=115',
+  '/features/updates/changelog.js?v=4',
+  '/script.js?v=116',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',

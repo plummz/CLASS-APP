@@ -1384,6 +1384,16 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
   });
 }));
 
+app.get('/api/session', requireAuth, wrap(async (req, res) => {
+  res.json({
+    ok: true,
+    user: {
+      username: req.user.username,
+      isAdmin: Boolean(req.user.isAdmin),
+    },
+  });
+}));
+
 app.get('/api/users', requireAuth, wrap(async (req, res) => {
   try {
     const rows = await fetchSupabasePublicProfiles();

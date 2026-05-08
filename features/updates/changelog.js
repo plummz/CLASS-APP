@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.13';
+const APP_VERSION = '1.9.14';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.14',
+    date: 'May 9, 2026',
+    title: 'Fix: Validate Saved Sessions Before Opening Shell',
+    summary: 'Startup now verifies saved auth tokens before opening the app shell, so expired or bad sessions fall back to login instead of leaving buttons and pages half-working.',
+    bullets: [
+      'Fixed: Startup now probes `/api/session` before restoring a saved session shell.',
+      'Fixed: Expired or invalid saved tokens are cleared and redirected back to the login portal instead of leaving the app in a broken signed-in state.',
+      'Improved: Main script, changelog, and service-worker cache versions were bumped again so Android PWA installs pick up the auth-state repair cleanly.'
+    ]
+  },
   {
     version: '1.9.13',
     date: 'May 9, 2026',

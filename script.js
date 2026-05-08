@@ -3289,6 +3289,24 @@ function waitForSplashDismissal() {
   });
 }
 
+async function validateSavedSession() {
+  const token = getServerAuthToken();
+  if (!currentUser?.username || !token) return false;
+  try {
+    const response = await authFetch('/api/session');
+    if (!response.ok) {
+      if (response.status === 401) return false;
+      throw new Error(`Session probe failed (${response.status})`);
+    }
+    const payload = await response.json().catch(() => ({}));
+    isAdmin = Boolean(payload?.user?.isAdmin);
+    return true;
+  } catch (error) {
+    console.warn('[auth] Saved session validation failed:', error);
+    return false;
+  }
+}
+
 function saveSession() {
   syncAuthState();
   if (currentUser) {
@@ -5217,6 +5235,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       isAdmin = false;
       saveSession();
       showToast('Please sign in again to refresh your secure session.', 'info');
+    } else if (currentUser) {
+      const sessionValid = await validateSavedSession();
+      if (!sessionValid) {
+        stopLastSeenHeartbeat();
+        destroyAppPresence();
+        currentUser = null;
+        isAdmin = false;
+        syncAuthState();
+        saveSession();
+        setAuthError('Your saved session expired. Please sign in again.');
+      }
     }
 
     const installBtn = document.getElementById('install-btn');

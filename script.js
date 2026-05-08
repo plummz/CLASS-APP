@@ -5510,6 +5510,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       await Promise.race([splashReady, new Promise((resolve) => setTimeout(resolve, 1200))]);
     } catch (_) {}
     setInitializing(false);
+    document.documentElement.dataset.classappUiReady = '1';
+    window.dispatchEvent(new Event('classapp:ui-ready'));
   }
 
   // Push chat input above the soft keyboard on mobile

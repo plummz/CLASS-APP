@@ -1531,12 +1531,94 @@
   })();
   </script>
 
+  <script>
+  // Startup watchdog: if a stale PWA cache leaves the shell in a half-started state,
+  // recover the visible/auth layer and rebind core menu actions.
+  (function() {
+    if (window.__classAppStartupWatchdogBound) return;
+    window.__classAppStartupWatchdogBound = true;
+
+    function hasStoredSession() {
+      try {
+        return Boolean(localStorage.getItem('classAppUser'));
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function promoteInteractiveLayer() {
+      const authModal = document.getElementById('auth-modal');
+      const shellNodes = ['sidebar', 'menu-toggle', 'overlay', 'live-clock', 'page-indicator']
+        .map((id) => document.getElementById(id))
+        .filter(Boolean);
+
+      if (hasStoredSession()) {
+        if (authModal) authModal.style.display = 'none';
+        shellNodes.forEach((node) => {
+          node.style.visibility = '';
+          node.style.pointerEvents = '';
+        });
+        const logout = document.getElementById('nav-logout');
+        if (logout) logout.style.display = 'flex';
+        document.querySelectorAll('.page').forEach((page) => {
+          page.style.visibility = '';
+          page.style.pointerEvents = page.classList.contains('active') ? 'auto' : 'none';
+        });
+      } else if (authModal) {
+        authModal.style.display = 'flex';
+      }
+    }
+
+    document.addEventListener('click', function(event) {
+      const target = event.target.closest
+        ? event.target.closest('#menu-toggle, .nav-item[data-page], .nav-dropdown-header[data-year], #nav-logout')
+        : null;
+      if (!target) return;
+
+      if (target.matches('#menu-toggle') && typeof window.toggleMenu === 'function') {
+        event.preventDefault();
+        window.toggleMenu();
+        return;
+      }
+      if (target.matches('.nav-item[data-page]') && typeof window.goToPage === 'function') {
+        event.preventDefault();
+        window.goToPage(target.dataset.page);
+        return;
+      }
+      if (target.matches('.nav-dropdown-header[data-year]') && typeof window.toggleYear === 'function') {
+        event.preventDefault();
+        window.toggleYear(target.dataset.year);
+        return;
+      }
+      if (target.matches('#nav-logout') && typeof window.handleLogout === 'function') {
+        event.preventDefault();
+        window.handleLogout();
+      }
+    }, true);
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const target = event.target.closest
+        ? event.target.closest('.nav-item[data-page], .nav-dropdown-header[data-year], #nav-logout')
+        : null;
+      if (!target) return;
+      event.preventDefault();
+      target.click();
+    }, true);
+
+    setTimeout(function() {
+      if (document.documentElement.dataset.classappUiReady === '1') return;
+      promoteInteractiveLayer();
+    }, 6500);
+  })();
+  </script>
+
   <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=2"></script>
   <script src="features/logging-in/shell-controls.js?v=4"></script>
-  <script src="features/updates/changelog.js?v=6"></script>
-  <script src="script.js?v=117"></script>
+  <script src="features/updates/changelog.js?v=7"></script>
+  <script src="script.js?v=118"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

@@ -1,6 +1,18 @@
 ﻿(function () {
-const APP_VERSION = '1.9.11';
+const APP_VERSION = '1.9.12';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.12',
+    date: 'May 9, 2026',
+    title: 'Fix: Startup Watchdog for Dead Menu States',
+    summary: 'Adds a small shell watchdog so Android PWA startup can recover if the app loads into a non-interactive menu/auth state. This is aimed at the repeating \"all buttons feel dead\" regression.',
+    changes: [
+      'Added an inline startup watchdog that restores the visible interactive layer if startup never marks the UI as ready.',
+      'Added capture-phase fallback handlers for hamburger, dropdown nav, year headers, and logout so core menu actions still work if normal sidebar binding misses.',
+      'Added a classappUiReady signal in script.js so the watchdog stays out of the way when startup completes normally.',
+      'Bumped cache versions to force Android PWA to pick up the new shell and menu recovery logic.',
+    ],
+  },
   {
     version: '1.9.11',
     date: 'May 8, 2026',

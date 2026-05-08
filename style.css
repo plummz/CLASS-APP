@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    STYLE.CSS — My School Portfolio (FULL INTEGRATED VERSION)
    ============================================================ */
  
@@ -3495,10 +3495,19 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
   display: flex; align-items: center; justify-content: center;
   background: #000;
   transition: opacity 0.6s ease, transform 0.6s ease;
+  /* Failsafe: if JS crashes or SW serves stale/broken JS, don't trap the user on the splash forever. */
+  animation: splashFailsafeHide 6s ease forwards;
 }
+@keyframes splashFailsafeHide {
+  0%, 70% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
 #splash-screen.splash-out {
   opacity: 0; transform: scale(1.05); pointer-events: none;
+  animation: none;
 }
+
 .splash-bg {
   position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 50%, #0a0f2e 0%, #000 70%);
@@ -5659,3 +5668,4 @@ body.light-mode .home-trending-by { color: #2a4a8a; }
   #live-clock { top: auto !important; bottom: 76px !important; right: auto !important; left: 14px !important; z-index: 890; }
   .custom-bg-btn { z-index: 880; bottom: 76px !important; right: 14px !important; }
 }
+

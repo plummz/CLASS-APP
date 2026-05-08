@@ -62,7 +62,10 @@ window.goToPage = function(pageName) {
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
-  if(oldPage) oldPage.classList.remove('active');
+  if(oldPage) {
+    oldPage.classList.remove('active');
+    oldPage.style.pointerEvents = 'none';
+  }
   if (old) {
     document.getElementById(old.bg)?.classList.remove('active');
     document.getElementById(old.particles)?.classList.remove('active');
@@ -83,7 +86,10 @@ window.goToPage = function(pageName) {
   }
   const cfg = pageConfig[pageName];
   const newPage = document.getElementById('page-' + pageName);
-  if(newPage) newPage.classList.add('active');
+  if(newPage) {
+    newPage.classList.add('active');
+    newPage.style.pointerEvents = 'auto';
+  }
 
   // Some builds define applyPageBackground globally; others only inside personalization.
   // Missing hook must not crash navigation.

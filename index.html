@@ -1,1 +1,179 @@
-
+ï»¿ï»¿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My School Portfolio</title>
+ 
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+  
+<link rel="stylesheet" href="style.css?v=41">
+  <link rel="stylesheet" href="assets/css/codelab.css?v=4">
+  <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
+  <link rel="stylesheet" href="features/ai/ai.css?v=1">
+  <link rel="stylesheet" href="features/academics/academics.css?v=1">
+  <link rel="stylesheet" href="features/lobby/lobby.css?v=2">
+  <link rel="stylesheet" href="features/chat/chat.css?v=1">
+  <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
+  <link rel="stylesheet" href="features/music/music.css?v=1">
+  <link rel="stylesheet" href="features/social/social.css?v=1">
+  <link rel="stylesheet" href="features/users/users.css?v=1">
+  <link rel="stylesheet" href="features/games/games.css?v=1">
+  <link rel="stylesheet" href="features/updates/updates.css?v=1">
+  <link rel="stylesheet" href="features/folders/folders.css?v=1">
+  <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
+  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
+<link rel="stylesheet" href="features/royale/royale.css?v=18">
+  <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
+  <link rel="stylesheet" href="features/candy/candy.css?v=11">
+  <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
+  <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
+  <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1b3d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="My School Portfolio">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+  <audio id="notif-sound" src="https://actions.google.com/sounds/v1/ui/pop.ogg" preload="auto"></audio>
+
+  <button id="install-btn" class="install-btn">Install App</button>
+ 
+  <div id="bg-mountain" class="scene-bg"></div>
+  <div id="bg-ocean"    class="scene-bg"></div>
+  <div id="bg-aerial"   class="scene-bg"></div>
+  <div id="bg-galaxy"   class="scene-bg active"></div>
+  <div id="custom-animated-bg" class="custom-animated-bg" aria-hidden="true"></div>
+
+  <input type="file" id="custom-bg-upload" accept="image/*,video/*" style="display: none;">
+  <button type="button" class="custom-bg-btn" onclick="window.goToPage('personalization')" title="Personalize">ðŸŽ¨</button>
+  <input type="file" id="profile-avatar-upload" accept="image/*" style="display: none;">
+ 
+  <div class="aurora" id="aurora"></div>
+ 
+  <canvas id="starfield"></canvas>
+ 
+  <svg class="mountain-silhouette" id="mountain-svg" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,200 L0,140 L120,80 L240,130 L360,60 L480,100 L600,40 L720,90 L840,50 L960,95 L1080,65 L1200,110 L1320,75 L1440,120 L1440,200 Z" fill="rgba(20,50,25,0.85)"/>
+    <path d="M0,200 L0,160 L180,110 L360,145 L540,90 L720,130 L900,100 L1080,140 L1260,105 L1440,145 L1440,200 Z" fill="rgba(15,35,18,0.9)"/>
+  </svg>
+ 
+  <div class="wave-container" id="wave-container">
+    <div class="wave"></div><div class="wave"></div><div class="wave"></div>
+  </div>
+
+  <!-- â”€â”€ SPLASH SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div id="splash-screen">
+    <div class="splash-bg"></div>
+    <canvas id="splash-canvas"></canvas>
+    <div class="splash-content">
+      <div class="splash-logo-wrap">
+        <div class="splash-ring splash-ring-1"></div>
+        <div class="splash-ring splash-ring-2"></div>
+        <div class="splash-ring splash-ring-3"></div>
+        <div class="splash-scan"></div>
+        <img src="icons/icon-512.png" class="splash-logo" alt="BSIT">
+      </div>
+      <div class="splash-title">BSIT</div>
+      <div class="splash-sub">Bachelor of Science in Information Technology</div>
+      <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+    </div>
+  </div>
+
+  <div class="particles particle-mountain" id="particles-mountain"></div>
+  <div class="particles particle-ocean"    id="particles-ocean"></div>
+  <div class="particles particle-aerial"   id="particles-aerial"></div>
+  <div class="particles particle-galaxy active"   id="particles-galaxy"></div>
+ 
+  <button id="menu-toggle" aria-label="Toggle menu">
+    <div class="bar"></div>
+    <div class="bar"></div>
+    <div class="bar"></div>
+  </button>
+ 
+  <div id="page-indicator">ðŸ“¢ ANNOUNCEMENT</div>
+ 
+  <nav id="sidebar">
+    <div class="sidebar-title">My Portfolio</div>
+
+    <div class="sidebar-controls">
+      <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Dark/Light Mode">ðŸŒ™</button>
+      <input type="color" id="accent-picker" class="accent-picker" value="#00d4ff" title="Pick Accent Color">
+      <span class="accent-label">Accent</span>
+      <button id="notif-prefs-btn" class="theme-toggle-btn" title="Notification preferences">ðŸ””</button>
+    </div>
+    <div id="notif-prefs-panel" class="notif-prefs-panel hidden">
+      <div class="notif-prefs-title">Notifications</div>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-sound" onchange="saveNotifPrefs()"> Sound</label>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-group" onchange="saveNotifPrefs()"> Group chat alerts</label>
+      <label class="notif-pref-row"><input type="checkbox" id="pref-dm"    onchange="saveNotifPrefs()"> DM badges</label>
+    </div>
+ 
+    <!-- â”€â”€ MAIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <div class="nav-section-title nav-section-first">Main</div>
+    <div class="nav-item active" data-page="announcement" role="button" tabindex="0">
+      <span class="nav-icon">ðŸŸ </span>
+      <div class="nav-text"><span class="nav-label">Home</span></div>
+    </div>
+    <div class="nav-item" data-page="lobby" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ«</span>
+      <div class="nav-text"><span class="nav-label">Lobby</span></div>
+    </div>
+
+    <!-- â”€â”€ LEARNING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <div class="nav-section-title">Learning</div>
+    <div class="nav-item" data-page="file-summarizer" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ“œ</span>
+      <div class="nav-text"><span class="nav-label">File Summarizer</span><span class="nav-sub">Upload & Summarize</span></div>
+    </div>
+    <div class="nav-item" data-page="reviewers" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ“€</span>
+      <div class="nav-text"><span class="nav-label">Shared Reviewers</span><span class="nav-sub">Trending PDF<s/span></div>
+    </div>
+    <div class="nav-item" data-page="codelab" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ‰</span>
+      <div class="nav-text"><span class="nav-label">Code Lab</span><span class="nav-sub">Practice Coding</span></div>
+    </div>
+    <div class="nav-item" data-page="coding-educational" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ“š</span>
+      <div class="nav-text"><span class="nav-label">Coding Lessons</span><span class="nav-sub">Learn Programming</span></div>
+    </div>
+    <div class="nav-item" data-page="ai" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ¤–</span>
+      <div class="nav-text"><span class="nav-label">AI Assistants</span><span class="nav-sub">Chat tools</span></div>
+    </div>
+    <div class="nav-item" data-page="outputai" role="button" tabindex="0">
+      <span class="nav-icon">ðŸ¥¾</span>
+      <div class="nav-text"><span class="nav-label">OUTPUT-AI</span><span class="nav-sub">Shared AI feed</span></div>
+    </div>
+
+    <!-- â€â€â€“ MY CLASSES â€“ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <div class="nav-section-title">My Classes</div>
+    <div class="nav-dropdown-group year-1-theme">
+      <div class="nav-dropdown-header" data-year="year1" role="button" tabindex="0">
+        <span class="nav-icon">ðŸŒ“</span>
+        <div class="nav-text"><span class="nav-label">First Year</span></div>
+        <span class="dropdown-arrow">â–</span>
+      </div>
+      <div id="dropdown-year1" class="nav-dropdown-content">
+        <div class="nav-item" data-page="first" role="button" tabindex="0">
+          <span class="nav-icon">â­ ï¸</span>
+          <div class="nav-text"><span class="nav-label">First Semester</span></div>
+        </div>
+        <div class="nav-item" data-page="second" role="button" tabindex="0">
+          <span class="nav-icon">ðŸŒŠ</span>
+          <div class="nav-text"><span class="nav-label">Second Semester</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-dropdown-group year-2-theme">
+      <div class="nav-dropdown-header" data-year="year2" role="button" tabindex="0">
+        <span class="nav-icon">ðŸ›é¿¿ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[”ÙXÛÛ™YX\ÜÜ[Ù]‚ˆÜ[ˆÛ\ÜÏH™›ÜÝÛ‹X\œ›ÝÈ¸¥¯OÜÜ[‚ˆÙ]‚ˆ]ˆYH™›ÜÝÛ‹^YX\ŒˆˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹XÛÛ[‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžL™š\œÝˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'äæÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[‘š\œÝÙ[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžLœÙXÛÛ™ˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'äæOÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[”ÙXÛÛ™Ù[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆÙ]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹YÜ›Ý\YX\‹LË][YH‚ˆ]ˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹ZXY\ˆˆ]K^YX\HžYX\ŒÈˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'æ ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[•\™YX\ÜÜ[Ù]‚ˆÜ[ˆÛ\ÜÏH™›ÜÝÛ‹X\œ›ÝÈ¸¥¯OÜÜ[‚ˆÙ]‚ˆ]ˆYH™›ÜÝÛ‹^YX\ŒÈˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹XÛÛ[‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžLÙš\œÝˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'å)ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[‘š\œÝÙ[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžLÜÙXÛÛ™ˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'å+OÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[”ÙXÛÛ™Ù[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆÙ]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹YÜ›Ý\YX\‹M][YH‚ˆ]ˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹ZXY\ˆˆ]K^YX\HžYX\ˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'ãáÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[‘›Ý\YX\ÜÜ[Ù]‚ˆÜ[ˆÛ\ÜÏH™›ÜÝÛ‹X\œ›ÝÈ¸¥¯OÜÜ[‚ˆÙ]‚ˆ]ˆYH™›ÜÝÛ‹^YX\ˆÛ\ÜÏH›˜]‹Y›ÜÝÛ‹XÛÛ[‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžMš\œÝˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'äçÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[‘š\œÝÙ[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHžMÙXÛÛ™ˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¸§*ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[”ÙXÛÛ™Ù[Y\Ý\ÜÜ[Ù]‚ˆÙ]‚ˆÙ]‚ˆÙ]‚‚ˆKKH8¥ 8¥ ÓÓSUS’UH8 $È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ KO‚ˆ]ˆÛ\ÜÏH›˜]‹\ÙXÝ[Û‹]]HÛÛ[][š]OÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOH˜Ú]ˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆˆÝ[OHœÜÚ][ÛŽˆ™[]]™NÈ¼'ä«Ü[ˆYH˜Ú][›ÝY‹YÝˆÛ\ÜÏH››ÝY‹YÝY[ˆÜÜ[ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[Ú]ÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOH\Ù\œÈˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'äaOÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[•\Ù\œÏÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOHÚ]˜ˆˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'ä&ÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[”ÛØÚX[YYXOÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH›˜]‹Z][Hˆ]K\YÙOH˜Ø[[™\ˆˆ›ÛOH˜]ÛˆˆXš[™^HŒ‚ˆÜ[ˆÛ\ÜÏH›˜]‹ZXÛÛˆ¼'äéÜÜ[‚ˆ]ˆÛ\ÜÏH›˜]‹]^Ü[ˆÛ\ÜÏH›˜]‹[X™[Ø[[™\ÜÜ[Ù]‚ˆÙ]‚‚ˆKKH8¥ 8¥ UTÒPÈ8 $È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ KO‚ˆ]ˆÛ\ÜÏH›˜]‹\ÙXÝ[Û‹]]H“]\ÚXÿ²x©

@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.82-20260509-session-validate';
+const CACHE_VERSION = 'v1.5.83-20260509-inline-handlers';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=121',
+  '/index.html?v=122',
   '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -48,7 +48,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=3',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=9',
+  '/features/updates/changelog.js?v=10',
   '/script.js?v=120',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

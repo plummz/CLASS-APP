@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.14';
+const APP_VERSION = '1.9.15';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.15',
+    date: 'May 9, 2026',
+    title: 'Fix: Re-enable Inline Button Handlers',
+    summary: 'The live CSP header was blocking inline `onclick` handlers, which made chat bubble, game cards, personal tool cards, and other attribute-bound buttons appear dead even though the functions existed.',
+    bullets: [
+      'Fixed: Server CSP now allows script attributes so existing inline `onclick` handlers can execute again.',
+      'Fixed: Buttons that depend on inline handlers — including chat bubble, game cards, tool cards, and similar controls — are no longer blocked at the browser policy layer.',
+      'Improved: Changelog and cache versions were bumped again so Android PWA installs can pull the corrected shell metadata.'
+    ]
+  },
   {
     version: '1.9.14',
     date: 'May 9, 2026',

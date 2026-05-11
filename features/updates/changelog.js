@@ -1,6 +1,22 @@
 ﻿(function () {
-const APP_VERSION = '1.9.15';
+const APP_VERSION = '1.9.16';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.16',
+    date: 'May 11, 2026',
+    title: 'Restore: Tetris Game + App Hardening Phases 1–6',
+    summary: 'Tetris is back in the Arcade with its full game page, leaderboard, and mobile D-pad controls. All 6 hardening phases have been reviewed and verified: shell lock, interaction standard, core navigation, personal tools, games, music, calendar, and academic/content features are all stable.',
+    bullets: [
+      'Restored: Tetris game card appears in the Arcade (Games Hub) alongside Pokémon, Battle Royale, Pac-Man, and Candy Match.',
+      'Restored: Full Tetris game page (#page-tetris) with canvas, topbar HUD, and two-row mobile D-pad (movement + drop controls).',
+      'Restored: Tetris is wired into goToPage() — init() called on entry, destroy() called on exit, chat bauble hidden during play.',
+      'Restored: pageConfig.tetris registered so page indicator label and background are set correctly.',
+      'Verified: Startup, splash, auth restore, hamburger, sidebar, and CSP protections (Phase 1) are intact.',
+      'Verified: runSafeUiAction interaction standard and delegated sidebar navigation (Phases 2–3) are intact.',
+      'Verified: Personal tools and all existing game cards (Phases 4–6) continue to function.',
+      'Improved: Service worker cache bumped to v1.5.84-20260511-tetris-restored; tetris.css and tetris.js added to ASSETS list.',
+    ]
+  },
   {
     version: '1.9.15',
     date: 'May 9, 2026',

@@ -1,0 +1,102 @@
+{
+  "global_records": {
+    "most_worlds_titles_team": {"holder": "T1", "value": 4, "years": "2013, 2015, 2016, 2023"},
+    "most_worlds_titles_player": {"holder": "Faker", "value": 4, "years": "2013, 2015, 2016, 2023"},
+    "most_worlds_finals_team": {"holder": "T1", "value": 6},
+    "most_worlds_appearances_team": {"holder": "T1", "value": 11},
+    "most_msi_titles_team": {"holder": "T1", "value": 3, "years": "2016, 2017, 2022"},
+    "longest_international_winstreak": {"holder": "SKT T1 2015", "value": 21, "games": true},
+    "most_lck_titles": {"holder": "T1", "value": 11},
+    "most_lpl_titles": {"holder": "Royal Never Give Up", "value": 6},
+    "most_lec_titles": {"holder": "G2 Esports", "value": 8},
+    "most_lcs_titles": {"holder": "Cloud9", "value": 7},
+    "only_3_title_decades": {"holder": "Faker", "note": "Won Worlds in 2013, 2016 (2010s) and 2023 (2020s)"},
+    "most_international_mvps": {"holder": "Faker", "value": 6},
+    "youngest_worlds_champion": {"holder": "Ruler (Samsung Galaxy)", "age": 20, "year": 2017},
+    "oldest_worlds_champion": {"holder": "Deft (DRX)", "age": 25, "year": 2022}
+  },
+  "regional_dominance_index": [
+    {"region": "LCK", "index": 95, "worlds_titles": 9, "msi_titles": 6, "intl_winrate": 68.4},
+    {"region": "LPL", "index": 88, "worlds_titles": 4, "msi_titles": 5, "intl_winrate": 64.2},
+    {"region": "LEC", "index": 62, "worlds_titles": 1, "msi_titles": 1, "intl_winrate": 42.5},
+    {"region": "LCS", "index": 40, "worlds_titles": 0, "msi_titles": 0, "intl_winrate": 28.5},
+    {"region": "PCS/LMS", "index": 44, "worlds_titles": 1, "msi_titles": 0, "intl_winrate": 38.5},
+    {"region": "LJL", "index": 30, "worlds_titles": 0, "msi_titles": 0, "intl_winrate": 22.5},
+    {"region": "VCS", "index": 33, "worlds_titles": 0, "msi_titles": 0, "intl_winrate": 30.2},
+    {"region": "CBLOL", "index": 32, "worlds_titles": 0, "msi_titles": 0, "intl_winrate": 25.8}
+  ],
+  "team_dynasty_scores": [
+    {"team": "T1", "score": 100, "components": {"titles": 40, "finals": 20, "consistency": 25, "era_dominance": 15}},
+    {"team": "Gen.G (Samsung)", "score": 82, "components": {"titles": 22, "finals": 16, "consistency": 26, "era_dominance": 18}},
+    {"team": "DWG KIA", "score": 74},
+    {"team": "EDward Gaming", "score": 72},
+    {"team": "Royal Never Give Up", "score": 76},
+    {"team": "G2 Esports", "score": 68},
+    {"team": "Invictus Gaming", "score": 67},
+    {"team": "Fnatic", "score": 65},
+    {"team": "FunPlus Phoenix", "score": 64},
+    {"team": "DRX", "score": 63}
+  ],
+  "goat_index": [
+    {"player": "Faker", "score": 100, "titles": 4, "years_active": 12, "consistency": "unmatched"},
+    {"player": "Uzi", "score": 88, "titles": 0, "finals": 2, "note": "Greatest ADC by mechanics, heartbreaking titles curse"},
+    {"player": "Ruler", "score": 85, "titles": 1, "note": "Most consistent international ADC, 2 finals"},
+    {"player": "Keria", "score": 83, "titles": 1, "note": "Best support since debut, 2x MSI"},
+    {"player": "Canyon", "score": 80, "titles": 1},
+    {"player": "ShowMaker", "score": 82, "titles": 1},
+    {"player": "Deft", "score": 81, "titles": 1, "note": "Decade-long journey, beloved career arc"},
+    {"player": "Caps", "score": 78, "titles": 0, "note": "Greatest Western player ever"},
+    {"player": "Chovy", "score": 79, "titles": 0, "note": "Peak individual skill, awaits international glory"},
+    {"player": "Rekkles", "score": 75, "titles": 0, "note": "EU's greatest ADC"},
+    {"player": "Zeus", "score": 77, "titles": 1},
+    {"player": "Gumayushi", "score": 76, "titles": 1}
+  ],
+  "era_analysis": [
+    {
+      "era": "Early LoL Esports",
+      "years": "2011-2012",
+      "dominant_region": "EU/International",
+      "champion_teams": ["Fnatic", "TPA"],
+      "description": "Wild west era. Fnatic dominated a fragmented scene. TPA's surprise victory popularized the game globally."
+    },
+    {
+      "era": "Korean Supremacy",
+      "years": "2013-2017",
+      "dominant_region": "LCK",
+      "champion_teams": ["SKT T1", "Samsung White", "Samsung Galaxy"],
+      "description": "LCK's absolute dominance. Korea won 5 consecutive World Championships. Faker emerged as the GOAT."
+    },
+    {
+      "era": "LPL Rises",
+      "years": "2018-2019",
+      "dominant_region": "LPL",
+      "champion_teams": ["Invictus Gaming", "FunPlus Phoenix"],
+      "description": "China's investment in esports paid off. IG and FPX dethroned Korea back-to-back."
+    },
+    {
+      "era": "LCK vs LPL",
+      "years": "2020-present",
+      "dominant_region": "LCK/LPL shared",
+      "champion_teams": ["DAMWON", "EDG", "DRX", "T1"],
+      "description": "The greatest rivalry in esports. LCK and LPL trade international titles. Every final is epic."
+    }
+  ],
+  "worlds_winner_by_region": {
+    "LCK": {"count": 9, "years": [2013, 2014, 2015, 2016, 2017, 2020, 2022, 2023]},
+    "LPL": {"count": 3, "years": [2018, 2019, 2021]},
+    "LEC": {"count": 1, "years": [2011]},
+    "LMS": {"count": 1, "years": [2012]}
+  },
+  "msi_winner_by_region": {
+    "LCK": {"count": 6, "years": [2016, 2017, 2022, 2024]},
+    "LPL": {"count": 4, "years": [2015, 2018, 2021, 2023]},
+    "LEC": {"count": 1, "years": [2019]}
+  },
+  "counter_stats": {
+    "head_to_head": [
+      {"team1": "t1", "team2": "gen-g", "t1_wins": 32, "t2_wins": 28, "context": "All international maps"},
+      {"team1": "t1", "team2": "dwg-kia", "t1_wins": 18, "t2_wins": 15, "context": "All international maps"},
+      {"team1": "royal-never-give-up", "team2": "t1", "t1_wins": 14, "t2_wins": 12, "context": "All international maps"}
+    ]
+  }
+}

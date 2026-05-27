@@ -1,0 +1,271 @@
+{
+  "regions": [
+    {
+      "id": "lck",
+      "name": "LCK",
+      "full_name": "League Champions Korea",
+      "country": "South Korea",
+      "color": "#C89B3C",
+      "glow_color": "rgba(200, 155, 60, 0.4)",
+      "founded": 2012,
+      "active": true,
+      "flag": "🇰🇷",
+      "description": "The most dominant region in international competition. Home to T1, Gen.G, DWG KIA and countless legends.",
+      "stats": {
+        "worlds_titles": 9,
+        "worlds_finals": 14,
+        "worlds_top4": 28,
+        "msi_titles": 6,
+        "msi_finals": 9,
+        "international_winrate_vs_all": 68.4,
+        "international_winrate_vs_lpl": 54.2,
+        "international_winrate_vs_lec": 78.9,
+        "international_winrate_vs_lcs": 91.2,
+        "dynasty_score": 95
+      },
+      "worlds_titles_by_year": [2013, 2014, 2015, 2016, 2017, 2020, 2022, 2023],
+      "championship_teams": ["t1", "gen-g", "dwg-kia", "drx"],
+      "all_time_teams": ["t1", "gen-g", "dwg-kia", "drx", "kt-rolster", "hle"],
+      "goat_players": ["faker", "ruler", "keria", "showmaker", "canyon", "deft"],
+      "era_breakdown": [
+        {"era": "SKT Dynasty", "years": "2013-2017", "titles": 5, "description": "LCK dominated the world stage with SKT T1 and Samsung as the elite squads"},
+        {"era": "LPL Surge", "years": "2018-2019", "titles": 0, "description": "LPL's rise briefly interrupted LCK dominance"},
+        {"era": "LCK Renaissance", "years": "2020-present", "titles": 4, "description": "LCK reclaimed dominance with DWG, DRX, and T1"}
+      ],
+      "splits_per_year": 2,
+      "teams_in_league": 10
+    },
+    {
+      "id": "lpl",
+      "name": "LPL",
+      "full_name": "League of Legends Pro League",
+      "country": "China",
+      "color": "#FF4B4B",
+      "glow_color": "rgba(255, 75, 75, 0.4)",
+      "founded": 2013,
+      "active": true,
+      "flag": "🇨🇳",
+      "description": "The largest and most competitive league in the world. Has produced the most international champions since 2018.",
+      "stats": {
+        "worlds_titles": 4,
+        "worlds_finals": 8,
+        "worlds_top4": 22,
+        "msi_titles": 5,
+        "msi_finals": 8,
+        "international_winrate_vs_all": 64.2,
+        "international_winrate_vs_lck": 45.8,
+        "international_winrate_vs_lec": 76.3,
+        "international_winrate_vs_lcs": 89.6,
+        "dynasty_score": 88
+      },
+      "worlds_titles_by_year": [2018, 2019, 2021],
+      "championship_teams": ["invictus-gaming", "funplus-phoenix", "edward-gaming"],
+      "all_time_teams": ["royal-never-give-up", "edward-gaming", "invictus-gaming", "funplus-phoenix", "jdg-gaming", "bilibili-gaming"],
+      "goat_players": ["uzi", "theshy", "ruler", "knight", "369"],
+      "era_breakdown": [
+        {"era": "RNG Era", "years": "2015-2018", "titles": 0, "msi_titles": 2, "description": "RNG dominated domestically and won MSIs but couldn't crack Worlds"},
+        {"era": "LPL Peak", "years": "2018-2019", "titles": 2, "description": "IG and FPX back-to-back. LPL dethroned LCK supremacy"},
+        {"era": "LPL-LCK Rivalry", "years": "2020-present", "titles": 1, "description": "Intense back-and-forth rivalry with LCK for global dominance"}
+      ],
+      "splits_per_year": 2,
+      "teams_in_league": 18
+    },
+    {
+      "id": "lec",
+      "name": "LEC",
+      "full_name": "League of Legends EMEA Championship",
+      "country": "Europe",
+      "color": "#9B59B6",
+      "glow_color": "rgba(155, 89, 182, 0.4)",
+      "founded": 2019,
+      "active": true,
+      "predecessor": "EU LCS",
+      "flag": "🇪🇺",
+      "description": "Europe's premier league, formerly the EU LCS. Home to Fnatic and G2, who have made multiple deep Worlds runs.",
+      "stats": {
+        "worlds_titles": 1,
+        "worlds_finals": 3,
+        "worlds_top4": 10,
+        "msi_titles": 1,
+        "msi_finals": 3,
+        "international_winrate_vs_all": 42.5,
+        "international_winrate_vs_lck": 21.1,
+        "international_winrate_vs_lpl": 23.7,
+        "dynasty_score": 62
+      },
+      "worlds_titles_by_year": [2011],
+      "championship_teams": ["fnatic"],
+      "all_time_teams": ["fnatic", "g2-esports", "alliance", "h2k", "schalke04", "mad-lions"],
+      "goat_players": ["caps", "rekkles", "xpeke", "jankos", "perkz"],
+      "era_breakdown": [
+        {"era": "EU LCS Dominance", "years": "2011-2014", "titles": 1, "description": "Fnatic's legendary run and EU's early international glory"},
+        {"era": "G2 Superteam", "years": "2018-2020", "titles": 0, "description": "G2's most dominant domestic stretch with multiple MSI/Worlds finals"},
+        {"era": "Modern LEC", "years": "2021-present", "titles": 0, "description": "Competitive domestic league but struggles internationally"}
+      ]
+    },
+    {
+      "id": "eu-lcs",
+      "name": "EU LCS",
+      "full_name": "EU League Championship Series",
+      "country": "Europe",
+      "color": "#8E44AD",
+      "active": false,
+      "years": "2013-2018",
+      "flag": "🇪🇺",
+      "successor": "lec",
+      "stats": {
+        "worlds_titles": 1,
+        "worlds_finals": 2,
+        "worlds_top4": 8,
+        "msi_titles": 0
+      }
+    },
+    {
+      "id": "lcs",
+      "name": "LCS",
+      "full_name": "League Championship Series",
+      "country": "North America",
+      "color": "#00A1DE",
+      "glow_color": "rgba(0, 161, 222, 0.4)",
+      "founded": 2013,
+      "active": true,
+      "predecessor": "NA LCS",
+      "flag": "🇺🇸",
+      "description": "North America's top league. Historically the weakest of the 4 major regions internationally, but has shown recent improvement.",
+      "stats": {
+        "worlds_titles": 0,
+        "worlds_finals": 0,
+        "worlds_top4": 3,
+        "msi_titles": 0,
+        "msi_finals": 1,
+        "international_winrate_vs_all": 28.5,
+        "international_winrate_vs_lck": 8.9,
+        "international_winrate_vs_lpl": 10.4,
+        "international_winrate_vs_lec": 38.2,
+        "dynasty_score": 40
+      },
+      "all_time_teams": ["cloud9", "team-liquid", "tsm", "counter-logic-gaming", "100-thieves"],
+      "goat_players": ["doublelift", "bjergsen", "jensen", "sneaky", "impact"],
+      "era_breakdown": [
+        {"era": "Doublelift Era", "years": "2013-2020", "description": "CLG/TL/TSM cycle with Doublelift as the perennial ADC star"},
+        {"era": "Bjergsen TSM", "years": "2013-2020", "description": "TSM's dynasty in NA despite international struggles"},
+        {"era": "Modern LCS", "years": "2020-present", "description": "Import-heavy rosters, still struggling internationally"}
+      ]
+    },
+    {
+      "id": "na-lcs",
+      "name": "NA LCS",
+      "full_name": "NA League Championship Series",
+      "country": "North America",
+      "color": "#2980B9",
+      "active": false,
+      "years": "2013-2018",
+      "flag": "🇺🇸",
+      "successor": "lcs"
+    },
+    {
+      "id": "lms",
+      "name": "LMS",
+      "full_name": "League Master Series",
+      "country": "Taiwan/HK/Macao",
+      "color": "#E67E22",
+      "active": false,
+      "years": "2015-2019",
+      "flag": "🇹🇼",
+      "successor": "pcs",
+      "stats": {
+        "worlds_titles": 1,
+        "worlds_top4": 3,
+        "description": "Taipei Assassins won Worlds 2012 as LMS predecessor region"
+      }
+    },
+    {
+      "id": "pcs",
+      "name": "PCS",
+      "full_name": "Pacific Championship Series",
+      "country": "Taiwan/HK/SEA",
+      "color": "#E67E22",
+      "glow_color": "rgba(230, 126, 34, 0.4)",
+      "founded": 2020,
+      "active": true,
+      "predecessor": "lms",
+      "flag": "🇹🇼",
+      "stats": {
+        "worlds_titles": 0,
+        "worlds_top4": 1,
+        "international_winrate_vs_all": 38.5,
+        "dynasty_score": 44
+      },
+      "all_time_teams": ["flash-wolves", "ahq", "psg-talon", "beyond-gaming"],
+      "notable_performances": ["Taipei Assassins Worlds 2012 Champion", "Flash Wolves multiple quarterfinals"]
+    },
+    {
+      "id": "ljl",
+      "name": "LJL",
+      "full_name": "League of Legends Japan League",
+      "country": "Japan",
+      "color": "#E74C3C",
+      "glow_color": "rgba(231, 76, 60, 0.4)",
+      "founded": 2016,
+      "active": true,
+      "flag": "🇯🇵",
+      "stats": {
+        "worlds_titles": 0,
+        "worlds_top4": 0,
+        "international_winrate_vs_all": 22.5,
+        "dynasty_score": 30
+      },
+      "all_time_teams": ["detonation-focusme"],
+      "notable_performances": ["DetonatioN FocusMe — consistent Worlds Play-In appearances"]
+    },
+    {
+      "id": "cblol",
+      "name": "CBLOL",
+      "full_name": "Campeonato Brasileiro de League of Legends",
+      "country": "Brazil",
+      "color": "#27AE60",
+      "glow_color": "rgba(39, 174, 96, 0.4)",
+      "founded": 2012,
+      "active": true,
+      "flag": "🇧🇷",
+      "stats": {
+        "worlds_titles": 0,
+        "worlds_top4": 0,
+        "international_winrate_vs_all": 25.8,
+        "dynasty_score": 32
+      },
+      "all_time_teams": ["pain-gaming", "flamengo", "kabum"],
+      "notable_performances": ["KaBuM shocking C9 at Worlds 2014 (legendary upset)"]
+    },
+    {
+      "id": "lla",
+      "name": "LLA",
+      "full_name": "Liga Latinoamérica",
+      "country": "Latin America",
+      "color": "#16A085",
+      "active": true,
+      "flag": "🌎",
+      "stats": {
+        "worlds_titles": 0,
+        "international_winrate_vs_all": 20.0,
+        "dynasty_score": 25
+      }
+    },
+    {
+      "id": "vcs",
+      "name": "VCS",
+      "full_name": "Vietnam Championship Series",
+      "country": "Vietnam",
+      "color": "#F39C12",
+      "active": true,
+      "flag": "🇻🇳",
+      "stats": {
+        "worlds_titles": 0,
+        "worlds_top4": 0,
+        "international_winrate_vs_all": 30.2,
+        "dynasty_score": 33
+      },
+      "notable_performances": ["GAM Esports multiple international upsets"]
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+/* ============================================================
+   LOL ESPORTS ANALYTICS — RESPONSIVE BREAKPOINTS
+   Mobile-first design, scales up to ultrawide
+   ============================================================ */
+
+/* ── BREAKPOINTS:
+   xs:  < 480px   (small phones)
+   sm:  >= 480px  (large phones)
+   md:  >= 768px  (tablets)
+   lg:  >= 1024px (laptops)
+   xl:  >= 1280px (desktops)
+   2xl: >= 1536px (wide displays)
+   3xl: >= 1920px (ultrawide)
+── */
+
+/* ── ULTRA-WIDE (3xl: 1920px+) ── */
+@media (min-width: 1920px) {
+  :root {
+    --sidebar-width: 280px;
+    --content-max:   1800px;
+    --content-gutter: 32px;
+  }
+
+  .page-content { padding: var(--space-10) var(--space-10); }
+  .page-hero__title { font-size: 5.5rem; }
+  .rift-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+/* ── WIDE (2xl: 1536px+) ── */
+@media (min-width: 1536px) {
+  :root { --content-max: 1600px; }
+}
+
+/* ── DESKTOP (xl: 1280px+) ── */
+@media (min-width: 1280px) {
+  .rift-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .stat-cards-row { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* ── LAPTOP (lg: 1024px+) ── */
+@media (min-width: 1024px) {
+  .comparison-select { grid-template-columns: 1fr 60px 1fr; }
+}
+
+/* ── TABLET (md: 768px - 1023px) ── */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .navbar__nav { gap: 0; }
+  .navbar__link { font-size: var(--text-xs); padding: var(--space-2); }
+  .navbar__search { width: 200px; }
+
+  .page-content { padding: var(--space-6); }
+  .page-hero__title { font-size: var(--text-5xl); }
+
+  .stat-cards-row { grid-template-columns: repeat(3, 1fr); }
+  .comparison-grid { grid-template-columns: 1fr; }
+}
+
+/* ── MOBILE (< 768px) ── */
+@media (max-width: 767px) {
+  :root {
+    --sidebar-width: 260px;
+    --navbar-height: 56px;
+    --content-gutter: 16px;
+  }
+
+  /* Navbar — mobile */
+  .navbar {
+    padding: 0 var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .navbar__nav {
+    display: none; /* hidden; sidebar provides nav on mobile */
+  }
+
+  .navbar__search { display: none; }
+
+  .navbar__hamburger { display: flex; }
+
+  .navbar__right { gap: var(--space-2); }
+
+  /* Sidebar — off-canvas on mobile */
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: none;
+    z-index: var(--z-sidebar);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+  }
+
+  /* Sidebar overlay */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 9, 20, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: calc(var(--z-sidebar) - 1);
+  }
+  .sidebar-overlay.active { display: block; }
+
+  /* Main content — full width on mobile */
+  .main-content { margin-left: 0; }
+
+  /* Page content */
+  .page-content {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  /* Hero */
+  .page-hero { padding: var(--space-8) 0 var(--space-6); }
+  .page-hero__title { font-size: var(--text-4xl); }
+  .page-hero__subtitle { font-size: var(--text-base); }
+
+  /* Cards */
+  .stat-cards-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--space-3);
+  }
+
+  .stat-card__value { font-size: var(--text-4xl); }
+
+  /* Rift grid */
+  .rift-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .rift-grid--dense {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+
+  /* Table */
+  .data-table-wrapper { border-radius: var(--radius-lg); }
+  .data-table th, .data-table td { padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
+
+  /* Section header */
+  .section-header { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  .section-title { font-size: var(--text-2xl); }
+
+  /* Filter bar */
+  .filter-bar { padding: var(--space-3); gap: var(--space-2); }
+  .filter-select { font-size: var(--text-xs); min-width: 100px; }
+
+  /* Comparison */
+  .comparison-select {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  .comparison-vs { font-size: var(--text-2xl); text-align: left; }
+  .comparison-grid { grid-template-columns: 1fr; }
+
+  /* Trophy cabinet */
+  .trophy-cabinet { gap: var(--space-3); }
+  .trophy-item { min-width: 76px; padding: var(--space-3); }
+  .trophy-emoji { font-size: 22px; }
+
+  /* Modal */
+  .modal {
+    max-height: 95vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    margin-top: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+
+  /* Charts */
+  .chart-container { padding: var(--space-4); }
+
+  /* Timeline */
+  .timeline { padding-left: var(--space-5); }
+  .timeline-item::before { left: calc(-1 * var(--space-5) - 4px); }
+
+  /* Stats ticker */
+  .stats-ticker__inner { gap: var(--space-8); }
+
+  /* Toast */
+  .toast-container {
+    bottom: var(--space-4);
+    right: var(--space-4);
+    left: var(--space-4);
+  }
+  .toast { min-width: unset; width: 100%; }
+}
+
+/* ── SMALL PHONES (< 480px) ── */
+@media (max-width: 479px) {
+  .page-hero__title { font-size: var(--text-3xl); }
+  .stat-cards-row   { grid-template-columns: 1fr 1fr !important; }
+  .rift-grid        { grid-template-columns: 1fr; }
+  .rift-grid--dense { grid-template-columns: 1fr; }
+
+  .navbar__logo-text { display: none; }
+}
+
+/* ── TOUCH DEVICE ADJUSTMENTS ── */
+@media (hover: none) and (pointer: coarse) {
+  /* Enlarge tap targets */
+  .navbar__link,
+  .sidebar__item,
+  .filter-chip,
+  .btn { min-height: 44px; }
+
+  .filter-select { min-height: 44px; }
+
+  /* Disable hover-only states that won't work on touch */
+  .card:hover,
+  .team-card:hover,
+  .player-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+  }
+}
+
+/* ── PRINT ── */
+@media print {
+  .navbar, .sidebar, .stats-ticker, .filter-bar { display: none; }
+  .main-content { margin-left: 0; margin-top: 0; }
+  .card, .stat-card, .team-card { break-inside: avoid; }
+  body { background: white; color: black; }
+}
+
+/* ── LANDSCAPE PHONE ── */
+@media (max-width: 767px) and (orientation: landscape) {
+  .page-hero { padding: var(--space-6) 0 var(--space-4); }
+  .page-hero__title { font-size: var(--text-3xl); }
+  .stat-cards-row { grid-template-columns: repeat(4, 1fr) !important; }
+}
+
+/* ── iOS SAFE AREA ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .navbar {
+    padding-left: max(var(--space-6), env(safe-area-inset-left));
+    padding-right: max(var(--space-6), env(safe-area-inset-right));
+  }
+
+  .sidebar {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .toast-container {
+    bottom: max(var(--space-6), calc(env(safe-area-inset-bottom) + var(--space-4)));
+  }
+}

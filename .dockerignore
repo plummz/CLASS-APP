@@ -6,3 +6,4 @@ uploads
 .env
 *.local
 native-app
+tools/pokemon-art/_work

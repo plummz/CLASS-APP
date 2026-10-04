@@ -6,6 +6,7 @@ const pokemonModule = (() => {
   const T = { WATER:0, GRASS:1, PATH:2, TALL:3, TREE:4, BUILDING:5, SAND:6, ROCK:7, FLOOR:8, COUNTER:9 };
   const TSIZE = 32, CHAR_S = 24;
   let MAP_W = 50, MAP_H = 40;
+  const VIEW_W = 800, VIEW_H = 560;   // game pixels; the canvas backing store is VIEW × RS
   const TILE_COLORS = [
     '#1878b8', // WATER  — clear bright blue
     '#3a8c32', // GRASS  — vibrant field green
@@ -314,6 +315,59 @@ const pokemonModule = (() => {
               team:[{sid:'electabuzz',lvl:30},{sid:'haunter',lvl:32},{sid:'raichu',lvl:36}]},
   };
 
+  /* ── ROUTE TRAINERS ── they spot you when you walk into their line of sight */
+  const MAP_TRAINERS = {
+    route1: [
+      {id:'r1_joey', kind:'npc_youngster', name:'Youngster Joey', tx:22, ty:30, dir:'right', sight:5,
+       team:[{sid:'rattata',lvl:5},{sid:'pidgey',lvl:6}], prize:120,
+       intro:'Hey! My Rattata is in the top percentage!', lose:'Aww… my Rattata!'},
+      {id:'r1_mia', kind:'npc_lass', name:'Lass Mia', tx:27, ty:10, dir:'left', sight:5,
+       team:[{sid:'oddish',lvl:7},{sid:'skitty',lvl:8}], prize:160,
+       intro:'You look like a trainer! Let\'s battle!', lose:'You were too strong…'},
+    ],
+    forestZone: [
+      {id:'fz_rick', kind:'npc_bugcatcher', name:'Bug Catcher Rick', tx:27, ty:26, dir:'left', sight:4,
+       team:[{sid:'caterpie',lvl:9},{sid:'weedle',lvl:10},{sid:'paras',lvl:11}], prize:220,
+       intro:'I caught these in this very forest!', lose:'My bugs got squashed!'},
+    ],
+    rockZone: [
+      {id:'rz_doug', kind:'npc_hiker', name:'Hiker Doug', tx:31, ty:16, dir:'down', sight:4,
+       team:[{sid:'geodude',lvl:14},{sid:'rhyhorn',lvl:16}], prize:340,
+       intro:'Mountains build strong Pokémon. Let me show you!', lose:'Whoa! You rocked me!'},
+    ],
+    coastZone: [
+      {id:'cz_kai', kind:'npc_swimmer', name:'Swimmer Kai', tx:22, ty:22, dir:'right', sight:5,
+       team:[{sid:'tentacool',lvl:17},{sid:'horsea',lvl:18},{sid:'shellder',lvl:18}], prize:380,
+       intro:'The water\'s great — and so is battling!', lose:'I got washed away!'},
+    ],
+    cityZone: [
+      {id:'cy_lana', kind:'npc_lass', name:'Lass Lana', tx:18, ty:22, dir:'right', sight:6,
+       team:[{sid:'clefairy',lvl:22},{sid:'mareep',lvl:23}], prize:480,
+       intro:'City trainers are tougher. Ready?', lose:'Hmph, beginner\'s luck!'},
+      {id:'cy_tom', kind:'npc_youngster', name:'Ace Trainer Tom', tx:30, ty:34, dir:'left', sight:6,
+       team:[{sid:'growlithe',lvl:24},{sid:'voltorb',lvl:24},{sid:'magnemite',lvl:25}], prize:560,
+       intro:'Only the strong may challenge the City Gym!', lose:'Go on then — the gym awaits.'},
+    ],
+  };
+  // People who stand inside buildings (feet position in tiles)
+  const INTERIOR_NPCS = {
+    intPC:   [{kind:'npc_nurse', fx:25.5, fy:13.9}],
+    intMart: [{kind:'npc_clerk', fx:25.5, fy:13.9}],
+  };
+
+  // Which Blender-rendered building goes on which footprint (map → "x,y" of its top-left tile)
+  const BUILDING_ART = {
+    starterTown:{'14,25':'bld_pc_5x3','20,25':'bld_house_3x3_red','25,25':'bld_house_3x3_blue','30,25':'bld_mart_3x3',
+                 '34,25':'bld_house_3x3_green','14,31':'bld_hall_5x3','20,31':'bld_house_3x3_orange','25,31':'bld_house_3x3_green','30,31':'bld_house_3x3_red'},
+    route1:{'15,18':'bld_pc_3x3'},
+    forestZone:{'19,10':'bld_gym_grass_11x3'},
+    rockZone:{'34,8':'bld_gym_rock_7x3'},
+    coastZone:{'10,4':'bld_pc_3x3','33,4':'bld_gym_water_7x3'},
+    cityZone:{'18,10':'bld_pc_7x4','20,17':'bld_gym_electric_11x4'},
+  };
+  const BATTLE_BG = { starterTown:'bg_grass', route1:'bg_grass', forestZone:'bg_forest', rockZone:'bg_rock',
+                      coastZone:'bg_beach', cityZone:'bg_city', intGym:'bg_gym', intPC:'bg_cave', intHouse:'bg_cave', intMart:'bg_cave' };
+
   /* ── STATE ── */
   let canvas, ctx, animFrame;
   let player = null, team = [], worldMap = null;
@@ -343,6 +397,28 @@ const pokemonModule = (() => {
   let shopPaidRefreshes = 3;        // purchasable refreshes (cost coins each)
   let shopCustomSeed = null;        // non-null after a manual refresh
   const tileEffects = new Map(); // grass sway state: "tx,ty" → {sway,vel}
+
+  /* ── 3D WORLD STATE ── */
+  let RS = 1;                        // canvas pixels per game pixel (sharper on phones)
+  let artReady = false;              // Blender art loaded (pokemon-world.js)
+  let ground = null;                 // cached ground chunks for the current zone
+  let objRows = [];                  // objRows[ty] = trees/buildings/decor whose foot is on row ty
+  let worldLights = [];              // night light sources in world px
+  let ambience = null;
+  let lastFrameTs = 0;
+  let camReady = false;              // false → snap the camera instead of easing
+  let camFX = 0, camFY = 0;          // un-rounded camera position used for easing
+  let trail = [];                    // recent player foot positions, for the partner to follow
+  const partner = {x:0, y:0, dir:'down', moving:false, frame:0};
+  let defeatedTrainers = [];
+  let dexSeen = [], dexCaught = [];
+  let box = [];                      // Pokémon caught while the party is full
+  let trainerEvent = null;           // {tr, phase:'alert'|'talk', until}
+  let lastCloudSync = 0, _cloudSyncTimer = null, _pendingCloudSave = null;
+  const PARTY_MAX = 6;
+  const WALK_SPEED = 120;            // game px per second
+  const DIR_ROW = {down:0, left:1, right:2, up:3};
+  const _fallbackSprites = {};       // sid → Image (PokeAPI front sprite) for partners without a 3D model
   const ITEM_TYPES = {
     POTION:       {name:'Potion',       heal:20,   color:'#ff80b0',glow:'rgba(255,128,176,0.4)'},
     SUPER_POTION: {name:'Super Potion', heal:50,   color:'#ff40a0',glow:'rgba(255,64,160,0.4)'},
@@ -464,6 +540,10 @@ const pokemonModule = (() => {
     _fill(m,4,4,8,16,T.TALL); _fill(m,14,4,20,9,T.TALL);
     _fill(m,30,4,36,9,T.TALL); _fill(m,40,4,45,16,T.TALL);
     _fill(m,10,4,12,6,T.BUILDING);
+    // Coast Gym (Marina) on the east lawn, joined to the shore road
+    _fill(m,31,3,41,9,T.GRASS);
+    _fill(m,33,4,39,6,T.BUILDING);
+    _fill(m,35,7,37,9,T.PATH);
     _borders(m,22,27,null,null,null,null,null,null);
     return m;
   }
@@ -595,6 +675,7 @@ const pokemonModule = (() => {
       ],
       signs:[
         {tx:24,ty:5,label:'← Starter Town',col:'#305090',arrow:'↑'},
+        {tx:39,ty:8,label:'Coast Gym',col:'#2878dc',arrow:'←'},
       ],
       encounters:'shore',
       build:_buildCoastZone,
@@ -721,6 +802,9 @@ const pokemonModule = (() => {
     _w('forestZone',[_e(23,13,'intGym','fromIntGym'),_e(24,13,'intGym','fromIntGym'),_e(25,13,'intGym','fromIntGym')]);
     // rockZone gym (building y=8-10, door step y=11)
     _w('rockZone',[_e(36,11,'intGym','fromIntGym'),_e(37,11,'intGym','fromIntGym'),_e(38,11,'intGym','fromIntGym')]);
+    // coastZone PC cabin (building y=4-6, door step y=7) and Coast Gym (y=4-6, door step y=7)
+    _w('coastZone',[_e(10,7,'intPC','fromIntPC'),_e(11,7,'intPC','fromIntPC'),_e(12,7,'intPC','fromIntPC')]);
+    _w('coastZone',[_e(35,7,'intGym','fromIntGym'),_e(36,7,'intGym','fromIntGym'),_e(37,7,'intGym','fromIntGym')]);
     // cityZone PC (building y=10-13, door step y=14)
     [20,21,22,23,24].forEach(x=>MAPS_DATA.cityZone.warps.push(_e(x,14,'intPC','fromIntPC')));
     // cityZone gym (building y=17-20, door step y=21)
@@ -733,6 +817,8 @@ const pokemonModule = (() => {
   Object.assign(MAPS_DATA.forestZone.spawns,{fromIntGym:{x:24,y:14}});
   Object.assign(MAPS_DATA.rockZone.spawns,{fromIntGym:{x:37,y:12}});
   Object.assign(MAPS_DATA.cityZone.spawns,{fromIntPC:{x:21,y:15},fromIntGym:{x:25,y:22}});
+  Object.assign(MAPS_DATA.coastZone.spawns,{fromIntPC:{x:11,y:8},fromIntGym:{x:36,y:8}});
+  MAPS_DATA.coastZone.pcTiles=[]; MAPS_DATA.coastZone.pcSignPos=null;
   // Healing now happens inside PC interior — clear outdoor heal triggers
   MAPS_DATA.starterTown.pcTiles=[]; MAPS_DATA.starterTown.pcSignPos=null;
   MAPS_DATA.route1.pcTiles=[]; MAPS_DATA.route1.pcSignPos=null;
@@ -755,6 +841,8 @@ const pokemonModule = (() => {
     worldMap=_mapCache[mapId];
     tileEffects.clear();
     mapItems=md.items.map(it=>({...it,collected:false}));
+    camReady=false; trainerEvent=null;
+    buildWorld();
   }
 
   function checkWarp(tx,ty){
@@ -781,6 +869,7 @@ const pokemonModule = (() => {
       loadZone(toMap);
       player.x=sp.x*TSIZE; player.y=sp.y*TSIZE;
       if(isSolid(sp.x,sp.y)){player.x=md.spawns.default.x*TSIZE;player.y=md.spawns.default.y*TSIZE;}
+      resetFollower();
       if(md.displayName) showToast('📍 '+md.displayName,'#ffd700',2000);
       saveGame();
       if(bl){bl.style.transition='opacity 0.4s';bl.style.opacity='0';setTimeout(()=>{bl.classList.add('hidden');bl.style.transition='';},420);}
@@ -790,24 +879,36 @@ const pokemonModule = (() => {
   function startLeaderBattle(leaderId){
     const gl=GYM_LEADERS[leaderId]; if(!gl)return;
     if(defeatedLeaders.includes(leaderId)){showToast(`🏅 ${gl.name} is already defeated!`,'#ffd700',2000);return;}
+    startTrainerBattle({id:'leader_'+leaderId,leaderId,name:gl.name,title:gl.title,badge:gl.badge,team:gl.team,prize:gl.coins,
+      kind:'leader_'+leaderId,lose:GL_DIALOGUE[leaderId]?.defeated||''});
+  }
+
+  // Shared by route trainers and gym leaders
+  function startTrainerBattle(tr){
     if(team.every(m=>m.hp<=0)){showToast('Heal your Pokémon first!','#ff6060',2000);return;}
-    const queue=[...gl.team]; const first=queue.shift();
+    const queue=[...tr.team]; const first=queue.shift();
     const em=mkMon(first.sid,first.lvl);
+    markSeen(first.sid);
     const dpadEl=document.getElementById('pk-dpad');
     if(dpadEl) dpadEl.classList.add('pk-dpad-hidden');
     const screen=canvas&&canvas.parentElement;
     const fl=document.createElement('div');
     fl.style.cssText='position:absolute;inset:0;z-index:48;pointer-events:none;border-radius:8px;';
     if(screen) screen.appendChild(fl);
+    const flashCol=tr.leaderId?'rgba(255,200,50,0.85)':'rgba(255,90,90,0.8)';
     let f=0; const doFlash=()=>{
-      fl.style.background=f%2===0?'rgba(255,200,50,0.85)':'rgba(0,0,0,0.05)';
+      fl.style.background=f%2===0?flashCol:'rgba(0,0,0,0.05)';
       f++; if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
-        battle={pm:team[0],em,type:'trainer',leaderId,leaderQueue:queue,phase:'menu',participants:new Set([team[0]])};
-        updateBUI(); enableBtns(true); updateBallBtn();
+        const pm=leadMon();
+        battle={pm,em,type:'trainer',trainer:tr,leaderId:tr.leaderId||null,leaderQueue:queue,phase:'menu',participants:new Set([pm])};
+        setBattleScene(); updateBUI(); enableBtns(true); updateBallBtn();
         document.getElementById('pk-battle').classList.remove('hidden');
-        setLog(`Gym Leader ${gl.name}!`,gl.title);
+        animSprite('enemy','pk-enter-enemy'); animSprite('player','pk-enter-player');
+        if(tr.leaderId) setLog(`Gym Leader ${tr.name}!`,tr.title||'');
+        else setLog(`${tr.name} wants to battle!`,`${tr.name} sent out ${em.name}!`);
+        playCry(SP[em.speciesId]?.dexId);
       }
     }; doFlash();
   }
@@ -966,7 +1067,7 @@ const pokemonModule = (() => {
       if(item.collected)return;
       const it=ITEM_TYPES[item.type]; if(!it)return;
       const sx=item.tx*TSIZE-camX+TSIZE/2, sy=item.ty*TSIZE-camY+TSIZE/2;
-      if(sx<-16||sx>canvas.width+16||sy<-16||sy>canvas.height+16)return;
+      if(sx<-16||sx>VIEW_W+16||sy<-16||sy>VIEW_H+16)return;
       // Glow pulse
       const pulse=0.5+0.5*Math.sin(now/400);
       ctx.save();
@@ -989,14 +1090,14 @@ const pokemonModule = (() => {
     if(!itemToast||Date.now()>itemToast.expires)return;
     const alpha=Math.min(1,(itemToast.expires-Date.now())/300);
     ctx.save();
-    ctx.beginPath(); ctx.rect(0,0,canvas.width,canvas.height); ctx.clip();
+    ctx.beginPath(); ctx.rect(0,0,VIEW_W,VIEW_H); ctx.clip();
     ctx.globalAlpha=alpha;
     ctx.font='bold 11px "Exo 2",sans-serif';
     let text=itemToast.text;
-    const maxW=canvas.width-24;
+    const maxW=VIEW_W-24;
     while(text.length>4&&ctx.measureText(text).width+20>maxW) text=text.slice(0,-2)+'…';
     const tw=Math.min(maxW,ctx.measureText(text).width+20);
-    const tx2=Math.max(4,Math.floor((canvas.width-tw)/2));
+    const tx2=Math.max(4,Math.floor((VIEW_W-tw)/2));
     const ty2=10;
     ctx.fillStyle='rgba(8,4,24,0.90)';
     if(ctx.roundRect){ctx.beginPath();ctx.roundRect(tx2,ty2,tw,24,5);ctx.fill();}
@@ -1012,7 +1113,7 @@ const pokemonModule = (() => {
   function drawPCSign(){
     const pos=MAPS_DATA[currentMapId]?.pcSignPos; if(!pos) return;
     const sx=pos.tx*TSIZE-camX, sy=pos.ty*TSIZE-camY;
-    if(sx<-80||sx>canvas.width+80||sy<-80||sy>canvas.height+80)return;
+    if(sx<-80||sx>VIEW_W+80||sy<-80||sy>VIEW_H+80)return;
     ctx.save();
     ctx.fillStyle='rgba(255,100,160,0.92)';
     ctx.font='bold 9px monospace';
@@ -1026,7 +1127,7 @@ const pokemonModule = (() => {
     ctx.save(); ctx.lineCap='round';
     signs.forEach(s=>{
       const sx=s.tx*TSIZE-camX, sy=s.ty*TSIZE-camY;
-      if(sx<-80||sx>canvas.width+80||sy<-80||sy>canvas.height+80) return;
+      if(sx<-80||sx>VIEW_W+80||sy<-80||sy>VIEW_H+80) return;
       const cx=sx+TSIZE/2, cy=sy+TSIZE/2;
       // Post
       ctx.fillStyle='#6a3c10'; ctx.fillRect(cx-2,cy,4,TSIZE/2+6);
@@ -1118,7 +1219,7 @@ const pokemonModule = (() => {
       const glowPulse=0.06+0.04*Math.sin(now/1200);
       const ambGrd=ctx.createRadialGradient(25*TSIZE-camX,14*TSIZE-camY,10,25*TSIZE-camX,14*TSIZE-camY,TSIZE*8);
       ambGrd.addColorStop(0,`rgba(255,180,220,${glowPulse*2})`); ambGrd.addColorStop(1,'rgba(255,180,220,0)');
-      ctx.fillStyle=ambGrd; ctx.fillRect(camX,camY,canvas.width,canvas.height);
+      ctx.fillStyle=ambGrd; ctx.fillRect(0,0,VIEW_W,VIEW_H);
       // ── NURSE STATION sign ──
       const deskX=14*TSIZE-camX, deskY=13*TSIZE-camY;
       ctx.fillStyle='rgba(255,80,160,0.90)';
@@ -1126,8 +1227,9 @@ const pokemonModule = (() => {
       else ctx.fillRect(deskX+TSIZE*5-20,deskY-18,80,16);
       ctx.fillStyle='#fff'; ctx.font='bold 9px "Exo 2",sans-serif';
       ctx.fillText('NURSE STATION',deskX+TSIZE*5+20,deskY-10);
-      // ── Nurse NPC ──
+      // ── Nurse NPC (drawn as a 3D sprite instead when the art is loaded) ──
       const nx=25*TSIZE-camX+TSIZE/2, ny=14*TSIZE-camY;
+      if(!(artReady&&ART()?.has('npc_nurse'))){
       ctx.fillStyle='#f5a0c0'; ctx.fillRect(nx-5,ny-8,10,10);
       ctx.fillStyle='#fff'; ctx.fillRect(nx-4,ny-8,8,4);
       ctx.fillStyle='#f5c28a'; ctx.fillRect(nx-5,ny-20,10,12);
@@ -1135,6 +1237,7 @@ const pokemonModule = (() => {
       ctx.fillStyle='#1a1010'; ctx.fillRect(nx-3,ny-16,2,2); ctx.fillRect(nx+1,ny-16,2,2);
       ctx.fillStyle='#fff'; ctx.fillRect(nx-4,ny-23,8,5);
       ctx.fillStyle='rgba(255,80,160,0.85)'; ctx.fillRect(nx-2,ny-22,4,2);
+      }
       // ── Recovery pods with pulsing glow ──
       [[15,18],[30,18]].forEach(([btx,bty])=>{
         for(let dx=0;dx<5;dx++){
@@ -1225,13 +1328,15 @@ const pokemonModule = (() => {
           ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(isx+TSIZE/2-6,isy+6,3,0,Math.PI*2); ctx.fill();
         }
       });
-      // ── Staff NPC at counter ──
+      // ── Staff NPC at counter (3D sprite instead when the art is loaded) ──
       const sx2=25*TSIZE-camX+TSIZE/2, sy2=14*TSIZE-camY;
+      if(!(artReady&&ART()?.has('npc_clerk'))){
       ctx.fillStyle='#2060c0'; ctx.fillRect(sx2-5,sy2-8,10,10);
       ctx.fillStyle='#fff'; ctx.fillRect(sx2-3,sy2-7,6,3);
       ctx.fillStyle='#f5c28a'; ctx.fillRect(sx2-4,sy2-18,8,10);
       ctx.fillStyle='#1a1a60'; ctx.fillRect(sx2-4,sy2-18,8,4);
       ctx.fillStyle='#1a1010'; ctx.fillRect(sx2-2,sy2-14,2,2); ctx.fillRect(sx2+1,sy2-14,2,2);
+      }
       // ── Pulsing sale tags ──
       const stp=0.6+0.4*Math.sin(now/500);
       ctx.fillStyle=`rgba(255,60,60,${stp})`; ctx.font='bold 6px sans-serif';
@@ -1263,7 +1368,7 @@ const pokemonModule = (() => {
     const gl=GYM_LEADERS[leaderId]; if(!gl)return;
     // Leader stands on the platform centre, front edge (tx=24,ty=9)
     const lx=24*TSIZE-camX, ly=9*TSIZE-camY;
-    if(lx<-32||lx>canvas.width+32||ly<-32||ly>canvas.height+32)return;
+    if(lx<-32||lx>VIEW_W+32||ly<-32||ly>VIEW_H+32)return;
     const cx=lx+TSIZE/2, cy=ly+TSIZE/2;
     const now=Date.now();
     // Shadow
@@ -1580,7 +1685,7 @@ const pokemonModule = (() => {
     const now=Date.now();
     warps.forEach(w=>{
       const sx=w.tx*TSIZE-camX, sy=w.ty*TSIZE-camY;
-      if(sx<-TSIZE||sy<-TSIZE||sx>canvas.width+TSIZE||sy>canvas.height+TSIZE)return;
+      if(sx<-TSIZE||sy<-TSIZE||sx>VIEW_W+TSIZE||sy>VIEW_H+TSIZE)return;
       const isReturn=w.toMap==='__return__';
       const isInterior=MAPS_DATA[w.toMap]?.isInterior;
       // Color: gold for zone exits, cyan for building entries, purple for interior exits
@@ -1618,9 +1723,9 @@ const pokemonModule = (() => {
     });
   }
 
-  function drawOverworld(){
+  function drawOverworldClassic(){
     if(!canvas||!ctx) return;
-    const W=canvas.width, H=canvas.height;
+    const W=VIEW_W, H=VIEW_H;
     ctx.clearRect(0,0,W,H);
     const tpx=Math.round(player.x-W/2+CHAR_S/2);
     const tpy=Math.round(player.y-H/2+CHAR_S/2);
@@ -1639,9 +1744,387 @@ const pokemonModule = (() => {
     drawInteriorDecor();
     drawWarpPortals();
     drawGymLeader();
+    drawTrainersClassic();
     drawPlayerChar(player.x-camX, player.y-camY);
     drawToast();
   }
+
+  // Simple drawn trainers for when the 3D art isn't available
+  const TRAINER_COLORS={npc_youngster:'#e0802a',npc_lass:'#d04a90',npc_hiker:'#7a5a2a',npc_bugcatcher:'#5a9a2a',npc_swimmer:'#2a7ad0'};
+  function drawTrainersClassic(){
+    const now=Date.now();
+    trainersHere().forEach(tr=>{
+      const cx=(tr.tx+0.5)*TSIZE-camX, cy=(tr.ty+0.5)*TSIZE-camY;
+      if(cx<-40||cy<-60||cx>VIEW_W+40||cy>VIEW_H+40) return;
+      const col=TRAINER_COLORS[tr.kind]||'#888';
+      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(cx,cy+13,10,3,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#1a1010'; ctx.fillRect(cx-5,cy+4,4,8); ctx.fillRect(cx+1,cy+4,4,8);
+      ctx.fillStyle=col; ctx.fillRect(cx-7,cy-4,14,9);
+      ctx.fillStyle='#f5c28a'; ctx.fillRect(cx-5,cy-14,10,10);
+      ctx.fillStyle=col; ctx.fillRect(cx-5,cy-15,10,4);
+      ctx.fillStyle='#1a1010';
+      const ex=tr.dir==='left'?-2:tr.dir==='right'?2:0;
+      if(tr.dir!=='up'){ ctx.fillRect(cx-3+ex,cy-11,2,2); ctx.fillRect(cx+1+ex,cy-11,2,2); }
+      if(trainerEvent&&trainerEvent.tr===tr){
+        if(trainerEvent.phase==='alert'){
+          ctx.fillStyle='#fff'; ctx.fillRect(cx-6,cy-38,12,16);
+          ctx.fillStyle='#e02020'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('!',cx,cy-30);
+        } else drawSpeech(cx,cy-30,tr.intro);
+      } else if(!defeatedTrainers.includes(tr.id)){
+        const bob=Math.sin(now/500+tr.tx)*1.5;
+        ctx.fillStyle='rgba(255,80,80,0.85)'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('⚔',cx,cy-22+bob);
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     3D WORLD RENDERER — draws the Blender-rendered art (pokemon-world.js).
+     Ground is cached in chunks; everything that stands up (trees, buildings,
+     people, Pokémon, tall grass) is sorted by where its feet touch the
+     ground, so things in front correctly hide things behind.
+     If the art isn't available the classic drawing above is used instead.
+     ══════════════════════════════════════════════════════════════ */
+  const ART = () => window.PKArt;
+
+  function terrainKeyAt(tx,ty){
+    const t=worldMap[ty][tx];
+    const interior=MAPS_DATA[currentMapId]?.isInterior;
+    switch(t){
+      case T.WATER: return null;
+      case T.PATH: return 'path';
+      case T.SAND: return 'sand';
+      case T.ROCK: return 'rock_ground';
+      case T.FLOOR: return currentMapId==='intPC'?'floor_pc':currentMapId==='intGym'?'floor_gym':currentMapId==='intMart'?'floor_mart':'floor_house';
+      case T.COUNTER: return 'counter';
+      case T.BUILDING: return interior?'counter':'path';
+      case T.TREE: return interior?'':'grass';
+      default: return 'grass';
+    }
+  }
+
+  function buildingKey(x,y,w,h){
+    const A=ART();
+    const named=BUILDING_ART[currentMapId]?.[x+','+y];
+    if(named&&A.has(named)) return named;
+    const pick=(list)=>{ const ok=list.filter(k=>A.has(k)); return ok.length?ok[(x*7+y*3)%ok.length]:null; };
+    if(w===5&&h===3) return pick(['bld_city_5x3_a','bld_city_5x3_b','bld_hall_5x3']);
+    if(w===5&&h===4) return pick(['bld_city_5x4_a','bld_city_5x4_b','bld_city_5x4_c']);
+    if(w===6&&h===4) return pick(['bld_city_6x4_a','bld_city_5x4_a']);
+    if(w===7&&h===4) return pick(['bld_city_7x4_a','bld_pc_7x4']);
+    if(w===3&&h===3) return pick(['bld_house_3x3_red','bld_house_3x3_blue','bld_house_3x3_green','bld_house_3x3_orange']);
+    return null;
+  }
+
+  function addStatic(o){
+    const r=Math.max(0,Math.min(MAP_H-1,o.row));
+    objRows[r].push(o);
+  }
+
+  // Rebuild the cached ground and the list of standing objects for the current zone.
+  function buildWorld(){
+    objRows=Array.from({length:MAP_H},()=>[]);
+    worldLights=[];
+    ground=null;
+    if(!artReady||!worldMap) return;
+    const A=ART();
+    const md=MAPS_DATA[currentMapId]||{};
+    const interior=Boolean(md.isInterior);
+    ground=A.createGroundCache({mapW:MAP_W,mapH:MAP_H,terrainAt:terrainKeyAt,scale:RS});
+    const H=(x,y,salt)=>A.hash(x,y,salt);
+    const near=(x,y,tile,r=1)=>{ for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){ if(getTile(x+dx,y+dy)===tile) return true; } return false; };
+    const warpSet=new Set((md.warps||[]).map(w=>w.tx+','+w.ty));
+    const itemSet=new Set((md.items||[]).map(i=>i.tx+','+i.ty));
+    if(!interior){
+      const seen=new Set();
+      for(let y=0;y<MAP_H;y++) for(let x=0;x<MAP_W;x++){
+        const t=worldMap[y][x];
+        if(t===T.BUILDING&&!seen.has(x+','+y)){
+          let x1=x; while(x1+1<MAP_W&&worldMap[y][x1+1]===T.BUILDING) x1++;
+          let y1=y; while(y1+1<MAP_H&&worldMap[y1+1][x]===T.BUILDING) y1++;
+          for(let yy=y;yy<=y1;yy++) for(let xx=x;xx<=x1;xx++) seen.add(xx+','+yy);
+          const w=x1-x+1, h=y1-y+1, key=buildingKey(x,y,w,h);
+          if(key) addStatic({kind:'art',key,frame:0,x:x*TSIZE,y:(y1+1)*TSIZE,row:y1,sy:(y1+1)*TSIZE});
+          else addStatic({kind:'tiles',x0:x,y0:y,x1,y1,row:y1,sy:(y1+1)*TSIZE});
+          // warm window light at night
+          worldLights.push({x:(x+w/2)*TSIZE,y:(y1+0.7)*TSIZE,r:70+w*18,glow:18+w*3,a:0.95});
+        } else if(t===T.TREE){
+          const dense=[[0,-1],[0,1],[-1,0],[1,0]].every(([dx,dy])=>getTile(x+dx,y+dy)===T.TREE);
+          const key=dense&&A.has('tree_dense')?'tree_dense':'tree';
+          const fr=H(x,y,3)%Math.max(1,A.frameCount(key));
+          addStatic({kind:'art',key,frame:fr,x:x*TSIZE,y:(y+1)*TSIZE,row:y,sy:(y+1)*TSIZE-0.5});
+        } else if(t===T.GRASS&&!warpSet.has(x+','+y)&&!itemSet.has(x+','+y)&&!near(x,y,T.PATH)&&!near(x,y,T.BUILDING)){
+          const r=H(x,y,11)%100;
+          if(r<6&&A.has('flowers')) addStatic({kind:'art',key:'flowers',frame:H(x,y,5)%A.frameCount('flowers'),x:x*TSIZE+((H(x,y,2)%9)-4),y:(y+1)*TSIZE-((H(x,y,4)%7)),row:y,sy:(y+1)*TSIZE-8});
+          else if(r<8&&A.has('bush')&&near(x,y,T.TREE)) addStatic({kind:'art',key:'bush',frame:H(x,y,6)%A.frameCount('bush'),x:x*TSIZE,y:(y+1)*TSIZE,row:y,sy:(y+1)*TSIZE-4});
+        } else if(t===T.ROCK&&!warpSet.has(x+','+y)&&!itemSet.has(x+','+y)&&!near(x,y,T.PATH)){
+          if(H(x,y,13)%100<5&&A.has('boulder')) addStatic({kind:'art',key:'boulder',frame:H(x,y,8)%A.frameCount('boulder'),x:x*TSIZE,y:(y+1)*TSIZE,row:y,sy:(y+1)*TSIZE-4});
+        }
+      }
+      // City street lamps along the lawn strips
+      if(currentMapId==='cityZone'&&A.has('lamp')){
+        for(const ly of [7,14,21,28]) for(let lx=6;lx<46;lx+=7){
+          if(getTile(lx,ly)!==T.GRASS) continue;
+          addStatic({kind:'art',key:'lamp',frame:0,x:lx*TSIZE,y:(ly+1)*TSIZE,row:ly,sy:(ly+1)*TSIZE});
+          worldLights.push({x:(lx+0.5)*TSIZE,y:(ly+0.2)*TSIZE,r:120,glow:30,a:1});
+        }
+      }
+      // Signposts (text drawn on the board)
+      (md.signs||[]).forEach(sg=>addStatic({kind:'sign',sg,x:sg.tx*TSIZE,y:(sg.ty+1)*TSIZE,row:sg.ty,sy:(sg.ty+1)*TSIZE-6}));
+    }
+    // People standing inside buildings
+    (INTERIOR_NPCS[currentMapId]||[]).forEach(n=>{
+      if(A.has(n.kind)) addStatic({kind:'art',key:n.kind,frame:0,x:n.fx*TSIZE,y:n.fy*TSIZE,row:Math.floor(n.fy),sy:n.fy*TSIZE});
+    });
+    if(ambience) ambience.reset(ambienceKind(),VIEW_W,VIEW_H);
+  }
+
+  function ambienceKind(){
+    if(MAPS_DATA[currentMapId]?.isInterior) return 'indoor';
+    const light=ART()?.daylight?.();
+    if(light&&light.night>0.6&&currentMapId!=='cityZone') return 'night';
+    return {forestZone:'forest',coastZone:'coast',rockZone:'rock',cityZone:'city'}[currentMapId]||'grass';
+  }
+
+  function trainersHere(){ return MAP_TRAINERS[currentMapId]||[]; }
+  function trainerAt(tx,ty){ return trainersHere().some(tr=>tr.tx===tx&&tr.ty===ty); }
+
+  function feet(){ return {x:player.x+CHAR_S/2, y:player.y+CHAR_S}; }
+
+  function resetFollower(){
+    trail=[];
+    const f=feet();
+    const back={down:[0,-20],up:[0,20],left:[20,0],right:[-20,0]}[player.dir||'down'];
+    partner.x=f.x+back[0]; partner.y=f.y+back[1];
+    // Don't spawn the partner inside a wall
+    if(isSolid(Math.floor(partner.x/TSIZE),Math.floor((partner.y-2)/TSIZE))){ partner.x=f.x; partner.y=f.y-2; }
+    partner.dir=player.dir||'down'; partner.moving=false;
+  }
+
+  function updateFollower(dt){
+    const f=feet();
+    const last=trail[trail.length-1];
+    if(!last||Math.hypot(f.x-last.x,f.y-last.y)>=2){ trail.push({x:f.x,y:f.y}); if(trail.length>48) trail.shift(); }
+    // Walk back along the trail ~22 px to find where the partner should be
+    let need=22, target=null;
+    for(let i=trail.length-1;i>0;i--){
+      const a=trail[i], b=trail[i-1], d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d>=need){ const k=need/d; target={x:a.x+(b.x-a.x)*k, y:a.y+(b.y-a.y)*k}; break; }
+      need-=d;
+    }
+    if(!target){ partner.moving=false; return; }
+    const dx=target.x-partner.x, dy=target.y-partner.y, d=Math.hypot(dx,dy);
+    partner.moving=d>0.4;
+    if(d>0.01){
+      partner.x=target.x; partner.y=target.y;
+      partner.dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+    }
+  }
+
+  function leadMon(){ return team.find(m=>m.hp>0)||team[0]||null; }
+
+  function walkFrame(moving,ts,fps=8){ return moving?[0,1,2,1][Math.floor(ts/(1000/fps))%4]:1; }
+
+  function drawPartnerArt(ts){
+    const mon=leadMon(); if(!mon) return;
+    const A=ART(), key='mon_'+mon.speciesId;
+    const px=Math.round(partner.x-camX), py=Math.round(partner.y-camY);
+    if(A.has(key)){
+      A.drawAnchored(ctx,key,DIR_ROW[partner.dir]*3+walkFrame(partner.moving,ts,9),px,py);
+      return;
+    }
+    // No 3D model for this species yet: use its regular sprite, gently hopping
+    let img=_fallbackSprites[mon.speciesId];
+    if(!img){ img=new Image(); img.crossOrigin='anonymous'; img.src=spriteUrl(mon.speciesId); _fallbackSprites[mon.speciesId]=img; }
+    if(!img.complete||!img.naturalWidth) return;
+    const hop=partner.moving?Math.abs(Math.sin(ts/90))*3:Math.sin(ts/500)*0.8;
+    const size=40, flip=partner.dir==='right';
+    ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(px,py-1,10,3,0,0,Math.PI*2); ctx.fill();
+    ctx.save(); ctx.translate(px,py-hop);
+    if(flip) ctx.scale(-1,1);
+    ctx.drawImage(img,-size/2,-size+4,size,size);
+    ctx.restore();
+  }
+
+  function drawPlayerArt(ts){
+    const f=feet();
+    ART().drawAnchored(ctx,'player',DIR_ROW[player.dir||'down']*3+walkFrame(player.moving,ts,8),Math.round(f.x-camX),Math.round(f.y-camY));
+  }
+
+  function drawTrainerArt(tr,ts){
+    const A=ART(), key=A.has(tr.kind)?tr.kind:'npc_youngster';
+    const x=Math.round((tr.tx+0.5)*TSIZE-camX), y=Math.round((tr.ty+0.92)*TSIZE-camY);
+    if(A.has(key)){
+      const e=A.info(key), rows=e.rows||1;
+      A.drawAnchored(ctx,key,rows>=4?DIR_ROW[tr.dir]*(e.cols||1):0,x,y);
+    }
+    if(trainerEvent&&trainerEvent.tr===tr){
+      // "!" bubble, then a short speech bubble
+      if(trainerEvent.phase==='alert'){
+        ctx.fillStyle='#fff'; ctx.strokeStyle='#222'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.roundRect?ctx.roundRect(x-7,y-66,14,18,4):ctx.rect(x-7,y-66,14,18); ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#e02020'; ctx.font='bold 14px "Exo 2",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('!',x,y-57);
+      } else {
+        drawSpeech(x,y-58,tr.intro);
+      }
+    }
+  }
+
+  function drawSpeech(x,y,text){
+    ctx.save();
+    ctx.font='bold 10px "Exo 2",sans-serif';
+    const w=Math.min(240,ctx.measureText(text).width+18);
+    const bx=Math.max(4,Math.min(VIEW_W-w-4,x-w/2)), by=Math.max(4,y-26);
+    ctx.fillStyle='rgba(255,255,255,0.96)'; ctx.strokeStyle='rgba(20,20,40,0.85)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.roundRect?ctx.roundRect(bx,by,w,22,6):ctx.rect(bx,by,w,22); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#1a1a2e'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    let t=text; while(t.length>6&&ctx.measureText(t).width>w-14) t=t.slice(0,-2)+'…';
+    ctx.fillText(t,bx+w/2,by+11);
+    ctx.restore();
+  }
+
+  function drawGymLeaderArt(){
+    if(currentMapId!=='intGym') return false;
+    const leaderId=MAPS_DATA[_interiorReturn?.mapId]?.gymLeaderId;
+    const key='leader_'+leaderId;
+    if(!leaderId||!ART().has(key)) return false;
+    const x=Math.round(24.5*TSIZE-camX), y=Math.round(9.95*TSIZE-camY);
+    ART().drawAnchored(ctx,key,Math.floor(Date.now()/600)%2,x,y);
+    const gl=GYM_LEADERS[leaderId];
+    if(gl){
+      ctx.font='bold 9px "Exo 2",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      const lw=ctx.measureText(gl.name).width+12;
+      ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(x-lw/2,y-66,lw,14);
+      ctx.fillStyle='#ffe6ff'; ctx.fillText(gl.name,x,y-59);
+    }
+    return true;
+  }
+
+  function drawSignArt(o){
+    const A=ART(), sx=Math.round(o.x-camX+TSIZE/2), sy=Math.round(o.y-camY);
+    if(A.has('sign')) A.drawAnchored(ctx,'sign',0,Math.round(o.x-camX),sy);
+    // Board text
+    const s=o.sg;
+    ctx.save();
+    ctx.font='bold 8px "Exo 2",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    const w=Math.max(40,ctx.measureText(s.label).width+10);
+    ctx.fillStyle='rgba(255,248,225,0.94)'; ctx.fillRect(sx-w/2,sy-38,w,17);
+    ctx.fillStyle=s.col; ctx.fillRect(sx-w/2,sy-38,w,3);
+    ctx.fillStyle='#2a1a08'; ctx.fillText(`${s.arrow} ${s.label}`,sx,sy-28.5);
+    ctx.restore();
+  }
+
+  function drawItemArt(item,ts){
+    const A=ART(), key=(item.type==='POKEBALL'||item.type==='GREAT_BALL')?'item_ball':'item_potion';
+    const x=Math.round((item.tx+0.5)*TSIZE-camX), y=Math.round((item.ty+0.75)*TSIZE-camY);
+    const bob=Math.sin(ts/400+item.tx)*1.5;
+    const it=ITEM_TYPES[item.type];
+    // soft sparkle so items are easy to spot
+    const pulse=0.5+0.5*Math.sin(ts/350+item.ty);
+    ctx.fillStyle=it?.glow||'rgba(255,255,255,0.3)'; ctx.globalAlpha=0.35+0.3*pulse;
+    ctx.beginPath(); ctx.arc(x,y-6,9+3*pulse,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    if(A.has(key)){
+      // Great Balls are tinted blue
+      if(item.type==='GREAT_BALL'){ ctx.save(); ctx.filter='hue-rotate(200deg) saturate(1.4)'; A.drawAnchored(ctx,key,0,x,y+bob); ctx.restore(); }
+      else A.drawAnchored(ctx,key,0,x,y+bob);
+    }
+  }
+
+  function drawTallGrass(tx,ty,ts){
+    const sx=tx*TSIZE-camX, sy=ty*TSIZE-camY;
+    const ef=tileEffects.get(`${tx},${ty}`);
+    const idle=Math.sin(ts/1500+tx*1.1+ty*0.9);
+    const sway=(ef?ef.sway:0)+idle*0.6;
+    const fr=sway<-0.7?0:sway>0.7?2:1;
+    ART().drawTile(ctx,'tall_grass',fr,sx,sy);
+  }
+
+  function drawWaterArt(tx0,ty0,tx1,ty1,ts){
+    const A=ART(), n=Math.max(1,A.frameCount('water'));
+    const fr=Math.floor(ts/140)%n;
+    for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++){
+      if(getTile(tx,ty)===T.WATER) A.drawTile(ctx,'water',fr,tx*TSIZE-camX,ty*TSIZE-camY);
+    }
+  }
+
+  function updateCamera(dt){
+    const W=VIEW_W, H=VIEW_H;
+    const tx=Math.max(0,Math.min(player.x-W/2+CHAR_S/2,MAP_W*TSIZE-W));
+    const ty=Math.max(0,Math.min(player.y-H/2+CHAR_S/2,MAP_H*TSIZE-H));
+    if(!camReady||!dt){ camFX=tx; camFY=ty; camReady=true; }
+    else {
+      const k=1-Math.exp(-dt*10);
+      camFX+=(tx-camFX)*k; camFY+=(ty-camFY)*k;
+      if(Math.abs(tx-camFX)<0.05) camFX=tx;
+      if(Math.abs(ty-camFY)<0.05) camFY=ty;
+    }
+    camX=Math.round(camFX); camY=Math.round(camFY);   // whole pixels keep tiles crisp
+  }
+
+  function drawOverworldArt(dt,ts){
+    const A=ART(), W=VIEW_W, H=VIEW_H;
+    const md=MAPS_DATA[currentMapId]||{};
+    const interior=Boolean(md.isInterior);
+    updateCamera(dt);
+    ctx.fillStyle=interior?'#0d0b14':'#1d4a1f'; ctx.fillRect(0,0,W,H);
+    const tx0=Math.max(0,Math.floor(camX/TSIZE)), ty0=Math.max(0,Math.floor(camY/TSIZE));
+    const tx1=Math.min(MAP_W-1,tx0+Math.ceil(W/TSIZE)+1), ty1=Math.min(MAP_H-1,ty0+Math.ceil(H/TSIZE)+1);
+    stepTileEffects();
+    drawWaterArt(tx0,ty0,tx1,ty1,ts);
+    if(ground) ground.draw(ctx,camX,camY,W,H);
+    if(interior) drawInteriorDecor();
+    drawWarpPortals();
+
+    // Everything that stands up, sorted by its foot line
+    const list=[];
+    for(let ty=ty0;ty<=Math.min(MAP_H-1,ty1+5);ty++){
+      const row=objRows[ty]; if(row) for(const o of row) list.push(o);
+      if(ty<=ty1) for(let tx=tx0;tx<=tx1;tx++) if(getTile(tx,ty)===T.TALL) list.push({kind:'tall',tx,ty,sy:(ty+1)*TSIZE-0.25});
+    }
+    mapItems.forEach(it=>{ if(!it.collected&&it.tx>=tx0-1&&it.tx<=tx1+1&&it.ty>=ty0-1&&it.ty<=ty1+2) list.push({kind:'item',it,sy:(it.ty+0.75)*TSIZE}); });
+    trainersHere().forEach(tr=>list.push({kind:'trainer',tr,sy:(tr.ty+0.92)*TSIZE}));
+    if(currentMapId==='intGym') list.push({kind:'leader',sy:9.95*TSIZE});
+    if(team.length) list.push({kind:'partner',sy:partner.y});
+    list.push({kind:'player',sy:player.y+CHAR_S+0.1});
+    list.sort((a,b)=>a.sy-b.sy);
+    for(const o of list){
+      switch(o.kind){
+        case 'art': A.drawAnchored(ctx,o.key,o.frame,Math.round(o.x-camX),Math.round(o.y-camY)); break;
+        case 'tiles': for(let y=o.y0;y<=o.y1;y++) for(let x=o.x0;x<=o.x1;x++) drawTile(x*TSIZE-camX,y*TSIZE-camY,T.BUILDING,x,y); break;
+        case 'tall': drawTallGrass(o.tx,o.ty,ts); break;
+        case 'item': drawItemArt(o.it,ts); break;
+        case 'trainer': drawTrainerArt(o.tr,ts); break;
+        case 'leader': if(!drawGymLeaderArt()) drawGymLeader(); break;
+        case 'sign': drawSignArt(o); break;
+        case 'partner': drawPartnerArt(ts); break;
+        case 'player': drawPlayerArt(ts); break;
+      }
+    }
+
+    if(!interior){
+      if(ambience){ ambience.update(dt||0.016,W,H); ambience.drawShadows(ctx); }
+      const light=A.daylight();
+      if(light.night>0.02||light.warm>0.02){
+        const lights=worldLights.map(L=>({x:L.x-camX,y:L.y-camY,r:L.r,glow:L.glow,a:L.a}));
+        A.drawLighting(ctx,W,H,light,lights);
+      }
+      if(ambience) ambience.drawParticles(ctx);
+    }
+    drawToast();
+  }
+
+  function drawOverworld(dt,ts){
+    if(!canvas||!ctx) return;
+    ctx.setTransform(RS,0,0,RS,0,0);
+    if(artReady&&ART()) drawOverworldArt(dt,ts||performance.now());
+    else drawOverworldClassic();
+  }
+
+  /* ── POKÉDEX ── */
+  function markSeen(sid){ if(sid&&SP[sid]&&!dexSeen.includes(sid)) dexSeen.push(sid); }
+  function markCaught(sid){ markSeen(sid); if(sid&&SP[sid]&&!dexCaught.includes(sid)) dexCaught.push(sid); }
 
   /* ── POKEMON INSTANCES ── */
   function xpForLevel(lvl){ return Math.floor(0.5*lvl*lvl*lvl); }
@@ -1666,13 +2149,16 @@ const pokemonModule = (() => {
     for(const d of defTypes) e*=(tbl[d]!==undefined?tbl[d]:1);
     return e;
   }
+  let _lastCrit=false;
   function damage(att,def,moveId){
-    const mv=MV[moveId]; if(!mv||mv.power===0) return 0;
+    const mv=MV[moveId]; _lastCrit=false; if(!mv||mv.power===0) return 0;
     const atk=att.atk*stageMul(att.atkStg), dfn=def.def*stageMul(def.defStg);
     let d=Math.floor((2*att.level/5+2)*mv.power*atk/dfn/50)+2;
     const eff=typeEff(mv.type,def.types);
     if(eff===0) return 0;  // immune — no damage
+    if((att.types||[]).includes(mv.type)) d=Math.floor(d*1.5);   // same-type attack bonus
     d=Math.floor(d*eff);
+    if(Math.random()<1/16){ d=Math.floor(d*1.5); _lastCrit=true; }  // critical hit
     return Math.max(1,Math.floor(d*(0.85+Math.random()*0.15)));
   }
 
@@ -1695,13 +2181,13 @@ const pokemonModule = (() => {
     document.getElementById('pk-ename').textContent=e.name;
     document.getElementById('pk-elvl').textContent=`Lv.${e.level}`;
     const ei=document.getElementById('pk-esprite-img');
-    if(ei){ ei.src=spriteUrl(e.speciesId); ei.alt=e.name; }
+    if(ei){ setBattleSprite(ei,e.speciesId,false); ei.alt=e.name; }
     const eb=document.getElementById('pk-ehp-bar'); eb.style.width=eph+'%'; eb.style.background=hpCol(eph);
     document.getElementById('pk-ehp-text').textContent=`${Math.max(0,e.hp)}/${e.maxHp}`;
     document.getElementById('pk-pname').textContent=p.name;
     document.getElementById('pk-plvl').textContent=`Lv.${p.level}`;
     const pi=document.getElementById('pk-psprite-img');
-    if(pi){ pi.src=spriteUrl(p.speciesId,true); pi.alt=p.name; }
+    if(pi){ setBattleSprite(pi,p.speciesId,true); pi.alt=p.name; }
     const pb=document.getElementById('pk-php-bar'); pb.style.width=pph+'%'; pb.style.background=hpCol(pph);
     document.getElementById('pk-php-text').textContent=`${Math.max(0,p.hp)}/${p.maxHp}`;
     document.getElementById('pk-xp-bar').style.width=Math.min(100,Math.round(p.xp/p.xpToNext*100))+'%';
@@ -1768,6 +2254,72 @@ const pokemonModule = (() => {
     }catch(e){}
   }
 
+  /* ── BATTLE VISUALS ── animated 3D-rendered sprites + Blender backdrops */
+  const SHOWDOWN_BASE='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown';
+  function battleSpriteUrls(sid,back){
+    const id=SP[sid]?.dexId; if(!id) return [];
+    return [`${SHOWDOWN_BASE}${back?'/back/':'/'}${id}.gif`, spriteUrl(sid,back), back?spriteUrl(sid,false):spriteFallbackUrl(sid)];
+  }
+  function setBattleSprite(img,sid,back){
+    if(!img) return;
+    const k=sid+(back?':b':':f');
+    if(img.dataset.k===k) return;
+    img.dataset.k=k;
+    const urls=battleSpriteUrls(sid,back);
+    let i=0;
+    img.classList.remove('pk-sprite-classic');
+    img.style.visibility='hidden';
+    img.onerror=()=>{
+      if(img.dataset.k!==k) return;
+      i++;
+      if(i<urls.length){ img.classList.add('pk-sprite-classic'); img.src=urls[i]; }
+    };
+    img.onload=()=>{
+      if(img.dataset.k!==k) return;
+      // Showdown sprites are small 3D renders: scale them up; classic 96px sprites less so
+      const classic=img.classList.contains('pk-sprite-classic');
+      const sc=classic?(back?1.9:1.55):(back?2.5:2.1);
+      img.style.width=Math.round(img.naturalWidth*sc)+'px';
+      img.style.height=Math.round(img.naturalHeight*sc)+'px';
+      img.style.visibility='';
+    };
+    img.src=urls[0]||'';
+  }
+  function animSprite(which,cls){
+    const el=document.getElementById(which==='enemy'?'pk-esprite':'pk-psprite'); if(!el) return;
+    if(cls!=='pk-faint') el.classList.remove('pk-faint','pk-caught');
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    if(cls!=='pk-faint'&&cls!=='pk-caught') el.addEventListener('animationend',()=>el.classList.remove(cls),{once:true});
+  }
+  function setBattleScene(){
+    const bg=document.getElementById('pk-battle-bg'); if(!bg) return;
+    const A=ART();
+    const key=BATTLE_BG[currentMapId]||'bg_grass';
+    const u=A&&A.info&&A.info(key)?A.url(key):'';
+    bg.style.backgroundImage=u?`url("${u}")`:'';
+    const night=!MAPS_DATA[currentMapId]?.isInterior&&A&&A.daylight&&A.daylight().night>0.6;
+    bg.classList.toggle('pk-night',Boolean(night));
+    ['pk-esprite','pk-psprite'].forEach(id=>document.getElementById(id)?.classList.remove('pk-faint','pk-caught'));
+  }
+
+  // Opponents pick strong, super-effective moves most of the time
+  function chooseEnemyMove(e,target){
+    const moves=e.moves.filter(m=>MV[m.id]);
+    if(!moves.length) return e.moves[0];
+    const smart=battle?.type==='trainer'?0.8:0.5;
+    if(Math.random()>smart) return moves[Math.floor(Math.random()*moves.length)];
+    let best=moves[0], bestScore=-1;
+    for(const m of moves){
+      const md=MV[m.id];
+      let sc=md.power>0
+        ? md.power*typeEff(md.type,target.types)*((e.types||[]).includes(md.type)?1.5:1)*(md.acc/100)
+        : (target.hp>target.maxHp*0.6?18:4);
+      sc*=0.85+Math.random()*0.3;
+      if(sc>bestScore){ bestScore=sc; best=m; }
+    }
+    return best;
+  }
+
   /* ── BATTLE ENGINE ── */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -1788,9 +2340,12 @@ const pokemonModule = (() => {
       if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
-        battle={pm:team[0],em,phase:'menu',participants:new Set([team[0]])};
-        updateBUI(); enableBtns(true);
+        const pm=leadMon();
+        battle={pm,em,phase:'menu',participants:new Set([pm])};
+        markSeen(sid);
+        setBattleScene(); updateBUI(); enableBtns(true);
         document.getElementById('pk-battle').classList.remove('hidden');
+        animSprite('enemy','pk-enter-enemy'); animSprite('player','pk-enter-player');
         setLog(`A wild ${em.name} appeared!`,'');
         playCry(SP[em.speciesId]?.dexId);
       }
@@ -1850,11 +2405,12 @@ const pokemonModule = (() => {
     setLog(`Go, ${incoming.name}!`,'');
     playCry(SP[incoming.speciesId]?.dexId);
     updateBUI();
+    animSprite('player','pk-enter-player');
     if(!forced){
       // Voluntary swap: enemy gets a free attack
       await wait(800);
       const {em:e}=battle;
-      const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+      const emv=chooseEnemyMove(e,incoming);
       await execMove(e,incoming,emv);
       if(incoming.hp<=0){
         const alive=team.filter(m=>m.hp>0);
@@ -1883,18 +2439,41 @@ const pokemonModule = (() => {
     applyLevelUp(mon);
     return oldName;
   }
+  // XP for beating one of a trainer's Pokémon, shared like wild battles (level-ups shown as toasts)
+  function awardXpQuietly(e){
+    let xg=Math.floor(e.level*(SP[e.speciesId]?.xpY||60)/7*1.5);   // trainer Pokémon give a bit more
+    if(expBoostActive){ xg*=2; expBoostActive=false; }
+    const participants=battle.participants?[...battle.participants].filter(m=>m.hp>0):[battle.pm];
+    if(!participants.length) return 0;
+    const share=Math.max(1,Math.floor(xg/participants.length));
+    participants.forEach(m=>{
+      m.xp+=share;
+      while(m.xp>=m.xpToNext){
+        m.level++; applyLevelUp(m);
+        const evo=tryEvolve(m);
+        if(evo){ markCaught(m.speciesId); showToast(`${evo} evolved into ${m.name}!`,'#ffd700',2500); }
+        else showToast(`${m.name} grew to Lv.${m.level}!`,'#00ff88',1800);
+      }
+    });
+    return xg;
+  }
+
   function endBattle(){
     if(!battle)return;
     const {pm:p,em:e}=battle;
     if(e.hp<=0){
-      // ── Trainer battle: send out next Pokémon or award badge ──
+      // ── Trainer battle: send out next Pokémon or finish ──
       if(battle.type==='trainer'){
+        const tr=battle.trainer||{name:'Trainer'};
+        const gained=awardXpQuietly(e);
         if(battle.leaderQueue?.length>0){
           const next=battle.leaderQueue.shift();
-          const gl=GYM_LEADERS[battle.leaderId];
           battle.em=mkMon(next.sid,next.lvl);
-          setLog(`${gl?.name||'Leader'} sent out ${battle.em.name}!`,'');
+          markSeen(next.sid);
+          setLog(`${tr.name} sent out ${battle.em.name}!`,`+${gained} XP`);
           updateBUI();
+          animSprite('enemy','pk-enter-enemy');
+          playCry(SP[battle.em.speciesId]?.dexId);
           // Don't enable buttons if player's pokémon also fainted (mutual KO)
           if(p.hp<=0){
             const alive=team.filter(m=>m.hp>0);
@@ -1903,12 +2482,15 @@ const pokemonModule = (() => {
           } else { enableBtns(true); }
           return;
         }
-        const gl=GYM_LEADERS[battle.leaderId];
-        defeatedLeaders.push(battle.leaderId);
-        if(gl?.badge&&!badges.includes(gl.badge)) badges.push(gl.badge);
-        const prize=gl?.coins||300; coins+=prize; updateCoinsDisplay();
-        setLog(`You defeated ${gl?.name||'the Leader'}!`,`🏅 ${gl?.badge||'Badge'}! +${prize}💰`);
-        saveGame(); setTimeout(closeBattle,2500); return;
+        if(tr.leaderId){
+          if(!defeatedLeaders.includes(tr.leaderId)) defeatedLeaders.push(tr.leaderId);
+          if(tr.badge&&!badges.includes(tr.badge)) badges.push(tr.badge);
+        } else if(tr.id&&!defeatedTrainers.includes(tr.id)) defeatedTrainers.push(tr.id);
+        const prize=tr.prize||300; coins+=prize; updateCoinsDisplay();
+        updateBUI();
+        if(tr.leaderId) setLog(`You defeated ${tr.name}!`,`🏅 ${tr.badge||'Badge'}! +${prize}💰  +${gained} XP`);
+        else setLog(`You defeated ${tr.name}!`,`"${tr.lose||'Well done!'}"  +${prize}💰`);
+        saveGame(); setTimeout(closeBattle,2800); return;
       }
       let xg=Math.floor(e.level*SP[e.speciesId].xpY/7);
       if(expBoostActive){ xg*=2; expBoostActive=false; showToast('EXP Charm activated! 2× XP!','#ffe066',1800); }
@@ -1917,7 +2499,8 @@ const pokemonModule = (() => {
       const share=Math.max(1,Math.floor(xg/participants.length));
       participants.forEach(m=>{
         m.xp+=share;
-        while(m.xp>=m.xpToNext){ m.level++; applyLevelUp(m); const evo=tryEvolve(m); if(evo) showToast(`${m.name} evolved!`,'#ffd700',2500); }
+        if(m===p) return;   // the active Pokémon levels up below, with on-screen messages
+        while(m.xp>=m.xpToNext){ m.level++; applyLevelUp(m); const evo=tryEvolve(m); if(evo){ markCaught(m.speciesId); showToast(`${m.name} evolved!`,'#ffd700',2500); } }
       });
       // Award coins for winning the battle
       const battleCoins=5+e.level*2+Math.floor((SP[e.speciesId]?.xpY||50)*0.3);
@@ -1929,6 +2512,7 @@ const pokemonModule = (() => {
           p.level++; applyLevelUp(p);
           coins+=lvlCoins; updateCoinsDisplay();
           const evo=tryEvolve(p);
+          if(evo) markCaught(p.speciesId);
           updateBUI();
           if(evo){ setLog(`${evo} evolved into ${p.name}!`,'✨ New form!'); setTimeout(doLvl,1600); }
           else { setLog(`${p.name} grew to Lv.${p.level}!`,`+${lvlCoins}💰`); setTimeout(doLvl,1400); }
@@ -1965,10 +2549,12 @@ const pokemonModule = (() => {
       def.hp=Math.max(0,def.hp-dmg);
       if(md.drain) att.hp=Math.min(att.maxHp,att.hp+Math.floor(dmg/2));
       const eff=typeEff(md.type,def.types);
-      const et=eff>1?' Super effective!':eff<1&&eff>0?" Not very effective…":eff===0?" No effect!":'';
+      const et=(_lastCrit&&dmg>0?' Critical hit!':'')+(eff>1?' Super effective!':eff<1&&eff>0?" Not very effective…":eff===0?" No effect!":'');
       setLog(`${att.name} used ${md.name}!`,`${def.name} took ${dmg} dmg!${et}`);
       flashMove(defIsEnemy, md.type);
       playMoveSound(md.type);
+      if(dmg>0) animSprite(defIsEnemy?'enemy':'player','pk-hit');
+      if(def.hp<=0) setTimeout(()=>animSprite(defIsEnemy?'enemy':'player','pk-faint'),380);
     } else {
       let et='';
       if(md.eff==='atkDown'){def.atkStg=Math.max(-6,def.atkStg-1);et=`${def.name}'s Attack fell!`;}
@@ -1987,7 +2573,7 @@ const pokemonModule = (() => {
     const {pm:p,em:e}=battle;
     const pmv=p.moves[idx]; if(!pmv||pmv.pp<=0)return;
     pmv.pp--; enableBtns(false);
-    const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+    const emv=chooseEnemyMove(e,p);
     const pFirst=p.spd*stageMul(p.spdStg)>=e.spd*stageMul(e.spdStg);
     await execMove(pFirst?p:e, pFirst?e:p, pFirst?pmv:emv);
     if(e.hp<=0||p.hp<=0){endBattle();return;}
@@ -2012,6 +2598,7 @@ const pokemonModule = (() => {
       if(tile!==T.TALL)return;
       if(Math.random()>0.10)return;
     }
+    if(team.every(m=>m.hp<=0)) return;   // heal first
     const zone=getZone(tx,ty);
     const pool=ZONES[zone]||ZONES.route1;
     const sid=pool[Math.floor(Math.random()*pool.length)];
@@ -2021,21 +2608,87 @@ const pokemonModule = (() => {
   }
 
   /* ── GAME LOOP ── */
+  // Can the player's 24×24 feet box stand at (cx, cy)? Trainers block like walls.
+  function canStand(cx,cy){
+    const mg=3;
+    const pts=[[cx+mg,cy+10],[cx+CHAR_S-mg,cy+10],[cx+mg,cy+CHAR_S-1],[cx+CHAR_S-mg,cy+CHAR_S-1]];
+    for(const [px,py] of pts){
+      const tx=Math.floor(px/TSIZE), ty=Math.floor(py/TSIZE);
+      if(isSolid(tx,ty)||trainerAt(tx,ty)) return false;
+    }
+    return true;
+  }
+
+  function movePlayer(dt,up,dn,lt,rt){
+    let dist=WALK_SPEED*dt;
+    if((up||dn)&&(lt||rt)) dist*=0.7071;      // same speed diagonally
+    const steps=Math.max(1,Math.ceil(dist/2)), st=dist/steps;
+    const maxX=MAP_W*TSIZE-CHAR_S, maxY=MAP_H*TSIZE-CHAR_S;
+    for(let i=0;i<steps;i++){
+      const nx=Math.max(0,Math.min(maxX,player.x+(rt?st:lt?-st:0)));
+      const ny=Math.max(0,Math.min(maxY,player.y+(dn?st:up?-st:0)));
+      if(canStand(nx,ny)){ player.x=nx; player.y=ny; }
+      else if((lt||rt)&&canStand(nx,player.y)) player.x=nx;
+      else if((up||dn)&&canStand(player.x,ny)) player.y=ny;
+      else break;
+    }
+  }
+
+  function facingFrom(up,dn,lt,rt){
+    const cur=player.dir||'down';
+    // Keep the current facing while it is still one of the held directions (smooth diagonals)
+    if((cur==='up'&&up)||(cur==='down'&&dn)||(cur==='left'&&lt)||(cur==='right'&&rt)) return cur;
+    return lt?'left':rt?'right':up?'up':'down';
+  }
+
+  // Trainers spot you when you are in front of them with nothing in between
+  function checkTrainerSight(ptx,pty){
+    if(battle||trainerEvent) return;
+    for(const tr of trainersHere()){
+      if(defeatedTrainers.includes(tr.id)) continue;
+      const [dx,dy]={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]}[tr.dir];
+      for(let i=1;i<=tr.sight;i++){
+        const x=tr.tx+dx*i, y=tr.ty+dy*i;
+        if(isSolid(x,y)) break;
+        if(x===ptx&&y===pty){ startTrainerEncounter(tr); return; }
+      }
+    }
+  }
+
+  function startTrainerEncounter(tr){
+    if(team.every(m=>m.hp<=0)) return;      // nothing to battle with: let them pass
+    trainerEvent={tr,phase:'alert',until:Date.now()+800};
+    keys={}; dpad={up:false,down:false,left:false,right:false};
+    player.moving=false;
+    // face the trainer
+    const f=feet(); const dx=(tr.tx+0.5)*TSIZE-f.x, dy=(tr.ty+0.5)*TSIZE-f.y;
+    player.dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+    try{ const c=getSfx(),t=c.currentTime+0.01; _tone(c,t,880,1320,'square',0.12,0.12); _tone(c,t+0.13,1320,1320,'square',0.1,0.1); }catch(e){}
+  }
+
+  function stepTrainerEvent(){
+    if(!trainerEvent||battle) return;
+    const now=Date.now();
+    if(now<trainerEvent.until) return;
+    if(trainerEvent.phase==='alert'){ trainerEvent.phase='talk'; trainerEvent.until=now+1700; return; }
+    const tr=trainerEvent.tr;
+    trainerEvent=null;
+    startTrainerBattle({id:tr.id,name:tr.name,title:'Trainer',team:tr.team,prize:tr.prize,kind:tr.kind,lose:tr.lose});
+  }
+
   function gameLoop(ts){
     if(!canvas)return;
     animFrame=requestAnimationFrame(gameLoop);
+    const dt=lastFrameTs?Math.min(0.05,(ts-lastFrameTs)/1000):0.016;
+    lastFrameTs=ts;
     if(battle||gymDialogOpen)return;
+    if(!player)return;
+    if(trainerEvent){ stepTrainerEvent(); player.moving=false; drawOverworld(dt,ts); return; }
     const up=keys.ArrowUp||keys.w||dpad.up, dn=keys.ArrowDown||keys.s||dpad.down;
     const lt=keys.ArrowLeft||keys.a||dpad.left, rt=keys.ArrowRight||keys.d||dpad.right;
     if(up||dn||lt||rt){
-      const nx=player.x+(rt?2:lt?-2:0), ny=player.y+(dn?2:up?-2:0);
-      const mg=3, ok=(cx,cy)=>!isSolid(Math.floor((cx+mg)/TSIZE),Math.floor((cy+10)/TSIZE))
-        &&!isSolid(Math.floor((cx+CHAR_S-mg)/TSIZE),Math.floor((cy+10)/TSIZE))
-        &&!isSolid(Math.floor((cx+mg)/TSIZE),Math.floor((cy+CHAR_S-1)/TSIZE))
-        &&!isSolid(Math.floor((cx+CHAR_S-mg)/TSIZE),Math.floor((cy+CHAR_S-1)/TSIZE));
-      if(ok(nx,ny)){ player.x=Math.max(0,Math.min(nx,MAP_W*TSIZE-CHAR_S)); player.y=Math.max(0,Math.min(ny,MAP_H*TSIZE-CHAR_S)); }
-      else if((lt||rt)&&ok(nx,player.y)) player.x=Math.max(0,Math.min(nx,MAP_W*TSIZE-CHAR_S));
-      else if((up||dn)&&ok(player.x,ny)) player.y=Math.max(0,Math.min(ny,MAP_H*TSIZE-CHAR_S));
+      player.dir=facingFrom(up,dn,lt,rt);
+      movePlayer(dt,up,dn,lt,rt);
       player.moving=true; player.frame=Math.floor(ts/160)%4;
       if(Date.now()-moveThrottle>150){
         moveThrottle=Date.now();
@@ -2045,9 +2698,11 @@ const pokemonModule = (() => {
         checkPokeCenter(ptx,pty);
         checkWarp(ptx,pty);
         checkGymLeader(ptx,pty);
+        checkTrainerSight(ptx,pty);
       }
     } else { player.moving=false; }
-    drawOverworld();
+    if(artReady&&team.length) updateFollower(dt);
+    drawOverworld(dt,ts);
   }
 
   /* ── SHOP ── */
@@ -2195,11 +2850,8 @@ const pokemonModule = (() => {
         const sp=SP[targetId];
         mon.name=sp.name;
         mon.types=sp.types;
-        mon.maxHp=Math.floor(sp.hp*mon.level/50+10);
-        mon.hp=Math.min(mon.hp,mon.maxHp);
-        mon.atk=Math.floor(sp.atk*mon.level/50+5);
-        mon.def=Math.floor(sp.def*mon.level/50+5);
-        mon.spd=Math.floor(sp.spd*mon.level/50+5);
+        applyLevelUp(mon);
+        markCaught(targetId);
         picker.classList.add('hidden');
         saveGame();
         showToast(`${oldName} evolved into ${mon.name}! ✨`,'#ffd700',2500);
@@ -2275,6 +2927,7 @@ const pokemonModule = (() => {
         coins-=item.price; updateCoinsDisplay();
         mon.level++; applyLevelUp(mon);
         const evo=tryEvolve(mon);
+        if(evo) markCaught(mon.speciesId);
         if(evo) showToast(`${evo} evolved into ${mon.name}! ✨`,'#ffd700',2500);
         else showToast(`${mon.name} grew to Lv.${mon.level}! 🎉`,'#00ff88',1800);
         if(battle) updateBUI();
@@ -2391,40 +3044,75 @@ const pokemonModule = (() => {
   }, 150000);
 
   /* ── SAVE / LOAD ── */
-  function saveGame(){
-    if(!player||!team.length)return;
+  function packMon(p){ return {speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves}; }
+  function unpackMon(t){ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; }
+  function me(){ return (typeof currentUser!=='undefined'&&currentUser)?currentUser:null; }
+
+  // One save format for autosave, manual save and the cloud copy
+  function buildSave(){
     // Always save the exterior mapId so reload never strands player in an interior
     const isInt=MAPS_DATA[currentMapId]?.isInterior;
     const saveMapId=isInt?(_interiorReturn?.mapId||'starterTown'):currentMapId;
     const saveSp=MAPS_DATA[saveMapId]?.spawns?.default;
-    const savePX=isInt?(saveSp?.x??24):Math.floor(player.x/TSIZE);
-    const savePY=isInt?(saveSp?.y??35):Math.floor(player.y/TSIZE);
-    localStorage.setItem('pkSave',JSON.stringify({
-      team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
-      px:savePX, py:savePY, mapId:saveMapId,
+    return {
+      v:2, owner:me()?.username||null,
+      team:team.map(packMon), box:box.map(packMon),
+      px:isInt?(saveSp?.x??24):Math.floor(player.x/TSIZE),
+      py:isInt?(saveSp?.y??35):Math.floor(player.y/TSIZE),
+      mapId:saveMapId,
       pokeballs, coins, totalCaught, expBoostActive,
-      defeatedLeaders, badges,
-      savedAt: Date.now()
-    }));
-    syncPkStats();
+      defeatedLeaders, badges, defeatedTrainers, dexSeen, dexCaught,
+      savedAt:Date.now(),
+    };
+  }
+
+  function saveGame(){
+    if(!player||!team.length)return;
+    const sv=buildSave();
+    try{ localStorage.setItem('pkSave',JSON.stringify(sv)); }catch(e){}
+    queueCloudSave(sv);
+  }
+
+  // Keep the cloud copy fresh without writing on every step: at most every 30 s
+  function queueCloudSave(sv){
+    if(!me()) return;
+    _pendingCloudSave=sv;
+    if(_cloudSyncTimer) return;
+    _cloudSyncTimer=setTimeout(flushCloudSave,Math.max(0,30000-(Date.now()-lastCloudSync)));
+  }
+  function flushCloudSave(){
+    if(_cloudSyncTimer){ clearTimeout(_cloudSyncTimer); _cloudSyncTimer=null; }
+    const sv=_pendingCloudSave; _pendingCloudSave=null;
+    if(!sv) return Promise.resolve(null);
+    lastCloudSync=Date.now();
+    return syncPkSave(sv);
   }
 
   function restoreFromSaveObject(sv){
     if(!sv||!sv.team||!sv.team.length)return false;
-    team=sv.team.map(t=>{ const m=mkMon(t.speciesId,t.level,t.xp); m.hp=t.hp; m.maxHp=t.maxHp; m.moves=t.moves||m.moves; return m; });
+    team=sv.team.filter(t=>SP[t.speciesId]).map(unpackMon);
+    box=(sv.box||[]).filter(t=>SP[t.speciesId]).map(unpackMon);
+    if(!team.length&&box.length) team=box.splice(0,1);
+    if(!team.length) return false;
+    if(team.length>PARTY_MAX) box.push(...team.splice(PARTY_MAX));   // older saves had no limit
     pokeballs=sv.pokeballs??5;
     coins=sv.coins??0;
     totalCaught=sv.totalCaught??team.length;
     expBoostActive=sv.expBoostActive??false;
     defeatedLeaders=sv.defeatedLeaders||[];
     badges=sv.badges||[];
+    defeatedTrainers=sv.defeatedTrainers||[];
+    dexSeen=Array.isArray(sv.dexSeen)?sv.dexSeen.filter(id=>SP[id]):[];
+    dexCaught=Array.isArray(sv.dexCaught)?sv.dexCaught.filter(id=>SP[id]):[];
+    [...team,...box].forEach(m=>markCaught(m.speciesId));
 
     // Load zone first (backward compat: old saves without mapId land in starterTown)
-    loadZone(sv.mapId||'starterTown');
+    loadZone(MAPS_DATA[sv.mapId]&&!MAPS_DATA[sv.mapId].isInterior?sv.mapId:'starterTown');
     const defSpawn=MAPS_DATA[currentMapId].spawns.default;
     const spx=sv.px||defSpawn.x, spy=sv.py||defSpawn.y;
     player={x:spx*TSIZE, y:spy*TSIZE, dir:'down',moving:false,frame:0};
-    if(isSolid(spx,spy)){ player.x=defSpawn.x*TSIZE; player.y=defSpawn.y*TSIZE; }
+    if(isSolid(spx,spy)||trainerAt(spx,spy)){ player.x=defSpawn.x*TSIZE; player.y=defSpawn.y*TSIZE; }
+    resetFollower();
 
     // ── Offline PP regen ──
     // Cap at 40 ticks (~100 minutes) so ultra-long offline sessions still top off PP
@@ -2440,31 +3128,15 @@ const pokemonModule = (() => {
     return true;
   }
 
-  /* ── LEADERBOARD SYNC — returns null on success, error string on failure ── */
-  async function syncPkStats(){
-    if(!currentUser||!team.length) return null;
-    try{
-      const totalLevels=team.reduce((s,m)=>s+m.level,0);
-      const {error}=await sb.from('pokemon_saves').upsert({
-        username:currentUser.username,
-        pokemon_count:team.length,
-        total_levels:totalLevels,
-        updated_at:new Date().toISOString()
-      },{onConflict:'username'});
-      return error ? error.message : null;
-    }catch(e){ return e.message; }
-  }
-
-  /* ── FULL SAVE SYNC — stores pkSave object to pk_save jsonb ── */
+  /* ── FULL SAVE SYNC — stores the save to pk_save jsonb (also feeds the leaderboard) ── */
   async function syncPkSave(sv){
-    if(!currentUser||!sv||!sv.team||!sv.team.length) return 'No save data';
+    if(!me()||!sv||!sv.team||!sv.team.length) return 'No save data';
     try{
-      const pokemonCount=sv.team.length;
-      const totalLevels=sv.team.reduce((s,m)=>s+(m.level||0),0);
+      const all=[...sv.team,...(sv.box||[])];
       const {error}=await sb.from('pokemon_saves').upsert({
-        username:currentUser.username,
-        pokemon_count:pokemonCount,
-        total_levels:totalLevels,
+        username:me().username,
+        pokemon_count:all.length,
+        total_levels:sv.team.reduce((s,m)=>s+(m.level||0),0),
         pk_save:sv,
         updated_at:new Date().toISOString()
       },{onConflict:'username'});
@@ -2472,26 +3144,31 @@ const pokemonModule = (() => {
     }catch(e){ return e.message; }
   }
 
-  function loadGame(){
-    try{
-      const raw=localStorage.getItem('pkSave'); if(!raw)return false;
-      const sv=JSON.parse(raw);
-      return restoreFromSaveObject(sv);
-    }catch(e){return false;}
+  function readLocalSave(){
+    try{ const raw=localStorage.getItem('pkSave'); return raw?JSON.parse(raw):null; }catch(e){ return null; }
   }
 
-  async function loadRemoteGame(){
-    if(!currentUser) return false;
+  async function fetchRemoteSave(){
+    if(!me()) return null;
     try{
       const {data,error}=await sb.from('pokemon_saves')
         .select('pk_save')
-        .eq('username', currentUser.username)
+        .eq('username', me().username)
         .maybeSingle();
-      if(error||!data) return false;
-      return restoreFromSaveObject(data.pk_save);
-    }catch(e){
-      return false;
-    }
+      if(error||!data||!data.pk_save) return null;
+      return data.pk_save;
+    }catch(e){ return null; }
+  }
+
+  // Pick the right save: the newer of cloud and this device's copy, but never another user's
+  function chooseSave(local,remote){
+    const user=me()?.username;
+    if(!user) return local;
+    const localMine=local&&local.owner===user?local:null;
+    const localUnowned=local&&!local.owner?local:null;   // saves from before owner tagging
+    if(remote&&localMine) return (localMine.savedAt||0)>(remote.savedAt||0)?localMine:remote;
+    if(remote) return remote;
+    return localMine||localUnowned;
   }
 
   /* ── D-PAD ── */
@@ -2515,10 +3192,73 @@ const pokemonModule = (() => {
     Object.entries(SP).filter(([,s])=>s.starter).forEach(([id,s])=>{
       const c=document.createElement('div'); c.className='pk-starter-card';
       c.innerHTML=`<div class="pk-starter-art">${pokemonSpriteImg(id,'pk-starter-img',true)}</div><div class="pk-starter-name">${s.name}</div><div class="pk-starter-type">${s.types.join(' / ')}</div>`;
-      c.onclick=()=>{ team=[mkMon(id,5)]; loadZone('starterTown'); const _sp=MAPS_DATA.starterTown.spawns.default; player={x:_sp.x*TSIZE,y:_sp.y*TSIZE,dir:'down',moving:false,frame:0}; modal.classList.add('hidden'); saveGame(); };
+      c.dataset.sid=id;
+      c.onclick=()=>{ team=[mkMon(id,5)]; markCaught(id); loadZone('starterTown'); const _sp=MAPS_DATA.starterTown.spawns.default; player={x:_sp.x*TSIZE,y:_sp.y*TSIZE,dir:'down',moving:false,frame:0}; resetFollower(); modal.classList.add('hidden'); playCry(s.dexId); saveGame(); };
       grid.appendChild(c);
     });
     modal.classList.remove('hidden');
+    // Swap in the Blender hero renders once the art manifest is known
+    const A=window.PKArt;
+    if(A) A.load([]).then(()=>{
+      grid.querySelectorAll('.pk-starter-card').forEach(card=>{
+        const key='hero_'+card.dataset.sid, img=card.querySelector('img');
+        if(img&&A.info(key)){ img.onerror=null; img.src=A.url(key); img.classList.add('pk-starter-hero'); }
+      });
+    });
+  }
+
+  /* ── POKÉDEX / PARTY / BOX SCREEN ── */
+  let dexTab='party';
+  function renderDexTab(tab){
+    dexTab=tab||'party';
+    const grid=document.getElementById('pk-dex-grid');
+    const sub=document.getElementById('pk-dex-subtitle');
+    if(!grid) return;
+    ['party','box','dex'].forEach(t=>{
+      const b=document.getElementById(`pk-dex-tab-${t}`);
+      if(b){ b.classList.toggle('active',t===dexTab); b.setAttribute('aria-selected',String(t===dexTab)); }
+    });
+    const esc=window.escapeHTML||(v=>String(v));
+    const tc=TYPE_COLORS;
+    const card=(mon,actions)=>{
+      const spec=SP[mon.speciesId]||{};
+      const typeBadges=(mon.types||spec.types||[]).map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#aaa'}">${t}</span>`).join('');
+      return `<div class="pk-dex-card" data-sid="${esc(mon.speciesId)}">
+          <img src="${spriteUrl(mon.speciesId)}" alt="${esc(mon.name)}" loading="lazy" onerror="this.style.display='none'">
+          <div class="pk-dex-name">${esc(mon.name)}</div>
+          <div class="pk-dex-level">Lv. ${mon.level}</div>
+          <div class="pk-dex-types">${typeBadges}</div>
+          <div class="pk-dex-stats">HP ${Math.max(0,mon.hp)}/${mon.maxHp}<br>Atk ${mon.atk} Def ${mon.def}<br>Spd ${mon.spd}</div>
+          ${actions}
+        </div>`;
+    };
+    if(dexTab==='party'){
+      if(!team.length){ grid.innerHTML='<p class="pk-dex-empty">No Pokémon yet — choose a starter first!</p>'; if(sub) sub.textContent=''; return; }
+      if(sub) sub.textContent=`Party: ${team.length}/${PARTY_MAX} · Box: ${box.length}`;
+      grid.innerHTML=team.map((m,i)=>card(m,team.length>1?`<button type="button" class="pk-dex-action" onclick="event.stopPropagation();window.pokemonModule._toBox(${i})">→ Box</button>`:'')).join('');
+    } else if(dexTab==='box'){
+      if(sub) sub.textContent=`Box: ${box.length} Pokémon · Party: ${team.length}/${PARTY_MAX}`;
+      grid.innerHTML=box.length
+        ? box.map((m,i)=>card(m,`<button type="button" class="pk-dex-action" onclick="event.stopPropagation();window.pokemonModule._fromBox(${i})">→ Party</button>`)).join('')
+        : '<p class="pk-dex-empty">Your Box is empty. Pokémon you catch while your party is full go here.</p>';
+    } else {
+      const all=Object.keys(SP).sort((a,b)=>(SP[a].dexId||0)-(SP[b].dexId||0));
+      if(sub) sub.textContent=`Seen ${dexSeen.length} · Caught ${dexCaught.length} / ${all.length}`;
+      grid.innerHTML=all.map(id=>{
+        const sp=SP[id], caught=dexCaught.includes(id), seen=caught||dexSeen.includes(id);
+        const num='#'+String(sp.dexId||0).padStart(3,'0');
+        return `<div class="pk-dex-card pk-dex-entry ${caught?'caught':seen?'seen':'unseen'}" data-sid="${esc(id)}">
+            <img src="${spriteUrl(id)}" alt="${seen?esc(sp.name):'Unknown Pokémon'}" loading="lazy" onerror="this.style.display='none'">
+            <div class="pk-dex-num">${num}${caught?' <span class="pk-dex-ball" title="Caught">●</span>':''}</div>
+            <div class="pk-dex-name">${seen?esc(sp.name):'???'}</div>
+          </div>`;
+      }).join('');
+    }
+    grid.querySelectorAll('.pk-dex-card').forEach(c=>{
+      const sid=c.dataset.sid;
+      if(c.classList.contains('unseen')) return;
+      c.onclick=()=>window.pokemonModule.showDexDetail(sid);
+    });
   }
 
   /* ── PUBLIC API ── */
@@ -2542,12 +3282,32 @@ const pokemonModule = (() => {
         }
         const cw=Math.round(800*sc), ch=Math.round(560*sc);
         canvas.style.width=cw+'px'; canvas.style.height=ch+'px';
+        // Backing store at up to 2× so the 3D art stays sharp on phone screens
+        const dpr=Math.min(3,window.devicePixelRatio||1);
+        const want=Math.max(1,Math.min(2,Math.round(cw*dpr/VIEW_W*2)/2));
+        if(want!==RS||canvas.width!==VIEW_W*want){
+          RS=want; canvas.width=VIEW_W*RS; canvas.height=VIEW_H*RS;
+          if(artReady&&ground&&ground.scale!==RS) buildWorld();
+        }
         const screen=canvas.parentElement;
         if(screen){screen.style.width=cw+'px';screen.style.height=ch+'px';}
         const btl=document.getElementById('pk-battle');
         if(btl) btl.style.transform=`translate(-50%,-50%) scale(${sc})`;
       };
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
+      lastFrameTs=0; camReady=false;
+      if(window.PKArt){
+        if(!ambience) ambience=window.PKArt.createAmbience();
+        if(!artReady){
+          window.PKArt.init().then(ok=>{
+            if(!ok) return;
+            artReady=true;
+            canvas?.classList.add('pk-hd');
+            buildWorld();
+            if(player) resetFollower();
+          });
+        } else { canvas.classList.add('pk-hd'); buildWorld(); }
+      }
       if(!worldMap) loadZone('starterTown');
       const finishInit = ()=>{
         updateCoinsDisplay();
@@ -2563,26 +3323,18 @@ const pokemonModule = (() => {
       (async ()=>{
         // If logged in, always prefer the cloud save (prevents "PC overwrote mobile with older localStorage").
         // If cloud is missing, fall back to local.
-        let used=false;
-        if(currentUser){
-          const remoteOk=await loadRemoteGame();
-          if(bootId!==_bootId) return;
-          if(remoteOk) used=true;
-          else {
-            const localOk=loadGame();
-            if(bootId!==_bootId) return;
-            used=localOk;
-          }
-        } else {
-          const localOk=loadGame();
-          if(bootId!==_bootId) return;
-          used=localOk;
-        }
+        const local=readLocalSave();
+        const remote=me()?await fetchRemoteSave():null;
+        if(bootId!==_bootId) return;
+        const pick=chooseSave(local,remote);
+        let used=Boolean(pick&&restoreFromSaveObject(pick));
+        if(used&&pick===local&&remote&&me()) queueCloudSave(buildSave());   // this device was ahead: update the cloud
 
         if(!used){
           loadZone('starterTown');
           const sp=MAPS_DATA.starterTown.spawns.default;
           player={x:sp.x*TSIZE,y:sp.y*TSIZE,dir:'down',moving:false,frame:0};
+          team=[]; box=[]; dexSeen=[]; dexCaught=[]; defeatedTrainers=[];
           showStarterModal();
         }
         if(bootId!==_bootId) return;
@@ -2595,7 +3347,7 @@ const pokemonModule = (() => {
       if(_kdown){document.removeEventListener('keydown',_kdown);_kdown=null;}
       if(_kup){document.removeEventListener('keyup',_kup);_kup=null;}
       if(canvas&&canvas._pkResize)window.removeEventListener('resize',canvas._pkResize);
-      saveGame(); canvas=null; ctx=null; battle=null;
+      saveGame(); flushCloudSave(); canvas=null; ctx=null; battle=null; trainerEvent=null;
       Object.keys(keys).forEach(k=>keys[k]=false);
       dpad={up:false,down:false,left:false,right:false};
     },
@@ -2614,17 +3366,20 @@ const pokemonModule = (() => {
           // Caught!
           const caught=mkMon(e.speciesId,e.level,e.xp);
           caught.hp=Math.max(1,e.hp); // keep current HP
-          team.push(caught);
+          const toBox=team.length>=PARTY_MAX;
+          if(toBox) box.push(caught); else team.push(caught);
           totalCaught++;
+          markCaught(e.speciesId);
+          animSprite('enemy','pk-caught');
           const catchCoins=20+e.level*4+Math.floor((SP[e.speciesId]?.xpY||50)*0.8);
           coins+=catchCoins; updateCoinsDisplay();
-          setLog(`${e.name} was caught!`,`+${catchCoins}💰`);
+          setLog(`${e.name} was caught!`,toBox?`Party full — sent to the Box. +${catchCoins}💰`:`+${catchCoins}💰`);
           setTimeout(()=>{ closeBattle(); showToast(`🎉 Caught ${e.name}! +${catchCoins}💰`,'#ffd700',2800); },1400);
         } else {
           setLog(`${e.name} broke free!`,`Balls left: ${pokeballs}`);
           // Enemy gets a counter-attack
           setTimeout(async()=>{
-            const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+            const emv=chooseEnemyMove(e,p);
             await execMove(e,p,emv);
             if(p.hp<=0)endBattle(); else enableBtns(true);
           },900);
@@ -2633,51 +3388,47 @@ const pokemonModule = (() => {
     },
     tryRun(){
       if(!battle||battleLocked)return;
+      if(battle.type==='trainer'&&!battle.leaderId){ setLog("You can't run from a trainer battle!",''); return; }
       const {pm:p,em:e}=battle;
       const chance=Math.min(0.95,0.5+(p.spd-e.spd)/512);
       if(Math.random()<chance){ setLog('Got away safely!',''); setTimeout(closeBattle,1000); }
       else {
         setLog("Couldn't get away!",''); enableBtns(false);
         setTimeout(async()=>{
-          const emv=e.moves[Math.floor(Math.random()*e.moves.length)];
+          const emv=chooseEnemyMove(e,p);
           await execMove(e,p,emv); if(p.hp<=0)endBattle(); else enableBtns(true);
         },600);
       }
     },
     dismissBlackout(){
+      if(!battle&&document.getElementById('pk-blackout')?.classList.contains('hidden')) return;   // already handled
       team.forEach(m=>{ m.hp=Math.max(1,Math.floor(m.maxHp/2)); });
+      _interiorReturn=null;
+      loadZone('starterTown');
       const _dsp=MAPS_DATA.starterTown.spawns.default; player={x:_dsp.x*TSIZE,y:_dsp.y*TSIZE,dir:'down',moving:false,frame:0};
+      resetFollower();
       saveGame(); closeBattle();
     },
     toggleDex(){
       const ov=document.getElementById('pk-dex-overlay');
       if(!ov)return;
-      const open=ov.classList.toggle('hidden');
-      if(!open){ // opened (hidden removed = now visible)
-        const grid=document.getElementById('pk-dex-grid');
-        const sub=document.getElementById('pk-dex-subtitle');
-        if(!grid)return;
-        grid.innerHTML='';
-        if(!team.length){ grid.innerHTML='<p style="color:#888;padding:20px;font-family:\'Exo 2\',sans-serif">No Pokémon yet — choose a starter first!</p>'; return; }
-        sub.textContent=`Party: ${team.length} Pokémon`;
-        team.forEach(mon=>{
-          const spec=SP[mon.speciesId]||{};
-          const card=document.createElement('div');
-          card.className='pk-dex-card';
-          const tc=TYPE_COLORS;
-          const typeBadges=(mon.types||spec.types||[]).map(t=>`<span class="pk-dex-type" style="background:${tc[t]||'#aaa'}">${t}</span>`).join('');
-          card.innerHTML=`
-            <img src="${spriteUrl(mon.speciesId)}" alt="${mon.name}" onerror="this.style.display='none'">
-            <div class="pk-dex-name">${mon.name}</div>
-            <div class="pk-dex-level">Lv. ${mon.level}</div>
-            <div class="pk-dex-types">${typeBadges}</div>
-            <div class="pk-dex-stats">HP ${mon.hp}/${mon.maxHp}<br>Atk ${mon.atk} Def ${mon.def}<br>Spd ${mon.spd}</div>
-            <div style="font-size:0.65rem;color:#777;margin-top:2px;font-family:'Exo 2',sans-serif">Tap for details</div>
-          `;
-          card.onclick=()=>window.pokemonModule.showDexDetail(mon.speciesId);
-          grid.appendChild(card);
-        });
-      }
+      const nowHidden=ov.classList.toggle('hidden');
+      if(!nowHidden) renderDexTab(dexTab);
+    },
+    showDexTab(tab){ renderDexTab(tab); },
+    _toBox(idx){
+      if(battle){ showToast('Not during a battle!','#ff6b6b',1800); return; }
+      if(team.length<=1){ showToast('You need at least one Pokémon in your party.','#ff6b6b',2000); return; }
+      const [mon]=team.splice(idx,1); if(!mon) return;
+      box.push(mon); saveGame(); renderDexTab('party');
+      showToast(`${mon.name} was sent to the Box.`,'#00d4ff',1800);
+    },
+    _fromBox(idx){
+      if(battle){ showToast('Not during a battle!','#ff6b6b',1800); return; }
+      if(team.length>=PARTY_MAX){ showToast('Party is full — send one to the Box first.','#ff6b6b',2200); return; }
+      const [mon]=box.splice(idx,1); if(!mon) return;
+      team.push(mon); saveGame(); renderDexTab('box');
+      showToast(`${mon.name} joined your party!`,'#00ff88',1800);
     },
     async showLeaderboard(tab='caught'){
       const ov=document.getElementById('pk-lb-overlay');
@@ -2711,7 +3462,7 @@ const pokemonModule = (() => {
           const val=tab==='caught'?row.pokemon_count:row.total_levels;
           return `<div class="pk-lb-row${isMe?' pk-lb-me':''}">
             <span class="pk-lb-rank ${rankClass}">${rankIcon}</span>
-            <span class="pk-lb-name">${row.username}${isMe?'<span class="pk-lb-you">(you)</span>':''}</span>
+            <span class="pk-lb-name">${(window.escapeHTML||String)(row.username)}${isMe?'<span class="pk-lb-you">(you)</span>':''}</span>
             <span class="pk-lb-val">${val}<span>${label}</span></span>
           </div>`;
         }).join('');
@@ -2746,6 +3497,7 @@ const pokemonModule = (() => {
       coins-=price; updateCoinsDisplay();
       const newMon=mkMon(sid,5);
       team.push(newMon);
+      markCaught(sid);
       saveGame();
       showToast(`${newMon.name} joined your party! ✨`,'#ffd700',2500);
       playCry(SP[sid]?.dexId);
@@ -2787,7 +3539,8 @@ const pokemonModule = (() => {
       },1800);
     },
     showDexDetail(speciesId){
-      const mon=team.find(m=>m.speciesId===speciesId)||{speciesId,level:1,hp:0,maxHp:0,atk:0,def:0,spd:0,types:SP[speciesId]?.types||[]};
+      const owned=team.find(m=>m.speciesId===speciesId)||box.find(m=>m.speciesId===speciesId)||null;
+      const mon=owned||{speciesId,level:1,hp:0,maxHp:0,atk:0,def:0,spd:0,types:SP[speciesId]?.types||[]};
       const sp=SP[speciesId]; if(!sp)return;
       const types=mon.types||sp.types||[];
       // Derive advantages and counters from TYPE_EFF
@@ -2846,7 +3599,7 @@ const pokemonModule = (() => {
           <div class="pk-dex-detail-info">
             <div class="pk-dex-detail-name">${sp.name}</div>
             <div class="pk-dex-detail-type-row">${typeBadges}</div>
-            <div style="font-size:0.75rem;color:#aaa;margin-top:4px;font-family:'Exo 2',sans-serif">Lv.${mon.level} · HP ${mon.hp}/${mon.maxHp}</div>
+            <div style="font-size:0.75rem;color:#aaa;margin-top:4px;font-family:'Exo 2',sans-serif">${owned?`Lv.${mon.level} · HP ${mon.hp}/${mon.maxHp}`:(dexCaught.includes(speciesId)?'Caught before · not with you now':'Not caught yet')}</div>
           </div>
         </div>
         <div class="pk-dex-detail-section">
@@ -2871,24 +3624,32 @@ const pokemonModule = (() => {
     },
     async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
-      // Save locally first (instant), then upload the same blob to Supabase.
-      const sv={
-        team:team.map(p=>({speciesId:p.speciesId,level:p.level,hp:p.hp,maxHp:p.maxHp,xp:p.xp,xpToNext:p.xpToNext,moves:p.moves})),
-        px:Math.floor(player.x/TSIZE), py:Math.floor(player.y/TSIZE),
-        pokeballs, coins, totalCaught, expBoostActive,
-        savedAt: Date.now()
-      };
-      localStorage.setItem('pkSave',JSON.stringify(sv));
-
-      if(!currentUser){
+      // Save locally first (instant), then upload the same save to Supabase.
+      const sv=buildSave();
+      try{ localStorage.setItem('pkSave',JSON.stringify(sv)); }catch(e){}
+      if(!me()){
         showToast('Saved locally ✓ (log in to sync cloud progress)','#ffbb00',2800);
         return;
       }
-
+      if(_cloudSyncTimer){ clearTimeout(_cloudSyncTimer); _cloudSyncTimer=null; }
+      _pendingCloudSave=null; lastCloudSync=Date.now();
       showToast('Saving to cloud...','#00d4ff',1000);
       const err=await syncPkSave(sv);
       if(err===null) showToast('Saved to cloud! 💾','#00ff88',2200);
       else showToast('Saved locally ✓ — cloud error: '+err,'#ff9900',5000);
+    },
+    // Read-only state snapshot + test helper (used by automated browser tests)
+    _debug(){
+      return { px:player?Math.floor(player.x/TSIZE):null, py:player?player.y:null, dir:player?.dir||null, mapId:currentMapId,
+        returnMap:_interiorReturn?.mapId||null, battle:Boolean(battle), battleLocked, trainerEvent:Boolean(trainerEvent),
+        team:team.length, box:box.length, defeatedTrainers:[...defeatedTrainers], badges:[...badges], artReady, RS,
+        partner:{x:Math.round(partner.x),y:Math.round(partner.y),dir:partner.dir} };
+    },
+    _teleport(mapId,tx,ty){
+      if(!player||battle||!MAPS_DATA[mapId]||MAPS_DATA[mapId].isInterior) return false;
+      _interiorReturn=null; loadZone(mapId);
+      player.x=tx*TSIZE; player.y=ty*TSIZE; resetFollower();
+      return true;
     },
     toggleLandscape(){
       const isLm=document.body.classList.toggle('pk-lm');

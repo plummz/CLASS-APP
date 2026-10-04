@@ -1,1 +1,32 @@
 /* Social Media Pages styles will move here as the shared stylesheet is reduced. */
+
+/* Embedded page: the status bar sits above the frame so it's visible on phones */
+.social-embed-status { margin: 0 auto 12px; }
+.social-embed-frame { min-height: 0; }
+.social-embed-frame.hidden, .social-embed-blocked.hidden { display: none; }
+.social-embed-blocked {
+  width: min(100%, 540px);
+  margin: 8px auto 0;
+  padding: 28px 22px;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(8,12,30,0.78);
+  color: rgba(255,255,255,0.8);
+}
+.social-blocked-icon {
+  width: 64px; height: 64px; margin: 0 auto 14px;
+  display: grid; place-items: center;
+  border-radius: 18px; background: #1877f2; color: #fff;
+  font: 900 38px/1 Arial, sans-serif;
+}
+.social-embed-blocked h3 { margin: 0 0 8px; color: #fff; font-size: 18px; }
+.social-embed-blocked p { margin: 0 0 18px; font-size: 14px; line-height: 1.45; }
+.social-blocked-btn {
+  display: inline-block; padding: 12px 20px; border-radius: 12px;
+  background: #1877f2; color: #fff; font-weight: 800; text-decoration: none;
+}
+body.light-mode .social-embed-blocked { background: rgba(255,255,255,0.85); color: #334155; border-color: rgba(0,0,0,0.1); }
+body.light-mode .social-embed-blocked h3 { color: #0f172a; }
+#social-embed-frame { min-height: 0; }

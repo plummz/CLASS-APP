@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.88-20261004-social-pages';
+const CACHE_VERSION = 'v1.5.89-20261004-music-background';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=127',
+  '/index.html?v=128',
   '/style.css?v=42',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -50,8 +50,8 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=3',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=15',
-  '/script.js?v=123',
+  '/features/updates/changelog.js?v=16',
+  '/script.js?v=124',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
   '/features/personal-tools/personal-tools.css?v=1',

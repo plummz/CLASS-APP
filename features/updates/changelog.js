@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.9.20';
+const APP_VERSION = '1.9.21';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.21',
+    date: 'October 4, 2026',
+    title: 'Music Keeps Playing in the Background',
+    summary: 'Songs from the Music Hub keep playing while you use other pages — even while picking a file to upload on the Reviewers page.',
+    bullets: [
+      'Fixed: On phones and in the Android app, music stopped when the file picker opened or the app went to the background. Songs now play as a normal audio stream that keeps going.',
+      'Improved: The speaker animation still moves to the music on phones.',
+      'Improved: Music counts as media playback on iPhone, so it continues with the screen locked.',
+      'Improved: If the connection drops mid-song, the song reloads once and continues from the same spot.',
+      'Note: Music still pauses for phone calls and other system interruptions.',
+    ]
+  },
   {
     version: '1.9.20',
     date: 'October 4, 2026',

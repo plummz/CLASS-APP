@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.9.21';
+const APP_VERSION = '1.9.22';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.22',
+    date: 'October 4, 2026',
+    title: 'Layout and Readability Fixes',
+    summary: 'Cleaner Pokémon controls, a compact music button in games, readable light mode, and a tidier AI page.',
+    bullets: [
+      'Fixed: Pokémon buttons (Pokédex, Leaderboard, Save, Shop, Heal, Expand) now sit in one row at the bottom instead of piling up in a column.',
+      'Improved: Landscape mode in Pokémon goes full screen, and the buttons move to a column on the right.',
+      'Improved: While playing a game, the music player shrinks to one small button at the top right.',
+      'Fixed: Sidebar text is readable in light mode.',
+      'Fixed: Cards on the AI page have even spacing.',
+    ]
+  },
   {
     version: '1.9.21',
     date: 'October 4, 2026',

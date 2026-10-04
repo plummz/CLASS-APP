@@ -1028,3 +1028,63 @@ body.pk-lm .pk-return-btn {
 .pk-starter-hero { image-rendering: auto !important; object-fit: contain; }
 /* The coin counter would sit on top of the enemy's name during battles */
 .pk-screen:has(.pk-battle:not(.hidden)) .pk-coin-display { display: none; }
+
+/* ══ Toolbar: all game buttons in one tidy row (v1.9.22) ══ */
+.pk-toolbar {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  pointer-events: none;
+}
+.pk-toolbar > * { pointer-events: auto; }
+.pk-toolbar .pk-return-btn,
+.pk-toolbar .pk-dex-fab, .pk-toolbar .pk-lb-fab, .pk-toolbar .pk-save-fab,
+.pk-toolbar .pk-shop-fab, .pk-toolbar .pk-heal-fab, .pk-toolbar .pk-landscape-fab {
+  position: static !important;
+  inset: auto !important;
+  margin: 0 !important;
+  transform: none;
+}
+.pk-toolbar .pk-dex-fab, .pk-toolbar .pk-lb-fab, .pk-toolbar .pk-save-fab,
+.pk-toolbar .pk-shop-fab, .pk-toolbar .pk-heal-fab, .pk-toolbar .pk-landscape-fab {
+  width: 46px !important; height: 46px !important; font-size: 20px;
+}
+.pk-toolbar .pk-return-btn { height: 46px; padding: 0 16px; }
+.pk-heal-wrap { position: relative; display: inline-flex; }
+.pk-heal-wrap .pk-heal-cooldown { position: absolute !important; top: -8px; right: -8px; left: auto; bottom: auto; }
+/* Landscape: buttons become a column on the right edge */
+body.pk-lm .pk-toolbar {
+  position: fixed;
+  left: auto; right: max(8px, env(safe-area-inset-right));
+  top: 8px; bottom: 8px;
+  z-index: 10000;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
+  padding: 0;
+  gap: 8px;
+}
+body.pk-lm .pk-toolbar .pk-return-btn { height: 40px; padding: 0 10px; font-size: 0.72rem; }
+body.pk-lm .pk-toolbar .pk-dex-fab, body.pk-lm .pk-toolbar .pk-lb-fab, body.pk-lm .pk-toolbar .pk-save-fab,
+body.pk-lm .pk-toolbar .pk-shop-fab, body.pk-lm .pk-toolbar .pk-heal-fab, body.pk-lm .pk-toolbar .pk-landscape-fab {
+  width: 40px !important; height: 40px !important; font-size: 17px;
+}
+/* Phone held upright but landscape mode on (the phone refused to rotate): turn the game sideways ourselves */
+@media (orientation: portrait) {
+  body.pk-lm .pk-wrapper {
+    top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important;
+    width: 100vh; height: 100vw;
+    transform: translateX(100vw) rotate(90deg);
+    transform-origin: top left;
+  }
+  body.pk-lm .pk-toolbar {
+    position: absolute; top: 8px; bottom: 8px; right: 8px;
+  }
+}

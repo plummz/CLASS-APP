@@ -1706,6 +1706,33 @@ let analyser = null;
 let source = null;
 let visualizerFrame = 0;
 
+// Phones and tablets (and the Android app) suspend the browser's audio engine whenever the
+// app goes to the background — e.g. while the file picker is open for an upload on the
+// Reviewers page. A song routed through that engine for the visualizer would go silent.
+// So on touch devices the song stays a plain audio stream (which keeps playing in the
+// background) and the speaker animation runs on a simulated spectrum instead.
+const USE_LIVE_ANALYSER = (() => {
+    try {
+        const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        const mobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+        const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        return !(coarse || mobileUA || iPadOS);
+    } catch (_) { return false; }
+})();
+
+// Smooth, beat-like fake spectrum driven by the song's own clock, so it pauses with the music.
+function fillSimulatedSpectrum(arr, audioElement) {
+    const t = audioElement.currentTime || 0;
+    const beat = Math.pow(Math.max(0, Math.sin(t * Math.PI * 2 * 1.05)), 8);
+    const swell = 0.75 + 0.25 * Math.sin(t * 0.7);
+    for (let i = 0; i < arr.length; i++) {
+        const fall = 1 - i / arr.length;
+        const wobble = 0.55 + 0.45 * Math.sin(t * (2.1 + i * 0.07) + i * 0.6);
+        const kick = i < 10 ? beat * 0.9 : beat * 0.25;
+        arr[i] = Math.min(255, Math.round(255 * swell * (0.18 + 0.5 * fall * wobble + kick * fall)));
+    }
+}
+
 // Match the canvas buffer to its on-screen size so the speaker isn't blurry on phones
 function sizeVisualizerCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
@@ -1719,7 +1746,7 @@ function sizeVisualizerCanvas(canvas) {
 // Restart the speaker animation when returning to the Music page while a song plays
 window.resumeBlockVisualizer = function() {
     const player = document.getElementById('audio-player');
-    if (player && !player.paused && audioCtx && !visualizerFrame) requestAnimationFrame(() => window.startBlockVisualizer(player));
+    if (player && !player.paused && (audioCtx || !USE_LIVE_ANALYSER) && !visualizerFrame) requestAnimationFrame(() => window.startBlockVisualizer(player));
 };
 
 window.startBlockVisualizer = (audioElement) => {
@@ -1727,18 +1754,19 @@ window.startBlockVisualizer = (audioElement) => {
     if (!canvas || !audioElement) return;
     const ctx = canvas.getContext('2d');
 
-    try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            source = audioCtx.createMediaElementSource(audioElement);
-            source.connect(analyser);
-            analyser.connect(audioCtx.destination);
+    if (USE_LIVE_ANALYSER) {
+        try {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                source = audioCtx.createMediaElementSource(audioElement);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        } catch (error) {
+            console.warn('Live visualizer unavailable, using the simulated one:', error);
         }
-        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-    } catch (error) {
-        console.warn('Visualizer unavailable:', error);
-        return;
     }
 
     // Only one drawing loop at a time; every play event used to start another one
@@ -1746,8 +1774,8 @@ window.startBlockVisualizer = (audioElement) => {
     visualizerFrame = 0;
     sizeVisualizerCanvas(canvas);
 
-    analyser.fftSize = 256;
-    const bufferLength = analyser.frequencyBinCount; // 128
+    if (analyser) analyser.fftSize = 256;
+    const bufferLength = analyser ? analyser.frequencyBinCount : 128;
     const dataArray = new Uint8Array(bufferLength);
 
     function draw() {
@@ -1757,7 +1785,8 @@ window.startBlockVisualizer = (audioElement) => {
             return;
         }
         visualizerFrame = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
+        if (analyser) analyser.getByteFrequencyData(dataArray);
+        else fillSimulatedSpectrum(dataArray, audioElement);
 
         const W = canvas.width, H = canvas.height;
         const cx = W / 2, cy = H / 2;
@@ -1911,6 +1940,8 @@ window.playOrOpenFileAPI = async function(url, name, skipIndexUpdate = false, fo
         }
         
         if(player) {
+            // Treat this as media playback, so it keeps going in the background and with the silent switch on (Safari 17+)
+            try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
             player.src = fullUrl;
             player.loop = false;
             player.play().catch(e => console.warn('Autoplay blocked:', e));
@@ -4593,7 +4624,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const player = document.getElementById('audio-player');
   if(player) player.addEventListener('ended', handleAudioEnded);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) window.resumeBlockVisualizer?.(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    // A desktop browser may have suspended the visualizer's audio engine: wake it so the song stays audible
+    if (audioCtx && audioCtx.state !== 'running' && player && !player.paused) audioCtx.resume().catch(() => {});
+    window.resumeBlockVisualizer?.();
+  });
+  if (player) {
+    // If the connection drops mid-song (common while the phone is busy in another app),
+    // reload once and continue from the same spot instead of going silent.
+    player.addEventListener('error', () => {
+      if (!player.src || player.dataset.retried === '1') return;
+      player.dataset.retried = '1';
+      const resumeAt = player.currentTime || 0;
+      player.addEventListener('loadedmetadata', () => {
+        try { player.currentTime = resumeAt; } catch (_) {}
+        player.play().catch(() => {});
+      }, { once: true });
+      player.load();
+    });
+    player.addEventListener('playing', () => { delete player.dataset.retried; });
+  }
   window.addEventListener('resize', () => {
     const canvas = document.getElementById('block-canvas');
     if (canvas && currentPage === 'music') sizeVisualizerCanvas(canvas);

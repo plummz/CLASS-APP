@@ -1,26 +1,44 @@
 // ═══════════════════════════════════════════════════════════
-// PERSONALIZATION - Module (page-selection-first UI)
+// PERSONALIZATION - Module
+// Theme (dark / light / match device), accent colour, and per-page or app-wide backgrounds.
+// Backgrounds are stored in localStorage 'customPageBgs' (read by applyPageBackground in
+// script.js); '*' is the app-wide background, used by any page without its own.
 // ═══════════════════════════════════════════════════════════
 
 window.personalizationModule = {
-  // null = show page selector; set to page id = show that page's backgrounds
+  // null = show the overview; a page id ('*' = all pages) = show that page's backgrounds
   activePage: null,
+  activeCategory: 'Featured',
 
   pages: [
-    { id: 'games',          label: 'Games',           icon: '🎮' },
-    { id: 'personal-tools', label: 'Personal Tools',  icon: '🧰' },
-    { id: 'alarm',          label: 'Alarm Clock',     icon: '⏰' },
-    { id: 'notepad',        label: 'Notepad',         icon: '📝' },
-    { id: 'calculator',     label: 'Calculator',      icon: '🔢' },
-    { id: 'lobby',          label: 'Lobby',           icon: '🏠' },
-    { id: 'chat',           label: 'Chat',            icon: '💬' },
-    { id: 'music',          label: 'Music',           icon: '🎵' },
-    { id: 'announcement',   label: 'Announcements',   icon: '📢' },
-    { id: 'first',          label: 'First Semester',  icon: '📚' },
-    { id: 'second',         label: 'Second Semester', icon: '📖' },
+    { id: 'announcement',    label: 'Announcements',       icon: '📢' },
+    { id: 'first',           label: '1st Year · 1st Sem',  icon: '📚' },
+    { id: 'second',          label: '1st Year · 2nd Sem',  icon: '📖' },
+    { id: 'y2first',         label: '2nd Year · 1st Sem',  icon: '📚' },
+    { id: 'y2second',        label: '2nd Year · 2nd Sem',  icon: '📖' },
+    { id: 'y3first',         label: '3rd Year · 1st Sem',  icon: '📚' },
+    { id: 'y3second',        label: '3rd Year · 2nd Sem',  icon: '📖' },
+    { id: 'y4first',         label: '4th Year · 1st Sem',  icon: '📚' },
+    { id: 'y4second',        label: '4th Year · 2nd Sem',  icon: '📖' },
+    { id: 'reviewers',       label: 'Reviewers',           icon: '🧠' },
+    { id: 'file-summarizer', label: 'File Summarizer',     icon: '📄' },
+    { id: 'ai',              label: 'AI Assistants',       icon: '🤖' },
+    { id: 'chat',            label: 'Chat',                icon: '💬' },
+    { id: 'calendar',        label: 'Calendar',            icon: '📅' },
+    { id: 'music',           label: 'Music',               icon: '🎵' },
+    { id: 'events',          label: 'Event Pictures',      icon: '🖼️' },
+    { id: 'random',          label: 'Random Pictures',     icon: '📸' },
+    { id: 'users',           label: 'User Directory',      icon: '👥' },
+    { id: 'personal-tools',  label: 'Personal Tools',      icon: '🧰' },
+    { id: 'notepad',         label: 'Notepad',             icon: '🗒️' },
+    { id: 'alarm',           label: 'Alarm Clock',         icon: '⏰' },
+    { id: 'calculator',      label: 'Calculator',          icon: '🔢' },
+    { id: 'games',           label: 'Arcade',              icon: '🎮' },
   ],
 
-  // 10 premium coded backgrounds — improved quality
+  accents: ['#00d4ff', '#00ff88', '#a855f7', '#ff4fa3', '#ffb020', '#ff5d5d', '#38bdf8', '#facc15'],
+
+  // Featured coded backgrounds (shown first)
   codedBackgrounds: [
     ['neon-aurora',     'Neon Aurora',
       'radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,255,180,.32), transparent), radial-gradient(ellipse 60% 60% at 80% 90%, rgba(88,101,242,.36), transparent), linear-gradient(160deg,#020b18 0%,#0a0022 60%,#001f1a 100%)'],
@@ -44,36 +62,41 @@ window.personalizationModule = {
       'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(99,179,237,.2), transparent), radial-gradient(ellipse 60% 60% at 80% 90%, rgba(147,51,234,.16), transparent), radial-gradient(circle at 20% 50%, rgba(0,255,200,.1), transparent 40%), linear-gradient(160deg,#040c14,#0a0020)'],
   ],
 
-  // 5 live animated backgrounds
+  // Featured live animated backgrounds
   liveBackgrounds: [
-    {
-      id: 'aurora-cyan',  label: 'Aurora Waves',
-      background: 'radial-gradient(ellipse 90% 40% at 50% 0%, rgba(0,255,180,.28), transparent), radial-gradient(ellipse 60% 50% at 80% 60%, rgba(88,101,242,.34), transparent), linear-gradient(160deg,#021118,#130025)',
-      motion: 'motion-pan'
-    },
-    {
-      id: 'space-vortex', label: 'Space Vortex',
-      background: 'conic-gradient(from 90deg at 50% 50%, #020617, #312e81, #0891b2, #020617, #4c1d95, #020617)',
-      motion: 'motion-spin'
-    },
-    {
-      id: 'ocean-pulse',  label: 'Ocean Pulse',
-      background: 'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(0,212,255,.42), transparent), linear-gradient(180deg,#001018,#000510)',
-      motion: 'motion-wave'
-    },
-    {
-      id: 'cyber-rain',   label: 'Cyber Rain',
-      background: 'repeating-linear-gradient(90deg, rgba(0,212,255,.05) 0 2px, transparent 2px 38px), radial-gradient(circle at 80% 25%, rgba(0,255,136,.22), transparent 28%), linear-gradient(135deg,#020617,#08111f)',
-      motion: 'motion-scan'
-    },
-    {
-      id: 'cosmic-class', label: 'Cosmic Nebula',
-      background: 'radial-gradient(ellipse 70% 60% at 15% 20%, rgba(147,51,234,.42), transparent), radial-gradient(circle at 80% 20%, rgba(199,125,255,.32), transparent 30%), linear-gradient(135deg,#040214,#15002a)',
-      motion: 'motion-spin'
-    },
+    { id: 'aurora-cyan',  label: 'Aurora Waves', motion: 'motion-pan',
+      background: 'radial-gradient(ellipse 90% 40% at 50% 0%, rgba(0,255,180,.28), transparent), radial-gradient(ellipse 60% 50% at 80% 60%, rgba(88,101,242,.34), transparent), linear-gradient(160deg,#021118,#130025)' },
+    { id: 'space-vortex', label: 'Space Vortex', motion: 'motion-spin',
+      background: 'conic-gradient(from 90deg at 50% 50%, #020617, #312e81, #0891b2, #020617, #4c1d95, #020617)' },
+    { id: 'ocean-pulse',  label: 'Ocean Pulse', motion: 'motion-wave',
+      background: 'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(0,212,255,.42), transparent), linear-gradient(180deg,#001018,#000510)' },
+    { id: 'cyber-rain',   label: 'Cyber Rain', motion: 'motion-scan',
+      background: 'repeating-linear-gradient(90deg, rgba(0,212,255,.05) 0 2px, transparent 2px 38px), radial-gradient(circle at 80% 25%, rgba(0,255,136,.22), transparent 28%), linear-gradient(135deg,#020617,#08111f)' },
+    { id: 'cosmic-class', label: 'Cosmic Nebula', motion: 'motion-spin',
+      background: 'radial-gradient(ellipse 70% 60% at 15% 20%, rgba(147,51,234,.42), transparent), radial-gradient(circle at 80% 20%, rgba(199,125,255,.32), transparent 30%), linear-gradient(135deg,#040214,#15002a)' },
   ],
 
   selectedBackgrounds: {},
+
+  // One catalogue: featured + live + the categorised presets defined in script.js
+  getCatalog: function() {
+    if (this._catalog) return this._catalog;
+    const items = [];
+    const seen = new Set();
+    const add = (item) => { if (!seen.has(item.key)) { seen.add(item.key); items.push(item); } };
+    this.codedBackgrounds.forEach(([id, title, background]) =>
+      add({ key: `coded-${id}`, title, category: 'Featured', bg: { type: 'coded', background, title } }));
+    this.liveBackgrounds.forEach((b) =>
+      add({ key: `live-${b.id}`, title: b.label, category: 'Live', bg: { type: 'animated', background: b.background, motion: b.motion, title: b.label } }));
+    const animated = typeof ANIMATED_BACKGROUND_PRESETS !== 'undefined' ? ANIMATED_BACKGROUND_PRESETS : [];
+    animated.forEach((b) =>
+      add({ key: `live-${b.id}`, title: b.title, category: 'Live', bg: { type: 'animated', background: b.background, motion: b.motion, title: b.title } }));
+    const coded = typeof CODED_BACKGROUND_PRESETS !== 'undefined' ? CODED_BACKGROUND_PRESETS : [];
+    coded.forEach((b) =>
+      add({ key: `preset-${b.id}`, title: b.title, category: b.category || 'More', bg: { type: 'coded', background: b.background, title: b.title } }));
+    this._catalog = items;
+    return items;
+  },
 
   init: function() {
     this.activePage = null;
@@ -87,6 +110,13 @@ window.personalizationModule = {
       const saved = localStorage.getItem('personalization-backgrounds');
       this.selectedBackgrounds = saved ? JSON.parse(saved) : {};
     } catch(e) { this.selectedBackgrounds = {}; }
+    // Photos used to be stored twice (here and in customPageBgs), which filled storage.
+    // Keep only a marker here; the photo itself lives in customPageBgs.
+    let slimmed = false;
+    Object.values(this.selectedBackgrounds).forEach((sel) => {
+      if (sel?.type === 'custom' && sel.value) { delete sel.value; slimmed = true; }
+    });
+    if (slimmed) this.saveSettings();
   },
 
   saveSettings: function() {
@@ -95,22 +125,31 @@ window.personalizationModule = {
     } catch(e) {}
   },
 
-  saveToMainBgs: function(pageId, bg) {
-    try {
-      if (window.customPageBgs) {
-        if (bg) window.customPageBgs[pageId] = bg;
-        else delete window.customPageBgs[pageId];
-      }
-      const stored = JSON.parse(localStorage.getItem('customPageBgs') || '{}');
-      if (bg) stored[pageId] = bg;
-      else delete stored[pageId];
-      localStorage.setItem('customPageBgs', JSON.stringify(stored));
-    } catch(e) {}
+  readStoredBgs: function() {
+    try { return JSON.parse(localStorage.getItem('customPageBgs') || '{}') || {}; } catch (_) { return {}; }
   },
 
+  // Returns false when the browser refused to store it (storage full)
+  saveToMainBgs: function(pageId, bg) {
+    const stored = this.readStoredBgs();
+    if (bg) stored[pageId] = bg;
+    else delete stored[pageId];
+    try {
+      localStorage.setItem('customPageBgs', JSON.stringify(stored));
+    } catch (e) {
+      return false;
+    }
+    if (window.customPageBgs) {
+      if (bg) window.customPageBgs[pageId] = bg;
+      else delete window.customPageBgs[pageId];
+    }
+    return true;
+  },
+
+  // Older versions saved selections here without writing customPageBgs; carry them over once
   syncToMainBgs: function() {
     try {
-      const stored = JSON.parse(localStorage.getItem('customPageBgs') || '{}');
+      const stored = this.readStoredBgs();
       let changed = false;
       Object.entries(this.selectedBackgrounds).forEach(([pageId, sel]) => {
         if (stored[pageId]) return;
@@ -126,14 +165,40 @@ window.personalizationModule = {
 
   buildMainBg: function(sel) {
     if (!sel) return null;
-    if (sel.type === 'coded')  return { type: 'coded', background: sel.value, title: sel.id };
+    if (sel.type === 'coded' && sel.value) return { type: 'coded', background: sel.value, title: sel.id };
     if (sel.type === 'live') {
-      const live = this.liveBackgrounds.find(b => b.id === sel.value);
-      if (!live) return null;
-      return { type: 'animated', background: live.background, motion: live.motion, title: live.label };
+      const key = String(sel.id || '').startsWith('live-') ? sel.id : `live-${sel.value}`;
+      const live = this.getCatalog().find((item) => item.key === key);
+      return live ? live.bg : null;
     }
-    if (sel.type === 'custom') return { type: 'image', url: sel.value, title: 'Custom Upload' };
     return null;
+  },
+
+  refreshCurrentPageBackground: function() {
+    try { if (typeof applyPageBackground === 'function') applyPageBackground(); } catch (_) {}
+  },
+
+  // ── Theme ─────────────────────────────────────────────────
+
+  getThemeMode: function() {
+    try { return localStorage.getItem('themeMode') || 'dark'; } catch (_) { return 'dark'; }
+  },
+
+  getAccent: function() {
+    try { return localStorage.getItem('accentColor') || '#00d4ff'; } catch (_) { return '#00d4ff'; }
+  },
+
+  setTheme: function(mode) {
+    if (typeof window.setThemeMode === 'function') window.setThemeMode(mode);
+    this.render();
+  },
+
+  setAccent: function(color) {
+    if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+    if (typeof window.setAccentColor === 'function') window.setAccentColor(color);
+    const picker = document.getElementById('accent-picker');
+    if (picker) picker.value = color;
+    this.render();
   },
 
   // ── Render ────────────────────────────────────────────────
@@ -141,24 +206,31 @@ window.personalizationModule = {
   render: function() {
     const page = document.getElementById('page-personalization');
     if (!page) return;
-
-    if (this.activePage === null) {
-      this.renderPageSelector(page);
-    } else {
-      this.renderPageEditor(page, this.activePage);
-    }
+    if (this.activePage === null) this.renderPageSelector(page);
+    else this.renderPageEditor(page, this.activePage);
   },
 
   renderPageSelector: function(page) {
-    const cards = this.pages.map(p => {
+    const esc = window.escapeHTML || ((v) => String(v ?? ''));
+    const mode = this.getThemeMode();
+    const accent = this.getAccent();
+    const themeBtn = (value, label) => `
+      <button type="button" class="pz-seg-btn ${mode === value ? 'active' : ''}" aria-pressed="${mode === value}"
+              onclick="personalizationModule.setTheme('${value}')">${label}</button>`;
+    const swatches = this.accents.map((c) => `
+      <button type="button" class="pz-swatch ${c.toLowerCase() === accent.toLowerCase() ? 'active' : ''}"
+              style="--swatch:${c}" aria-label="Accent ${c}" onclick="personalizationModule.setAccent('${c}')"></button>`).join('');
+
+    const allBg = !!this.selectedBackgrounds['*'];
+    const cards = this.pages.map((p) => {
       const hasBg = !!this.selectedBackgrounds[p.id];
       return `
-        <div class="pz-page-card ${hasBg ? 'has-bg' : ''}"
+        <button type="button" class="pz-page-card ${hasBg ? 'has-bg' : ''}"
              onclick="personalizationModule.selectPage('${p.id}')">
           <span class="pz-page-icon">${p.icon}</span>
-          <span class="pz-page-label">${p.label}</span>
-          ${hasBg ? '<span class="pz-page-dot"></span>' : ''}
-        </div>
+          <span class="pz-page-label">${esc(p.label)}</span>
+          ${hasBg ? '<span class="pz-page-dot" aria-label="Has its own background"></span>' : ''}
+        </button>
       `;
     }).join('');
 
@@ -168,76 +240,90 @@ window.personalizationModule = {
         <h1 class="tool-page-title">Personalization</h1>
       </div>
       <div class="pz-container">
-        <p class="pz-hint">Choose a page to customize its background.</p>
+        <div class="pz-section-title">Theme</div>
+        <div class="pz-theme-card">
+          <div class="pz-seg" role="group" aria-label="Theme">
+            ${themeBtn('dark', '🌙 Dark')}${themeBtn('light', '☀️ Light')}${themeBtn('system', '📱 Match device')}
+          </div>
+          <div class="pz-accent-row">
+            <span class="pz-accent-label">Accent colour</span>
+            <div class="pz-swatches">${swatches}
+              <label class="pz-swatch pz-swatch-custom" title="Custom colour">
+                <input type="color" value="${esc(accent)}" aria-label="Custom accent colour"
+                       onchange="personalizationModule.setAccent(this.value)">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="pz-section-title" style="margin-top:24px;">Backgrounds</div>
+        <button type="button" class="pz-all-card ${allBg ? 'has-bg' : ''}" onclick="personalizationModule.selectPage('*')">
+          <span class="pz-page-icon">🖼️</span>
+          <span>
+            <strong>All pages</strong>
+            <small>${allBg ? 'Set. Pages with their own background keep it.' : 'One background for the whole app'}</small>
+          </span>
+        </button>
+        <p class="pz-hint">Or choose a single page:</p>
         <div class="pz-page-grid">${cards}</div>
       </div>
     `;
   },
 
   renderPageEditor: function(page, pageId) {
-    const pageInfo = this.pages.find(p => p.id === pageId);
+    const esc = window.escapeHTML || ((v) => String(v ?? ''));
+    const isAll = pageId === '*';
+    const pageInfo = isAll ? { icon: '🖼️', label: 'All pages' } : this.pages.find((p) => p.id === pageId);
     const currentBg = this.selectedBackgrounds[pageId];
+    const catalog = this.getCatalog();
+    const categories = [...new Set(catalog.map((item) => item.category))].concat('Your photo');
+    if (!categories.includes(this.activeCategory)) this.activeCategory = 'Featured';
+    const chips = categories.map((cat) => `
+      <button type="button" class="pz-chip ${cat === this.activeCategory ? 'active' : ''}" role="tab"
+              aria-selected="${cat === this.activeCategory}"
+              onclick="personalizationModule.setCategory('${esc(cat)}')">${esc(cat)}</button>`).join('');
 
-    const codedHtml = this.codedBackgrounds.map(bg => {
-      const bgId = `coded-${bg[0]}`;
-      const isSelected = currentBg?.id === bgId;
-      const escapedGrad = bg[2].replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      return `
-        <div class="bg-option ${isSelected ? 'selected' : ''}"
-             style="background: ${bg[2]};"
-             onclick="personalizationModule.selectBackground('${pageId}', '${bgId}', '${bg[0]}', 'coded', '${escapedGrad}')"
-             title="${bg[1]}">
-          <div class="bg-label">${bg[1]}</div>
-        </div>
-      `;
-    }).join('');
-
-    const liveHtml = this.liveBackgrounds.map(bg => {
-      const bgId = `live-${bg.id}`;
-      const isSelected = currentBg?.id === bgId;
-      return `
-        <div class="live-bg-option ${isSelected ? 'selected' : ''}"
-             style="background: ${bg.background};"
-             onclick="personalizationModule.selectBackground('${pageId}', '${bgId}', '${bg.id}', 'live', null)"
-             title="${bg.label}">
-          <div class="bg-label">${bg.label}</div>
-        </div>
-      `;
-    }).join('');
-
-    const customHtml = currentBg?.type === 'custom' ? `
-      <div class="bg-preview">
-        <img src="${currentBg.value}" class="bg-preview-img" alt="Custom background">
-        <button class="preview-remove-btn" onclick="personalizationModule.removeCustomBackground('${pageId}')">Remove Custom</button>
-      </div>
-    ` : '';
+    let body;
+    if (this.activeCategory === 'Your photo') {
+      const stored = this.readStoredBgs()[pageId];
+      const photo = currentBg?.type === 'custom' && stored?.url ? stored.url : '';
+      body = `
+        <div class="upload-bg-section">
+          <label class="upload-bg-label">Use your own photo</label>
+          <input type="file" class="upload-bg-input" accept="image/*" id="pz-upload-input"
+                 onchange="personalizationModule.uploadBackground('${esc(pageId)}')">
+          <button type="button" class="upload-bg-button" onclick="document.getElementById('pz-upload-input').click()">📁 Choose Image</button>
+          <p class="pz-hint" id="pz-upload-status" role="status" aria-live="polite">Large photos are resized so they fit on your device.</p>
+          ${photo ? `<div class="bg-preview"><img src="${esc(photo)}" class="bg-preview-img" alt="Current background photo"></div>` : ''}
+        </div>`;
+    } else {
+      const items = catalog.filter((item) => item.category === this.activeCategory);
+      body = `<div class="background-grid">${items.map((item) => {
+        const selected = currentBg?.id === item.key;
+        const isLive = item.bg.type === 'animated';
+        return `
+          <button type="button" class="${isLive ? 'live-bg-option' : 'bg-option'} ${selected ? 'selected' : ''}"
+               style="background: ${esc(item.bg.background)};" aria-pressed="${selected}"
+               onclick="personalizationModule.choose('${esc(pageId)}', '${esc(item.key)}')" title="${esc(item.title)}">
+            <div class="bg-label">${isLive ? '✦ ' : ''}${esc(item.title)}</div>
+          </button>`;
+      }).join('')}</div>`;
+    }
 
     page.innerHTML = `
       <div class="tool-page-header">
         <button class="tool-back-btn" onclick="personalizationModule.goBackToSelector()">← Pages</button>
-        <h1 class="tool-page-title">${pageInfo?.icon || ''} ${pageInfo?.label || pageId}</h1>
+        <span class="pz-title-icon" aria-hidden="true">${pageInfo?.icon || ''}</span>
+        <h1 class="tool-page-title">${esc(pageInfo?.label || pageId)}</h1>
       </div>
       <div class="pz-container">
-        <div class="pz-section-title">Coded Backgrounds</div>
-        <div class="background-grid">${codedHtml}</div>
-
-        <div class="pz-section-title" style="margin-top:24px;">Live Animated</div>
-        <div class="live-bg-grid">${liveHtml}</div>
-
-        <div class="upload-bg-section" style="margin-top:24px;">
-          <label class="upload-bg-label">Upload Custom Image</label>
-          <input type="file" class="upload-bg-input" accept="image/*" id="upload-${pageId}"
-                 onchange="personalizationModule.uploadBackground('${pageId}')">
-          <button class="upload-bg-button" onclick="document.getElementById('upload-${pageId}').click()">
-            📁 Choose Image
-          </button>
-          ${customHtml}
-        </div>
-
+        ${isAll ? '<p class="pz-hint">Applies to every page that has no background of its own. Games keep their own look.</p>' : ''}
+        <div class="pz-chips" role="tablist" aria-label="Background categories">${chips}</div>
+        ${body}
         ${currentBg ? `
           <div style="margin-top:20px;text-align:center;">
-            <button class="preview-remove-btn" onclick="personalizationModule.removeCustomBackground('${pageId}')">
-              🗑 Clear Background for this Page
+            <button type="button" class="preview-remove-btn" onclick="personalizationModule.removeCustomBackground('${esc(pageId)}')">
+              🗑 ${isAll ? 'Remove the app-wide background' : 'Use the default background for this page'}
             </button>
           </div>
         ` : ''}
@@ -245,8 +331,16 @@ window.personalizationModule = {
     `;
   },
 
+  setCategory: function(category) {
+    this.activeCategory = category;
+    this.render();
+  },
+
   selectPage: function(pageId) {
     this.activePage = pageId;
+    const current = this.selectedBackgrounds[pageId];
+    const match = current && this.getCatalog().find((item) => item.key === current.id);
+    this.activeCategory = current?.type === 'custom' ? 'Your photo' : (match?.category || 'Featured');
     this.render();
   },
 
@@ -255,32 +349,78 @@ window.personalizationModule = {
     this.render();
   },
 
-  selectBackground: function(pageId, bgId, bgValue, type, gradient) {
-    this.selectedBackgrounds[pageId] = { id: bgId, type: type, value: type === 'coded' ? gradient : bgValue };
+  choose: function(pageId, key) {
+    const item = this.getCatalog().find((entry) => entry.key === key);
+    if (!item) return;
+    if (!this.saveToMainBgs(pageId, item.bg)) {
+      return window.customAlert?.('Could not save the background. Your browser storage is full.');
+    }
+    this.selectedBackgrounds[pageId] = item.bg.type === 'animated'
+      ? { id: key, type: 'live', value: key.replace(/^live-/, '') }
+      : { id: key, type: 'coded', value: item.bg.background };
     this.saveSettings();
-    const mainBg = this.buildMainBg(this.selectedBackgrounds[pageId]);
-    this.saveToMainBgs(pageId, mainBg);
+    this.refreshCurrentPageBackground();
     this.render();
   },
 
-  uploadBackground: function(pageId) {
-    const input = document.getElementById(`upload-${pageId}`);
-    if (!input || !input.files[0]) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      this.selectedBackgrounds[pageId] = { id: 'custom-upload', type: 'custom', value: dataUrl };
+  // Kept for older inline handlers
+  selectBackground: function(pageId, bgId) {
+    this.choose(pageId, bgId);
+  },
+
+  // Resize a photo so it fits comfortably in localStorage (about 5 MB for the whole app)
+  shrinkImage: function(file, maxSide = 1600, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not an image this browser can read.')); };
+      img.src = url;
+    });
+  },
+
+  uploadBackground: async function(pageId) {
+    const input = document.getElementById('pz-upload-input');
+    const file = input?.files?.[0];
+    if (!file) return;
+    const status = document.getElementById('pz-upload-status');
+    if (status) status.textContent = 'Preparing your photo…';
+    try {
+      let dataUrl = await this.shrinkImage(file);
+      let saved = this.saveToMainBgs(pageId, { type: 'image', url: dataUrl, title: 'Custom Upload' });
+      if (!saved) {
+        // Try once more, smaller, before giving up
+        dataUrl = await this.shrinkImage(file, 1100, 0.7);
+        saved = this.saveToMainBgs(pageId, { type: 'image', url: dataUrl, title: 'Custom Upload' });
+      }
+      if (!saved) {
+        if (status) status.textContent = 'Storage is full. Remove a photo background from another page and try again.';
+        return;
+      }
+      this.selectedBackgrounds[pageId] = { id: 'custom-upload', type: 'custom' };
       this.saveSettings();
-      this.saveToMainBgs(pageId, { type: 'image', url: dataUrl, title: 'Custom Upload' });
+      this.refreshCurrentPageBackground();
       this.render();
-    };
-    reader.readAsDataURL(input.files[0]);
+    } catch (error) {
+      if (status) status.textContent = error.message || 'Could not use that photo.';
+    } finally {
+      if (input) input.value = '';
+    }
   },
 
   removeCustomBackground: function(pageId) {
     delete this.selectedBackgrounds[pageId];
     this.saveSettings();
     this.saveToMainBgs(pageId, null);
+    this.refreshCurrentPageBackground();
     this.render();
   },
 

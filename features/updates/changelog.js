@@ -1,6 +1,33 @@
 ﻿(function () {
-const APP_VERSION = '1.9.17';
+const APP_VERSION = '1.9.18';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.18',
+    date: 'October 4, 2026',
+    title: 'Folders, Themes, Music, YouTube and Notes Upgrade',
+    summary: 'Faster, safer folders with search and sorting, a new Personalization page with light/dark/match-device themes and app-wide backgrounds, a smarter Music Hub with shuffle and an Up Next list, and more reliable Notes.',
+    bullets: [
+      'New: Search, sort (name, newest, largest, type) and file-type icons inside every folder. Your sort choice is remembered.',
+      'New: Drag files from your computer onto a folder to upload them. On phones, choosing files now uploads them straight away.',
+      'New: Personalization has a Theme section with Dark, Light and Match device, plus accent colour swatches and a custom colour.',
+      'New: One background for all pages, and the full background catalogue (IT, Anime, Space, Nature, City, Music and more) in Personalization. Every page can now have its own background, including all four school years.',
+      'New: Music Hub shuffle, an Up Next list you can tap to jump to any song, and lock-screen play, pause and seek controls.',
+      'New: YouTube keeps your search results visible while a video plays, marks the one playing, and remembers your recent searches on this device.',
+      'Improved: Photo backgrounds are resized before saving, so they no longer fail silently when the photo is large.',
+      'Improved: The music visualizer is sharp on phones and stops drawing when paused or when you leave the Music page, saving battery.',
+      'Improved: Notes opens with the editor at the top, long notes collapse with Show more, and edited notes move to the top.',
+      'Fixed (security): Folder, file, song and YouTube video names could break out of the page and run code. They are now always shown as plain text.',
+      'Fixed: Cloud notes did not appear when Notes first opened. They now load right away.',
+      'Fixed: Every note save rewrote the date of every note, so the order was wrong and saving was slow. Only changed notes are uploaded now, and offline edits sync when you reconnect.',
+      'Fixed: Blank folder names were accepted, and a name with an apostrophe showed a stray backslash when renaming.',
+      'Fixed: Opening one folder and then another quickly could show the first folder\'s files under the second folder\'s name.',
+      'Fixed: Uploaded .mp3 or .m4a files without a file type were skipped by song search and the queue.',
+      'Fixed: Software Update popups showed empty lists for recent versions, and parts of the app still reported version 1.5.69.',
+      'Fixed: Playing an uploaded song now stops a YouTube video (and the other way round), so two tracks never play at once.',
+      'Performance: Removed an outdated 93 KB copy of the changelog from script.js and an unused background presets file.',
+      'Improved: Service worker cache bumped to v1.5.86-20261004-non-game-refresh.',
+    ]
+  },
   {
     version: '1.9.17',
     date: 'October 4, 2026',

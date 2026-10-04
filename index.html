@@ -15,12 +15,12 @@
   <link rel="stylesheet" href="features/lobby/lobby.css?v=2">
   <link rel="stylesheet" href="features/chat/chat.css?v=1">
   <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
-  <link rel="stylesheet" href="features/music/music.css?v=1">
+  <link rel="stylesheet" href="features/music/music.css?v=2">
   <link rel="stylesheet" href="features/social/social.css?v=1">
   <link rel="stylesheet" href="features/users/users.css?v=1">
   <link rel="stylesheet" href="features/games/games.css?v=1">
   <link rel="stylesheet" href="features/updates/updates.css?v=1">
-  <link rel="stylesheet" href="features/folders/folders.css?v=1">
+  <link rel="stylesheet" href="features/folders/folders.css?v=2">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
   <link rel="stylesheet" href="features/pokemon/pokemon.css?v=3">
 <link rel="stylesheet" href="features/royale/royale.css?v=18">
@@ -30,10 +30,10 @@
   <link rel="stylesheet" href="features/dungeon/dungeon.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
-  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
-  <link rel="stylesheet" href="features/personal-tools/personalization.css?v=2">
+  <link rel="stylesheet" href="features/personal-tools/personalization.css?v=3">
   <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
   <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
   <link rel="manifest" href="manifest.json?v=2">
@@ -614,7 +614,7 @@
     <!-- ── YouTube Embedded Player ──────────────────────── -->
     <div class="yt-embed-section">
       <div class="yt-input-row">
-        <input type="text" id="yt-main-input"
+        <input type="search" id="yt-main-input"
           placeholder="Song name or paste YouTube URL..."
           class="yt-input"
           onkeydown="if(event.key==='Enter') handleYtInput()">
@@ -623,6 +623,8 @@
       <p class="yt-hint" id="yt-hint-text">
         Type a song name to search · or paste a YouTube URL to play instantly
       </p>
+
+      <div id="yt-recent" class="yt-recent hidden" aria-label="Recent searches"></div>
 
       <!-- Search results list -->
       <div id="yt-results" class="yt-results hidden"></div>
@@ -662,8 +664,11 @@
           <button class="btn-secondary" onclick="playPrevSong()" style="padding: 8px 12px; font-size: 12px;">⏮ Prev</button>
           <button id="btn-loop" class="btn-secondary" onclick="toggleLoop()" style="padding: 8px 12px; font-size: 12px; color: var(--neon-green); border-color: var(--neon-green);">🔁 Loop All: ON</button>
           <button id="btn-repeat" class="btn-secondary" onclick="toggleRepeat()" style="padding: 8px 12px; font-size: 12px; color: white; border-color: white;">🔂 Repeat 1: OFF</button>
+          <button id="btn-shuffle" class="btn-secondary" onclick="toggleShuffle()" aria-pressed="false" style="padding: 8px 12px; font-size: 12px; color: white; border-color: white;">🔀 Shuffle: OFF</button>
           <button class="btn-secondary" onclick="playNextSong()" style="padding: 8px 12px; font-size: 12px;">Next ⏭</button>
       </div>
+
+      <div id="music-queue" class="music-queue hidden" aria-label="Up next"></div>
 
       <div id="visualizer-container" class="visualizer-wrapper" style="margin-top: 20px; height: 250px; background: black; border-radius: 12px; overflow: hidden;">
         <canvas id="block-canvas" style="width: 100%; height: 100%;"></canvas>
@@ -1499,7 +1504,18 @@
       <div class="file-upload-area">
          <input type="file" id="file-upload-input" class="file-upload-input" multiple>
          <button id="file-upload-btn" class="btn-blue" type="button">Upload Files</button>
-         <div id="file-upload-status" class="upload-status-text"></div>
+         <div id="file-upload-status" class="upload-status-text" role="status" aria-live="polite"></div>
+         <div class="file-drop-hint">or drag files here</div>
+      </div>
+      <div class="file-toolbar">
+        <input type="search" id="file-search-input" class="file-search-input" placeholder="Search files…" aria-label="Search files in this folder" autocomplete="off" enterkeyhint="search">
+        <select id="file-sort-select" class="file-sort-select" aria-label="Sort files">
+          <option value="name">Name A–Z</option>
+          <option value="newest">Newest first</option>
+          <option value="size">Largest first</option>
+          <option value="type">File type</option>
+        </select>
+        <span id="file-count" class="file-count" aria-live="polite"></span>
       </div>
       <div id="file-list-container" class="file-list-container"></div>
     </div>
@@ -1708,8 +1724,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=12"></script>
-  <script src="script.js?v=122"></script>
+  <script src="features/updates/changelog.js?v=13"></script>
+  <script src="script.js?v=123"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1719,7 +1735,7 @@
   <script src="features/social/social.js?v=1" defer></script>
   <script src="features/users/users.js?v=1" defer></script>
   <script src="features/games/games.js?v=1" defer></script>
-  <script src="features/updates/updates.js?v=1" defer></script>
+  <script src="features/updates/updates.js?v=2" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>
   <script src="assets/js/codelab.js?v=8" defer></script>
@@ -1733,10 +1749,10 @@
   <script src="features/dungeon/dungeon.js?v=1"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=7" defer></script>
+  <script src="features/personal-tools/notepad.js?v=8" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
-  <script src="features/personal-tools/personalization.js?v=2" defer></script>
+  <script src="features/personal-tools/personalization.js?v=3" defer></script>
   <script src="features/file-summarizer/file-summarizer.js?v=11" defer></script>
   <script src="features/reviewers/reviewers.js?v=15" defer></script>
 

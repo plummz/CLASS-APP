@@ -1,0 +1,187 @@
+{
+ "hero_bulbasaur": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_a/hero_bulbasaur.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "bulbasaur"
+  },
+  "rows": 1
+ },
+ "hero_chikorita": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_a/hero_chikorita.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "chikorita"
+  },
+  "rows": 1
+ },
+ "hero_eevee": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_a/hero_eevee.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "eevee"
+  },
+  "rows": 1
+ },
+ "hero_pikachu": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_a/hero_pikachu.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "pikachu"
+  },
+  "rows": 1
+ },
+ "hero_squirtle": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_a/hero_squirtle.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "squirtle"
+  },
+  "rows": 1
+ },
+ "mon_bulbasaur": {
+  "ax": 40.0,
+  "ay": 61.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_a/mon_bulbasaur.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "bulbasaur"
+  },
+  "rows": 4
+ },
+ "mon_chikorita": {
+  "ax": 40.0,
+  "ay": 65.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_a/mon_chikorita.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "chikorita"
+  },
+  "rows": 4
+ },
+ "mon_eevee": {
+  "ax": 40.0,
+  "ay": 67.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_a/mon_eevee.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "eevee"
+  },
+  "rows": 4
+ },
+ "mon_pikachu": {
+  "ax": 40.0,
+  "ay": 71.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_a/mon_pikachu.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "pikachu"
+  },
+  "rows": 4
+ },
+ "mon_squirtle": {
+  "ax": 40.0,
+  "ay": 62.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_a/mon_squirtle.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "squirtle"
+  },
+  "rows": 4
+ }
+}

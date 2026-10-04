@@ -841,59 +841,61 @@ def build_torchic(pose):
     def col(p, n):
         z = p.z - zb
         c = ORG
-        c = mix(c, YEL, band(z, 0.385, 0.46, 0.015) * sstep(-0.05, 0.05, -p.y + 0.06))
+        c = mix(c, YEL, band(z, 0.37, 0.47, 0.015) * sstep(-0.08, 0.02, -p.y + 0.02))
         return c
 
-    hc = Vector((0, 0.0, 0.585 + zb))
+    hc = Vector((0, 0.0, 0.60 + zb))
     els = [
-        E(hc, (0.255, 0.235, 0.215)),
-        E((0, 0.02, 0.285 + zb), (0.195, 0.19, 0.19)),
-        E((0, 0.01, 0.43 + zb), (0.17, 0.16, 0.09)),
+        E(hc, (0.272, 0.248, 0.205)),
+        E((0, 0.02, 0.275 + zb), (0.178, 0.172, 0.168)),
+        E((0, 0.01, 0.43 + zb), (0.16, 0.15, 0.08)),
     ]
     for sx in (1, -1):        # tiny wings
-        els.append(E((0.185 * sx, 0.02, 0.34 + zb), (0.04, 0.075, 0.06), direction=(0, 1, -0.6), s=3.0))
+        els.append(E((0.17 * sx, 0.03, 0.33 + zb), (0.035, 0.07, 0.055), direction=(0, 1, -0.6), s=3.0))
     body = blob('tc_body', els, vc_mat('tc_vc'), paint_fn=col)
     bvh = make_bvh([body])
 
-    # yellow fluffy collar: feather tufts around the neck, pointing down and out
+    # yellow fluffy collar: feather tufts around the neck, hanging down over the chest
     ym = M('tc_yel', YEL, rough=0.5)
-    for ring, (zr, L, w) in enumerate(((0.44, 0.10, 0.045), (0.40, 0.085, 0.04))):
-        n_t = 11 if ring == 0 else 10
+    for ring, (zr, L, w) in enumerate(((0.45, 0.11, 0.05), (0.415, 0.10, 0.046))):
+        n_t = 14 if ring == 0 else 13
         for i in range(n_t):
-            az = -115 + 230 * (i + 0.5 * ring) / (n_t - 1)
-            if az > 118:
+            az = -135 + 270 * (i + 0.5 * ring) / (n_t - 1)
+            if az > 136:
                 continue
-            p, n = surf(bvh, Vector((0, 0.01, zr + zb)), sdir(az, -5))
+            p, n = surf(bvh, Vector((0, 0.01, zr + zb)), sdir(az, -8))
             out = Vector((n.x, n.y, 0)).normalized()
-            dirv = (out * 0.75 + Vector((0, 0, -0.75))).normalized()
-            ll = L * (1.15 if i % 2 == 0 else 0.85)
-            spike('tc_fl%d_%d' % (ring, i), p - dirv * 0.02, p + dirv * ll, w, ym, flat=0.45, ref=n, segs=10)
+            dirv = (out * 0.45 + Vector((0, 0, -0.9))).normalized()
+            ll = L * (1.12 if i % 2 == 0 else 0.86)
+            spike('tc_fl%d_%d' % (ring, i), p - dirv * 0.015 + n * 0.01, p + dirv * ll + n * 0.015, w, ym,
+                  flat=0.4, ref=n, segs=10)
 
-    # head crest: three yellow feathers + small orange ones at the base
-    top = surf(bvh, hc, Vector((0, 0.15, 1)))[0]
-    feathers = [  # (direction, length, half-width, plane normal)
-        (Vector((0.10, 0.55, 1.0)), 0.30, 0.055, Vector((0.8, -0.2, 0.0))),
-        (Vector((0.28, -0.25, 1.0)), 0.21, 0.045, Vector((0.7, 0.6, 0.0))),
-        (Vector((-0.30, 0.05, 1.0)), 0.17, 0.04, Vector((-0.6, 0.8, 0.0))),
+    # head crest: three broad yellow feathers + small orange ones at the base
+    top = surf(bvh, hc, Vector((0, 0.2, 1)))[0]
+    feathers = [  # (direction, length, half-width, plane normal, back curl)
+        (Vector((0.05, 0.75, 1.0)), 0.34, 0.075, Vector((0.9, -0.35, 0.0)), 0.05),
+        (Vector((0.22, -0.30, 1.0)), 0.25, 0.062, Vector((0.75, 0.55, 0.0)), -0.02),
+        (Vector((-0.32, 0.10, 1.0)), 0.20, 0.052, Vector((-0.45, -0.9, 0.0)), 0.02),
     ]
-    for i, (dv, L, w, pn) in enumerate(feathers):
+    for i, (dv, L, w, pn, cu) in enumerate(feathers):
         d = dv.normalized()
-        base = top + d * -0.02
-        pts = [base + d * (L * t) + Vector((0, 0.03 * t * t * (1 if d.y > 0 else 0.5), 0)) for t in (0, 0.2, 0.45, 0.7, 0.88, 1.0)]
-        rs = [w * f for f in (0.45, 0.9, 1.0, 0.75, 0.38, 0.02)]
-        loft('tc_cr%d' % i, pts, [(0.016, r) for r in rs], pn, mat=ym, segs=12)
+        base = top - d * 0.03
+        pts = [base + d * (L * t) + Vector((0, cu * t * t, -0.02 * t * t)) for t in (0, 0.18, 0.4, 0.62, 0.82, 0.94, 1.0)]
+        rs = [w * f for f in (0.35, 0.85, 1.0, 0.88, 0.55, 0.25, 0.02)]
+        loft('tc_cr%d' % i, pts, [(0.02, r) for r in rs], pn, mat=ym, segs=12)
     om = M('tc_org', ORG)
-    for i, dv in enumerate((Vector((0.5, -0.4, 0.7)), Vector((-0.45, -0.3, 0.75)))):
+    for i, dv in enumerate((Vector((0.55, -0.35, 0.7)), Vector((-0.5, -0.25, 0.75)), Vector((0.0, -0.6, 0.7)))):
         d = dv.normalized()
-        spike('tc_cro%d' % i, top - d * 0.01, top + d * 0.09, 0.035, om, flat=0.5, segs=10)
+        spike('tc_cro%d' % i, top - d * 0.01, top + d * 0.085, 0.04, om, flat=0.5, segs=10)
 
     # beak (pale yellow) + glossy black eyes
     bm_ = M('tc_beak', PALE, rough=0.35)
-    pb, nb = surf(bvh, hc, sdir(0, -10))
-    spike('tc_beak_u', pb - nb * 0.02, pb + nb * 0.085 + Vector((0, 0, -0.012)), 0.042, bm_, flat=0.55, ref=Z, segs=12)
-    spike('tc_beak_l', pb - nb * 0.02 + Vector((0, 0, -0.02)), pb + nb * 0.05 + Vector((0, 0, -0.03)), 0.03, bm_, flat=0.5, ref=Z, segs=12)
+    pb, nb = surf(bvh, hc, sdir(0, -12))
+    spike('tc_beak_u', pb - nb * 0.02, pb + nb * 0.095 + Vector((0, 0, -0.014)), 0.048, bm_, flat=0.55, ref=Z, segs=12)
+    spike('tc_beak_l', pb - nb * 0.02 + Vector((0, 0, -0.022)), pb + nb * 0.055 + Vector((0, 0, -0.034)), 0.034, bm_,
+          flat=0.5, ref=Z, segs=12)
     for sx in (1, -1):
-        eye('tc_e%d' % sx, bvh, hc, sdir(36 * sx, 9), 0.034, 0.048, 'black', sx=sx, bulge=0.008)
+        eye('tc_e%d' % sx, bvh, hc, sdir(37 * sx, 10), 0.037, 0.052, 'black', sx=sx, bulge=0.008)
 
     # thin legs + three forward toes and one back toe
     lm = M('tc_leg', PALE, rough=0.45)

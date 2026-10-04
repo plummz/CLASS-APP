@@ -15,6 +15,7 @@ lofted tubes or bevelled slabs; eyes, cheeks, mouths and spots are conformal dec
 projected onto the head surface. Each frame re-builds the model from pose parameters,
 so walk cycles stay perfectly consistent.
 """
+import json
 import math
 import os
 import sys
@@ -663,7 +664,7 @@ def build_pikachu(pose):
     YEL = (1.00, 0.84, 0.06)
     BRN = (0.55, 0.31, 0.13)
     BLK = (0.10, 0.08, 0.08)
-    bob = -0.015 * abs(st)
+    bob = -0.035 * abs(st)
     hz = 0.745 + bob
     H = HeadXf((0, 0.0, 0.52 + bob), tilt=0 if hero else SPRITE_TILT, yaw=0)
 
@@ -675,7 +676,7 @@ def build_pikachu(pose):
             for zc in (0.46, 0.355):
                 c = mix(c, BRN, w * band(p.z, zc - 0.021, zc + 0.021, 0.006) * sstep(0.04, 0.10, p.y))
         return c
-    fy = 0.07 * st
+    fy = 0.095 * st
     els = [
         H.ell((0, 0.00, hz), (0.29, 0.245, 0.235)),                 # head
         H.ell((0.15, -0.05, hz - 0.08), (0.13, 0.12, 0.11)),        # jowls
@@ -690,7 +691,7 @@ def build_pikachu(pose):
     head_c = H.p((0, -0.01, hz))
 
     # stubby arms with round paws
-    sw = 0.05 * st
+    sw = 0.07 * st
     if hero:
         arm_l = [(0.16, -0.05, 0.50), (0.23, -0.15, 0.46), (0.22, -0.19, 0.55)]       # bent up (own left)
         arm_r = [(-0.16, -0.05, 0.50), (-0.27, -0.10, 0.53), (-0.36, -0.12, 0.58)]   # waving out
@@ -720,7 +721,7 @@ def build_pikachu(pose):
         loft('pk_ear', pts, rad, ref=H.d((sx, 0, 0)), mat=vc_mat('pk_vc'), colors=cols)
 
     # lightning-bolt tail (bevelled slab), brown base
-    yaw = -40 + 8 * st
+    yaw = (-40 if hero else -55) + 8 * st
     U = rotz((0, 1, 0), yaw)
     Wn = U.cross(Vector((0, 0, 1))).normalized()
     spine = [(0.0, 0.0), (0.13, 0.075), (0.085, 0.175), (0.27, 0.285), (0.20, 0.41), (0.50, 0.73)]
@@ -759,10 +760,10 @@ def build_eevee(pose):
     FUR = (0.86, 0.57, 0.27)
     CRM = (0.97, 0.92, 0.70)
     DK = (0.36, 0.20, 0.10)
-    bob = -0.012 * abs(st)
-    hz, hy = 0.72 + bob, -0.11
-    H = HeadXf((0, -0.08, 0.50 + bob), tilt=0 if hero else SPRITE_TILT * 0.8)
-    lg = quad_legs(st, 0.055)
+    bob = -0.030 * abs(st)
+    hz, hy = 0.68 + bob, -0.11
+    H = HeadXf((0, -0.08, 0.46 + bob), tilt=0 if hero else SPRITE_TILT * 0.8)
+    lg = quad_legs(st, 0.085)
     vcm = vc_mat('ev_vc', rough=0.55, spec=0.3)
     fur = M('ev_fur', FUR, rough=0.55, spec=0.3)
 
@@ -771,17 +772,17 @@ def build_eevee(pose):
         H.ell((0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),    # cheeks
         H.ell((-0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),
         H.ell((0, hy - 0.13, hz - 0.075), (0.075, 0.06, 0.055), s=3),  # little muzzle
-        ell_el((0, 0.10, 0.31 + bob), (0.13, 0.22, 0.115)),            # torso
-        ell_el((0, 0.21, 0.31 + bob), (0.135, 0.10, 0.12)),            # haunch
-        ell_el((0, -0.06, 0.38 + bob), (0.11, 0.11, 0.12)),            # chest / neck
-        ell_el((0.08, 0.22, 0.25 + bob), (0.065, 0.09, 0.10)),         # thighs
-        ell_el((-0.08, 0.22, 0.25 + bob), (0.065, 0.09, 0.10)),
+        ell_el((0, 0.10, 0.27 + bob), (0.13, 0.22, 0.115)),            # torso
+        ell_el((0, 0.21, 0.27 + bob), (0.135, 0.10, 0.12)),            # haunch
+        ell_el((0, -0.06, 0.34 + bob), (0.11, 0.11, 0.12)),            # chest / neck
+        ell_el((0.08, 0.22, 0.21 + bob), (0.07, 0.09, 0.10)),          # thighs
+        ell_el((-0.08, 0.22, 0.21 + bob), (0.07, 0.09, 0.10)),
     ]
     body = blob('ev_body', els, fur)
     head_c = H.p((0, hy, hz))
 
     # cream ruff with fluffy tufts
-    rz = 0.44 + bob
+    rz = 0.40 + bob
     ruff = blob('ev_ruff', [
         ell_el((0, -0.14, rz), (0.20, 0.12, 0.115)),
         ell_el((0, -0.17, rz - 0.07), (0.14, 0.09, 0.09)),
@@ -805,27 +806,27 @@ def build_eevee(pose):
     paw_els = []
     for key, x, y in legs:
         dy = lg[key]
-        top = Vector((x, y, 0.30 + bob))
+        top = Vector((x, y, 0.26 + bob))
         foot = Vector((x * 1.05, y + dy, 0.04))
         mid = (top + foot) / 2 + Vector((0, 0.012 if y > 0 else -0.004, 0))
-        loft('ev_leg', [top, mid, foot], [(0.05, 0.05), (0.042, 0.042), (0.04, 0.04)], ref=(1, 0, 0),
+        loft('ev_leg', [top, mid, foot], [(0.054, 0.054), (0.046, 0.046), (0.044, 0.044)], ref=(1, 0, 0),
              mat=fur, segs=12)
         paw_els.append(ell_el(foot + Vector((0, -0.014, -0.008)), (0.05, 0.062, 0.034)))
     blob('ev_paws', paw_els, fur)
 
     # bushy tail with cream tip
     sway = 8 * st
-    tb = Vector((0, 0.30, 0.36 + bob))
-    tpts = [(0, 0.30, 0.36), (0.03, 0.41, 0.46), (0.06, 0.48, 0.60), (0.08, 0.49, 0.74), (0.08, 0.44, 0.87)]
+    tb = Vector((0, 0.30, 0.32 + bob))
+    tpts = [(0.0, 0.30, 0.32), (0.05, 0.40, 0.41), (0.12, 0.46, 0.53), (0.18, 0.47, 0.66), (0.21, 0.43, 0.78)]
     tpts = [rot_about(Vector(p) + Vector((0, 0, bob)), tb, 'Z', sway) for p in tpts]
     trad = [0.05, 0.10, 0.13, 0.12, 0.075]
     tail_els = [dict(t='B', c=p, r=r) for p, r in zip(tpts, trad)]
     for i in range(len(tpts) - 1):
         tail_els.append(dict(t='B', c=(tpts[i] + tpts[i + 1]) / 2, r=(trad[i] + trad[i + 1]) / 2 * 0.95))
-    tip_z = 0.73 + bob
+    tip_z = 0.66 + bob
 
     def tail_col(p, n):
-        return mix(FUR, CRM, sstep(tip_z - 0.015, tip_z + 0.015, p.z + 0.25 * (p.y - 0.44)))
+        return mix(FUR, CRM, sstep(tip_z - 0.015, tip_z + 0.015, p.z + 0.25 * (p.y - 0.44) + 0.25 * (p.x - 0.18)))
     blob('ev_tail', tail_els, vcm, paint_fn=tail_col)
 
     # big ears: dark inner, orange rim
@@ -840,15 +841,25 @@ def build_eevee(pose):
         ts = [0, 0.07, 0.16, 0.28, 0.40, 0.52, 0.64, 0.75, 0.85, 0.93, 1.0]
         w = [0.075, 0.10, 0.118, 0.12, 0.112, 0.098, 0.08, 0.06, 0.04, 0.02, 0.002]
         pts = [H.p(base + d * (L * t)) for t in ts]
-        fwd = H.d((0, -1, 0))
+        face = Vector((0, -1, 0))
+        if not hero:               # side rows: turn the ear's open face part-way to the camera
+            toward = -pose.get('away', Vector((0, 1, 0)))
+            if toward.dot(face) > -0.5:
+                face = (face + toward * 0.9).normalized()
+        fwd = H.d(face)
+        dd = H.d(d)
+        eref = fwd.cross(dd).normalized()
 
         def ear_col(i, th, off, ts=ts, fwd=fwd):
             inner = off.dot(fwd) > 0.35 and abs(math.cos(th)) < 0.80 and 0.05 < ts[i] < 0.93
             return DK if inner else FUR
 
-        def ear_shape(i, th):
-            return (1.0, 0.25 if math.sin(th) * (1 if sx > 0 else -1) < 0 else 1.0)
-        loft('ev_ear', pts, [(wi, 0.032) for wi in w], ref=H.d((sx, 0, 0)), mat=vcm, colfn=ear_col,
+        a2f = dd.cross(eref)       # loft's second axis; flatten the side that faces `fwd`
+        sgn = 1 if a2f.dot(fwd) > 0 else -1
+
+        def ear_shape(i, th, sgn=sgn):
+            return (1.0, 0.25 if math.sin(th) * sgn > 0 else 1.0)
+        loft('ev_ear', pts, [(wi, 0.032) for wi in w], ref=eref, mat=vcm, colfn=ear_col,
              shape=ear_shape, segs=20)
 
     # head-top tuft
@@ -877,10 +888,10 @@ def build_bulbasaur(pose):
     TEAL = (0.50, 0.83, 0.75)
     SPOT = (0.25, 0.55, 0.45)
     BULB = (0.36, 0.72, 0.22)
-    bob = -0.012 * abs(st)
+    bob = -0.030 * abs(st)
     H = HeadXf((0, -0.02, 0.36 + bob), tilt=0 if hero else SPRITE_TILT * 0.7)
     hz, hy = 0.42 + bob, -0.15
-    lg = quad_legs(st, 0.06)
+    lg = quad_legs(st, 0.085)
     teal = M('bs_teal', TEAL, rough=0.42, spec=0.35)
 
     els = [
@@ -916,18 +927,18 @@ def build_bulbasaur(pose):
     # the bulb: overlapping lobes twisting to a point, tilted back
     bulb = M('bs_bulb', BULB, rough=0.38, spec=0.4)
     bc = Vector((0, 0.24, 0.42 + bob))                  # centre of the bulb's footprint on the back
-    A = Vector((0, math.sin(math.radians(38)), math.cos(math.radians(38))))   # bulb axis leans back
+    A = Vector((0, math.sin(math.radians(42)), math.cos(math.radians(42))))   # bulb axis leans back
     X1 = Vector((1, 0, 0))
     Y1 = A.cross(X1).normalized()                       # points forward-up
-    tip = bc + A * 0.46
+    tip = bc + A * 0.37
     for i in range(5):
         a = math.radians(i * 72 + 36)
         radial = X1 * math.sin(a) - Y1 * math.cos(a)
-        bp = bc + radial * 0.21 + A * 0.03
+        bp = bc + radial * 0.19 + A * 0.03
         ax = tip - bp
         c = bp + ax * 0.40 + radial * 0.035
         blob('bs_lobe%d' % i, [
-            ell_el(c, (ax.length * 0.52, 0.155, 0.135), direction=ax, roll=math.degrees(a)),
+            ell_el(c, (ax.length * 0.55, 0.15, 0.125), direction=ax, roll=math.degrees(a)),
         ], bulb)
     loft('bs_tip', [tip - A * 0.10, tip - A * 0.04, tip, tip + A * 0.02 + Vector((0, 0.03, 0)),
                     tip + Vector((0, 0.07, -0.005))],
@@ -985,11 +996,11 @@ def build_squirtle(pose):
     PLATE = (0.93, 0.85, 0.60)
     SHELL = (0.58, 0.32, 0.16)
     RIM = (0.97, 0.95, 0.88)
-    bob = -0.015 * abs(st)
+    bob = -0.035 * abs(st)
     hz = 0.79 + bob
     H = HeadXf((0, 0.0, 0.58 + bob), tilt=0 if hero else SPRITE_TILT)
     blue = M('sq_blue', BLUE, rough=0.38, spec=0.4)
-    fy = 0.075 * st
+    fy = 0.10 * st
 
     els = [
         H.ell((0, -0.02, hz), (0.255, 0.235, 0.21)),                  # round head
@@ -1016,7 +1027,7 @@ def build_squirtle(pose):
          closed=True)
 
     # arms
-    sw = 0.06 * st
+    sw = 0.08 * st
     if hero:
         arm_l = [(0.16, -0.02, 0.52), (0.24, -0.12, 0.47), (0.27, -0.19, 0.52)]
         arm_r = [(-0.16, -0.02, 0.52), (-0.26, -0.07, 0.47), (-0.34, -0.11, 0.48)]
@@ -1041,12 +1052,12 @@ def build_squirtle(pose):
             p = Vector((0, 0.18 + 0.30 * u, 0.16 - 0.05 * math.sin(u * math.pi) + 0.04 * u))
         else:
             u = (t - 0.35) / 0.65
-            ang = -math.pi / 2 + u * 1.75 * math.pi
-            r = 0.135 * (1 - 0.62 * u)
+            ang = -math.pi / 2 + u * 2.05 * math.pi
+            r = 0.135 * (1 - 0.72 * u)
             cc = Vector((0, 0.48, 0.20 + 0.135))
             p = cc + Vector((0, math.cos(ang) * r, math.sin(ang) * r))
         pts.append(rot_about(p + Vector((0, 0, bob)), tb, 'Z', sway - 40))
-        rad.append(0.07 * (1 - 0.45 * t) + 0.014)
+        rad.append(0.07 * (1 - 0.55 * t) + 0.012)
     rad[-1] *= 0.6
     loft('sq_tail', pts, [(r, r) for r in rad], ref=(1, 0, 0), mat=blue, segs=14)
 
@@ -1080,10 +1091,10 @@ def build_chikorita(pose):
     LEAF = (0.42, 0.78, 0.30)
     VEIN = (0.30, 0.62, 0.22)
     BUD = (0.30, 0.62, 0.22)
-    bob = -0.012 * abs(st)
+    bob = -0.030 * abs(st)
     H = HeadXf((0, -0.04, 0.50 + bob), tilt=0 if hero else SPRITE_TILT * 0.8)
     hz = 0.69 + bob
-    lg = quad_legs(st, 0.055)
+    lg = quad_legs(st, 0.085)
     skin = M('ck_skin', BODY, rough=0.45, spec=0.32)
 
     els = [
@@ -1195,47 +1206,55 @@ def sprite_pose(step, yaw):
     return dict(step=step, yaw=yaw, away=Vector((math.sin(a), math.cos(a), 0)))
 
 
-def place_root(yaw, scale):
-    root = C.parent_all('root', [o for o in MODEL if o.parent is None])
+def place_root(yaw, scale, species=None):
+    tops = [o for o in MODEL if o.parent is None]
+    if species:                    # put the centre of the feet on the anchor
+        for o in tops:
+            o.location.y -= FOOT_CENTER_Y.get(species, 0.0)
+    root = C.parent_all('root', tops)
     root.rotation_euler = (0, 0, math.radians(yaw))
     root.scale = (scale, scale, scale)
     bpy.context.view_layer.update()
     return root
 
 
-def sprite_scale(species):
-    """Largest scale at which every row/step fits the 80x80 frame (feet at 40,70)."""
+def sprite_fit(species):
+    """Pixel extents (above / below / sideways of the feet point) over every row and step at scale 1."""
     global RES
     new_scene(FRAME, FRAME, SHEET_SAMPLES)
     RES = 0.03
-    worst = 10.0
-    fx, fy = FRAME / 2, FRAME - 10
-    margin = 2.5
+    up = down = side = 0.0
     for _, yaw in ROWS:
         for st in (-1, 0, 1):
             clear_model()
             BUILDERS[species](sprite_pose(st, yaw))
-            place_root(yaw, 1.0)
-            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0))
+            place_root(yaw, 1.0, species)
+            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0), foot_px=(FRAME / 2, FRAME / 2))
             for p in model_points(3):
                 x, y = C.to_pixel(p)
-                dx, dy = x - fx, y - fy
-                if dx > 1e-3:
-                    worst = min(worst, (FRAME - margin - fx) / dx)
-                if dx < -1e-3:
-                    worst = min(worst, (fx - margin) / -dx)
-                if dy < -1e-3:
-                    worst = min(worst, (fy - margin) / -dy)
-                if dy > 1e-3:
-                    worst = min(worst, (FRAME - margin - fy) / dy)
+                side = max(side, abs(x - FRAME / 2))
+                up = max(up, FRAME / 2 - y)
+                down = max(down, y - FRAME / 2)
     clear_model()
-    return worst
+    return up, down, side
+
+
+def sprite_layout(species):
+    """Shared base scale (so species keep their relative sizes), shrunk only if a row would
+    not fit; the feet pixel is chosen per species so every row fits the 80x80 frame."""
+    up, down, side = sprite_fit(species)
+    m = 2.0
+    s_fit = min((FRAME - 2 * m) / (up + down), (FRAME / 2 - m) / side)
+    s = min(SPRITE_BASE * SPRITE_SIZE.get(species, 1.0), s_fit)
+    foot_y = math.floor(FRAME - m - down * s)
+    foot_y = max(foot_y, math.ceil(m + up * s))
+    return s, (FRAME / 2, float(foot_y)), dict(up=up * s, down=down * s, side=side * s, fit=s_fit)
 
 
 def render_sheet(species):
     global RES, INK_DECALS, HL_SCALE
-    scale = sprite_scale(species) * SPRITE_FILL.get(species, 1.0)
-    print('[pokemon_a] %s sprite scale %.3f' % (species, scale))
+    scale, foot, info = sprite_layout(species)
+    print('[pokemon_a] %s sprite scale %.3f (fit %.3f) feet at %s' % (species, scale, info['fit'], foot))
     new_scene(FRAME, FRAME, SHEET_SAMPLES)
     RES = 0.022
     INK_DECALS = False
@@ -1249,16 +1268,17 @@ def render_sheet(species):
                 continue
             clear_model()
             BUILDERS[species](sprite_pose(st, yaw))
-            place_root(yaw, scale)
-            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0))
+            place_root(yaw, scale, species)
+            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0), foot_px=foot)
             if 'zoom' in ARGV:      # debug: same framing at 4x resolution
                 bpy.context.scene.render.resolution_x = FRAME * 4
                 bpy.context.scene.render.resolution_y = FRAME * 4
                 path = path.replace('.png', '_z.png')
             C.render(path)
-    anchor = [FRAME / 2, FRAME - 10]
     clear_model()
-    return frames, anchor, scale
+    with open(os.path.join(WORK, 'mon_' + species, 'layout.json'), 'w') as fh:
+        json.dump(dict(scale=scale, anchor=list(foot)), fh)
+    return frames, foot, scale
 
 
 def render_hero(species):
@@ -1266,10 +1286,10 @@ def render_hero(species):
     new_scene(HERO, HERO, HERO_SAMPLES, ink_thickness=1.5)
     RES = 0.009
     INK_DECALS = True
-    HL_SCALE = 0.36
+    HL_SCALE = 0.30
     clear_model()
     BUILDERS[species](dict(hero=True))
-    place_root(HERO_YAW, 1.0)
+    place_root(HERO_YAW, 1.0, species)
     old = C.ELEV_DEG
     C.ELEV_DEG = HERO_ELEV
     cam = C.camera_oblique(HERO, HERO, (0, 0, 0))
@@ -1288,7 +1308,9 @@ def render_hero(species):
     return path
 
 
-SPRITE_FILL = {}
+SPRITE_BASE = 0.70                                    # model units -> tiles for the overworld sprites
+SPRITE_SIZE = {'pikachu': 1.0, 'eevee': 1.0, 'bulbasaur': 1.12, 'squirtle': 0.97, 'chikorita': 0.95}
+FOOT_CENTER_Y = {'pikachu': 0.0, 'eevee': 0.065, 'bulbasaur': 0.10, 'squirtle': 0.0, 'chikorita': 0.05}
 
 
 def main():
@@ -1304,7 +1326,9 @@ def main():
         if sp not in BUILDERS:
             continue
         frames = [os.path.join(WORK, 'mon_' + sp, 'r%d_c%d.png' % (r, c)) for r in range(4) for c in range(3)]
-        outputs.append(dict(key='mon_' + sp, kind='sheet', frames=frames, cols=3, anchor=[FRAME / 2, FRAME - 10],
+        with open(os.path.join(WORK, 'mon_' + sp, 'layout.json')) as fh:
+            lay = json.load(fh)
+        outputs.append(dict(key='mon_' + sp, kind='sheet', frames=frames, cols=3, anchor=lay['anchor'],
                             meta=dict(rows=['down', 'left', 'right', 'up'], cols=['step-L', 'stand', 'step-R'], species=sp)))
         outputs.append(dict(key='hero_' + sp, kind='image', frames=[os.path.join(WORK, 'hero_' + sp + '.png')],
                             meta=dict(species=sp)))

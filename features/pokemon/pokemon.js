@@ -1945,6 +1945,7 @@ const pokemonModule = (() => {
     const px=Math.round(partner.x-camX), py=Math.round(partner.y-camY);
     if(!A.has(key)&&A.info(key)&&!_partnerRequested.has(key)){ _partnerRequested.add(key); A.load(key); }
     if(A.has(key)){
+      groundShadow(px,py,9);
       A.drawAnchored(ctx,key,DIR_ROW[partner.dir]*3+walkFrame(partner.moving,ts,9),px,py);
       return;
     }
@@ -1961,8 +1962,10 @@ const pokemonModule = (() => {
     ctx.restore();
   }
 
+  function groundShadow(x,y,rx){ ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(x,y-1,rx,rx*0.32,0,0,Math.PI*2); ctx.fill(); }
   function drawPlayerArt(ts){
     const f=feet();
+    groundShadow(Math.round(f.x-camX),Math.round(f.y-camY),10);
     ART().drawAnchored(ctx,'player',DIR_ROW[player.dir||'down']*3+walkFrame(player.moving,ts,8),Math.round(f.x-camX),Math.round(f.y-camY));
   }
 
@@ -1970,6 +1973,7 @@ const pokemonModule = (() => {
     const A=ART(), key=A.has(tr.kind)?tr.kind:'npc_youngster';
     const x=Math.round((tr.tx+0.5)*TSIZE-camX), y=Math.round((tr.ty+0.92)*TSIZE-camY);
     if(A.has(key)){
+      groundShadow(x,y,10);
       const e=A.info(key), rows=e.rows||1;
       A.drawAnchored(ctx,key,rows>=4?DIR_ROW[tr.dir]*(e.cols||1):0,x,y);
     } else { drawTrainerClassic(tr); return; }

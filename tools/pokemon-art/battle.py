@@ -363,8 +363,8 @@ def scene_rock(cam, E, P, avoid):
 def scene_beach(cam, E, P, avoid):
     sky((0.30, 0.62, 0.98), (0.88, 0.96, 1.0))
     ground('sand', col2=(0.96, 0.88, 0.66))
-    sea = C.plane('sea', 600, 400, (0, 260, -0.18), C.mat('sea', 'water', rough=0.15, spec=0.6))
-    C.plane('shallow', 600, 8, (0, 60, -0.2), C.mat('shallow', (0.36, 0.80, 0.86), rough=0.2, spec=0.5))
+    sea = C.plane('sea', 600, 400, (0, 260, -0.18), C.mat('sea', 'water', rough=0.45, spec=0.3))
+    C.plane('shallow', 600, 8, (0, 60, -0.2), C.mat('shallow', (0.36, 0.80, 0.86), rough=0.5, spec=0.3))
     C.plane('foam', 600, 0.6, (0, 56.2, -0.15), C.mat('foamm', 'foam', rough=0.5))
     C.plane('foam2', 600, 0.4, (0, 63.5, -0.16), C.mat('foamm', 'foam', rough=0.5))
     platform('pe', ENEMY, 'sand', 'path', 'path_dark', ring_col=(0.98, 0.90, 0.68))
@@ -382,7 +382,7 @@ def scene_beach(cam, E, P, avoid):
                      scale=(1.2, 0.35, 0.12), rot=(0, 0.35, ang), segments=12, rings=6)
     C.sphere('island', 1.0, (70, 330, -1), C.mat('isl', (0.36, 0.62, 0.42)), scale=(40, 14, 9))
     C.sphere('island2', 1.0, (-110, 380, -1), C.mat('isl2', (0.50, 0.70, 0.62)), scale=(50, 16, 11))
-    for px_, py_, ps in ((-30, 44, 1.2), (-20, 50, 1.0), (24, 47, 1.1), (36, 52, 1.3), (-8, 54, 0.9)):
+    for px_, py_, ps in ((-11, 44, 1.2), (-6.5, 50, 1.0), (14.5, 52, 1.1), (-13.5, 55, 0.9)):
         palm(px_, py_, ps)
     scatter(10, (-18, 22), (3, 30), avoid, lambda x, y, r: rock(x, y, r.uniform(0.2, 0.5), (0.80, 0.70, 0.60), 'shell'),
             seed=32)
@@ -413,11 +413,7 @@ def scene_city(cam, E, P, avoid):
         x += w + rnd.uniform(0.5, 3)
     scatter(36, (-70, 80), (72, 90), [], lambda x, y, r: tree(x, y, r.uniform(1.2, 1.6)), seed=42)
     scatter(10, (-18, 26), (10, 52), avoid, lambda x, y, r: bush(x, y, r.uniform(0.35, 0.5) * (0.6 + y / 40), 'leaf'), seed=43)
-    # flower beds
-    for col, seed in (((0.98, 0.40, 0.50), 44), ((1.0, 0.86, 0.30), 45)):
-        scatter(14, (-16, 20), (4, 28), avoid,
-                lambda x, y, r, c=col: C.sphere('fl', 0.12, (x, y, 0.0), C.mat('fl' + str(c), c), segments=8, rings=5),
-                seed=seed)
+    flowers(avoid, (-8, 12), (8, 24), n=45, seed=44)
     clouds()
 
 
@@ -425,33 +421,33 @@ def scene_gym(cam, E, P, avoid):
     sky((0.10, 0.10, 0.18), (0.16, 0.16, 0.26), light=0.35)
     ground((0.30, 0.34, 0.46), name='floor', rough=0.4)
     # arena court
-    C.plane('court', 30, 40, (3, 26, -0.24), C.mat('court', (0.86, 0.74, 0.52), rough=0.6, spec=0.3))
-    C.plane('courtline', 30.6, 40.6, (3, 26, -0.245), C.mat('cline', (0.95, 0.95, 0.98), rough=0.4))
+    C.plane('court', 30, 60, (3, 20, -0.24), C.mat('court', (0.86, 0.74, 0.52), rough=0.6, spec=0.3))
+    C.plane('courtline', 30.6, 60.6, (3, 20, -0.245), C.mat('cline', (0.95, 0.95, 0.98), rough=0.4))
     C.plane('courtmid', 30, 0.3, (3, 26, -0.235), C.mat('cline', (0.95, 0.95, 0.98)))
-    C.cylinder('courtc', 3, 0.01, (3, 26, -0.235), C.mat('cring', 'roof_red'), vertices=48)
     platform('pe', ENEMY, (0.92, 0.92, 0.96), 'roof_red', (0.30, 0.30, 0.40), ring_col='roof_red')
     platform('pp', PLAYER, (0.92, 0.92, 0.96), 'roof_blue', (0.30, 0.30, 0.40), ring_col='roof_blue')
     # stands
     for i in range(6):
-        C.box('stand', (120, 2.0, 1.4 + i * 1.6), (0, 52 + i * 2.0, (1.4 + i * 1.6) / 2 - 0.25),
+        C.box('stand', (200, 1.6, 0.6 + i * 0.55), (0, 52 + i * 1.6, (0.6 + i * 0.55) / 2 - 0.25),
               C.mat('stand%d' % (i % 2), (0.36, 0.40, 0.62) if i % 2 else (0.30, 0.34, 0.54), rough=0.6))
+    C.box('led', (200, 0.1, 0.12), (0, 51.15, 0.2), emit_mat('led', (1.0, 0.45, 0.35), 3.0))
     C.box('wall', (200, 2, 40), (0, 68, 20), C.mat('gwall', (0.22, 0.24, 0.40), rough=0.7))
-    C.box('band', (160, 0.4, 1.4), (0, 66.8, 11), emit_mat('band', (0.40, 0.80, 1.0), 2.5))
-    C.box('band2', (160, 0.4, 0.5), (0, 66.8, 13), emit_mat('band2', (1.0, 0.85, 0.40), 2.0))
+    C.box('band', (200, 0.4, 0.35), (0, 66.8, 4.0), emit_mat('band', (0.40, 0.80, 1.0), 2.5))
+    C.box('band2', (200, 0.4, 0.12), (0, 66.8, 3.6), emit_mat('band2', (1.0, 0.85, 0.40), 2.0))
     # crowd dots
     rnd = random.Random(51)
     for i in range(6):
-        for k in range(70):
-            x = -60 + k * 1.75 + rnd.uniform(-0.3, 0.3)
+        for k in range(110):
+            x = -95 + k * 1.75 + rnd.uniform(-0.3, 0.3)
             c = rnd.choice([(0.95, 0.40, 0.40), (0.40, 0.60, 0.95), (0.98, 0.86, 0.40), (0.60, 0.85, 0.50), (0.9, 0.9, 0.9)])
-            C.sphere('fan', 0.35, (x, 51.6 + i * 2.0, 1.4 + i * 1.6), C.mat('fan' + str(c), c), segments=8, rings=5)
+            C.sphere('fan', 0.3, (x, 52.2 + i * 1.6, 0.35 + i * 0.55 + 0.25), C.mat('fan' + str(c), c), segments=8, rings=5)
     # stadium lights
     lm = emit_mat('lamp', (1.0, 0.98, 0.90), 12)
     for x in (-40, -14, 20, 46):
-        C.box('rig', (8, 0.6, 2.6), (x, 64, 5.6), C.mat('rig', (0.15, 0.15, 0.20)))
+        C.box('rig', (8, 0.6, 2.2), (x, 64, 4.9), C.mat('rig', (0.15, 0.15, 0.20)))
         for j in range(3):
             for i in range(2):
-                C.sphere('lamp', 0.5, (x - 2.6 + j * 2.6, 63.5, 4.6 + i * 1.2), lm, segments=12, rings=6)
+                C.sphere('lamp', 0.5, (x - 2.6 + j * 2.6, 63.5, 4.2 + i * 0.9), lm, segments=12, rings=6)
         L = bpy.data.lights.new('spot', 'SPOT')
         L.energy = 2500
         L.spot_size = math.radians(70)
@@ -464,8 +460,8 @@ def scene_gym(cam, E, P, avoid):
 
 
 def scene_cave(cam, E, P, avoid):
-    sky((0.05, 0.05, 0.10), (0.10, 0.08, 0.16), light=0.25)
-    ground((0.30, 0.27, 0.30), col2=(0.38, 0.34, 0.38))
+    sky((0.05, 0.05, 0.10), (0.10, 0.08, 0.16), light=0.5)
+    ground((0.36, 0.32, 0.36), col2=(0.44, 0.40, 0.44))
     platform('pe', ENEMY, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
     platform('pp', PLAYER, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
     wallm = C.mat('cwall', (0.34, 0.30, 0.36), rough=0.95)
@@ -488,7 +484,7 @@ def scene_cave(cam, E, P, avoid):
     scatter(14, (-24, 34), (20, 60), avoid, lambda x, y, r: rock(x, y, r.uniform(0.15, 0.3) * (0.6 + y / 40), (0.40, 0.36, 0.40)), seed=63)
     # glowing crystals
     for col, seed in (((0.55, 0.85, 1.0), 64), ((0.85, 0.55, 1.0), 65)):
-        cm = emit_mat('crys' + str(seed), col, 1.3)
+        cm = emit_mat('crys' + str(seed), col, 0.8)
         def cr(x, y, r, cm=cm, col=col):
             for k in range(3):
                 C.cone('crys', 0.3, 0, r.uniform(0.8, 1.8), (x + k * 0.3, y, 0.4), cm,

@@ -1,0 +1,219 @@
+{
+ "bg_beach": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_beach.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_cave": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_cave.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_city": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_city.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_forest": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_forest.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_grass": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_grass.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_gym": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_gym.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ },
+ "bg_rock": {
+  "cols": 1,
+  "fh": 560,
+  "file": "battle/bg_rock.webp",
+  "frames": 1,
+  "fw": 1600,
+  "kind": "image",
+  "meta": {
+   "enemy_platform": {
+    "c": [
+     1180,
+     330
+    ],
+    "r": [
+     240,
+     60
+    ]
+   },
+   "player_platform": {
+    "c": [
+     440,
+     545
+    ],
+    "r": [
+     300,
+     72
+    ]
+   }
+  },
+  "rows": 1
+ }
+}

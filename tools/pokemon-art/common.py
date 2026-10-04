@@ -65,6 +65,7 @@ PALETTE = {
 def reset_scene():
     """Start from an empty scene (keeps scripts independent of each other)."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    _mat_cache.clear()   # materials from the previous scene are gone
     scene = bpy.context.scene
     scene.unit_settings.system = 'METRIC'
     return scene

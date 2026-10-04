@@ -1,6 +1,24 @@
 ﻿(function () {
-const APP_VERSION = '1.9.18';
+const APP_VERSION = '1.9.19';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.19',
+    date: 'October 4, 2026',
+    title: 'Pokémon World 3D',
+    summary: 'The Pokémon game gets a new 3D look made in Blender, animated 3D battle sprites, route trainers, a Coast Gym, a full Pokédex and safer saves.',
+    bullets: [
+      'New: The whole overworld is rebuilt with 3D art made in Blender — ground, trees, every building, your trainer, NPCs and all four gym leaders.',
+      'New: The 10 starters are 3D models, and your lead Pokémon now follows you around the world.',
+      'New: Battles use animated 3D-rendered sprites for all 142 Pokémon and 3D battle backgrounds for each area.',
+      'New: 7 route trainers who spot you and challenge you, and the Coast Gym so Marina can finally be battled.',
+      'New: Day and night that follow your clock, with glowing windows and street lamps, plus falling leaves, fireflies and drifting clouds.',
+      'New: Pokédex with seen/caught for all 142 species, plus Party and Box tabs. Catches beyond 6 go to the Box.',
+      'Improved: Critical hits, same-type attack bonus and smarter opponents; entry, hit and faint animations.',
+      'Improved: Smooth movement at any frame rate and a smooth camera; sharper graphics on phones.',
+      'Fixed: Cloud saves now update automatically and the newer save always wins; badges are no longer lost on manual save; each student has their own save on a shared phone.',
+      'Fixed: Blacking out outside Starter Town no longer drops you in the wrong place; cancelling Swap no longer locks the battle; trainer battles now give XP.',
+    ]
+  },
   {
     version: '1.9.18',
     date: 'October 4, 2026',

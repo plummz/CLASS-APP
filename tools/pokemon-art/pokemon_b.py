@@ -20,6 +20,7 @@ Every frame is rebuilt from pose parameters (step, hero), so the walk cycle is c
 Model space: feet centre at the origin, facing -Y (toward the camera), +X = the Pokemon's
 left (viewer's right when it faces the camera).
 """
+import json
 import math
 import os
 import random
@@ -44,6 +45,8 @@ HERO_SAMPLES = 64
 ROWS = [('down', 0.0), ('left', -90.0), ('right', 90.0), ('up', 180.0)]
 STEPS = [-1, 0, 1]        # step-L, stand, step-R
 SPRITE_TILT = 12.0        # sprites: heads look up a little so faces read from the 55 deg camera
+SPRITE_TILTS = dict(cyndaquil=4.0, totodile=12.0, torchic=10.0, treecko=12.0, mudkip=12.0)
+WALK_ROLL = dict(cyndaquil=5.0, totodile=5.0, torchic=5.0, treecko=4.0, mudkip=2.5)
 
 WORK = C.work_dir(GROUP)
 ARGV = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -290,6 +293,16 @@ def E(c, semi, direction=None, roll=0.0, s=2.0, q=None):
     elif direction is not None:
         d['q'] = q_from_x(direction, roll)
     return d
+
+
+def EB(c, semi, xdir, ydir, s=2.0):
+    """Ellipsoid whose local X axis points along xdir and local Y (orthogonalised) along ydir."""
+    x = Vector(xdir).normalized()
+    y = Vector(ydir)
+    y = (y - y.dot(x) * x).normalized()
+    zz = x.cross(y)
+    m = Matrix((x, y, zz)).transposed()
+    return E(c, semi, q=m.to_quaternion(), s=s)
 
 
 def B(c, r, s=2.0):
@@ -604,14 +617,14 @@ def build_cyndaquil(pose):
     DARK = (0.12, 0.40, 0.50)
     CRM = (0.99, 0.93, 0.62)
     SOLE = (0.72, 0.64, 0.74)
-    bob = -0.014 * abs(st)
-    feet = biped_feet(st, stride=0.06, lift=0.03)
+    bob = -0.022 * abs(st)
+    feet = biped_feet(st, stride=0.08, lift=0.045)
     zb = bob
 
     def col(p, n):
         z = p.z - zb
         # dark cap on the head + the top of the snout (boundary just above the eyes)
-        hb = piecewise(p.y, [(-0.66, 0.60), (-0.42, 0.64), (-0.24, 0.685), (-0.12, 0.74), (0.0, 0.745),
+        hb = piecewise(p.y, [(-0.66, 0.625), (-0.42, 0.66), (-0.24, 0.70), (-0.12, 0.745), (0.0, 0.75),
                              (0.08, 0.66), (0.16, 0.54)])
         d_head = sstep(-0.012, 0.012, z - hb)
         # dark back: behind a line running down the back, fading out at the hips
@@ -630,8 +643,8 @@ def build_cyndaquil(pose):
         E(hc, (0.215, 0.225, 0.18)),                           # head
         E(hc + Vector((0, 0.05, 0.02)), (0.18, 0.18, 0.155)),  # back of the head
         CAP((0, -0.17, 0.675 + zb), (0, -0.34, 0.655 + zb), 0.105, s=2.4),    # long snout
-        CAP((0, -0.34, 0.655 + zb), (0, -0.50, 0.63 + zb), 0.072, s=2.6),
-        CAP((0, -0.50, 0.63 + zb), (0, -0.60, 0.612 + zb), 0.046, s=3.0),
+        CAP((0, -0.34, 0.655 + zb), (0, -0.50, 0.638 + zb), 0.072, s=2.6),
+        CAP((0, -0.50, 0.638 + zb), (0, -0.595, 0.628 + zb), 0.036, s=3.0),
     ]
     # legs: thick short thighs + small feet
     for sx in (1, -1):
@@ -655,10 +668,10 @@ def build_cyndaquil(pose):
     # closed eyes: smiling arcs on the cream face just under the dark cap
     eyem = M('cq_eyeline', (0.10, 0.08, 0.10), rough=0.4)
     for sx in (1, -1):
-        p, n = surf(bvh, hc, sdir(55 * sx, 8))
-        k = 0.05
+        p, n = surf(bvh, hc, sdir(55 * sx if hero else 48 * sx, 8 if hero else 16))
+        k = 0.05 if hero else 0.064
         pts = [(k * math.cos(math.radians(a)), k * 0.6 * math.sin(math.radians(a)) - 0.016) for a in range(10, 171, 16)]
-        stroke('cq_eye%d' % sx, bvh, p, n, pts, 0.0085 if hero else 0.013, eyem, lift=0.002, ink=False)
+        stroke('cq_eye%d' % sx, bvh, p, n, pts, 0.0085 if hero else 0.022, eyem, lift=0.002, ink=False)
 
     # flames: a spiky burst from the back - yellow core, orange tongues
     YEL = (1.0, 0.86, 0.26)
@@ -672,21 +685,21 @@ def build_cyndaquil(pose):
     rng = random.Random(155)
     root = Vector((0, 0.02, 0.43 + zb))
     k = 0
-    for el in (-42, -24, -6, 12, 30, 48, 66):
-        for lat in (-64, -40, -16, 8, 32, 56):
-            e2 = el + rng.uniform(-7, 7)
-            l2 = lat + rng.uniform(-7, 7) + (12 if (el // 20) % 2 else 0)
+    for el in (-44, -30, -16, -2, 12, 26, 40, 54):
+        for lat in (-66, -46, -26, -6, 14, 34, 54):
+            e2 = el + rng.uniform(-6, 6)
+            l2 = lat + rng.uniform(-6, 6) + (10 if (el // 14) % 2 else 0)
             d = bdir(l2, e2)
             try:
                 p, n = surf(bvh, root, d)
             except RuntimeError:
                 continue
             # longest straight back / up-back, shorter toward the sides, top and bottom
-            L = 0.22 + 0.26 * math.cos(math.radians(e2 - 14)) ** 2
+            L = 0.20 + 0.28 * math.cos(math.radians(e2 - 8)) ** 2
             L *= 1.0 - 0.38 * (abs(l2) / 70.0) ** 1.5
-            L *= rng.uniform(0.75, 1.25)
+            L *= rng.uniform(0.6, 1.3)
             base = p - d * 0.05
-            tip = base + d * L + Vector((0, 0, 0.06 * L))
+            tip = base + d * L + Vector((0, 0, 0.08 * L))
             spike('cq_fl%d' % k, base, tip, 0.058, fm, ink=True, segs=10, colfn=fcol)
             k += 1
     pose['_tilt'] = (Vector((0, -0.02, 0.50 + zb)), 0.48 + zb, 0.60 + zb)
@@ -700,10 +713,10 @@ def build_totodile(pose):
     RED = (0.86, 0.26, 0.32)
     MOUTH = (0.55, 0.12, 0.16)
     TONGUE = (0.97, 0.52, 0.52)
-    bob = -0.014 * abs(st)
+    bob = -0.022 * abs(st)
     zb = bob
-    feet = biped_feet(st, stride=0.065, lift=0.03)
-    open_deg = 50 if hero else 22
+    feet = biped_feet(st, stride=0.085, lift=0.045)
+    open_deg = 50 if hero else 20
     up_deg = open_deg * 0.66
     dn_deg = open_deg * 0.34
     hinge = Vector((0, 0.06, 0.635 + zb))
@@ -748,8 +761,8 @@ def build_totodile(pose):
     # upper head: cranium + long wide snout + eye bumps + nostril bumps
     els += [
         E(U((0, 0.08, 0.77)), (0.185, 0.17, 0.15), q=qu),
-        E(U((0, -0.14, 0.735)), (0.17, 0.23, 0.08), q=qu),
-        E(U((0, -0.33, 0.74)), (0.115, 0.08, 0.065), q=qu, s=2.6),
+        E(U((0, -0.14, 0.735)), (0.15, 0.23, 0.08), q=qu),
+        E(U((0, -0.33, 0.74)), (0.10, 0.08, 0.065), q=qu, s=2.6),
         E(U((0.128, 0.05, 0.84)), (0.075, 0.08, 0.07), q=qu, s=2.8),
         E(U((-0.128, 0.05, 0.84)), (0.075, 0.08, 0.07), q=qu, s=2.8),
         B(U((0.05, -0.355, 0.787)), 0.024, s=3.0),
@@ -757,8 +770,8 @@ def build_totodile(pose):
     ]
     # lower jaw
     els += [
-        E(D((0, -0.08, 0.615)), (0.16, 0.22, 0.06), q=qd),
-        E(D((0, -0.26, 0.62)), (0.12, 0.09, 0.048), q=qd, s=2.6),
+        E(D((0, -0.08, 0.615)), (0.145, 0.22, 0.06), q=qd),
+        E(D((0, -0.26, 0.62)), (0.105, 0.09, 0.048), q=qd, s=2.6),
     ]
     # legs + big feet with toes
     for sx in (1, -1):
@@ -774,9 +787,9 @@ def build_totodile(pose):
     # teeth: two fangs on the upper jaw, two on the lower
     tm = M('td_teeth', (0.98, 0.98, 0.96), rough=0.3)
     for sx in (1, -1):
-        b0 = U((0.095 * sx, -0.31, J - zb + 0.008))
+        b0 = U((0.085 * sx, -0.31, J - zb + 0.008))
         spike('td_tu%d' % sx, b0 + Mu @ Vector((0, 0, 0.02)), b0 - Mu @ Vector((0, 0, 0.06)), 0.022, tm, segs=8)
-        b1 = D((0.09 * sx, -0.27, J - zb - 0.008))
+        b1 = D((0.08 * sx, -0.27, J - zb - 0.008))
         spike('td_td%d' % sx, b1 - Md @ Vector((0, 0, 0.02)), b1 + Md @ Vector((0, 0, 0.05)), 0.02, tm, segs=8)
 
     # eyes: red iris on white, with the black eye-mark behind
@@ -810,8 +823,12 @@ def build_totodile(pose):
     # tail + red spikes on the back and tail
     rm = M('td_red', RED, rough=0.45)
     sway = 0.03 * st
-    tail = [Vector((0, 0.15, 0.24 + zb)), Vector((sway * 0.3, 0.30, 0.15 + zb)), Vector((sway * 0.7, 0.43, 0.10 + zb)),
-            Vector((sway, 0.54, 0.09 + zb)), Vector((sway * 1.1, 0.60, 0.10 + zb))]
+    if hero:
+        tail = [Vector((0, 0.15, 0.24 + zb)), Vector((sway * 0.3, 0.30, 0.15 + zb)), Vector((sway * 0.7, 0.43, 0.10 + zb)),
+                Vector((sway, 0.54, 0.09 + zb)), Vector((sway * 1.1, 0.60, 0.10 + zb))]
+    else:
+        tail = [Vector((0, 0.15, 0.24 + zb)), Vector((sway * 0.3, 0.28, 0.18 + zb)), Vector((sway * 0.7, 0.39, 0.16 + zb)),
+                Vector((sway, 0.47, 0.17 + zb)), Vector((sway * 1.1, 0.52, 0.20 + zb))]
     loft('td_tail', tail, [(r, r) for r in (0.11, 0.085, 0.06, 0.035, 0.012)], Vector((1, 0, 0)), mat=am, segs=16)
     for i, (z, L) in enumerate(((0.60, 0.11), (0.49, 0.12), (0.38, 0.11))):
         p, n = surf(bvh, Vector((0, 0.0, z + zb)), bdir(0, 15))
@@ -836,7 +853,7 @@ def build_torchic(pose):
     PALE = (0.99, 0.87, 0.45)
     bob = -0.014 * abs(st)
     zb = bob
-    feet = biped_feet(st, stride=0.06, lift=0.035)
+    feet = biped_feet(st, stride=0.075, lift=0.045)
 
     def col(p, n):
         z = p.z - zb
@@ -847,7 +864,7 @@ def build_torchic(pose):
     hc = Vector((0, 0.0, 0.615 + zb))
     els = [
         E(hc, (0.272, 0.248, 0.205)),
-        E((0, 0.02, 0.305 + zb), (0.168, 0.165, 0.152)),
+        E((0, 0.02, 0.30 + zb), (0.182, 0.175, 0.158)),
         E((0, 0.01, 0.44 + zb), (0.155, 0.145, 0.07)),
     ]
     for sx in (1, -1):        # tiny wings
@@ -873,17 +890,17 @@ def build_torchic(pose):
     # head crest: three broad yellow feathers + small orange ones at the base
     top = surf(bvh, hc, Vector((0, 0.2, 1)))[0]
     feathers = [  # (direction, length, half-width, plane normal, back curl)
-        (Vector((0.55, 0.35, 1.0)), 0.34, 0.078, Vector((0.45, -0.9, 0.0)), 0.04),
-        (Vector((0.02, -0.05, 1.0)), 0.27, 0.066, Vector((0.1, -1.0, 0.0)), 0.03),
-        (Vector((-0.45, 0.05, 1.0)), 0.21, 0.056, Vector((-0.35, -0.95, 0.0)), 0.02),
-        (Vector((0.12, 0.85, 0.9)), 0.22, 0.05, Vector((1.0, 0.0, 0.0)), 0.0),
+        (Vector((0.62, 0.40, 1.0)), 0.38, 0.085, Vector((0.45, -0.9, 0.0)), 0.04),
+        (Vector((0.05, -0.05, 1.0)), 0.30, 0.072, Vector((0.1, -1.0, 0.0)), 0.03),
+        (Vector((-0.55, 0.05, 1.0)), 0.23, 0.06, Vector((-0.35, -0.95, 0.0)), 0.02),
+        (Vector((0.12, 0.85, 0.9)), 0.24, 0.055, Vector((1.0, 0.0, 0.0)), 0.0),
     ]
     for i, (dv, L, w, pn, cu) in enumerate(feathers):
         d = dv.normalized()
         base = top - d * 0.03
         pts = [base + d * (L * t) + Vector((0, cu * t * t, -0.02 * t * t)) for t in (0, 0.18, 0.4, 0.62, 0.82, 0.94, 1.0)]
         rs = [w * f for f in (0.35, 0.85, 1.0, 0.88, 0.55, 0.25, 0.02)]
-        loft('tc_cr%d' % i, pts, [(0.026, r) for r in rs], pn, mat=ym, segs=12)
+        loft('tc_cr%d' % i, pts, [(0.026 if hero else 0.036, r) for r in rs], pn, mat=ym, segs=12)
     om = M('tc_org', ORG)
     for i, dv in enumerate((Vector((0.55, -0.35, 0.7)), Vector((-0.5, -0.25, 0.75)), Vector((0.0, -0.6, 0.7)))):
         d = dv.normalized()
@@ -921,7 +938,7 @@ def build_treecko(pose):
     RED = (0.86, 0.20, 0.14)
     bob = -0.014 * abs(st)
     zb = bob
-    feet = biped_feet(st, stride=0.07, lift=0.035)
+    feet = biped_feet(st, stride=0.085, lift=0.045)
 
     def col(p, n):
         z = p.z - zb
@@ -936,8 +953,8 @@ def build_treecko(pose):
     hc = Vector((0, -0.01, 0.76 + zb))
     els = [
         E(hc, (0.145, 0.165, 0.14)),                               # skull
-        CAP((0, -0.01, 0.82 + zb), (0, 0.085, 0.965 + zb), 0.058, s=2.3),   # pointed crest ridge
-        B((0, 0.09, 0.97 + zb), 0.04, s=2.6),
+        EB((0, 0.035, 0.885 + zb), (0.125, 0.042, 0.085), (0, 0.55, 1.0), (1, 0, 0), s=2.4),   # flat crest ridge
+        EB((0, 0.085, 0.965 + zb), (0.05, 0.03, 0.05), (0, 0.55, 1.0), (1, 0, 0), s=2.8),
         E((0, -0.155, 0.71 + zb), (0.11, 0.125, 0.08)),            # snout
         E((0, -0.09, 0.645 + zb), (0.09, 0.10, 0.04)),             # jaw
         CAP((0, 0.0, 0.64 + zb), (0, 0.02, 0.55 + zb), 0.068),     # neck
@@ -1002,9 +1019,14 @@ def build_treecko(pose):
     # huge dark-green tail lying on the ground, curling up at the end (two lobes)
     tm = M('tk_tail', DGRN, rough=0.45)
     sway = 0.04 * st
-    path = [(0, 0.06, 0.25), (0.0, 0.17, 0.155), (sway * 0.4, 0.32, 0.115), (sway * 0.7, 0.50, 0.105),
-            (sway * 0.9, 0.67, 0.10), (sway, 0.80, 0.105), (sway, 0.875, 0.14), (sway, 0.885, 0.195),
-            (sway, 0.845, 0.225), (sway, 0.80, 0.205), (sway, 0.795, 0.17)]
+    if hero:
+        path = [(0, 0.06, 0.25), (0.0, 0.17, 0.155), (sway * 0.4, 0.32, 0.115), (sway * 0.7, 0.50, 0.105),
+                (sway * 0.9, 0.67, 0.10), (sway, 0.80, 0.105), (sway, 0.875, 0.14), (sway, 0.885, 0.195),
+                (sway, 0.845, 0.225), (sway, 0.80, 0.205), (sway, 0.795, 0.17)]
+    else:   # walking: carried off the ground, curling up behind
+        path = [(0, 0.06, 0.25), (0.0, 0.17, 0.18), (sway * 0.4, 0.30, 0.165), (sway * 0.7, 0.43, 0.20),
+                (sway * 0.9, 0.53, 0.28), (sway, 0.585, 0.37), (sway, 0.585, 0.45), (sway, 0.54, 0.495),
+                (sway, 0.49, 0.475), (sway, 0.475, 0.43), (sway, 0.49, 0.40)]
     path = [Vector((x, y, z + zb * (1 - i / 10.0))) for i, (x, y, z) in enumerate(path)]
     rad = [(0.055, 0.055), (0.08, 0.085), (0.10, 0.105), (0.11, 0.105), (0.10, 0.095), (0.075, 0.07),
            (0.055, 0.052), (0.045, 0.045), (0.038, 0.038), (0.03, 0.03), (0.01, 0.01)]
@@ -1018,7 +1040,7 @@ def build_mudkip(pose):
     BLU = (0.12, 0.64, 0.96)
     LBL = (0.78, 0.93, 1.0)
     ORG = (1.0, 0.56, 0.12)
-    FIN = (0.74, 0.89, 0.99)
+    FIN = (0.80, 0.92, 1.0)
     bob = -0.012 * abs(st)
     zb = bob
 
@@ -1048,11 +1070,11 @@ def build_mudkip(pose):
             if st:
                 front_fwd_side = 1 if st < 0 else -1          # front leg on this side steps forward
                 fwd = (sx == front_fwd_side) != back
-                dy = -0.05 if fwd else 0.04
-                dz = 0.03 if fwd else 0.0
-            top_ = Vector((0.125 * sx, fy, 0.15 + zb))
+                dy = -0.065 if fwd else 0.05
+                dz = 0.04 if fwd else 0.0
+            top_ = Vector((0.125 * sx, fy, 0.14 + zb))
             ft = Vector((0.135 * sx, fy - 0.01 + dy, 0.04 + dz))
-            els.append(CAP(top_, ft, 0.058, s=2.6))
+            els.append(CAP(top_, ft, 0.062, s=2.6))
             els.append(E(ft + Vector((0, -0.015, -0.005)), (0.062, 0.07, 0.04), s=3.0))
     body = blob('mk_body', els, vc_mat('mk_vc'), paint_fn=col)
     bvh = make_bvh([body])
@@ -1065,12 +1087,12 @@ def build_mudkip(pose):
 
     def fin_col(u, v, s):
         return mix(BLU, (0.08, 0.50, 0.86), sstep(0.65, 1.0, s) * 0.5)
-    pillow('mk_fin', fin, 0.07, ((0, 1, 0), (0, 0, 1), (1, 0, 0)), ptop - Vector((0, 0, 0.025)),
+    pillow('mk_fin', fin, 0.07 if hero else 0.15, ((0, 1, 0), (0, 0, 1), (1, 0, 0)), ptop - Vector((0, 0, 0.025)),
            mat=vc_mat('mk_fin_vc'), center=(0.02, 0.14), colfn=fin_col,
            warp=lambda u, v, w: (u + 0.12 * max(0.0, v) ** 2, v, w))
     # dark line down the fin
     dm = M('mk_finline', (0.05, 0.36, 0.70), rough=0.4)
-    for sx in (1, -1):
+    for sx in ((1, -1) if hero else ()):
         pts = [ptop + Vector((0.035 * sx, -0.035 + 0.12 * v * v, 0.0 + v)) for v in (0.05, 0.13, 0.21, 0.28)]
         loft('mk_fl%d' % sx, pts, [(0.0065, 0.0065)] * 4, Vector((1, 0, 0)), mat=dm, segs=6, ink=False)
 
@@ -1098,23 +1120,25 @@ def build_mudkip(pose):
                0.004, nm, ink=False)
 
     # tail fin: pale two-lobed fan, pointing back and up
-    tf = smooth_poly([(0.0, -0.035), (0.11, -0.075), (0.24, -0.07), (0.33, -0.02), (0.345, 0.05), (0.27, 0.105),
-                      (0.35, 0.17), (0.38, 0.26), (0.33, 0.33), (0.22, 0.33), (0.11, 0.25), (0.03, 0.13),
-                      (-0.01, 0.04)], 2)
+    tf = smooth_poly([(0.0, -0.03), (0.12, -0.06), (0.26, -0.06), (0.35, -0.03), (0.37, 0.02), (0.30, 0.075),
+                      (0.39, 0.12), (0.42, 0.19), (0.37, 0.245), (0.26, 0.24), (0.14, 0.18), (0.04, 0.10),
+                      (-0.01, 0.035)], 2)
 
     def tf_col(u, v, s):
         return mix(FIN, (0.40, 0.72, 0.96), sstep(0.7, 1.0, s) * 0.55)
     sway = 0.06 * st
     tb, _ = surf(bvh, Vector((0, 0.25, 0.21 + zb)), Vector((0, 1, 0.3)))
-    Ut = Vector((sway, 1, 0.25)).normalized()
+    Ut = Vector((sway, 1, 0.32 if hero else 0.42)).normalized()
+    if not hero:     # a little smaller on the sprite, so it stays hidden behind the head from the front
+        tf = [(u * 0.85, v * 0.8) for u, v in tf]
     pillow('mk_tail', tf, 0.045, (Ut, Z, Ut.cross(Z).normalized()), tb - Vector((0, 0.04, 0.0)),
-           mat=vc_mat('mk_tail_vc', rough=0.3), center=(0.18, 0.11), colfn=tf_col)
+           mat=vc_mat('mk_tail_vc', rough=0.3), center=(0.20, 0.08) if hero else (0.17, 0.064), colfn=tf_col)
     # line dividing the two lobes
     tl = M('mk_tailline', (0.36, 0.66, 0.92), rough=0.4)
     Wt = Ut.cross(Z).normalized()
     org = tb - Vector((0, 0.04, 0.0))
-    for sw_ in (1, -1):
-        pts = [org + Ut * u + Z * v + Wt * (0.021 * sw_) for u, v in ((0.08, 0.06), (0.16, 0.085), (0.24, 0.10))]
+    for sw_ in ((1, -1) if hero else ()):
+        pts = [org + Ut * u + Z * v + Wt * (0.021 * sw_) for u, v in ((0.10, 0.045), (0.19, 0.065), (0.27, 0.075))]
         loft('mk_tl%d' % sw_, pts, [(0.005, 0.005)] * 3, Wt, mat=tl, segs=6, ink=False)
     pose['_tilt'] = (Vector((0, -0.02, 0.20 + zb)), 0.14 + zb, 0.30 + zb)
 
@@ -1140,11 +1164,29 @@ def model_points(step=1):
     return pts
 
 
+def roll_body(objs, deg):
+    """Sprites: lean the whole model sideways about the forward axis (walk sway)."""
+    m = Matrix.Rotation(math.radians(deg), 3, 'Y')
+    for o in objs:
+        if o.type != 'MESH':
+            continue
+        me = o.data
+        for v in me.vertices:
+            v.co = m @ v.co
+        me.update()
+
+
 def build(species, pose):
     BUILDERS[species](pose)
-    if not pose.get('hero') and '_tilt' in pose:
+    if pose.get('hero'):
+        return
+    if '_tilt' in pose:
         pivot, z0, z1 = pose['_tilt']
-        tilt_head(MODEL, pivot, SPRITE_TILT, z0, z1)
+        tilt_head(MODEL, pivot, SPRITE_TILTS.get(species, SPRITE_TILT), z0, z1)
+    st = pose.get('step', 0)
+    if st:
+        # lean toward the planted foot: step-L (left foot up) leans to the right (-X)
+        roll_body(MODEL, WALK_ROLL.get(species, 4.0) * st)
 
 
 def place_root(yaw, scale):
@@ -1155,42 +1197,53 @@ def place_root(yaw, scale):
     return root
 
 
-def sprite_scale(species):
-    """Largest scale at which every row/step fits the 80x80 frame (feet at 40, 70)."""
+def sprite_fit(species):
+    """Scale + feet pixel so every row/step fills the 80x80 frame.
+
+    Tails and snouts point at the camera in the up/down rows and land BELOW the feet,
+    so the feet pixel (= the sheet's anchor) is chosen per species from the measured
+    extents above / below / beside the feet over all 12 frames."""
     global RES
     new_scene(FRAME, FRAME, SHEET_SAMPLES)
     RES = 0.03
-    worst = 10.0
-    fx, fy = FRAME / 2, FRAME - 10
-    margin = 2.5
+    up = down = side = 0.0
+    c0 = FRAME / 2
     for _, yaw in ROWS:
         for st in (-1, 0, 1):
             clear_model()
             build(species, dict(step=st))
             place_root(yaw, 1.0)
-            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0))
+            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0), foot_px=(c0, c0))
             for p in model_points(3):
                 x, y = C.to_pixel(p)
-                dx, dy = x - fx, y - fy
-                if dx > 1e-3:
-                    worst = min(worst, (FRAME - margin - fx) / dx)
-                if dx < -1e-3:
-                    worst = min(worst, (fx - margin) / -dx)
-                if dy < -1e-3:
-                    worst = min(worst, (fy - margin) / -dy)
-                if dy > 1e-3:
-                    worst = min(worst, (FRAME - margin - fy) / dy)
+                side = max(side, abs(x - c0))
+                up = max(up, c0 - y)
+                down = max(down, y - c0)
     clear_model()
-    return worst
+    m = SPRITE_MARGIN
+    scale = min((FRAME - 2 * m) / (up + down), (FRAME / 2 - m) / side, SPRITE_MAX_H / up, SPRITE_MAX_HALF_W / side)
+    scale *= SPRITE_FILL.get(species, 1.0)
+    slack = (FRAME - 2 * m) - (up + down) * scale
+    foot_y = math.floor(m + up * scale + slack * 0.5)
+    foot_y = max(foot_y, math.ceil(m + up * scale))
+    foot_y = min(foot_y, math.floor(FRAME - m - down * scale))
+    fit = dict(scale=scale, anchor=[FRAME / 2, float(foot_y)], up=up, down=down, side=side)
+    with open(os.path.join(WORK, 'fit_%s.json' % species), 'w') as fh:
+        json.dump(fit, fh, indent=1)
+    print('[pokemon_b] %s fit %s' % (species, fit))
+    return fit
 
 
 SPRITE_FILL = {}
+SPRITE_MARGIN = 2.5
+SPRITE_MAX_H = 52.0       # px above the feet at most (sizes in line with pokemon_a / the player)
+SPRITE_MAX_HALF_W = 34.0  # px left/right of the feet at most
 
 
 def render_sheet(species):
     global RES, INK_DECALS, HL_SCALE
-    scale = sprite_scale(species) * SPRITE_FILL.get(species, 1.0)
-    print('[pokemon_b] %s sprite scale %.3f' % (species, scale))
+    fit = sprite_fit(species)
+    scale, anchor = fit['scale'], fit['anchor']
     new_scene(FRAME, FRAME, SHEET_SAMPLES)
     RES = 0.02
     INK_DECALS = False
@@ -1205,10 +1258,10 @@ def render_sheet(species):
             clear_model()
             build(species, dict(step=st))
             place_root(yaw, scale)
-            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0))
+            C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0), foot_px=tuple(anchor))
             C.render(path)
     clear_model()
-    return frames, scale
+    return frames, anchor
 
 
 def render_hero(species):
@@ -1238,7 +1291,51 @@ def render_hero(species):
     return path
 
 
+def debug_bbox():
+    """'bbox' arg: print each object's world bounding box for the stand pose."""
+    global RES
+    new_scene(FRAME, FRAME, 8)
+    RES = 0.03
+    for sp in ONLY:
+        clear_model()
+        build(sp, dict(step=0))
+        bpy.context.view_layer.update()
+        deps = bpy.context.evaluated_depsgraph_get()
+        for o in MODEL:
+            ev = o.evaluated_get(deps)
+            me = ev.to_mesh()
+            vs = [ev.matrix_world @ v.co for v in me.vertices]
+            ev.to_mesh_clear()
+            if not vs:
+                continue
+            lo = [min(v[i] for v in vs) for i in range(3)]
+            hi = [max(v[i] for v in vs) for i in range(3)]
+            if max(hi) > 1.2 or min(lo) < -1.0:
+                print('[bbox] %s %s lo %s hi %s' % (sp, o.name, ['%.2f' % x for x in lo], ['%.2f' % x for x in hi]))
+        place_root(0.0, 1.0)
+        C.fixed_oblique_frame(FRAME, FRAME, (0, 0, 0))
+        deps = bpy.context.evaluated_depsgraph_get()
+        print('[scene objs]', sp, len(bpy.context.scene.objects), len(MODEL),
+              [o.name for o in bpy.context.scene.objects if o not in MODEL])
+        for o in MODEL:
+            if o.type != 'MESH':
+                continue
+            ev = o.evaluated_get(deps)
+            me = ev.to_mesh()
+            px = [C.to_pixel(ev.matrix_world @ v.co) for v in me.vertices]
+            ev.to_mesh_clear()
+            if px:
+                x0, x1 = min(p[0] for p in px), max(p[0] for p in px)
+                y0, y1 = min(p[1] for p in px), max(p[1] for p in px)
+                if x0 < -40 or x1 > 120 or y0 < -60 or y1 > 100:
+                    print('[px] %s %s x %.0f..%.0f y %.0f..%.0f' % (sp, o.name, x0, x1, y0, y1))
+    clear_model()
+
+
 def main():
+    if 'bbox' in ARGV:
+        debug_bbox()
+        return
     for sp in ONLY:
         if DO_HERO:
             render_hero(sp)
@@ -1247,7 +1344,13 @@ def main():
     outputs = []
     for sp in SPECIES:
         frames = [os.path.join(WORK, 'mon_' + sp, 'r%d_c%d.png' % (r, c)) for r in range(4) for c in range(3)]
-        outputs.append(dict(key='mon_' + sp, kind='sheet', frames=frames, cols=3, anchor=[FRAME / 2, FRAME - 10],
+        fit_path = os.path.join(WORK, 'fit_%s.json' % sp)
+        if not os.path.isfile(fit_path):
+            print('[pokemon_b] no fit for %s yet - skipping spec' % sp)
+            return
+        with open(fit_path) as fh:
+            anchor = json.load(fh)['anchor']
+        outputs.append(dict(key='mon_' + sp, kind='sheet', frames=frames, cols=3, anchor=anchor,
                             meta=dict(rows=['down', 'left', 'right', 'up'], cols=['step-L', 'stand', 'step-R'],
                                       species=sp)))
         outputs.append(dict(key='hero_' + sp, kind='image', frames=[os.path.join(WORK, 'hero_' + sp + '.png')],

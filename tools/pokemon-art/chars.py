@@ -74,7 +74,6 @@ def M(color, rough=0.55, spec=0.3):
 
 
 SKIN = C.PALETTE['skin']
-SKIN_TAN = hexc('#e2a46e')
 EYE = hexc('#1d1622')
 WHITE = hexc('#f6f6f4')
 BLACK = hexc('#25222a')
@@ -440,6 +439,13 @@ def short_hair_under_cap(R, p, color, front=24.0, back=4.0, side_az=66):
     shell('hair', R, color, keep, out=0.022)
 
 
+def tilt(piv, rot, offset=(0, 0, 0)):
+    """Turn / move a sub-pivot AFTER its children are attached (attach() keeps world transforms)."""
+    piv.rotation_euler = _euler(rot)
+    piv.location = piv.location + Vector(offset)
+    _update()
+
+
 def strap(R, p, x, z0, z1, r, color, n=5, out=-0.002):
     zs = [z0 + (z1 - z0) * i / n for i in range(n + 1)]
     pts = [Vector((x, front_y(p, x, z) + out, z)) for z in zs]
@@ -592,11 +598,11 @@ def char_bugcatcher():
     short_hair_under_cap(R, p, hair, front=18, back=8)
     # straw hat, pushed back a little so the face shows
     hat = pivot('hatpiv', tuple(R.hc), R.head)
-    hat.rotation_euler = (math.radians(-14), 0, 0)
     hz0 = R.hc.z + 0.11
     cyl('hatbrim', (0, 0.0, hz0), 0.36, 0.026, straw, hat, verts=32, rough=0.7)
     cyl('hatcrown', (0, 0.01, hz0 + 0.08), 0.235, 0.17, straw, hat, r2=0.20, verts=28, rough=0.7)
     cyl('hatband', (0, 0.01, hz0 + 0.04), 0.237, 0.05, hexc('#d8322c'), hat, r2=0.229, verts=28)
+    tilt(hat, (-8, 0, 0))
     # bug net in the right hand (moves with the arm)
     sx = -p['shoulder_x'] * 1.06
     hand_z = p['shoulder_z'] - p['arm_len'] - 0.04
@@ -630,7 +636,7 @@ def char_swimmer():
     shell('scap', R, capc, lambda az, el: el > cap_edge(az, 22, -10), out=0.026, rough=0.35)
     ell('capstripe', R.hc, (R.hr + 0.03, R.hr + 0.03, R.hr + 0.03), WHITE, R.head, seg=32, rings=18,
         cut=[(R.hc + Vector((0.035, 0, 0)), (1, 0, 0)), (R.hc + Vector((-0.035, 0, 0)), (-1, 0, 0)),
-             (R.hc + Vector((0, 0, 0.05)), (0, 0, -1))])
+             (R.hc + Vector((0, 0, 0.05)), (0, 0, -1)), (R.hc + Vector((0, -0.10, 0)), (0, -1, 0))])
     # goggles pushed up on the forehead + strap
     for s in (1, -1):
         gp, gn = R.head_pt(s * 22, 31, out=0.03)
@@ -669,12 +675,12 @@ def char_nurse():
     for s in (1, -1):
         torus('loop%d' % s, R.hc + Vector((s * 0.265, 0.03, -0.20)), 0.08, 0.042, hair, R.head, rot=(90, 0, 0))
     # white nurse cap with a red cross
-    shell('ncap', R, WHITE, lambda az, el: el > 34 + 6 * (1 - math.cos(math.radians(az))),
+    shell('ncap', R, WHITE, lambda az, el: el > 30 + 8 * (1 - math.cos(math.radians(az))),
           out=0.05, rough=0.45)
-    cp, cn = R.head_pt(0, 45, out=0.06)
-    rot = (-math.degrees(math.asin(cn.z)), 0, 0)
-    boxm('cross1', cp, (0.075, 0.012, 0.024), hexc('#e8263c'), R.head, rot=rot)
-    boxm('cross2', cp, (0.024, 0.012, 0.075), hexc('#e8263c'), R.head, rot=rot)
+    # red cross: a curved patch on the cap (a flat box would poke over the silhouette from behind)
+    shell('ncross', R, hexc('#e8263c'),
+          lambda az, el: (abs(az) < 4.5 and 34 < el < 48) or (abs(az) < 11 and 39 < el < 43.5),
+          out=0.054, rough=0.45, seg=160, rings=80)
     return R, dict(pose=dict(arm_out=5))
 
 
@@ -767,12 +773,11 @@ def char_granite():
     shell('sideburns', R, hexc('#8a8a90'), lambda az, el: 60 < abs(az) < 120 and -30 < el < 18, out=0.012, rough=0.7)
     # yellow hard hat with a full brim and a ridge
     hat = pivot('hatpiv', tuple(R.hc), R.head)
-    hat.rotation_euler = (math.radians(-28), 0, 0)
-    hat.location = hat.location + Vector((0, 0, 0.035))
-    shell('hardhat', R, yellow, lambda az, el: el > 18, out=0.03, rough=0.3, spec=0.5, parent=hat)
-    cyl('hhbrim', R.hc + Vector((0, -0.012, (R.hr + 0.03) * math.sin(math.radians(18)))), R.hr + 0.04, 0.022,
+    shell('hardhat', R, yellow, lambda az, el: el > 14, out=0.035, rough=0.3, spec=0.5, parent=hat)
+    cyl('hhbrim', R.hc + Vector((0, -0.012, (R.hr + 0.035) * math.sin(math.radians(14)))), R.hr + 0.05, 0.022,
         yellow, hat, scale=(1.0, 1.08, 1.0), rough=0.3)
-    torus('hhridge', R.hc, R.hr + 0.035, 0.02, yellow, hat, rot=(0, 90, 0), arc=(28, 152))
+    torus('hhridge', R.hc, R.hr + 0.04, 0.02, yellow, hat, rot=(0, 90, 0), arc=(25, 155))
+    tilt(hat, (-20, 0, 0), (0, 0.0, 0.02))
     return R, dict(idle=True, dirs=[('down', 0.0)], pose=dict(arm_out=12), pose2=dict(arm_out=15))
 
 
@@ -810,10 +815,10 @@ def char_marina():
             rot=(0, s * -12, 0))
     # little white sailor cap
     hat = pivot('hatpiv', tuple(R.hc), R.head)
-    hat.rotation_euler = (math.radians(-12), math.radians(-10), 0)
-    hz0 = R.hc.z + R.hr * 0.72
-    cyl('sailorcap', (0, 0.02, hz0), 0.165, 0.10, WHITE, hat, r2=0.185, verts=28)
-    cyl('sailorband', (0, 0.02, hz0 - 0.03), 0.168, 0.04, navy, hat, r2=0.172, verts=28)
+    hz0 = R.hc.z + R.hr * 0.93
+    cyl('sailorcap', (0, 0.02, hz0), 0.17, 0.11, WHITE, hat, r2=0.19, verts=28)
+    cyl('sailorband', (0, 0.02, hz0 - 0.035), 0.174, 0.04, navy, hat, r2=0.178, verts=28)
+    tilt(hat, (-10, -12, 0))
     return R, dict(idle=True, dirs=[('down', 0.0)], pose=dict(arm_out=8), pose2=dict(arm_out=12))
 
 
@@ -843,9 +848,9 @@ def char_voltex():
             return False
         return el > -28 or a > 110
     shell('hair', R, hair, keep, out=0.024)
-    head_spikes(R, hair, [(0, 40, 0.17, 0.09, 0.9), (55, 36, 0.15, 0.085, 0.6), (-55, 36, 0.15, 0.085, 0.6),
-                          (115, 30, 0.15, 0.085, 0.4), (-115, 30, 0.15, 0.085, 0.4), (180, 28, 0.15, 0.085, 0.3),
-                          (18, 20, 0.09, 0.05, -0.3), (-22, 20, 0.09, 0.05, -0.3)])
+    head_spikes(R, hair, [(0, 42, 0.17, 0.075, 1.0), (50, 38, 0.16, 0.07, 0.8), (-50, 38, 0.16, 0.07, 0.8),
+                          (105, 32, 0.15, 0.07, 0.6), (-105, 32, 0.15, 0.07, 0.6), (155, 30, 0.15, 0.07, 0.5),
+                          (-155, 30, 0.15, 0.07, 0.5), (20, 22, 0.09, 0.045, -0.3), (-24, 22, 0.09, 0.045, -0.3)])
     # headphones: band over the top + big ear cups
     torus('hpband', R.hc, R.hr + 0.075, 0.022, black, R.head, rot=(0, 90, 0), arc=(0, 180))
     for s in (1, -1):

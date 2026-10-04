@@ -487,22 +487,30 @@ def shape_radius(shape, th):
 
 
 def decal(name, bvh, p, n, shape, mat, lift=0.002, bulge=0.0, rot=0.0, off=(0.0, 0.0),
-          rings=5, segs=36, ink=None, up=Vector((0, 0, 1))):
-    """Thin cap that follows the surface around point p (normal n)."""
+          rings=5, segs=36, ink=None, up=Vector((0, 0, 1)), dome=None):
+    """Thin cap that follows the surface around point p (normal n).
+    dome=(a, b, h): instead of its own bulge, sit on a shared dome of semi-axes a, b and
+    height h centred on p (so iris / pupil / highlight stack cleanly on the eyeball)."""
     if ink is None:
         ink = INK_DECALS
     t1, t2 = frame_at(n, up)
-    p = Vector(p) + t1 * off[0] + t2 * off[1]
+    pc = Vector(p)
+    ou, ov = off
     cr, sr = math.cos(math.radians(rot)), math.sin(math.radians(rot))
     verts = []
 
     def place(u, v, rr):
-        u, v = u * cr - v * sr, u * sr + v * cr
-        p0 = p + t1 * u + t2 * v
+        u, v = u * cr - v * sr + ou, u * sr + v * cr + ov
+        p0 = pc + t1 * u + t2 * v
         loc, nor, _, _ = bvh.ray_cast(p0 + n * 0.3, -n)
         if loc is None:
             loc, nor = p0, n
-        return loc + nor.normalized() * (lift + bulge * (1 - rr * rr))
+        if dome:
+            da, db, dh = dome
+            h = dh * max(0.0, 1 - (u / da) ** 2 - (v / db) ** 2)
+        else:
+            h = bulge * (1 - rr * rr)
+        return loc + nor.normalized() * (lift + h)
 
     verts.append(place(0, 0, 0))
     for k in range(1, rings + 1):
@@ -554,27 +562,28 @@ def eye(prefix, bvh, center, az, el, size, kind, mirror=False, hl_off=(-0.25, 0.
     a, b = size
     sgn = -1 if mirror else 1
     rot = tilt * sgn
+    dome = (a * 1.02, b * 1.02, bulge)
     parts = []
     if kind == 'black':
         parts.append(decal(prefix + '_eye', bvh, p, n, ('ellipse', a, b), M('eye_dark', iris_col or (0.07, 0.05, 0.06), rough=0.12, spec=0.7),
-                           lift=0.0015, bulge=bulge, rot=rot))
+                           lift=0.0015, rot=rot, dome=dome))
     else:
         scl = sclera or ('ellipse', a, b)
         if scl[0] == 'poly' and mirror:
             scl = ('poly', [(-u, v) for u, v in reversed(scl[1])])
         parts.append(decal(prefix + '_scl', bvh, p, n, scl, M('eye_white', (0.97, 0.97, 0.96), rough=0.2, spec=0.5),
-                           lift=0.0015, bulge=bulge, rot=0 if scl[0] == 'poly' else rot))
+                           lift=0.0015, rot=0 if scl[0] == 'poly' else rot, dome=dome))
         ia, ib = a * iris_scale, b * iris_scale
         io = (iris_off[0] * a * sgn, iris_off[1] * b)
         parts.append(decal(prefix + '_iris', bvh, p, n, ('ellipse', ia, ib), M('iris_' + prefix[:2], iris_col, rough=0.15, spec=0.6),
-                           lift=0.003, bulge=bulge, rot=rot, off=io))
+                           lift=0.0028, rot=rot, off=io, dome=dome))
         parts.append(decal(prefix + '_pup', bvh, p, n, ('ellipse', ia * pupil_scale, ib * pupil_scale * 1.1),
                            M('pupil', (0.10, 0.03, 0.05), rough=0.12, spec=0.7),
-                           lift=0.0045, bulge=bulge, rot=rot, off=io))
+                           lift=0.0041, rot=rot, off=io, dome=dome))
     # glossy highlight (no ink)
     hr = min(a, b) * HL_SCALE
     parts.append(decal(prefix + '_hl', bvh, p, n, ('ellipse', hr, hr * 1.1), M('hl', (1, 1, 1), emission=(1, 1, 1), emission_strength=1.2),
-                       lift=0.006 + bulge, bulge=0.002, off=(hl_off[0] * a * sgn, hl_off[1] * b), ink=False))
+                       lift=0.0055, off=(hl_off[0] * a * sgn, hl_off[1] * b), ink=False, dome=dome))
     return parts
 
 
@@ -641,7 +650,7 @@ def build_pikachu(pose):
     ]
     for sx, dy in ((1, fy), (-1, -fy)):                              # short thighs + small feet
         els.append(ell_el((0.115 * sx, 0.0 + dy * 0.5, 0.12 + bob * 0.5), (0.075, 0.075, 0.075)))
-        els.append(ell_el((0.11 * sx, -0.07 + dy, 0.027), (0.042, 0.072, 0.027), direction=(0.3 * sx, -1, 0), s=3.0))
+        els.append(ell_el((0.105 * sx, -0.06 + dy, 0.024), (0.036, 0.062, 0.024), direction=(0.3 * sx, -1, 0), s=3.0))
     body = blob('pk_body', els, vc_mat('pk_vc'), paint_fn=body_col)
     head_c = H.p((0, -0.01, hz))
 
@@ -712,12 +721,12 @@ def quad_legs(st, k=0.06):
 def build_eevee(pose):
     st = pose.get('step', 0)
     hero = pose.get('hero', False)
-    FUR = (0.80, 0.53, 0.27)
+    FUR = (0.86, 0.57, 0.27)
     CRM = (0.97, 0.92, 0.70)
     DK = (0.36, 0.20, 0.10)
     bob = -0.012 * abs(st)
-    hz, hy = 0.80 + bob, -0.11
-    H = HeadXf((0, -0.08, 0.56 + bob), tilt=0 if hero else SPRITE_TILT * 0.8)
+    hz, hy = 0.72 + bob, -0.11
+    H = HeadXf((0, -0.08, 0.50 + bob), tilt=0 if hero else SPRITE_TILT * 0.8)
     lg = quad_legs(st, 0.055)
     vcm = vc_mat('ev_vc', rough=0.55, spec=0.3)
     fur = M('ev_fur', FUR, rough=0.55, spec=0.3)
@@ -727,17 +736,17 @@ def build_eevee(pose):
         H.ell((0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),    # cheeks
         H.ell((-0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),
         H.ell((0, hy - 0.13, hz - 0.075), (0.075, 0.06, 0.055), s=3),  # little muzzle
-        ell_el((0, 0.10, 0.37 + bob), (0.13, 0.22, 0.12)),             # torso
-        ell_el((0, 0.21, 0.37 + bob), (0.135, 0.10, 0.125)),           # haunch
-        ell_el((0, -0.06, 0.44 + bob), (0.11, 0.11, 0.12)),            # chest / neck
-        ell_el((0.08, 0.22, 0.31 + bob), (0.06, 0.09, 0.10)),          # thighs
-        ell_el((-0.08, 0.22, 0.31 + bob), (0.06, 0.09, 0.10)),
+        ell_el((0, 0.10, 0.31 + bob), (0.13, 0.22, 0.115)),            # torso
+        ell_el((0, 0.21, 0.31 + bob), (0.135, 0.10, 0.12)),            # haunch
+        ell_el((0, -0.06, 0.38 + bob), (0.11, 0.11, 0.12)),            # chest / neck
+        ell_el((0.08, 0.22, 0.25 + bob), (0.065, 0.09, 0.10)),         # thighs
+        ell_el((-0.08, 0.22, 0.25 + bob), (0.065, 0.09, 0.10)),
     ]
     body = blob('ev_body', els, fur)
     head_c = H.p((0, hy, hz))
 
     # cream ruff with fluffy tufts
-    rz = 0.50 + bob
+    rz = 0.44 + bob
     ruff = blob('ev_ruff', [
         ell_el((0, -0.14, rz), (0.20, 0.12, 0.115)),
         ell_el((0, -0.17, rz - 0.07), (0.14, 0.09, 0.09)),
@@ -746,12 +755,12 @@ def build_eevee(pose):
         ell_el((0, 0.0, rz + 0.06), (0.15, 0.10, 0.08)),
     ], M('ev_crm', CRM, rough=0.6, spec=0.25))
     crm = M('ev_crm', CRM, rough=0.6, spec=0.25)
-    for i, a in enumerate(range(-150, 151, 30)):
+    for i, a in enumerate(range(-156, 157, 24)):
         ar = math.radians(a)
         rad = Vector((math.sin(ar) * 0.19, -math.cos(ar) * 0.13 - 0.07, 0))
-        base = Vector((0, 0, rz - 0.03 - 0.035 * math.cos(ar))) + rad * 0.85
-        tip = base + rad.normalized() * 0.075 + Vector((0, 0, -0.06 - 0.03 * math.cos(ar)))
-        cone_tuft('ev_tuft%d' % i, base, tip, 0.035, crm)
+        base = Vector((0, 0, rz - 0.03 - 0.04 * math.cos(ar))) + rad * 0.82
+        tip = base + rad.normalized() * (0.09 + 0.02 * (i % 2)) + Vector((0, 0, -0.07 - 0.03 * math.cos(ar)))
+        cone_tuft('ev_tuft%d' % i, base, tip, 0.045, crm)
     for sx in (1, -1):                                                  # cheek fur spikes
         b = H.p((0.21 * sx, hy - 0.02, hz - 0.08))
         cone_tuft('ev_ctuft', b, H.p((0.29 * sx, hy + 0.02, hz - 0.10)), 0.032, fur)
@@ -761,24 +770,24 @@ def build_eevee(pose):
     paw_els = []
     for key, x, y in legs:
         dy = lg[key]
-        top = Vector((x, y, 0.36 + bob))
+        top = Vector((x, y, 0.30 + bob))
         foot = Vector((x * 1.05, y + dy, 0.04))
         mid = (top + foot) / 2 + Vector((0, 0.012 if y > 0 else -0.004, 0))
-        loft('ev_leg', [top, mid, foot], [(0.042, 0.042), (0.036, 0.036), (0.036, 0.036)], ref=(1, 0, 0),
+        loft('ev_leg', [top, mid, foot], [(0.05, 0.05), (0.042, 0.042), (0.04, 0.04)], ref=(1, 0, 0),
              mat=fur, segs=12)
-        paw_els.append(ell_el(foot + Vector((0, -0.012, -0.008)), (0.045, 0.058, 0.034)))
+        paw_els.append(ell_el(foot + Vector((0, -0.014, -0.008)), (0.05, 0.062, 0.034)))
     blob('ev_paws', paw_els, fur)
 
     # bushy tail with cream tip
     sway = 8 * st
-    tb = Vector((0, 0.30, 0.42 + bob))
-    tpts = [(0, 0.30, 0.42), (0.02, 0.40, 0.52), (0.04, 0.46, 0.66), (0.05, 0.46, 0.80), (0.05, 0.41, 0.92)]
+    tb = Vector((0, 0.30, 0.36 + bob))
+    tpts = [(0, 0.30, 0.36), (0.03, 0.41, 0.46), (0.06, 0.48, 0.60), (0.08, 0.49, 0.74), (0.08, 0.44, 0.87)]
     tpts = [rot_about(Vector(p) + Vector((0, 0, bob)), tb, 'Z', sway) for p in tpts]
-    trad = [0.05, 0.095, 0.12, 0.11, 0.07]
+    trad = [0.05, 0.10, 0.13, 0.12, 0.075]
     tail_els = [dict(t='B', c=p, r=r) for p, r in zip(tpts, trad)]
     for i in range(len(tpts) - 1):
         tail_els.append(dict(t='B', c=(tpts[i] + tpts[i + 1]) / 2, r=(trad[i] + trad[i + 1]) / 2 * 0.95))
-    tip_z = 0.80 + bob
+    tip_z = 0.73 + bob
 
     def tail_col(p, n):
         return mix(FUR, CRM, sstep(tip_z - 0.015, tip_z + 0.015, p.z + 0.25 * (p.y - 0.44)))
@@ -788,9 +797,10 @@ def build_eevee(pose):
     for sx in (1, -1):
         base = Vector((0.12 * sx, hy + 0.05, hz + 0.12))
         if hero:
-            d = Vector((math.sin(math.radians(22 if sx > 0 else 40)) * sx, 0.10, 0.9)).normalized()
+            a = math.radians(50 if sx > 0 else 20)
+            d = Vector((math.sin(a) * sx, 0.10, math.cos(a))).normalized()
         else:
-            d = ear_dir(sx, 22, pose, 0.42)
+            d = ear_dir(sx, 28, pose, 0.42)
         L = 0.50
         ts = [0, 0.07, 0.16, 0.28, 0.40, 0.52, 0.64, 0.75, 0.85, 0.93, 1.0]
         w = [0.075, 0.10, 0.118, 0.12, 0.112, 0.098, 0.08, 0.06, 0.04, 0.02, 0.002]
@@ -815,8 +825,8 @@ def build_eevee(pose):
     # face
     bvh = make_bvh([body])
     for sx in (1, -1):
-        eye('ev_e%d' % sx, bvh, head_c, 0, 0, (0.050, 0.066), 'black', mirror=sx < 0, tilt=-8,
-            iris_col=(0.17, 0.09, 0.05), hl_off=(-0.18, 0.36), bulge=0.012, dirv=H.d(sdir(31 * sx, 6)))
+        eye('ev_e%d' % sx, bvh, head_c, 0, 0, (0.058, 0.074), 'black', mirror=sx < 0, tilt=-8,
+            iris_col=(0.16, 0.08, 0.04), hl_off=(-0.18, 0.36), bulge=0.013, dirv=H.d(sdir(33 * sx, 6)))
     p, n = surf(bvh, head_c, H.d(sdir(0, -10)))
     decal('ev_nose', bvh, p, n, ('poly', [(-0.015, 0.006), (0.015, 0.006), (0, -0.009)]),
           M('ev_nose', (0.20, 0.10, 0.06)), lift=0.0015, bulge=0.003)
@@ -870,19 +880,20 @@ def build_bulbasaur(pose):
 
     # the bulb: overlapping lobes twisting to a point, tilted back
     bulb = M('bs_bulb', BULB, rough=0.38, spec=0.4)
-    bc = Vector((0, 0.17, 0.66 + bob))
-    tip = Vector((0, 0.30, 0.95 + bob))
-    lobes = []
+    bc = Vector((0, 0.17, 0.47 + bob))                  # centre of the bulb's footprint on the back
+    tip = bc + Vector((0, 0.17, 0.40))
     for i in range(5):
         a = math.radians(i * 72 + 36)
-        off = Vector((math.sin(a) * 0.105, -math.cos(a) * 0.095, -0.03))
-        c = bc + off
-        lobes.append(blob('bs_lobe%d' % i, [
-            ell_el(c, (0.21, 0.125, 0.13), direction=(tip - c + off * 0.6), roll=math.degrees(a)),
-        ], bulb))
-    loft('bs_tip', [bc + Vector((0, 0.06, 0.12)), bc + Vector((0, 0.10, 0.21)), tip + Vector((0, -0.02, -0.03)), tip,
-                    tip + Vector((0, 0.04, 0.02))],
-         [(0.11, 0.11), (0.08, 0.08), (0.04, 0.04), (0.02, 0.02), (0.003, 0.003)], ref=(1, 0, 0), mat=bulb, segs=14)
+        bp = bc + Vector((math.sin(a) * 0.20, -math.cos(a) * 0.17, 0.02))
+        ax = tip - bp
+        c = bp + ax * 0.42 + Vector((math.sin(a) * 0.03, -math.cos(a) * 0.03, 0))
+        blob('bs_lobe%d' % i, [
+            ell_el(c, (ax.length * 0.52, 0.15, 0.125), direction=ax, roll=math.degrees(a)),
+        ], bulb)
+    loft('bs_tip', [tip + Vector((0, -0.06, -0.10)), tip + Vector((0, -0.03, -0.04)), tip,
+                    tip + Vector((0, 0.03, 0.02)), tip + Vector((0, 0.07, 0.02))],
+         [(0.06, 0.06), (0.045, 0.045), (0.028, 0.028), (0.014, 0.014), (0.002, 0.002)], ref=(1, 0, 0), mat=bulb,
+         segs=14)
 
     # face
     bvh = make_bvh([body])
@@ -891,20 +902,20 @@ def build_bulbasaur(pose):
                     (0.064, 0.042), (0.04, 0.054), (-0.064, 0.012)])
     for sx in (1, -1):
         eye('bs_e%d' % sx, bvh, head_c, 0, 0, (0.068, 0.056), 'iris', mirror=sx < 0, sclera=scl,
-            iris_col=red, iris_scale=0.74, iris_off=(-0.20, -0.08), pupil_scale=0.42,
-            hl_off=(-0.30, 0.30), bulge=0.010, dirv=H.d(sdir(37 * sx, 12)))
+            iris_col=red, iris_scale=0.80, iris_off=(-0.16, -0.05), pupil_scale=0.40,
+            hl_off=(-0.32, 0.26), bulge=0.010, dirv=H.d(sdir(37 * sx, 12)))
     for sx in (1, -1):
         p, n = surf(bvh, head_c, H.d(sdir(7 * sx, -4)))
         decal('bs_nostril', bvh, p, n, ('ellipse', 0.008, 0.006), M('nostril', (0.15, 0.25, 0.22)), lift=0.0015)
     p, n = surf(bvh, head_c, H.d(sdir(0, -24)))
-    mouth = ('poly', [(-0.19, 0.035), (-0.10, 0.028), (0, 0.025), (0.10, 0.028), (0.19, 0.035),
-                      (0.15, -0.005), (0.08, -0.04), (0, -0.052), (-0.08, -0.04), (-0.15, -0.005)])
+    mouth = ('poly', [(-0.19, 0.04), (-0.10, 0.03), (0, 0.027), (0.10, 0.03), (0.19, 0.04),
+                      (0.15, -0.01), (0.08, -0.055), (0, -0.07), (-0.08, -0.055), (-0.15, -0.01)])
     decal('bs_mouth', bvh, p, n, mouth, M('bs_mouth', (0.93, 0.47, 0.45), rough=0.5), lift=0.0015, ink=True)
-    decal('bs_throat', bvh, p, n, ('ellipse', 0.10, 0.02), M('bs_throat', (0.78, 0.30, 0.32), rough=0.5),
-          lift=0.003, off=(0, 0.008), ink=False)
+    decal('bs_throat', bvh, p, n, ('ellipse', 0.11, 0.024), M('bs_throat', (0.72, 0.26, 0.30), rough=0.5),
+          lift=0.003, off=(0, 0.004), ink=False)
     for sx in (1, -1):
-        decal('bs_fang', bvh, p, n, ('poly', [(-0.012, 0.0), (0.012, 0.0), (0.0, -0.022)]), white,
-              lift=0.0045, off=(0.085 * sx, 0.024), ink=False)
+        decal('bs_fang', bvh, p, n, ('poly', [(-0.01, 0.0), (0.01, 0.0), (0.0, -0.018)]), white,
+              lift=0.0045, off=(0.09 * sx, 0.028), ink=False)
     # dark-green patches (no ink, like the art)
     spot = M('bs_spot', SPOT, rough=0.45, spec=0.3)
     patches = [
@@ -988,16 +999,15 @@ def build_squirtle(pose):
         t = k / 25
         if t < 0.35:
             u = t / 0.35
-            p = Vector((0, 0.18 + 0.26 * u, 0.16 - 0.05 * math.sin(u * math.pi) + 0.04 * u))
+            p = Vector((0, 0.18 + 0.30 * u, 0.16 - 0.05 * math.sin(u * math.pi) + 0.04 * u))
         else:
             u = (t - 0.35) / 0.65
             ang = -math.pi / 2 + u * 1.75 * math.pi
-            r = 0.12 * (1 - 0.62 * u)
-            cc = Vector((0, 0.44, 0.20 + 0.12))
+            r = 0.135 * (1 - 0.62 * u)
+            cc = Vector((0, 0.48, 0.20 + 0.135))
             p = cc + Vector((0, math.cos(ang) * r, math.sin(ang) * r))
-            p.y += 0.0
-        pts.append(rot_about(p + Vector((0, 0, bob)), tb, 'Z', sway))
-        rad.append(0.068 * (1 - 0.45 * t) + 0.012)
+        pts.append(rot_about(p + Vector((0, 0, bob)), tb, 'Z', sway - 22))
+        rad.append(0.07 * (1 - 0.45 * t) + 0.014)
     rad[-1] *= 0.6
     loft('sq_tail', pts, [(r, r) for r in rad], ref=(1, 0, 0), mat=blue, segs=14)
 
@@ -1005,7 +1015,7 @@ def build_squirtle(pose):
     bvh = make_bvh([body])
     for sx in (1, -1):
         eye('sq_e%d' % sx, bvh, head_c, 0, 0, (0.05, 0.062), 'iris', mirror=sx < 0, tilt=-6,
-            iris_col=(0.62, 0.12, 0.18), iris_scale=0.74, iris_off=(-0.18, 0.12), pupil_scale=0.45,
+            iris_col=(0.62, 0.12, 0.18), iris_scale=0.78, iris_off=(-0.12, 0.12), pupil_scale=0.52,
             hl_off=(-0.25, 0.38), bulge=0.012, dirv=H.d(sdir(30 * sx, 10)))
     for sx in (1, -1):
         p, n = surf(bvh, head_c, H.d(sdir(6 * sx, -6)))
@@ -1016,11 +1026,11 @@ def build_squirtle(pose):
     if hero:   # plate seams
         pb = make_bvh([plate])
         p, n = surf(pb, Vector((0, -0.075, 0.38)), Vector((0, -1, 0)))
-        ln = M('sq_seam', (0.55, 0.42, 0.25))
-        for pts2 in ([(0, 0.20), (0, 0.06)], [(0, -0.06), (0, -0.21)],
-                     [(-0.15, 0.06), (0, 0.06), (0.15, 0.06)], [(-0.16, -0.06), (0, -0.06), (0.16, -0.06)],
-                     [(0, 0.06), (0, -0.06)]):
-            stroke('sq_seam', pb, p, n, pts2, 0.004, ln, lift=0.002)
+        ln = M('sq_seam', (0.50, 0.36, 0.20))
+        for pts2 in ([(0, 0.22), (0, -0.22)],
+                     [(-0.17, 0.08), (-0.09, 0.06), (0, 0.065), (0.09, 0.06), (0.17, 0.08)],
+                     [(-0.18, -0.06), (-0.09, -0.07), (0, -0.065), (0.09, -0.07), (0.18, -0.06)]):
+            stroke('sq_seam', pb, p, n, pts2, 0.006, ln, lift=0.002)
     return dict(head=head_c)
 
 
@@ -1063,10 +1073,10 @@ def build_chikorita(pose):
     budm = M('ck_bud', BUD, rough=0.4, spec=0.4)
     nc = Vector((0, -0.05, 0.47 + bob))
     bud_els = []
-    for a in range(-150, 151, 30):
+    for a in (-118, -72, -26, 26, 72, 118, 180):
         d = sdir(a, -8)
         p, n = surf(bvh, nc, d)
-        bud_els.append(dict(t='B', c=p + n * 0.012, r=0.03))
+        bud_els.append(dict(t='B', c=p + n * 0.014, r=0.034))
     blob('ck_buds', bud_els, budm)
 
     # leaf on a short stem
@@ -1077,11 +1087,11 @@ def build_chikorita(pose):
          mat=M('ck_leaf', LEAF, rough=0.4, spec=0.35), segs=10)
     if hero:
         D = H.d(Vector((0.18, 0.72, 0.55)).normalized())
-        L, Wm = 0.80, 0.17
+        L, Wm = 0.82, 0.215
     else:
         away = pose.get('away', Vector((0, 1, 0)))
         D = H.d((Vector((0, 0, 0.95)) + away * 0.55 + Vector((0, 0.15, 0))).normalized())
-        L, Wm = 0.68, 0.16
+        L, Wm = 0.68, 0.19
     side = Vector((0, 0, 1)).cross(D)
     if side.length < 0.1:
         side = Vector((1, 0, 0))
@@ -1107,7 +1117,7 @@ def build_chikorita(pose):
     # face
     for sx in (1, -1):
         eye('ck_e%d' % sx, bvh, head_c, 0, 0, (0.050, 0.064), 'iris', mirror=sx < 0, tilt=-4,
-            iris_col=(0.78, 0.10, 0.17), iris_scale=0.80, iris_off=(-0.10, -0.04), pupil_scale=0.42,
+            iris_col=(0.78, 0.10, 0.17), iris_scale=0.80, iris_off=(-0.10, -0.02), pupil_scale=0.40,
             hl_off=(-0.25, 0.36), bulge=0.012, dirv=H.d(sdir(33 * sx, 8)))
     p, n = surf(bvh, head_c, H.d(sdir(0, -17)))
     stroke('ck_mouth', bvh, p, n, [(-0.045, 0.012), (-0.022, -0.004), (0, 0.002), (0.022, -0.004), (0.045, 0.012)],

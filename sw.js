@@ -19,13 +19,13 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.5.90-20261004-ui-polish';
+const CACHE_VERSION = 'v1.5.91-20261005-light-landscape';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=129',
-  '/style.css?v=43',
+  '/style.css?v=44',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
@@ -40,7 +40,7 @@ const ASSETS = [
   '/features/updates/updates.css?v=1',
   '/features/folders/folders.css?v=2',
   '/features/gallery/gallery.css?v=1',
-  '/features/pokemon/pokemon.css?v=6',
+  '/features/pokemon/pokemon.css?v=7',
   '/features/royale/royale.css?v=18',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=11',
@@ -50,7 +50,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=3',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=17',
+  '/features/updates/changelog.js?v=18',
   '/script.js?v=125',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

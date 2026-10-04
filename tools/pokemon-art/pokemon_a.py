@@ -468,6 +468,10 @@ def shape_radius(shape, th):
         a, b = shape[1], shape[2]
         c, s = math.cos(th), math.sin(th)
         return 1.0 / math.sqrt((c / a) ** 2 + (s / b) ** 2)
+    if kind == 'clip':      # ellipse (a, b) centred at c, clipped by an outer shape around the origin
+        _, a, b, outer, c = shape
+        r1 = shape_radius(('ellipse', a, b), th)
+        return min(r1, _ray_to_boundary(outer, Vector(c), th) * 0.975)
     if kind == 'poly':      # star-shaped polygon around the origin
         pts = shape[1]
         d = Vector((math.cos(th), math.sin(th)))
@@ -484,6 +488,31 @@ def shape_radius(shape, th):
                 best = t if best is None else min(best, t)
         return best or 0.0
     raise ValueError(kind)
+
+
+def _ray_to_boundary(shape, c, th):
+    """Distance from point c (inside shape) along angle th to the shape's outline."""
+    d = Vector((math.cos(th), math.sin(th)))
+    if shape[0] == 'ellipse':
+        a, b = shape[1], shape[2]
+        A = (d.x / a) ** 2 + (d.y / b) ** 2
+        B = 2 * (c.x * d.x / a ** 2 + c.y * d.y / b ** 2)
+        Cc = (c.x / a) ** 2 + (c.y / b) ** 2 - 1
+        disc = max(0.0, B * B - 4 * A * Cc)
+        return (-B + math.sqrt(disc)) / (2 * A)
+    pts = shape[1]
+    best = 1e9
+    for i in range(len(pts)):
+        p, q = Vector(pts[i]) - c, Vector(pts[(i + 1) % len(pts)]) - c
+        e = q - p
+        den = d.x * e.y - d.y * e.x
+        if abs(den) < 1e-12:
+            continue
+        t = (p.x * e.y - p.y * e.x) / den
+        u = (p.x * d.y - p.y * d.x) / den
+        if t > 0 and -1e-6 <= u <= 1 + 1e-6:
+            best = min(best, t)
+    return best
 
 
 def decal(name, bvh, p, n, shape, mat, lift=0.002, bulge=0.0, rot=0.0, off=(0.0, 0.0),
@@ -574,12 +603,18 @@ def eye(prefix, bvh, center, az, el, size, kind, mirror=False, hl_off=(-0.25, 0.
         parts.append(decal(prefix + '_scl', bvh, p, n, scl, M('eye_white', (0.97, 0.97, 0.96), rough=0.2, spec=0.5),
                            lift=0.0015, rot=0 if scl[0] == 'poly' else rot, dome=dome))
         ia, ib = a * iris_scale, b * iris_scale
-        io = (iris_off[0] * a * sgn, iris_off[1] * b)
-        parts.append(decal(prefix + '_iris', bvh, p, n, ('ellipse', ia, ib), M('iris_' + prefix[:2], iris_col, rough=0.15, spec=0.6),
-                           lift=0.0028, rot=rot, off=io, dome=dome))
-        parts.append(decal(prefix + '_pup', bvh, p, n, ('ellipse', ia * pupil_scale, ib * pupil_scale * 1.1),
+        irot = 0 if scl[0] == 'poly' else rot
+        io = Vector((iris_off[0] * a * sgn, iris_off[1] * b))
+        c, s_ = math.cos(math.radians(-irot)), math.sin(math.radians(-irot))
+        io_r = (io.x * c - io.y * s_, io.x * s_ + io.y * c)          # iris centre in the sclera frame
+        outer = scl if scl[0] == 'poly' else ('ellipse', a, b)
+        parts.append(decal(prefix + '_iris', bvh, p, n, ('clip', ia, ib, outer, io_r),
+                           M('iris_' + prefix[:2], iris_col, rough=0.15, spec=0.6),
+                           lift=0.0028, rot=irot, off=tuple(io), dome=dome, segs=48))
+        pa, pb = ia * pupil_scale, ib * pupil_scale * 1.1
+        parts.append(decal(prefix + '_pup', bvh, p, n, ('clip', pa, pb, outer, io_r),
                            M('pupil', (0.10, 0.03, 0.05), rough=0.12, spec=0.7),
-                           lift=0.0041, rot=rot, off=io, dome=dome))
+                           lift=0.0041, rot=irot, off=tuple(io), dome=dome))
     # glossy highlight (no ink)
     hr = min(a, b) * HL_SCALE
     parts.append(decal(prefix + '_hl', bvh, p, n, ('ellipse', hr, hr * 1.1), M('hl', (1, 1, 1), emission=(1, 1, 1), emission_strength=1.2),
@@ -732,7 +767,7 @@ def build_eevee(pose):
     fur = M('ev_fur', FUR, rough=0.55, spec=0.3)
 
     els = [
-        H.ell((0, hy, hz), (0.235, 0.20, 0.20)),                       # head
+        H.ell((0, hy, hz), (0.245, 0.205, 0.205)),                     # head
         H.ell((0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),    # cheeks
         H.ell((-0.13, hy - 0.04, hz - 0.075), (0.115, 0.105, 0.09)),
         H.ell((0, hy - 0.13, hz - 0.075), (0.075, 0.06, 0.055), s=3),  # little muzzle
@@ -880,18 +915,22 @@ def build_bulbasaur(pose):
 
     # the bulb: overlapping lobes twisting to a point, tilted back
     bulb = M('bs_bulb', BULB, rough=0.38, spec=0.4)
-    bc = Vector((0, 0.17, 0.47 + bob))                  # centre of the bulb's footprint on the back
-    tip = bc + Vector((0, 0.17, 0.40))
+    bc = Vector((0, 0.16, 0.45 + bob))                  # centre of the bulb's footprint on the back
+    A = Vector((0, math.sin(math.radians(38)), math.cos(math.radians(38))))   # bulb axis leans back
+    X1 = Vector((1, 0, 0))
+    Y1 = A.cross(X1).normalized()                       # points forward-up
+    tip = bc + A * 0.46
     for i in range(5):
         a = math.radians(i * 72 + 36)
-        bp = bc + Vector((math.sin(a) * 0.20, -math.cos(a) * 0.17, 0.02))
+        radial = X1 * math.sin(a) - Y1 * math.cos(a)
+        bp = bc + radial * 0.21 + A * 0.03
         ax = tip - bp
-        c = bp + ax * 0.42 + Vector((math.sin(a) * 0.03, -math.cos(a) * 0.03, 0))
+        c = bp + ax * 0.40 + radial * 0.035
         blob('bs_lobe%d' % i, [
-            ell_el(c, (ax.length * 0.52, 0.15, 0.125), direction=ax, roll=math.degrees(a)),
+            ell_el(c, (ax.length * 0.55, 0.165, 0.14), direction=ax, roll=math.degrees(a)),
         ], bulb)
-    loft('bs_tip', [tip + Vector((0, -0.06, -0.10)), tip + Vector((0, -0.03, -0.04)), tip,
-                    tip + Vector((0, 0.03, 0.02)), tip + Vector((0, 0.07, 0.02))],
+    loft('bs_tip', [tip - A * 0.10, tip - A * 0.04, tip, tip + A * 0.02 + Vector((0, 0.03, 0)),
+                    tip + Vector((0, 0.07, -0.005))],
          [(0.06, 0.06), (0.045, 0.045), (0.028, 0.028), (0.014, 0.014), (0.002, 0.002)], ref=(1, 0, 0), mat=bulb,
          segs=14)
 
@@ -902,7 +941,7 @@ def build_bulbasaur(pose):
                     (0.064, 0.042), (0.04, 0.054), (-0.064, 0.012)])
     for sx in (1, -1):
         eye('bs_e%d' % sx, bvh, head_c, 0, 0, (0.068, 0.056), 'iris', mirror=sx < 0, sclera=scl,
-            iris_col=red, iris_scale=0.80, iris_off=(-0.16, -0.05), pupil_scale=0.40,
+            iris_col=red, iris_scale=0.92, iris_off=(-0.22, -0.06), pupil_scale=0.40,
             hl_off=(-0.32, 0.26), bulge=0.010, dirv=H.d(sdir(37 * sx, 12)))
     for sx in (1, -1):
         p, n = surf(bvh, head_c, H.d(sdir(7 * sx, -4)))
@@ -979,16 +1018,16 @@ def build_squirtle(pose):
     # arms
     sw = 0.06 * st
     if hero:
-        arm_l = [(0.16, -0.02, 0.52), (0.27, -0.12, 0.47), (0.35, -0.18, 0.50)]
-        arm_r = [(-0.16, -0.02, 0.52), (-0.28, -0.08, 0.46), (-0.39, -0.12, 0.47)]
+        arm_l = [(0.16, -0.02, 0.52), (0.24, -0.12, 0.47), (0.27, -0.19, 0.52)]
+        arm_r = [(-0.16, -0.02, 0.52), (-0.26, -0.07, 0.47), (-0.34, -0.11, 0.48)]
     else:
-        arm_l = [(0.16, -0.02, 0.52 + bob), (0.25, -0.10 - sw, 0.45 + bob), (0.30, -0.15 - sw, 0.43 + bob)]
-        arm_r = [(-0.16, -0.02, 0.52 + bob), (-0.25, -0.10 + sw, 0.45 + bob), (-0.30, -0.15 + sw, 0.43 + bob)]
+        arm_l = [(0.16, -0.02, 0.52 + bob), (0.23, -0.09 - sw, 0.46 + bob), (0.26, -0.14 - sw, 0.44 + bob)]
+        arm_r = [(-0.16, -0.02, 0.52 + bob), (-0.23, -0.09 + sw, 0.46 + bob), (-0.26, -0.14 + sw, 0.44 + bob)]
     arm_els = []
     for arm in (arm_l, arm_r):
-        arm_els.append(capsule_el(arm[0], arm[1], 0.058))
-        arm_els.append(capsule_el(arm[1], arm[2], 0.052))
-        arm_els.append(ell_el(arm[2], (0.06, 0.06, 0.045), direction=Vector(arm[2]) - Vector(arm[1])))
+        arm_els.append(capsule_el(arm[0], arm[1], 0.068))
+        arm_els.append(capsule_el(arm[1], arm[2], 0.062))
+        arm_els.append(ell_el(arm[2], (0.07, 0.066, 0.05), direction=Vector(arm[2]) - Vector(arm[1])))
     blob('sq_arms', arm_els, blue)
 
     # curled tail (spiral in the side plane)
@@ -1006,7 +1045,7 @@ def build_squirtle(pose):
             r = 0.135 * (1 - 0.62 * u)
             cc = Vector((0, 0.48, 0.20 + 0.135))
             p = cc + Vector((0, math.cos(ang) * r, math.sin(ang) * r))
-        pts.append(rot_about(p + Vector((0, 0, bob)), tb, 'Z', sway - 22))
+        pts.append(rot_about(p + Vector((0, 0, bob)), tb, 'Z', sway - 40))
         rad.append(0.07 * (1 - 0.45 * t) + 0.014)
     rad[-1] *= 0.6
     loft('sq_tail', pts, [(r, r) for r in rad], ref=(1, 0, 0), mat=blue, segs=14)
@@ -1015,7 +1054,7 @@ def build_squirtle(pose):
     bvh = make_bvh([body])
     for sx in (1, -1):
         eye('sq_e%d' % sx, bvh, head_c, 0, 0, (0.05, 0.062), 'iris', mirror=sx < 0, tilt=-6,
-            iris_col=(0.62, 0.12, 0.18), iris_scale=0.78, iris_off=(-0.12, 0.12), pupil_scale=0.52,
+            iris_col=(0.62, 0.12, 0.18), iris_scale=0.90, iris_off=(-0.16, 0.20), pupil_scale=0.52,
             hl_off=(-0.25, 0.38), bulge=0.012, dirv=H.d(sdir(30 * sx, 10)))
     for sx in (1, -1):
         p, n = surf(bvh, head_c, H.d(sdir(6 * sx, -6)))
@@ -1117,7 +1156,7 @@ def build_chikorita(pose):
     # face
     for sx in (1, -1):
         eye('ck_e%d' % sx, bvh, head_c, 0, 0, (0.050, 0.064), 'iris', mirror=sx < 0, tilt=-4,
-            iris_col=(0.78, 0.10, 0.17), iris_scale=0.80, iris_off=(-0.10, -0.02), pupil_scale=0.40,
+            iris_col=(0.78, 0.10, 0.17), iris_scale=0.92, iris_off=(-0.16, 0.04), pupil_scale=0.40,
             hl_off=(-0.25, 0.36), bulge=0.012, dirv=H.d(sdir(33 * sx, 8)))
     p, n = surf(bvh, head_c, H.d(sdir(0, -17)))
     stroke('ck_mouth', bvh, p, n, [(-0.045, 0.012), (-0.022, -0.004), (0, 0.002), (0.022, -0.004), (0.045, 0.012)],

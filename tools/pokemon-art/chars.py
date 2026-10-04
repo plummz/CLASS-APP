@@ -782,7 +782,7 @@ def char_granite():
 
 
 def char_marina():
-    p = params(scale=0.96, torso_r=(0.15, 0.12), shoulder_x=0.172, hip_x=0.07, leg_r=0.062, head_r=0.245)
+    p = params(scale=0.94, torso_r=(0.15, 0.12), shoulder_x=0.172, hip_x=0.07, leg_r=0.062, head_r=0.245)
     R = Rig(p)
     navy = hexc('#1f4fa8')
     hair = hexc('#3cb4f0')

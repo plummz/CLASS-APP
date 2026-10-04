@@ -879,20 +879,20 @@ def build_bulbasaur(pose):
     BULB = (0.36, 0.72, 0.22)
     bob = -0.012 * abs(st)
     H = HeadXf((0, -0.02, 0.36 + bob), tilt=0 if hero else SPRITE_TILT * 0.7)
-    hz, hy = 0.44 + bob, -0.15
+    hz, hy = 0.42 + bob, -0.15
     lg = quad_legs(st, 0.06)
     teal = M('bs_teal', TEAL, rough=0.42, spec=0.35)
 
     els = [
-        H.ell((0, hy, hz), (0.29, 0.235, 0.19)),                      # wide flat head
+        H.ell((0, hy, hz), (0.30, 0.235, 0.175)),                     # wide flat head
         H.ell((0.15, hy - 0.05, hz - 0.06), (0.15, 0.13, 0.12)),      # jowls
         H.ell((-0.15, hy - 0.05, hz - 0.06), (0.15, 0.13, 0.12)),
         H.ell((0, hy - 0.10, hz - 0.03), (0.17, 0.12, 0.12)),         # snout
-        ell_el((0, 0.12, 0.31 + bob), (0.22, 0.25, 0.18)),            # body
+        ell_el((0, 0.14, 0.29 + bob), (0.22, 0.28, 0.175)),           # body
     ]
-    for key, x, y in (('fl', 0.17, -0.09), ('fr', -0.17, -0.09), ('bl', 0.18, 0.27), ('br', -0.18, 0.27)):
+    for key, x, y in (('fl', 0.17, -0.09), ('fr', -0.17, -0.09), ('bl', 0.18, 0.31), ('br', -0.18, 0.31)):
         dy = lg[key]
-        els.append(ell_el((x, y + dy * 0.4, 0.19 + bob * 0.5), (0.085, 0.09, 0.11)))      # thigh
+        els.append(ell_el((x, y + dy * 0.4, 0.17 + bob * 0.5), (0.09, 0.095, 0.10)))      # thigh
         els.append(ell_el((x * 1.03, y - 0.02 + dy, 0.05), (0.08, 0.10, 0.052), s=3))   # foot
     body = blob('bs_body', els, teal)
     head_c = H.p((0, hy, hz))
@@ -915,7 +915,7 @@ def build_bulbasaur(pose):
 
     # the bulb: overlapping lobes twisting to a point, tilted back
     bulb = M('bs_bulb', BULB, rough=0.38, spec=0.4)
-    bc = Vector((0, 0.16, 0.45 + bob))                  # centre of the bulb's footprint on the back
+    bc = Vector((0, 0.24, 0.42 + bob))                  # centre of the bulb's footprint on the back
     A = Vector((0, math.sin(math.radians(38)), math.cos(math.radians(38))))   # bulb axis leans back
     X1 = Vector((1, 0, 0))
     Y1 = A.cross(X1).normalized()                       # points forward-up
@@ -927,7 +927,7 @@ def build_bulbasaur(pose):
         ax = tip - bp
         c = bp + ax * 0.40 + radial * 0.035
         blob('bs_lobe%d' % i, [
-            ell_el(c, (ax.length * 0.55, 0.165, 0.14), direction=ax, roll=math.degrees(a)),
+            ell_el(c, (ax.length * 0.52, 0.155, 0.135), direction=ax, roll=math.degrees(a)),
         ], bulb)
     loft('bs_tip', [tip - A * 0.10, tip - A * 0.04, tip, tip + A * 0.02 + Vector((0, 0.03, 0)),
                     tip + Vector((0, 0.07, -0.005))],
@@ -937,10 +937,10 @@ def build_bulbasaur(pose):
     # face
     bvh = make_bvh([body])
     red = (0.85, 0.12, 0.17)
-    scl = ('poly', [(-0.062, -0.03), (-0.04, -0.052), (0.015, -0.056), (0.055, -0.034), (0.07, 0.004),
-                    (0.064, 0.042), (0.04, 0.054), (-0.064, 0.012)])
+    scl = ('poly', [(u * 1.13, v * 1.13) for u, v in ((-0.062, -0.03), (-0.04, -0.052), (0.015, -0.056),
+                    (0.055, -0.034), (0.07, 0.004), (0.064, 0.042), (0.04, 0.054), (-0.064, 0.012))])
     for sx in (1, -1):
-        eye('bs_e%d' % sx, bvh, head_c, 0, 0, (0.068, 0.056), 'iris', mirror=sx < 0, sclera=scl,
+        eye('bs_e%d' % sx, bvh, head_c, 0, 0, (0.078, 0.064), 'iris', mirror=sx < 0, sclera=scl,
             iris_col=red, iris_scale=0.92, iris_off=(-0.22, -0.06), pupil_scale=0.40,
             hl_off=(-0.32, 0.26), bulge=0.010, dirv=H.d(sdir(37 * sx, 12)))
     for sx in (1, -1):
@@ -961,17 +961,17 @@ def build_bulbasaur(pose):
         (head_c, H.d(sdir(0, 52)), [(-0.06, 0.0), (-0.02, 0.05), (0.06, 0.03), (0.05, -0.03), (-0.03, -0.035)]),
         (head_c, H.d(sdir(-26, 48)), [(-0.025, 0.0), (0.0, 0.03), (0.025, 0.0), (0.0, -0.022)]),
         (head_c, H.d(sdir(28, 44)), [(-0.022, 0.012), (0.024, 0.02), (0.0, -0.025)]),
-        (Vector((0, 0.12, 0.31 + bob)), sdir(80, 10), [(-0.05, 0.0), (0.0, 0.035), (0.05, 0.0), (0.0, -0.03)]),
-        (Vector((0, 0.12, 0.31 + bob)), sdir(-82, 6), [(-0.04, 0.01), (0.02, 0.035), (0.05, -0.01), (-0.01, -0.03)]),
-        (Vector((0, 0.12, 0.31 + bob)), sdir(120, 20), [(-0.03, 0.0), (0.0, 0.025), (0.035, 0.0), (0.0, -0.02)]),
-        (Vector((0, 0.12, 0.31 + bob)), sdir(-125, 18), [(-0.03, 0.0), (0.0, 0.03), (0.03, 0.0), (0.0, -0.025)]),
+        (Vector((0, 0.14, 0.29 + bob)), sdir(80, 10), [(-0.05, 0.0), (0.0, 0.035), (0.05, 0.0), (0.0, -0.03)]),
+        (Vector((0, 0.14, 0.29 + bob)), sdir(-82, 6), [(-0.04, 0.01), (0.02, 0.035), (0.05, -0.01), (-0.01, -0.03)]),
+        (Vector((0, 0.14, 0.29 + bob)), sdir(120, 20), [(-0.03, 0.0), (0.0, 0.025), (0.035, 0.0), (0.0, -0.02)]),
+        (Vector((0, 0.14, 0.29 + bob)), sdir(-125, 18), [(-0.03, 0.0), (0.0, 0.03), (0.03, 0.0), (0.0, -0.025)]),
     ]
     for c, d, poly in patches:
         p, n = surf(bvh, c, d)
         decal('bs_spot', bvh, p, n, ('poly', poly), spot, lift=0.0012, ink=False)
-    for key, x, y in (('fl', 0.17, -0.09), ('fr', -0.17, -0.09), ('bl', 0.18, 0.27), ('br', -0.18, 0.27)):
+    for key, x, y in (('fl', 0.17, -0.09), ('fr', -0.17, -0.09), ('bl', 0.18, 0.31), ('br', -0.18, 0.31)):
         sx = 1 if x > 0 else -1
-        c = Vector((x, y + lg[key] * 0.4, 0.17))
+        c = Vector((x, y + lg[key] * 0.4, 0.16))
         p, n = surf(bvh, c, Vector((sx, -0.5, 0.25)))
         decal('bs_spot', bvh, p, n, ('poly', [(-0.03, 0.0), (0.0, 0.03), (0.035, 0.005), (0.005, -0.03)]), spot,
               lift=0.0012, ink=False)
@@ -992,7 +992,7 @@ def build_squirtle(pose):
     fy = 0.075 * st
 
     els = [
-        H.ell((0, -0.02, hz), (0.245, 0.235, 0.225)),                 # round head
+        H.ell((0, -0.02, hz), (0.255, 0.235, 0.21)),                  # round head
         H.ell((0, -0.12, hz - 0.06), (0.17, 0.13, 0.12)),             # snout
         ell_el((0, 0.0, 0.60 + bob), (0.12, 0.11, 0.10)),             # neck
         ell_el((0, 0.03, 0.38 + bob), (0.19, 0.17, 0.21)),            # torso core
@@ -1053,7 +1053,7 @@ def build_squirtle(pose):
     # face
     bvh = make_bvh([body])
     for sx in (1, -1):
-        eye('sq_e%d' % sx, bvh, head_c, 0, 0, (0.05, 0.062), 'iris', mirror=sx < 0, tilt=-6,
+        eye('sq_e%d' % sx, bvh, head_c, 0, 0, (0.058, 0.074), 'iris', mirror=sx < 0, tilt=-6,
             iris_col=(0.62, 0.12, 0.18), iris_scale=0.90, iris_off=(-0.16, 0.20), pupil_scale=0.52,
             hl_off=(-0.25, 0.38), bulge=0.012, dirv=H.d(sdir(30 * sx, 10)))
     for sx in (1, -1):
@@ -1155,7 +1155,7 @@ def build_chikorita(pose):
 
     # face
     for sx in (1, -1):
-        eye('ck_e%d' % sx, bvh, head_c, 0, 0, (0.050, 0.064), 'iris', mirror=sx < 0, tilt=-4,
+        eye('ck_e%d' % sx, bvh, head_c, 0, 0, (0.058, 0.074), 'iris', mirror=sx < 0, tilt=-4,
             iris_col=(0.78, 0.10, 0.17), iris_scale=0.92, iris_off=(-0.16, 0.04), pupil_scale=0.40,
             hl_off=(-0.25, 0.36), bulge=0.012, dirv=H.d(sdir(33 * sx, 8)))
     p, n = surf(bvh, head_c, H.d(sdir(0, -17)))

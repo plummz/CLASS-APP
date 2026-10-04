@@ -111,7 +111,7 @@
       <div class="changelog-entry">
         <div class="changelog-version">Version ${window.escapeHTML(entry.version)} <span>${window.escapeHTML(entry.date)}</span></div>
         <p class="modal-text align-left"><strong>${window.escapeHTML(entry.title || 'Update')}</strong> - ${window.escapeHTML(entry.summary || '')}</p>
-        <ul>${(entry.changes || []).map((change) => `<li>${window.escapeHTML(change)}</li>`).join('')}</ul>
+        <ul>${(entry.changes || entry.bullets || []).map((change) => `<li>${window.escapeHTML(change)}</li>`).join('')}</ul>
       </div>
     `).join('');
     document.body.insertAdjacentHTML('beforeend', `

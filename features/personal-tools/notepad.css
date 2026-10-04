@@ -321,3 +321,37 @@
   border-radius: 20px;
   letter-spacing: 0.03em;
 }
+
+/* ── Long notes collapse to a preview ── */
+.notepad-item-content.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 7;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notepad-more-btn {
+  margin: 6px 0 2px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent, #00d4ff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.notepad-char-count {
+  min-height: 16px;
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+#notepad-save-btn:disabled { opacity: 0.6; }
+/* 16px inputs stop iOS Safari zooming the page while typing */
+.notepad-form input,
+.notepad-form textarea,
+.notepad-search-input { font-size: 16px; }
+.notepad-form { scroll-margin-top: 80px; }

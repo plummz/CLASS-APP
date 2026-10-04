@@ -1,1 +1,129 @@
 /* Music-specific styles will move here as the shared stylesheet is reduced. */
+
+/* ── YouTube results are buttons now (keyboard + screen reader friendly) ── */
+button.yt-result-item {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+.yt-results { max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.yt-result-playing {
+  display: none;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neon-green, #00ff88);
+  white-space: nowrap;
+}
+.yt-result-item.is-playing { background: rgba(0, 255, 136, 0.08); box-shadow: inset 3px 0 0 var(--neon-green, #00ff88); }
+.yt-result-item.is-playing .yt-result-playing { display: inline; }
+.yt-result-item:focus-visible { outline: 2px solid var(--accent, #00d4ff); outline-offset: -2px; }
+
+/* ── Recent YouTube searches ── */
+.yt-recent {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  padding: 2px 0 6px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.yt-recent::-webkit-scrollbar { display: none; }
+.yt-recent.hidden { display: none; }
+.yt-recent-label { flex: 0 0 auto; font-size: 12px; color: rgba(226, 232, 240, 0.65); }
+.yt-recent-chip,
+.yt-recent-clear {
+  flex: 0 0 auto;
+  max-width: 180px;
+  min-height: 32px;
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  background: rgba(0, 212, 255, 0.08);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.yt-recent-clear { border-color: rgba(255, 255, 255, 0.15); background: transparent; opacity: 0.7; }
+
+/* ── Uploaded song search action ── */
+.music-search-action {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #00d4ff;
+  color: #000;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.music-search-action.is-audio { background: #00ff88; }
+
+/* ── Up next queue ── */
+.music-queue {
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.music-queue.hidden { display: none; }
+.music-queue-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.music-queue-count { font-weight: 500; text-transform: none; letter-spacing: 0; }
+.music-queue-list { max-height: 220px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.music-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: transparent;
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.music-queue-item:last-child { border-bottom: 0; }
+.music-queue-item:hover { background: rgba(0, 212, 255, 0.06); }
+.music-queue-item.is-current { color: var(--neon-green, #00ff88); font-weight: 700; }
+.music-queue-num { flex: 0 0 22px; text-align: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.music-queue-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Light mode ── */
+body.light-mode .music-queue { background: rgba(255, 255, 255, 0.6); border-color: rgba(0, 0, 0, 0.08); }
+body.light-mode .music-queue-head { color: #334155; border-color: rgba(0, 0, 0, 0.06); }
+body.light-mode .music-queue-item { color: #0f172a; }
+body.light-mode .music-queue-item.is-current { color: #047857; }
+body.light-mode .yt-recent-chip,
+body.light-mode .yt-recent-clear { color: #0b2d6b; }
+body.light-mode .yt-recent-label { color: #334155; }

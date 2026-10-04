@@ -1,1 +1,86 @@
 /* Folder explorer styles will move here as the shared stylesheet is reduced. */
+
+/* ── File explorer: drop zone, search / sort toolbar, type icons ── */
+#file-explorer-modal .file-upload-area {
+  border: 1.5px dashed rgba(255, 255, 255, 0.16);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+#file-explorer-modal .file-upload-area.is-dragover {
+  border-color: var(--neon-green, #00ff88);
+  background: rgba(0, 255, 136, 0.08);
+}
+#file-upload-btn:disabled { opacity: 0.55; cursor: progress; }
+.file-drop-hint {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+/* Phones can't drag files in, so the hint only shows with a mouse */
+@media (hover: none), (pointer: coarse) {
+  .file-drop-hint { display: none; }
+}
+
+.file-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.file-search-input,
+.file-sort-select {
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS Safari zooming in on focus */
+}
+.file-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+}
+.file-search-input::placeholder { color: rgba(255, 255, 255, 0.45); }
+.file-sort-select {
+  flex: 0 0 auto;
+  padding: 0 8px;
+  font-size: 14px;
+}
+.file-sort-select option { color: #000; }
+.file-search-input:focus-visible,
+.file-sort-select:focus-visible {
+  outline: 2px solid var(--neon-blue, #00d4ff);
+  outline-offset: 1px;
+}
+.file-count {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .file-toolbar { flex-wrap: wrap; }
+  .file-search-input { flex-basis: 100%; }
+  .file-sort-select { flex: 1; }
+}
+
+.file-type-icon {
+  display: inline-block;
+  width: 1.4em;
+  margin-right: 4px;
+  text-align: center;
+}
+
+/* Light mode */
+body.light-mode .file-search-input,
+body.light-mode .file-sort-select {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #111;
+}
+body.light-mode .file-search-input::placeholder { color: rgba(0, 0, 0, 0.45); }
+body.light-mode .file-count,
+body.light-mode .file-drop-hint { color: rgba(0, 0, 0, 0.55); }
+body.light-mode #file-explorer-modal .file-upload-area { border-color: rgba(0, 0, 0, 0.18); }

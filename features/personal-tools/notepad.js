@@ -13,10 +13,15 @@ window.notepadModule = {
   onlineHandlerBound: false,
   pendingDeletes: {},
   pendingDeleteTimeouts: {},
+  saving: false,
+  expanded: {},
 
-  init: function() {
+  init: async function() {
     this.setupOnlineHandler();
-    this.loadNotes();
+    // Show the offline copy right away, then refresh once the cloud notes arrive
+    this.notes = this.getStoredNotes();
+    this.render();
+    await this.loadNotes();
     this.render();
     this.checkFirstLogin();
   },
@@ -53,6 +58,8 @@ window.notepadModule = {
       localId: note.localId || this.createLocalId(),
       sharedToReviewers: Boolean(note.sharedToReviewers || note.shared_to_reviewers),
       tags: note.tags || '',
+      // true = edited on this device and not yet uploaded
+      dirty: Boolean(note.dirty),
     };
   },
 
@@ -66,7 +73,11 @@ window.notepadModule = {
   },
 
   persistLocalNotes: function() {
-    localStorage.setItem('notepad-notes', JSON.stringify(this.notes.map((note) => this.hydrateNote(note))));
+    try {
+      localStorage.setItem('notepad-notes', JSON.stringify(this.notes.map((note) => this.hydrateNote(note))));
+    } catch (error) {
+      console.warn('[Notepad] Could not save the offline copy:', error);
+    }
   },
 
   notesMatch: function(a, b) {
@@ -80,11 +91,23 @@ window.notepadModule = {
   mergeLocalAndRemoteNotes: function(localNotes, remoteNotes) {
     const merged = (remoteNotes || []).map((note) => this.hydrateNote(note));
     for (const localNote of (localNotes || []).map((note) => this.hydrateNote(note))) {
-      const alreadyPresent = merged.some((remoteNote) =>
+      const matchIndex = merged.findIndex((remoteNote) =>
         this.notesMatch(localNote, remoteNote)
         || (!localNote.cloudId && localNote.title === remoteNote.title && localNote.content === remoteNote.content)
       );
-      if (!alreadyPresent) merged.unshift(localNote);
+      if (matchIndex === -1) {
+        merged.unshift(localNote);
+        continue;
+      }
+      const remoteNote = merged[matchIndex];
+      // Keep an offline edit that is newer than the cloud copy, and upload it on the next save
+      if (localNote.dirty || new Date(localNote.date) > new Date(remoteNote.date)) {
+        if (localNote.title !== remoteNote.title || localNote.content !== remoteNote.content || localNote.tags !== remoteNote.tags) {
+          merged[matchIndex] = { ...remoteNote, title: localNote.title, content: localNote.content, tags: localNote.tags, date: localNote.date, dirty: true, localId: localNote.localId };
+        }
+      } else {
+        merged[matchIndex].localId = localNote.localId;
+      }
     }
     merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
     return merged;
@@ -202,6 +225,8 @@ window.notepadModule = {
       this.notes = this.mergeLocalAndRemoteNotes(localNotes, remoteNotes);
       this.persistLocalNotes();
       this.syncStatus = 'synced';
+      // Upload offline edits found during the merge
+      if (this.notes.some((note) => note.dirty || !note.cloudId)) this.saveNotes();
     } catch (ex) {
       console.error('[Notepad] Load exception:', ex);
       this.notes = localNotes;
@@ -237,11 +262,24 @@ window.notepadModule = {
     const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
     if (!client) return;
 
+    // Only changed or new notes are uploaded. Previously every save rewrote every note
+    // with the current time, which sent one request per note and broke the date order.
+    const pending = this.notes.filter((note) => note.dirty || !note.cloudId);
+    if (!pending.length) {
+      this.syncStatus = 'synced';
+      return;
+    }
+    if (this.saving) {
+      this.saveAgain = true;
+      return;
+    }
+    this.saving = true;
+
     try {
       this.syncStatus = 'syncing';
-      if (this.render) this.render();
+      this.updateSyncBadge();
 
-      for (const note of this.notes) {
+      for (const note of pending) {
         if (note.cloudId) {
           const { error } = await client
             .from('user_notes')
@@ -249,10 +287,11 @@ window.notepadModule = {
               title: note.title,
               content: note.content,
               tags: note.tags || null,
-              updated_at: new Date().toISOString()
+              updated_at: note.date || new Date().toISOString()
             })
             .eq('id', note.cloudId);
           if (error) console.error('[Notepad] Update error:', error);
+          else note.dirty = false;
         } else {
           const { data, error } = await client
             .from('user_notes')
@@ -270,30 +309,58 @@ window.notepadModule = {
             console.error('[Notepad] Insert error:', error);
           } else if (data && data[0]) {
             note.cloudId = data[0].id;
+            note.dirty = false;
           }
         }
       }
 
       this.persistLocalNotes();
-      this.syncStatus = 'synced';
-      if (this.render) this.render();
+      this.syncStatus = this.notes.some((note) => note.dirty || !note.cloudId) ? 'offline' : 'synced';
+      this.updateSyncBadge();
     } catch (ex) {
       console.error('[Notepad] Save exception:', ex);
       this.syncStatus = 'offline';
+      this.updateSyncBadge();
+    } finally {
+      this.saving = false;
+      if (this.saveAgain) {
+        this.saveAgain = false;
+        this.saveNotes();
+      }
     }
+  },
+
+  syncLabel: function() {
+    return this.syncStatus === 'synced' ? '☁️ Synced' :
+           this.syncStatus === 'syncing' ? '⏱️ Syncing…' : '⚠️ Offline';
+  },
+
+  // Updates just the badge, so a background save doesn't wipe a half-typed note
+  updateSyncBadge: function() {
+    const badge = document.querySelector('#page-notepad .notepad-sync-status');
+    if (badge) badge.textContent = this.syncLabel();
   },
 
   render: function() {
     const page = document.getElementById('page-notepad');
     if (!page) return;
 
+    // Don't wipe a note that is being written
+    const openForm = document.getElementById('notepad-form');
+    if (openForm && openForm.style.display !== 'none' && page.contains(openForm)) {
+      this.renderNotes();
+      this.updateSyncBadge();
+      return;
+    }
+
     const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
-    const syncIcon = this.syncStatus === 'synced' ? '☁️ Synced' :
-                     this.syncStatus === 'syncing' ? '⏱️ Syncing…' : '⚠️ Offline';
+    const syncIcon = this.syncLabel();
 
     let offlineBanner = '';
-    if (!navigator.onLine || !user || !user.username) {
+    if (!user || !user.username) {
       offlineBanner = `<div class="notepad-offline-banner">📡 Log in to sync across devices</div>`;
+    } else if (!navigator.onLine) {
+      offlineBanner = `<div class="notepad-offline-banner">📡 You're offline. Notes are saved on this device and sync when you reconnect.</div>`;
     }
 
     page.innerHTML = `
@@ -317,19 +384,22 @@ window.notepadModule = {
           placeholder="🔍 Search notes…" oninput="notepadModule.onSearch(this.value)"
           value="${this.escapeHtml(this.searchQuery)}">
 
-        <div class="notepad-list" id="notepad-list">
-          ${this.notes.length === 0 ? '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>' : ''}
-        </div>
-
+        <!-- The form sits above the list so it opens on screen, not below a long list -->
         <div class="notepad-form" id="notepad-form" style="display: none;">
-          <h3 style="color: #00d4ff; margin-top: 0;">Create New Note</h3>
-          <input type="text" id="note-title" placeholder="Note Title" maxlength="100">
-          <textarea id="note-content" placeholder="Write your note here..." maxlength="2000"></textarea>
+          <h3 id="notepad-form-title" style="color: #00d4ff; margin-top: 0;">Create New Note</h3>
+          <input type="text" id="note-title" placeholder="Note Title" maxlength="100" enterkeyhint="next">
+          <textarea id="note-content" placeholder="Write your note here..." maxlength="10000"
+            oninput="notepadModule.updateCharCount()"></textarea>
+          <div class="notepad-char-count" id="notepad-char-count" aria-live="polite"></div>
           <input type="text" id="note-tags" placeholder="Tags / Subject (e.g. Math, Science)" maxlength="100" style="margin-top:8px;">
           <div class="notepad-form-buttons">
-            <button onclick="notepadModule.saveNote()">Save Note</button>
-            <button class="cancel" onclick="notepadModule.hideForm()">Cancel</button>
+            <button type="button" id="notepad-save-btn" onclick="notepadModule.saveNote()">Save Note</button>
+            <button type="button" class="cancel" onclick="notepadModule.hideForm()">Cancel</button>
           </div>
+        </div>
+
+        <div class="notepad-list" id="notepad-list">
+          ${this.notes.length === 0 ? '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>' : ''}
         </div>
       </div>
     `;
@@ -372,6 +442,9 @@ window.notepadModule = {
         minute: '2-digit'
       });
 
+      const content = String(note.content || '');
+      const isLong = content.length > 320 || content.split('\n').length > 7;
+      const expanded = Boolean(this.expanded[note.localId]);
       const sharedWarning = note.sharedToReviewers ? '<div class="notepad-shared-warning">⚠️ Shared to Reviewers (local edits won\'t update)</div>' : '';
       const tagsHtml = note.tags ? `<div class="notepad-item-tags">${note.tags.split(',').map(t => `<span class="notepad-tag">${this.escapeHtml(t.trim())}</span>`).filter(Boolean).join('')}</div>` : '';
 
@@ -379,15 +452,16 @@ window.notepadModule = {
         <div class="notepad-item">
           <div class="notepad-item-header">
             <div class="notepad-item-title">${this.escapeHtml(note.title)}</div>
-            <div class="notepad-item-date">${dateStr} ${timeStr}</div>
+            <div class="notepad-item-date">${dateStr} ${timeStr}${note.dirty ? ' · not synced' : ''}</div>
           </div>
           ${tagsHtml}
           ${sharedWarning}
-          <div class="notepad-item-content">${this.escapeHtml(note.content)}</div>
+          <div class="notepad-item-content ${isLong && !expanded ? 'clamped' : ''}">${this.escapeHtml(note.content)}</div>
+          ${isLong ? `<button type="button" class="notepad-more-btn" onclick="notepadModule.toggleExpand('${this.escapeHtml(note.localId)}')">${expanded ? 'Show less' : 'Show more'}</button>` : ''}
           <div class="notepad-item-actions">
-            <button onclick="notepadModule.editNote(${index})">Edit</button>
-            <button onclick="notepadModule.shareNote(${index})">Share to Reviewers</button>
-            <button class="delete" onclick="notepadModule.deleteNote(${index})">Delete</button>
+            <button type="button" onclick="notepadModule.editNote(${index})">Edit</button>
+            <button type="button" onclick="notepadModule.shareNote(${index})">Share to Reviewers</button>
+            <button type="button" class="delete" onclick="notepadModule.deleteNote(${index})">Delete</button>
           </div>
         </div>
       `;
@@ -417,12 +491,33 @@ window.notepadModule = {
       delete form.dataset.editIndex;
     }
 
-    document.getElementById('note-title').focus();
+    const heading = document.getElementById('notepad-form-title');
+    if (heading) heading.textContent = form.dataset.editIndex !== undefined ? 'Edit Note' : 'Create New Note';
+    this.updateCharCount();
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('note-title').focus({ preventScroll: true });
+  },
+
+  updateCharCount: function() {
+    const area = document.getElementById('note-content');
+    const label = document.getElementById('notepad-char-count');
+    if (!area || !label) return;
+    const max = Number(area.getAttribute('maxlength')) || 10000;
+    const used = area.value.length;
+    label.textContent = used > max * 0.8 ? `${used.toLocaleString()} / ${max.toLocaleString()}` : '';
+  },
+
+  toggleExpand: function(localId) {
+    this.expanded[localId] = !this.expanded[localId];
+    this.renderNotes();
   },
 
   hideForm: function() {
     const form = document.getElementById('notepad-form');
-    if (form) form.style.display = 'none';
+    if (form) {
+      form.style.display = 'none';
+      delete form.dataset.editIndex;
+    }
   },
 
   saveNote: async function() {
@@ -437,25 +532,36 @@ window.notepadModule = {
     }
 
     const form = document.getElementById('notepad-form');
+    const saveBtn = document.getElementById('notepad-save-btn');
+    if (saveBtn?.disabled) return; // ignore double taps
+    if (saveBtn) saveBtn.disabled = true;
     const editIndex = form.dataset.editIndex;
 
     if (editIndex !== undefined && this.notes[editIndex]) {
-      this.notes[editIndex].title = title;
-      this.notes[editIndex].content = content;
-      this.notes[editIndex].tags = tags;
-      this.notes[editIndex].date = new Date().toISOString();
+      const note = this.notes[editIndex];
+      note.title = title;
+      note.content = content;
+      note.tags = tags;
+      note.date = new Date().toISOString();
+      note.dirty = true;
+      // Keep the newest note at the top
+      this.notes.splice(Number(editIndex), 1);
+      this.notes.unshift(note);
     } else {
       this.notes.unshift(this.hydrateNote({
         title,
         content,
         tags,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        dirty: true,
       }));
     }
 
-    await this.saveNotes();
     this.hideForm();
+    if (saveBtn) saveBtn.disabled = false;
     this.render();
+    await this.saveNotes();
+    this.renderNotes();
   },
 
   editNote: function(index) {
@@ -684,9 +790,13 @@ window.notepadModule = {
     return this.notes;
   },
 
+  // Also escapes quotes, because some values go inside HTML attributes (e.g. the search box)
   escapeHtml: function(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 };

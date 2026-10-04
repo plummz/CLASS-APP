@@ -21,8 +21,8 @@ SAMPLES = int(os.environ.get('BATTLE_SAMPLES', '32'))
 ONLY = [k for k in os.environ.get('BATTLE_ONLY', '').split(',') if k]
 ENEMY = dict(c=(1180, 330), r=(240, 60))
 PLAYER = dict(c=(440, 545), r=(300, 72))
-CAM_H = 3.2
-LENS = 32.0
+CAM_H = 2.0
+LENS = 70.0
 
 
 # ── camera + pixel solver ────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ def make_camera():
     bpy.context.scene.collection.objects.link(cam)
     bpy.context.scene.camera = cam
     cam.location = (0, 0, CAM_H)
-    cam.rotation_euler = (math.radians(84.5), 0, 0)
+    cam.rotation_euler = (math.radians(87.4), 0, 0)
     bpy.context.view_layer.update()
     return cam
 
@@ -168,22 +168,42 @@ def sky(top, horizon, bottom=None, strength=1.0, light=0.55):
     nt.links.new(mix.outputs[0], out.inputs[0])
 
 
-def platform(name, centre, wx, wy, top_col, rim_col, side_col, ring_col=None):
-    z = centre.z
-    objs = []
-    # body (slightly larger lip below the top, gives depth like the DS/3DS pads)
-    objs.append(C.cylinder(name + '_side', 1.0, 0.22, (centre.x, centre.y, z - 0.13),
-                           C.mat(name + '_sidem', side_col, rough=0.9), vertices=64, scale=(wx * 1.0, wy * 1.0, 1)))
-    objs.append(C.cylinder(name + '_rim', 1.0, 0.04, (centre.x, centre.y, z - 0.01),
-                           C.mat(name + '_rimm', rim_col, rough=0.8), vertices=64, scale=(wx, wy, 1)))
-    objs.append(C.cylinder(name + '_top', 1.0, 0.04, (centre.x, centre.y, z + 0.005),
-                           C.mat(name + '_topm', top_col, rough=0.85), vertices=64, scale=(wx * 0.9, wy * 0.86, 1)))
+def pixel_disc(name, spec, k, z, depth, material, n=128):
+    """Prism whose top outline projects exactly onto the spec ellipse scaled by k (pixel space)."""
+    cx, cy = spec['c']
+    rx, ry = spec['r']
+    guess = _inv_pixel((cx, cy), z, (0, 10))
+    top = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        g = _inv_pixel((cx + rx * k * math.cos(t), cy + ry * k * math.sin(t)), z, guess)
+        top.append(g)
+    verts = [(x, y, z) for x, y in top] + [(x, y, z - depth) for x, y in top]
+    faces = [list(range(n))[::-1], list(range(n, 2 * n))]
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append([i, j, n + j, n + i])
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    me.update()
+    me.validate()
+    if me.polygons[0].normal.z < 0:
+        me.flip_normals()
+    for poly in me.polygons:
+        poly.use_smooth = len(poly.vertices) == 4
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    o.data.materials.append(material)
+    return o
+
+
+def platform(name, spec, top_col, rim_col, side_col, ring_col=None):
+    pixel_disc(name + '_side', spec, 1.0, -0.02, 0.35, C.mat(name + '_sidem', side_col, rough=0.9))
+    pixel_disc(name + '_rim', spec, 0.985, 0.0, 0.02, C.mat(name + '_rimm', rim_col, rough=0.8))
+    pixel_disc(name + '_top', spec, 0.88, 0.006, 0.02, C.mat(name + '_topm', top_col, rough=0.85))
     if ring_col:
-        objs.append(C.cylinder(name + '_ring', 1.0, 0.04, (centre.x, centre.y, z + 0.012),
-                               C.mat(name + '_ringm', ring_col, rough=0.8), vertices=64, scale=(wx * 0.62, wy * 0.56, 1)))
-        objs.append(C.cylinder(name + '_in', 1.0, 0.04, (centre.x, centre.y, z + 0.016),
-                               C.mat(name + '_topm', top_col), vertices=64, scale=(wx * 0.55, wy * 0.49, 1)))
-    return objs
+        pixel_disc(name + '_ring', spec, 0.60, 0.010, 0.02, C.mat(name + '_ringm', ring_col, rough=0.8))
+        pixel_disc(name + '_in', spec, 0.53, 0.014, 0.02, C.mat(name + '_topm', top_col, rough=0.85))
 
 
 def ground(col, size=400, z=-0.25, name='ground', rough=0.95):
@@ -248,8 +268,8 @@ def scatter(n, xr, yr, avoid, fn, seed=1):
 def scene_grass(cam, E, P, avoid):
     sky((0.36, 0.64, 0.96), (0.86, 0.94, 1.0))
     ground('grass')
-    platform('pe', *E, 'grass_light', 'grass', 'path_dark', ring_col='grass')
-    platform('pp', *P, 'grass_light', 'grass', 'path_dark', ring_col='grass')
+    platform('pe', ENEMY, 'grass_light', 'grass', 'path_dark', ring_col='grass')
+    platform('pp', PLAYER, 'grass_light', 'grass', 'path_dark', ring_col='grass')
     for x, y, rx, h, c in ((-60, 150, 70, 14, (0.42, 0.70, 0.40)), (30, 170, 80, 18, (0.48, 0.72, 0.46)),
                            (110, 160, 70, 12, (0.40, 0.66, 0.38)), (-20, 110, 50, 6, 'grass_dark'),
                            (60, 100, 45, 5, 'grass')):
@@ -264,8 +284,8 @@ def scene_grass(cam, E, P, avoid):
 def scene_forest(cam, E, P, avoid):
     sky((0.50, 0.78, 0.70), (0.85, 0.95, 0.80), light=0.45)
     ground('grass_dark')
-    platform('pe', *E, 'grass', 'grass_dark', 'bark', ring_col='leaf')
-    platform('pp', *P, 'grass', 'grass_dark', 'bark', ring_col='leaf')
+    platform('pe', ENEMY, 'grass', 'grass_dark', 'bark', ring_col='leaf')
+    platform('pp', PLAYER, 'grass', 'grass_dark', 'bark', ring_col='leaf')
     # a wall of big trees enclosing the clearing
     scatter(60, (-50, 50), (34, 70), [], lambda x, y, r: tree(x, y, r.uniform(2.6, 3.6), 'leaf', 'leaf_dark',
                                                                 r.choice(['pine', 'round'])), seed=11)
@@ -281,8 +301,8 @@ def scene_forest(cam, E, P, avoid):
 def scene_rock(cam, E, P, avoid):
     sky((0.48, 0.66, 0.92), (0.98, 0.88, 0.72))
     ground((0.72, 0.60, 0.46))
-    platform('pe', *E, 'rock', 'rock_dark', 'rock_dark', ring_col=(0.62, 0.58, 0.54))
-    platform('pp', *P, 'rock', 'rock_dark', 'rock_dark', ring_col=(0.62, 0.58, 0.54))
+    platform('pe', ENEMY, 'rock', 'rock_dark', 'rock_dark', ring_col=(0.62, 0.58, 0.54))
+    platform('pp', PLAYER, 'rock', 'rock_dark', 'rock_dark', ring_col=(0.62, 0.58, 0.54))
     rnd = random.Random(21)
     for x, y, sx, h, c in ((-70, 140, 22, 30, (0.78, 0.52, 0.36)), (-30, 160, 18, 40, (0.72, 0.46, 0.32)),
                            (20, 150, 26, 26, (0.80, 0.56, 0.40)), (70, 140, 20, 36, (0.74, 0.48, 0.34)),
@@ -305,8 +325,8 @@ def scene_beach(cam, E, P, avoid):
     C.plane('shallow', 600, 8, (0, 37.5, -0.2), C.mat('shallow', (0.36, 0.80, 0.86), rough=0.2, spec=0.5))
     C.plane('foam', 600, 0.6, (0, 33.8, -0.15), C.mat('foamm', 'foam', rough=0.5))
     C.plane('foam2', 600, 0.4, (0, 41.0, -0.16), C.mat('foamm', 'foam', rough=0.5))
-    platform('pe', *E, 'sand', 'path', 'path_dark', ring_col=(0.98, 0.90, 0.68))
-    platform('pp', *P, 'sand', 'path', 'path_dark', ring_col=(0.98, 0.90, 0.68))
+    platform('pe', ENEMY, 'sand', 'path', 'path_dark', ring_col=(0.98, 0.90, 0.68))
+    platform('pp', PLAYER, 'sand', 'path', 'path_dark', ring_col=(0.98, 0.90, 0.68))
 
     def palm(x, y, s):
         for i in range(6):
@@ -332,8 +352,8 @@ def scene_city(cam, E, P, avoid):
     ground('grass')
     C.plane('road', 400, 5, (0, 46, -0.22), C.mat('road', (0.48, 0.48, 0.54), rough=0.9))
     C.plane('walk', 400, 1.2, (0, 43, -0.21), C.mat('walk', 'wall_shade', rough=0.9))
-    platform('pe', *E, 'grass_light', 'path', 'path_dark', ring_col='path')
-    platform('pp', *P, 'grass_light', 'path', 'path_dark', ring_col='path')
+    platform('pe', ENEMY, 'grass_light', 'path', 'path_dark', ring_col='path')
+    platform('pp', PLAYER, 'grass_light', 'path', 'path_dark', ring_col='path')
     rnd = random.Random(41)
     cols = ['roof_blue', 'wall', 'roof_orange', (0.70, 0.80, 0.92), 'wall_shade', (0.86, 0.70, 0.78), 'roof_green']
     win = emit_mat('win', (0.75, 0.90, 1.0), 0.9)
@@ -368,8 +388,8 @@ def scene_gym(cam, E, P, avoid):
     C.plane('courtline', 30.6, 34.6, (3, 18, -0.245), C.mat('cline', (0.95, 0.95, 0.98), rough=0.4))
     C.plane('courtmid', 30, 0.3, (3, 16, -0.235), C.mat('cline', (0.95, 0.95, 0.98)))
     C.cylinder('courtc', 3, 0.01, (3, 16, -0.235), C.mat('cring', 'roof_red'), vertices=48)
-    platform('pe', *E, (0.92, 0.92, 0.96), 'roof_red', (0.30, 0.30, 0.40), ring_col='roof_red')
-    platform('pp', *P, (0.92, 0.92, 0.96), 'roof_blue', (0.30, 0.30, 0.40), ring_col='roof_blue')
+    platform('pe', ENEMY, (0.92, 0.92, 0.96), 'roof_red', (0.30, 0.30, 0.40), ring_col='roof_red')
+    platform('pp', PLAYER, (0.92, 0.92, 0.96), 'roof_blue', (0.30, 0.30, 0.40), ring_col='roof_blue')
     # stands
     for i in range(6):
         C.box('stand', (120, 2.0, 1.4 + i * 1.6), (0, 40 + i * 2.0, (1.4 + i * 1.6) / 2 - 0.25),
@@ -405,8 +425,8 @@ def scene_gym(cam, E, P, avoid):
 def scene_cave(cam, E, P, avoid):
     sky((0.05, 0.05, 0.10), (0.10, 0.08, 0.16), light=0.25)
     ground((0.30, 0.27, 0.30))
-    platform('pe', *E, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
-    platform('pp', *P, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
+    platform('pe', ENEMY, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
+    platform('pp', PLAYER, (0.46, 0.42, 0.44), (0.30, 0.27, 0.30), (0.22, 0.20, 0.24), ring_col=(0.38, 0.34, 0.38))
     wallm = C.mat('cwall', (0.34, 0.30, 0.36), rough=0.95)
     rnd = random.Random(61)
     # back wall of lumpy rock + ceiling
@@ -475,12 +495,14 @@ def build(key, fn, opts):
     fn(cam, E, P, avoid)
     bpy.context.view_layer.update()
     checks = {}
-    for nm, (c, wx, wy) in (('enemy', E), ('player', P)):
-        x0, x1, y0, y1 = rim_bbox(c, wx, wy)
-        checks[nm] = {'centre_px': [round(v, 1) for v in C.to_pixel(c)],
-                      'rim_bbox_centre': [round((x0 + x1) / 2, 1), round((y0 + y1) / 2, 1)],
-                      'rim_radii': [round((x1 - x0) / 2, 1), round((y1 - y0) / 2, 1)],
-                      'world': [round(c.x, 2), round(c.y, 2), round(wx, 2), round(wy, 2)]}
+    for nm, pre, spec in (('enemy', 'pe', ENEMY), ('player', 'pp', PLAYER)):
+        o = bpy.data.objects[pre + '_side']
+        pts = [C.to_pixel(o.matrix_world @ v.co) for v in o.data.vertices[:len(o.data.vertices) // 2]]
+        xs = [q[0] for q in pts]; ys = [q[1] for q in pts]
+        checks[nm] = {'target': [spec['c'], spec['r']],
+                      'bbox_centre': [round((min(xs) + max(xs)) / 2, 1), round((min(ys) + max(ys)) / 2, 1)],
+                      'radii': [round((max(xs) - min(xs)) / 2, 1), round((max(ys) - min(ys)) / 2, 1)],
+                      'right_px': [round(v, 1) for v in pts[0]], 'bottom_px': [round(v, 1) for v in pts[len(pts) // 4]]}
     print('[battle]', key, 'platform pixels', checks)
     path = os.path.join(C.work_dir(GROUP), key + '.png')
     C.render(path)

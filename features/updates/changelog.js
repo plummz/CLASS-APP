@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.9.19';
+const APP_VERSION = '1.9.20';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.20',
+    date: 'October 4, 2026',
+    title: 'Social Media Pages Fixed',
+    summary: 'Updated Facebook links, a proper card for pages Facebook won\'t embed, and a cleaner embedded view on phones.',
+    bullets: [
+      'Fixed: WIT-PSITS now opens the current PSITS WIT page (the old address no longer works).',
+      'Fixed: Raisa Treñas uses the page\'s official address.',
+      'Fixed: WIT-IT shows an "Open on Facebook" card instead of an empty box, because Facebook blocks that page from being embedded.',
+      'Improved: The loading message and "Open on Facebook" link now sit above the page, so they are visible on phones.',
+      'Improved: The embedded page is sized to fit the screen.',
+    ]
+  },
   {
     version: '1.9.19',
     date: 'October 4, 2026',

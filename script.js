@@ -6334,7 +6334,7 @@ function initSharedRealtime() {
 const AI_PROVIDERS = {
   gemini: {
     name: 'Gemini AI', tag: 'Smart Assistant', icon: '✨',
-    model: 'Gemini 1.5 Flash', accent: '#8b5cf6',
+    model: 'Gemini 3.5 Flash', accent: '#8b5cf6',
     bg: 'linear-gradient(135deg,#1a0533 0%,#2d1054 100%)',
     endpoint: '/api/gemini',
     desc: 'Best for explanations, school work, and structured answers',
@@ -6342,7 +6342,7 @@ const AI_PROVIDERS = {
   },
   groq: {
     name: 'Groq AI', tag: 'Fast Assistant', icon: '⚡',
-    model: 'LLaMA 3 · 8B', accent: '#f97316',
+    model: 'Llama 3.3 70B', accent: '#f97316',
     bg: 'linear-gradient(135deg,#1a0a00 0%,#3d1800 100%)',
     endpoint: '/api/groq',
     desc: 'Ultra-fast responses for quick Q&A and chat',
@@ -6392,7 +6392,7 @@ function renderAIHub(view) {
       </div>
       <div class="ai-cards">
         ${Object.entries(AI_PROVIDERS).map(([key, p]) => `
-          <button type="button" class="ai-card" style="--ai-accent:${p.accent};background:${p.bg};border:0;padding:0;width:100%;text-align:left;" data-ai-action="open-chat" data-ai-provider="${key}">
+          <button type="button" class="ai-card" style="--ai-accent:${p.accent};background:${p.bg};width:100%;text-align:left;font:inherit;" data-ai-action="open-chat" data-ai-provider="${key}">
             <div class="ai-card-glow"></div>
             <div class="ai-card-top">
               <span class="ai-card-icon">${p.icon}</span>

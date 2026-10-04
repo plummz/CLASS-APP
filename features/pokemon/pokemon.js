@@ -3319,7 +3319,11 @@ const pokemonModule = (() => {
         const isLm=document.body.classList.contains('pk-lm');
         let sc;
         if(isLm){
-          sc=Math.min(1,window.innerWidth/800,window.innerHeight/560);
+          // In portrait the page is rotated by CSS, so width and height swap
+          const rot=window.innerHeight>window.innerWidth;
+          const vw=rot?window.innerHeight:window.innerWidth, vh=rot?window.innerWidth:window.innerHeight;
+          const dpadW=(document.getElementById('pk-dpad')?.offsetWidth||140)+20, barW=60;
+          sc=Math.min(1,(vw-dpadW-barW)/800,(vh-8)/560);
         } else {
           const pkWrapper=canvas.parentElement?.parentElement?.parentElement;
           const dpad=document.getElementById('pk-dpad');
@@ -3730,9 +3734,16 @@ const pokemonModule = (() => {
       const fab=document.getElementById('pk-landscape-fab');
       if(fab) fab.textContent=isLm?'⊡':'⛶';
       if(isLm){
-        try{ window.screen?.orientation?.lock?.('landscape'); }catch(e){}
+        // Phones only allow rotating after going full screen
+        const lock=()=>{ try{ const r=window.screen?.orientation?.lock?.('landscape'); if(r&&r.catch) r.catch(()=>{}); }catch(e){} };
+        try{
+          const el=document.documentElement;
+          const fs=el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen?.();
+          if(fs&&fs.then) fs.then(lock,lock); else lock();
+        }catch(e){ lock(); }
       } else {
         try{ window.screen?.orientation?.unlock?.(); }catch(e){}
+        try{ if(document.fullscreenElement) document.exitFullscreen?.(); }catch(e){}
       }
       setTimeout(()=>{ canvas?._pkResize?.(); },50);
       setTimeout(()=>{ canvas?._pkResize?.(); },400);

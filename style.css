@@ -5669,3 +5669,20 @@ body.light-mode .home-trending-by { color: #2a4a8a; }
   .custom-bg-btn { z-index: 880; bottom: 76px !important; right: 14px !important; }
 }
 
+
+/* ── v1.9.22 UI polish ── */
+/* Light mode: sidebar text was light lavender on a light background */
+body.light-mode .nav-label { color: #1e1b4b; text-shadow: none; }
+body.light-mode .nav-section-title, body.light-mode .sidebar-section-label { color: #6d28d9; }
+/* AI hub cards: even spacing */
+.ai-card { padding: 24px 22px 22px !important; border: 1px solid rgba(255,255,255,0.08) !important; gap: 8px; }
+.ai-card-icon { font-size: 32px; line-height: 1; }
+.ai-card-btn { margin-top: 10px; }
+/* Music mini player: on game pages it shrinks to one small button at the top right, out of the controls' way */
+body:has(#page-pokemon.active, #page-royale.active, #page-pacman.active, #page-candy.active, #page-tetris.active, #page-dungeon.active, #page-lobby.active) .yt-mini-player {
+  top: 84px; bottom: auto; right: 12px;
+  padding: 0; gap: 0; width: 44px; height: 44px; justify-content: center;
+}
+body:has(#page-pokemon.active, #page-royale.active, #page-pacman.active, #page-candy.active, #page-tetris.active, #page-dungeon.active, #page-lobby.active) .yt-mini-player > :not(.yt-mini-actions),
+body:has(#page-pokemon.active, #page-royale.active, #page-pacman.active, #page-candy.active, #page-tetris.active, #page-dungeon.active, #page-lobby.active) .yt-mini-player .yt-mini-btn:not(:first-child) { display: none; }
+body:has(#page-pokemon.active, #page-royale.active, #page-pacman.active, #page-candy.active, #page-tetris.active, #page-dungeon.active, #page-lobby.active) .yt-mini-player .yt-mini-btn { width: 40px; height: 40px; border: 0; font-size: 18px; }

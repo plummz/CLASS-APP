@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=42">
+<link rel="stylesheet" href="style.css?v=43">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="features/updates/updates.css?v=1">
   <link rel="stylesheet" href="features/folders/folders.css?v=2">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
-  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=5">
+  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=6">
 <link rel="stylesheet" href="features/royale/royale.css?v=18">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
@@ -1000,21 +1000,16 @@
       </div>
       </div><!-- /pk-game-column -->
 
-      <!-- Landscape mode FAB -->
-      <button class="pk-landscape-fab" id="pk-landscape-fab" onclick="window.pokemonModule.toggleLandscape()" title="Toggle Landscape Mode">⛶</button>
-      <button class="pk-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
-
-      <!-- Pokédex toggle button -->
-      <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>
-      <!-- Leaderboard button -->
-      <button class="pk-lb-fab" id="pk-lb-fab" onclick="window.pokemonModule.showLeaderboard()" title="Leaderboard">🏆</button>
-      <!-- Save button -->
-      <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
-      <!-- Shop button -->
-      <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
-      <!-- Heal button -->
-      <button class="pk-heal-fab" id="pk-heal-fab" onclick="window.pokemonModule.quickHeal()" title="Heal Team (90s cooldown)">💊</button>
-      <span class="pk-heal-cooldown hidden" id="pk-heal-cooldown"></span>
+      <!-- Game toolbar: one row under the d-pad (a column on the right in landscape) -->
+      <div class="pk-toolbar" id="pk-toolbar">
+        <button class="pk-return-btn" type="button" onclick="goToPage('games')" title="Return to games">← Games</button>
+        <button class="pk-dex-fab" id="pk-dex-fab" onclick="window.pokemonModule.toggleDex()" title="Pokédex">📖</button>
+        <button class="pk-lb-fab" id="pk-lb-fab" onclick="window.pokemonModule.showLeaderboard()" title="Leaderboard">🏆</button>
+        <button class="pk-save-fab" id="pk-save-fab" onclick="window.pokemonModule.manualSave()" title="Save Game">💾</button>
+        <button class="pk-shop-fab" id="pk-shop-fab" onclick="window.pokemonModule.toggleShop()" title="PokéMart">🛒</button>
+        <span class="pk-heal-wrap"><button class="pk-heal-fab" id="pk-heal-fab" onclick="window.pokemonModule.quickHeal()" title="Heal Team (90s cooldown)">💊</button><span class="pk-heal-cooldown hidden" id="pk-heal-cooldown"></span></span>
+        <button class="pk-landscape-fab" id="pk-landscape-fab" onclick="window.pokemonModule.toggleLandscape()" title="Toggle Landscape Mode">⛶</button>
+      </div>
 
       <!-- Shop Overlay -->
       <div id="pk-shop-overlay" class="pk-shop-overlay hidden">
@@ -1737,8 +1732,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=16"></script>
-  <script src="script.js?v=124"></script>
+  <script src="features/updates/changelog.js?v=17"></script>
+  <script src="script.js?v=125"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1755,7 +1750,7 @@
   <script src="coding-educational/coding-educational-data.js?v=11" defer></script>
   <script src="coding-educational/coding-educational.js?v=10" defer></script>
   <script src="features/pokemon/pokemon-world.js?v=2"></script>
-  <script src="features/pokemon/pokemon.js?v=5"></script>
+  <script src="features/pokemon/pokemon.js?v=6"></script>
   <script src="features/royale/royale.js?v=26"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
   <script src="features/candy/candy.js?v=10"></script>

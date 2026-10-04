@@ -1,0 +1,187 @@
+{
+ "hero_cyndaquil": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_b/hero_cyndaquil.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "cyndaquil"
+  },
+  "rows": 1
+ },
+ "hero_mudkip": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_b/hero_mudkip.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "mudkip"
+  },
+  "rows": 1
+ },
+ "hero_torchic": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_b/hero_torchic.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "torchic"
+  },
+  "rows": 1
+ },
+ "hero_totodile": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_b/hero_totodile.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "totodile"
+  },
+  "rows": 1
+ },
+ "hero_treecko": {
+  "cols": 1,
+  "fh": 384,
+  "file": "pokemon_b/hero_treecko.webp",
+  "frames": 1,
+  "fw": 384,
+  "kind": "image",
+  "meta": {
+   "species": "treecko"
+  },
+  "rows": 1
+ },
+ "mon_cyndaquil": {
+  "ax": 40.0,
+  "ay": 53.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_b/mon_cyndaquil.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "cyndaquil"
+  },
+  "rows": 4
+ },
+ "mon_mudkip": {
+  "ax": 40.0,
+  "ay": 49.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_b/mon_mudkip.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "mudkip"
+  },
+  "rows": 4
+ },
+ "mon_torchic": {
+  "ax": 40.0,
+  "ay": 62.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_b/mon_torchic.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "torchic"
+  },
+  "rows": 4
+ },
+ "mon_totodile": {
+  "ax": 40.0,
+  "ay": 54.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_b/mon_totodile.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "totodile"
+  },
+  "rows": 4
+ },
+ "mon_treecko": {
+  "ax": 40.0,
+  "ay": 50.0,
+  "cols": 3,
+  "fh": 80,
+  "file": "pokemon_b/mon_treecko.webp",
+  "frames": 12,
+  "fw": 80,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "step-L",
+    "stand",
+    "step-R"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ],
+   "species": "treecko"
+  },
+  "rows": 4
+ }
+}

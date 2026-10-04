@@ -1,0 +1,239 @@
+{
+ "leader_granite": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 2,
+  "fh": 96,
+  "file": "chars/leader_granite.webp",
+  "frames": 2,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "idle0",
+    "idle1"
+   ],
+   "rows": [
+    "down"
+   ]
+  },
+  "rows": 1
+ },
+ "leader_marina": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 2,
+  "fh": 96,
+  "file": "chars/leader_marina.webp",
+  "frames": 2,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "idle0",
+    "idle1"
+   ],
+   "rows": [
+    "down"
+   ]
+  },
+  "rows": 1
+ },
+ "leader_sylvia": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 2,
+  "fh": 96,
+  "file": "chars/leader_sylvia.webp",
+  "frames": 2,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "idle0",
+    "idle1"
+   ],
+   "rows": [
+    "down"
+   ]
+  },
+  "rows": 1
+ },
+ "leader_voltex": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 2,
+  "fh": 96,
+  "file": "chars/leader_voltex.webp",
+  "frames": 2,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "idle0",
+    "idle1"
+   ],
+   "rows": [
+    "down"
+   ]
+  },
+  "rows": 1
+ },
+ "npc_bugcatcher": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_bugcatcher.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_clerk": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_clerk.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_hiker": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_hiker.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_lass": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_lass.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_nurse": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_nurse.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_swimmer": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_swimmer.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "npc_youngster": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 1,
+  "fh": 96,
+  "file": "chars/npc_youngster.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ },
+ "player": {
+  "ax": 32.0,
+  "ay": 87.0,
+  "cols": 3,
+  "fh": 96,
+  "file": "chars/player.webp",
+  "frames": 12,
+  "fw": 64,
+  "kind": "sheet",
+  "meta": {
+   "cols": [
+    "stepL",
+    "stand",
+    "stepR"
+   ],
+   "rows": [
+    "down",
+    "left",
+    "right",
+    "up"
+   ]
+  },
+  "rows": 4
+ }
+}

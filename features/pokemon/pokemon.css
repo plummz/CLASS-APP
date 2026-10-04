@@ -910,3 +910,121 @@ body.pk-lm .pk-return-btn {
   font-weight: 700; color: #ffd700;
 }
 .pk-lb-val span { font-size: 0.7rem; color: #888; font-weight: 400; margin-left: 3px; }
+
+/* ══════════════════════════════════════════════════════════
+   POKÉMON WORLD 3D (v2) — Blender art, animated 3D battle sprites
+   ══════════════════════════════════════════════════════════ */
+
+/* The canvas is drawn at up to 2× with smooth 3D art: no pixelated upscaling */
+#pk-canvas.pk-hd { image-rendering: auto; }
+
+/* ── Battle field: backdrop + absolutely placed platforms ── */
+.pk-battle-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+  transition: filter 0.4s ease;
+}
+.pk-battle-bg.pk-night { filter: brightness(0.62) saturate(0.85) hue-rotate(-12deg); }
+.pk-battle-field { isolation: isolate; }
+.pk-enemy-side,
+.pk-player-side {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.pk-enemy-side > *, .pk-player-side > * { pointer-events: auto; }
+.pk-hud-enemy { position: absolute; top: 14px; left: 16px; }
+.pk-hud-player { position: absolute; right: 16px; bottom: 14px; }
+.pk-hud { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+/* Sprites stand on the backdrop's platforms (enemy ~(590,165), player ~(220,272) in the 800×280 field) */
+.pk-esprite,
+.pk-psprite {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.35));
+}
+.pk-esprite { left: 590px; bottom: 112px; }
+.pk-psprite { left: 220px; bottom: 2px; }
+.pk-sprite-img {
+  width: auto;
+  height: auto;
+  max-width: 240px;
+  max-height: 240px;
+  image-rendering: auto;
+  object-fit: contain;
+}
+/* Animated 3D back sprites face the right way already — no mirroring */
+.pk-sprite-back { transform: none; }
+.pk-sprite-classic { image-rendering: pixelated; }
+
+/* ── Battle animations ── */
+@keyframes pkEnterEnemy { from { transform: translateX(240px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@keyframes pkEnterPlayer { from { transform: translateX(calc(-50% - 260px)); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@keyframes pkHit {
+  0%, 100% { transform: translateX(-50%); filter: drop-shadow(0 6px 6px rgba(0,0,0,0.35)); }
+  20% { transform: translateX(calc(-50% - 8px)); filter: brightness(2.2) drop-shadow(0 6px 6px rgba(0,0,0,0.35)); }
+  40% { transform: translateX(calc(-50% + 7px)); }
+  60% { transform: translateX(calc(-50% - 5px)); filter: brightness(1.6); }
+  80% { transform: translateX(calc(-50% + 3px)); }
+}
+@keyframes pkFaint { to { transform: translateX(-50%) translateY(60px); opacity: 0; } }
+@keyframes pkCaught { 40% { transform: translateX(-50%) scale(0.6); filter: brightness(3); } to { transform: translateX(-50%) scale(0); opacity: 0; } }
+.pk-enter-enemy { animation: pkEnterEnemy 0.55s cubic-bezier(0.2,0.8,0.3,1) both; }
+.pk-enter-player { animation: pkEnterPlayer 0.55s cubic-bezier(0.2,0.8,0.3,1) both; }
+.pk-hit { animation: pkHit 0.38s ease both; }
+.pk-faint { animation: pkFaint 0.55s ease-in forwards; }
+.pk-caught { animation: pkCaught 0.6s ease-in forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .pk-enter-enemy, .pk-enter-player, .pk-hit { animation-duration: 0.01s; }
+}
+
+/* ── Party / Box / Pokédex tabs ── */
+.pk-dex-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 4px 8px;
+}
+.pk-dex-tab {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #dfe7f5;
+  font: 700 13px 'Exo 2', sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pk-dex-tab.active { background: #ffcb05; color: #1a1a2e; border-color: transparent; }
+.pk-dex-action {
+  margin-top: 6px;
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid rgba(0,212,255,0.4);
+  border-radius: 8px;
+  background: rgba(0,212,255,0.12);
+  color: #bfefff;
+  font: 700 12px 'Exo 2', sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pk-dex-empty { color: #8a93a8; padding: 20px; font-family: 'Exo 2', sans-serif; grid-column: 1 / -1; text-align: center; }
+.pk-dex-entry .pk-dex-num { font: 700 11px 'Exo 2', sans-serif; color: #8a93a8; }
+.pk-dex-entry.caught .pk-dex-num { color: #ffcb05; }
+.pk-dex-ball { color: #ff4040; }
+.pk-dex-entry.seen img { filter: grayscale(1) opacity(0.75); }
+.pk-dex-entry.unseen img { filter: brightness(0) opacity(0.35); }
+.pk-dex-entry.unseen { cursor: default; opacity: 0.8; }
+
+/* ── Starter screen: Blender hero renders ── */
+.pk-starter-hero { image-rendering: auto !important; object-fit: contain; }
+/* The coin counter would sit on top of the enemy's name during battles */
+.pk-screen:has(.pk-battle:not(.hidden)) .pk-coin-display { display: none; }

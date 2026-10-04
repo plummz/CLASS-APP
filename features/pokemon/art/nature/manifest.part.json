@@ -1,0 +1,137 @@
+{
+ "boulder": {
+  "ax": 4.0,
+  "ay": 62.0,
+  "cols": 3,
+  "fh": 66,
+  "file": "nature/boulder.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 3,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "bush": {
+  "ax": 4.0,
+  "ay": 58.0,
+  "cols": 2,
+  "fh": 62,
+  "file": "nature/bush.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 2,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "flowers": {
+  "ax": 4.0,
+  "ay": 62.0,
+  "cols": 4,
+  "fh": 66,
+  "file": "nature/flowers.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 4,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "item_ball": {
+  "ax": 4.0,
+  "ay": 57.0,
+  "cols": 1,
+  "fh": 62,
+  "file": "nature/item_ball.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 1,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "item_potion": {
+  "ax": 4.0,
+  "ay": 57.0,
+  "cols": 1,
+  "fh": 62,
+  "file": "nature/item_potion.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 1,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "lamp": {
+  "ax": 4.0,
+  "ay": 108.0,
+  "cols": 1,
+  "fh": 112,
+  "file": "nature/lamp.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 1,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "sign": {
+  "ax": 4.0,
+  "ay": 64.0,
+  "cols": 1,
+  "fh": 68,
+  "file": "nature/sign.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 1,
+  "fw": 72,
+  "kind": "object",
+  "rows": 1
+ },
+ "tree": {
+  "ax": 10.0,
+  "ay": 103.0,
+  "cols": 4,
+  "fh": 108,
+  "file": "nature/tree.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 4,
+  "fw": 84,
+  "kind": "object",
+  "rows": 1
+ },
+ "tree_dense": {
+  "ax": 16.0,
+  "ay": 113.0,
+  "cols": 2,
+  "fh": 118,
+  "file": "nature/tree_dense.webp",
+  "foot": [
+   1,
+   1
+  ],
+  "frames": 2,
+  "fw": 96,
+  "kind": "object",
+  "rows": 1
+ }
+}

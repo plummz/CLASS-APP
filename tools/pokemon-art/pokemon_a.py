@@ -1107,8 +1107,8 @@ def build_chikorita(pose):
     ]
     for key, x, y in (('fl', 0.12, -0.10), ('fr', -0.12, -0.10), ('bl', 0.14, 0.25), ('br', -0.14, 0.25)):
         dy = lg[key]
-        els.append(ell_el((x, y + dy * 0.4, 0.17 + bob * 0.5), (0.075, 0.08, 0.10)))
-        els.append(ell_el((x * 1.04, y - 0.03 + dy, 0.042), (0.068, 0.088, 0.042), s=3))
+        els.append(ell_el((x, y + dy * 0.4, 0.17 + bob * 0.5), (0.088, 0.092, 0.105)))
+        els.append(ell_el((x * 1.04, y - 0.03 + dy, 0.044), (0.076, 0.096, 0.044), s=3))
     body = blob('ck_body', els, skin)
     head_c = H.p((0, -0.06, hz))
     bvh = make_bvh([body])
@@ -1136,8 +1136,8 @@ def build_chikorita(pose):
          [(0.022, 0.022), (0.02, 0.02), (0.017, 0.017), (0.015, 0.015)], ref=(1, 0, 0),
          mat=M('ck_leaf', LEAF, rough=0.4, spec=0.35), segs=10)
     if hero:
-        D = H.d(Vector((0.18, 0.72, 0.55)).normalized())
-        L, Wm = 0.82, 0.215
+        D = H.d(Vector((0.30, 0.80, 0.42)).normalized())
+        L, Wm = 0.80, 0.215
     else:
         away = pose.get('away', Vector((0, 1, 0)))
         D = H.d((Vector((0, 0, 0.95)) + away * 0.55 + Vector((0, 0.15, 0))).normalized())

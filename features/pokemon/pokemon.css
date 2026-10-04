@@ -1088,3 +1088,17 @@ body.pk-lm .pk-toolbar .pk-shop-fab, body.pk-lm .pk-toolbar .pk-heal-fab, body.p
     position: absolute; top: 8px; bottom: 8px; right: 8px;
   }
 }
+/* Landscape on an upright phone: turn the Pokédex, details and leaderboard sideways too */
+@media (orientation: portrait) {
+  body.pk-lm .pk-dex-overlay,
+  body.pk-lm .pk-dex-detail-overlay,
+  body.pk-lm .pk-lb-overlay {
+    top: 0 !important; left: 0 !important; right: auto !important; bottom: auto !important;
+    width: 100vh !important; height: 100vw !important;
+    transform: translateX(100vw) rotate(90deg);
+    transform-origin: top left;
+  }
+  body.pk-lm .pk-dex-overlay > *,
+  body.pk-lm .pk-dex-detail-overlay > *,
+  body.pk-lm .pk-lb-overlay > * { max-height: calc(100vw - 24px); overflow-y: auto; }
+}

@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.22';
+const APP_VERSION = '1.9.23';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.23',
+    date: 'October 5, 2026',
+    title: 'Light Mode and Landscape Fixes',
+    summary: 'Light mode is readable again, and Pokémon menus turn sideways with the game in landscape.',
+    bullets: [
+      'Fixed: The sidebar is light with dark text in light mode (it was dark with invisible text).',
+      'Fixed: Page titles, subtitles and the Refresh button on Announcements, AI, Games and Music are readable in light mode.',
+      'Fixed: In Pokémon landscape mode, the Pokédex, Pokémon details and Leaderboard now turn sideways with the game.',
+    ]
+  },
   {
     version: '1.9.22',
     date: 'October 4, 2026',

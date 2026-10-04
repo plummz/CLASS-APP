@@ -4343,6 +4343,7 @@ const pageConfig = {
   lobby:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏫 Lobby' },
   announcement:{ bg: 'bg-galaxy', particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📢 ANNOUNCEMENT' },
   games:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎮 Arcade' },
+  dungeon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏰 Dungeon' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
   royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
   witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 Social Media Pages' },
@@ -4525,6 +4526,7 @@ window.goToPage = function(pageName) {
   if (currentPage === 'pacman' && typeof pacmanModule !== 'undefined') pacmanModule.destroy();
   if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
   if (currentPage === 'tetris' && typeof tetrisModule !== 'undefined') tetrisModule.destroy();
+  if (currentPage === 'dungeon') window.dungeonModule?.destroy();
   // Alarm: tear down clock when leaving
   if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
   // File Summarizer: close quiz modal/score screen when navigating away
@@ -4545,11 +4547,11 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'tetris' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'tetris' || pageName === 'dungeon' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
-  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational' || pageName === 'dungeon') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -4595,6 +4597,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'pacman' && typeof pacmanModule !== 'undefined') runSafeUiAction('Pac-Man', () => pacmanModule.init());
   if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
   if (pageName === 'tetris' && typeof tetrisModule !== 'undefined') runSafeUiAction('Tetris', () => tetrisModule.init());
+  if (pageName === 'dungeon' && window.dungeonModule) runSafeUiAction('Dungeon of Knowledge', () => window.dungeonModule.init());
   if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
   if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
   if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());

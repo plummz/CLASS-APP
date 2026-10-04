@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.9.16';
+const APP_VERSION = '1.9.17';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.17',
+    date: 'October 4, 2026',
+    title: 'New Game: Dungeon of Knowledge (3D) + AI Model Refresh',
+    summary: 'The 3D Dungeon of Knowledge from Study Arena is now in the Arcade, and the AI features use current Gemini and Groq models after the old ones were retired.',
+    bullets: [
+      'New: Dungeon of Knowledge card in the Arcade. Explore a 3D maze, answer quiz questions from skeletons and scholars, dodge traps, and reach the Victory Arch (practice runs).',
+      'New: Full screen button for the dungeon. On Android it also turns the screen to landscape; on iPhone it opens the game in its own tab.',
+      'Improved: The dungeon only downloads when you open it and is unloaded when you leave, so the rest of the app stays fast.',
+      'Fixed: AI features were relying on a backup model because Gemini 2.0 Flash was retired. They now use Gemini 3.5 Flash, Gemini 3.5 Flash Lite and Gemini 2.5 Flash.',
+      'Fixed: Removed retired Groq models (Llama 3 8B/70B, Gemma 2). Groq backups are now Llama 3.3 70B, GPT-OSS 120B, Llama 3.1 8B Instant and GPT-OSS 20B.',
+      'Improved: Service worker cache bumped to v1.5.85-20261004-dungeon-ai-refresh.',
+    ]
+  },
   {
     version: '1.9.16',
     date: 'May 11, 2026',

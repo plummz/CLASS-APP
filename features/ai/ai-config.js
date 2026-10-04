@@ -14,8 +14,8 @@ const AI_REGISTRY = {
     baseUrl:   'https://generativelanguage.googleapis.com/v1beta/models',
     // Ordered by preference — first entry is tried first
     models: [
-      { id: 'gemini-2.0-flash',      label: 'Gemini 2.0 Flash'      },
-      { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite'  },
+      { id: 'gemini-3.5-flash',      label: 'Gemini 3.5 Flash'       },
+      { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite'  },
       { id: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash'       },
     ],
   },
@@ -26,11 +26,10 @@ const AI_REGISTRY = {
     temperature: 0.7,
     max_tokens:  2048,
     models: [
-      { id: 'llama3-8b-8192',            label: 'LLaMA 3 8B'           },
-      { id: 'llama-3.1-8b-instant',      label: 'LLaMA 3.1 8B Instant' },
-      { id: 'llama3-70b-8192',           label: 'LLaMA 3 70B'          },
       { id: 'llama-3.3-70b-versatile',   label: 'LLaMA 3.3 70B'        },
-      { id: 'gemma2-9b-it',              label: 'Gemma 2 9B'           },
+      { id: 'openai/gpt-oss-120b',       label: 'GPT-OSS 120B'         },
+      { id: 'llama-3.1-8b-instant',      label: 'LLaMA 3.1 8B Instant' },
+      { id: 'openai/gpt-oss-20b',        label: 'GPT-OSS 20B'          },
     ],
   },
 

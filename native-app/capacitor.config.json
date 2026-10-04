@@ -1,0 +1,13 @@
+{
+  "appId": "com.plummz.classapp",
+  "appName": "My School Portfolio",
+  "webDir": "www",
+  "server": {
+    "url": "https://class-app-1.onrender.com",
+    "cleartext": false,
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "backgroundColor": "#020617"
+  }
+}

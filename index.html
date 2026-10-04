@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
   <link rel="stylesheet" href="features/tetris/tetris.css?v=1">
+  <link rel="stylesheet" href="features/dungeon/dungeon.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
   <link rel="stylesheet" href="features/personal-tools/notepad.css?v=6">
@@ -683,6 +684,20 @@
 
       <div class="games-grid">
 
+        <!-- Dungeon of Knowledge (3D, from Study Arena) -->
+        <div class="game-card" onclick="goToPage('dungeon')">
+          <div class="game-thumb dungeon-thumb">
+            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ffb347,#b5651d)">NEW · 3D</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">3D MAZE</span><span class="game-tag">STUDY QUIZ</span></div>
+            <h3 class="game-name">Dungeon of Knowledge</h3>
+            <p class="game-desc">Explore a 3D dungeon, face skeletons and scholars with quiz questions, dodge traps, and reach the Victory Arch.</p>
+            <button class="game-play-btn dungeon-btn-play">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
         <!-- Pokémon -->
         <div class="game-card" onclick="goToPage('pokemon')">
           <div class="game-thumb pokemon-thumb">
@@ -867,6 +882,18 @@
           <button class="tetris-btn tetris-btn-quickdrop" data-action="quickdrop" type="button">⚡FAST</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── DUNGEON OF KNOWLEDGE ──────────────────────────────── -->
+  <div class="page" id="page-dungeon">
+    <div class="dungeon-bar">
+      <button class="dungeon-btn" type="button" onclick="goToPage('games')">← Games</button>
+      <span class="dungeon-title">DUNGEON OF KNOWLEDGE</span>
+      <button class="dungeon-btn" type="button" onclick="window.dungeonModule.toggleFullscreen()" title="Full screen">⛶ Full screen</button>
+    </div>
+    <div class="dungeon-stage" id="dungeon-stage">
+      <div class="dungeon-status hidden" id="dungeon-status" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -1681,8 +1708,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=11"></script>
-  <script src="script.js?v=121"></script>
+  <script src="features/updates/changelog.js?v=12"></script>
+  <script src="script.js?v=122"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1703,6 +1730,7 @@
   <script src="features/pacman/pacman.js?v=3"></script>
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/tetris/tetris.js?v=1"></script>
+  <script src="features/dungeon/dungeon.js?v=1"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=7" defer></script>

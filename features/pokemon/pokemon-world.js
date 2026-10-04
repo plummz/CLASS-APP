@@ -228,6 +228,7 @@
     }
 
     function draw(ctx, camX, camY, viewW, viewH) {
+      let budget = 2;   // build at most 2 new chunks per frame to avoid hitches
       const cx0 = Math.max(0, Math.floor(camX / (CHUNK * TILE)));
       const cy0 = Math.max(0, Math.floor(camY / (CHUNK * TILE)));
       const cx1 = Math.floor((camX + viewW) / (CHUNK * TILE));
@@ -238,9 +239,15 @@
           const id = cx + ',' + cy;
           let c = chunks.get(id);
           if (!c) {
+            if (budget-- <= 0) continue;
             c = buildChunk(cx, cy);
             chunks.set(id, c);
-            if (chunks.size > MAX_CHUNKS) chunks.delete(chunks.keys().next().value);
+            if (chunks.size > MAX_CHUNKS) {
+              const oldKey = chunks.keys().next().value;
+              const old = chunks.get(oldKey);
+              if (old) { old.width = 0; old.height = 0; }   // free memory now (iOS)
+              chunks.delete(oldKey);
+            }
           } else {
             chunks.delete(id); chunks.set(id, c);   // keep recently used last
           }

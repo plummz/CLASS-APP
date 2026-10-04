@@ -610,30 +610,33 @@ def build_cyndaquil(pose):
 
     def col(p, n):
         z = p.z - zb
-        # dark cap on the head + snout top (boundary just above the eyes)
-        hb = piecewise(p.y, [(-0.52, 0.665), (-0.30, 0.71), (-0.16, 0.775), (-0.06, 0.835), (0.04, 0.84), (0.12, 0.70)])
+        # dark cap on the head + the top of the snout (boundary just above the eyes)
+        hb = piecewise(p.y, [(-0.62, 0.66), (-0.40, 0.70), (-0.22, 0.745), (-0.10, 0.80), (0.0, 0.80),
+                             (0.08, 0.72), (0.16, 0.60)])
         d_head = sstep(-0.012, 0.012, z - hb)
         # dark back: behind a line running down the back, fading out at the hips
-        yb = piecewise(z, [(0.14, 0.30), (0.26, 0.16), (0.45, 0.06), (0.62, 0.03), (0.75, 0.01), (0.9, -0.02)])
-        d_back = sstep(-0.012, 0.012, p.y - yb) * sstep(0.17, 0.24, z)
+        yb = piecewise(z, [(0.14, 0.26), (0.26, 0.11), (0.40, 0.04), (0.55, 0.0), (0.68, 0.0), (0.9, 0.0)])
+        d_back = sstep(-0.012, 0.012, p.y - yb) * sstep(0.16, 0.23, z)
         c = mix(CRM, DARK, max(d_head, d_back))
         if p.z < 0.045 and n.z < -0.5:
             c = mix(c, SOLE, 0.8)
         return c
 
+    hc = Vector((0, -0.05, 0.74 + zb))
     els = [
-        E((0, 0.06, 0.30 + zb), (0.245, 0.235, 0.255)),        # pear lower body
-        E((0, -0.02, 0.28 + zb), (0.20, 0.20, 0.20)),          # round belly
-        E((0, 0.05, 0.52 + zb), (0.175, 0.17, 0.14)),          # shoulders
-        E((0, -0.02, 0.745 + zb), (0.18, 0.195, 0.165)),       # head
-        CAP((0, -0.14, 0.745 + zb), (0, -0.28, 0.715 + zb), 0.095, s=2.4),     # snout
-        CAP((0, -0.28, 0.715 + zb), (0, -0.40, 0.685 + zb), 0.065, s=2.6),
-        CAP((0, -0.40, 0.685 + zb), (0, -0.475, 0.665 + zb), 0.042, s=3.0),
+        E((0, 0.06, 0.28 + zb), (0.235, 0.225, 0.235)),        # pear lower body
+        E((0, -0.02, 0.27 + zb), (0.19, 0.19, 0.19)),          # round belly
+        E((0, 0.05, 0.48 + zb), (0.17, 0.165, 0.13)),          # shoulders
+        E(hc, (0.205, 0.215, 0.175)),                          # head
+        E(hc + Vector((0, 0.05, 0.02)), (0.17, 0.17, 0.15)),   # back of the head
+        CAP((0, -0.16, 0.735 + zb), (0, -0.32, 0.715 + zb), 0.10, s=2.4),     # long snout
+        CAP((0, -0.32, 0.715 + zb), (0, -0.47, 0.69 + zb), 0.07, s=2.6),
+        CAP((0, -0.47, 0.69 + zb), (0, -0.565, 0.672 + zb), 0.045, s=3.0),
     ]
     # legs: thick short thighs + small feet
     for sx in (1, -1):
         dy, dz = feet[sx]
-        els.append(E((0.13 * sx, 0.03 + dy * 0.5, 0.13 + zb * 0.5 + dz * 0.5), (0.10, 0.11, 0.105)))
+        els.append(E((0.13 * sx, 0.03 + dy * 0.5, 0.12 + zb * 0.5 + dz * 0.5), (0.10, 0.11, 0.10)))
         els.append(E((0.145 * sx, -0.055 + dy, 0.034 + dz), (0.075, 0.105, 0.034), direction=(0.15 * sx, -1, 0), s=3.0))
     body = blob('cq_body', els, vc_mat('cq_vc'), paint_fn=col)
     bvh = make_bvh([body])
@@ -642,55 +645,51 @@ def build_cyndaquil(pose):
     arm_m = M('cq_crm', CRM)
     sw = 0.05 * st
     for sx in (1, -1):
-        sh = Vector((0.15 * sx, -0.04, 0.50 + zb))
+        sh = Vector((0.15 * sx, -0.04, 0.47 + zb))
         if hero:
-            hand = Vector((0.075 * sx, -0.215, 0.47 + zb))
+            hand = Vector((0.07 * sx, -0.215, 0.45 + zb))
         else:
-            hand = Vector((0.10 * sx, -0.20 + sw * sx, 0.44 + zb))
+            hand = Vector((0.10 * sx, -0.19 + sw * sx, 0.41 + zb))
         blob('cq_arm%d' % sx, [CAP(sh, hand, 0.048, s=2.5), B(hand, 0.052, s=3.0)], arm_m)
 
-    # closed eyes: gentle arcs on the cream face just under the dark cap
+    # closed eyes: smiling arcs on the cream face just under the dark cap
     eyem = M('cq_eyeline', (0.10, 0.08, 0.10), rough=0.4)
-    hc = Vector((0, -0.04, 0.765 + zb))
     for sx in (1, -1):
-        p, n = surf(bvh, hc, sdir(62 * sx, 6))
-        k = 0.052
-        pts = [(k * math.cos(math.radians(a)) * 1.0, k * 0.55 * math.sin(math.radians(a)) - 0.012) for a in range(10, 171, 16)]
-        stroke('cq_eye%d' % sx, bvh, p, n, pts, 0.0085 if hero else 0.012, eyem, lift=0.002, ink=False)
+        p, n = surf(bvh, hc, sdir(55 * sx, 8))
+        k = 0.05
+        pts = [(k * math.cos(math.radians(a)), k * 0.6 * math.sin(math.radians(a)) - 0.016) for a in range(10, 171, 16)]
+        stroke('cq_eye%d' % sx, bvh, p, n, pts, 0.0085 if hero else 0.013, eyem, lift=0.002, ink=False)
 
-    # flames: a spiky burst from the back, yellow at the root, orange-red at the tips
-    YEL = (1.0, 0.86, 0.22)
-    ORG = (1.0, 0.50, 0.10)
-    RED = (0.93, 0.27, 0.08)
+    # flames: a spiky burst from the back - yellow core, orange tongues
+    YEL = (1.0, 0.86, 0.26)
+    ORG = (0.98, 0.50, 0.12)
+    TIP = (0.93, 0.36, 0.08)
 
     def fcol(t, th):
-        c = mix(YEL, ORG, sstep(0.18, 0.55, t))
-        return mix(c, RED, sstep(0.72, 1.0, t))
-    fm = vc_glow_mat('cq_flame', 1.15)
+        c = mix(YEL, ORG, sstep(0.12, 0.42, t))
+        return mix(c, TIP, sstep(0.75, 1.0, t))
+    fm = vc_glow_mat('cq_flame', 1.0)
     rng = random.Random(155)
-    root = Vector((0, 0.06, 0.50 + zb))
+    root = Vector((0, 0.02, 0.48 + zb))
     k = 0
-    for el in (-18, 4, 26, 48, 70, 92, 112):
-        for lat in (-56, -30, -8, 14, 36, 60):
-            e2 = el + rng.uniform(-8, 8)
-            l2 = lat + rng.uniform(-8, 8) + (11 if (el // 22) % 2 else 0)
+    for el in (-34, -14, 6, 26, 46, 66, 86):
+        for lat in (-60, -36, -12, 12, 36, 60):
+            e2 = el + rng.uniform(-7, 7)
+            l2 = lat + rng.uniform(-7, 7) + (12 if (el // 20) % 2 else 0)
             d = bdir(l2, e2)
             try:
                 p, n = surf(bvh, root, d)
             except RuntimeError:
                 continue
-            # longest straight up/back, shorter toward the sides and the bottom
-            L = 0.30 + 0.20 * math.cos(math.radians(e2 - 52)) ** 2
-            L *= 1.0 - 0.45 * (abs(l2) / 70.0) ** 1.6
-            L *= rng.uniform(0.82, 1.18)
-            if e2 < 0:
-                L *= 0.7
-            base = p - d * 0.04
-            curl = Vector((0, 0, 0.06 * (1 - abs(math.sin(math.radians(e2))))))
-            tip = base + d * L + curl
-            spike('cq_fl%d' % k, base, tip, 0.055, fm, ink=True, segs=10, colfn=fcol)
+            # longest straight back / up-back, shorter toward the sides, top and bottom
+            L = 0.24 + 0.24 * math.cos(math.radians(e2 - 22)) ** 2
+            L *= 1.0 - 0.40 * (abs(l2) / 70.0) ** 1.5
+            L *= rng.uniform(0.8, 1.2)
+            base = p - d * 0.05
+            tip = base + d * L + Vector((0, 0, 0.05 * L))
+            spike('cq_fl%d' % k, base, tip, 0.068, fm, ink=True, segs=10, colfn=fcol)
             k += 1
-    pose['_tilt'] = (Vector((0, -0.02, 0.60 + zb)), 0.58 + zb, 0.68 + zb)
+    pose['_tilt'] = (Vector((0, -0.02, 0.56 + zb)), 0.54 + zb, 0.66 + zb)
 
 
 def build_totodile(pose):
@@ -704,15 +703,15 @@ def build_totodile(pose):
     bob = -0.014 * abs(st)
     zb = bob
     feet = biped_feet(st, stride=0.065, lift=0.03)
-    open_deg = 34 if hero else 18
-    up_deg = open_deg * 0.62
-    dn_deg = open_deg * 0.38
-    hinge = Vector((0, 0.05, 0.665 + zb))
+    open_deg = 50 if hero else 22
+    up_deg = open_deg * 0.66
+    dn_deg = open_deg * 0.34
+    hinge = Vector((0, 0.06, 0.635 + zb))
     Mu = lift_m(up_deg)
     Md = lift_m(-dn_deg)
     qu = Mu.to_quaternion()
     qd = Md.to_quaternion()
-    J = 0.695 + zb      # closed jaw line height
+    J = 0.665 + zb      # closed jaw line height
     MuI = Mu.transposed()
     MdI = Md.transposed()
 
@@ -726,9 +725,9 @@ def build_totodile(pose):
         c = BLU
         z = p.z - zb
         # yellow V on the chest (wide at the shoulders, point at the belly)
-        if p.y < 0.02:
-            v = sstep(-0.012, 0.012, (z - 0.40) - 1.25 * abs(p.x)) * (1 - sstep(0.585, 0.60, z))
-            v *= sstep(0.0, 0.05, -p.y + 0.01)
+        if p.y < 0.03:
+            v = sstep(-0.012, 0.012, (z - 0.33) - 0.95 * abs(p.x)) * (1 - sstep(0.585, 0.60, z))
+            v *= sstep(0.0, 0.05, -p.y + 0.03)
             c = mix(c, YEL, v)
         # mouth interior: between the opened jaws, in front of the hinge
         if p.y < hinge.y - 0.02 and p.z > 0.55 + zb:
@@ -742,24 +741,24 @@ def build_totodile(pose):
         return c
 
     els = [
-        E((0, 0.03, 0.27 + zb), (0.205, 0.19, 0.24)),          # belly
-        E((0, 0.01, 0.47 + zb), (0.17, 0.15, 0.13)),           # chest
-        E((0, 0.06, 0.60 + zb), (0.14, 0.13, 0.08)),           # neck
+        E((0, 0.03, 0.26 + zb), (0.20, 0.185, 0.225)),         # belly
+        E((0, 0.01, 0.44 + zb), (0.165, 0.15, 0.12)),          # chest
+        E((0, 0.07, 0.575 + zb), (0.145, 0.13, 0.08)),         # neck
     ]
     # upper head: cranium + long wide snout + eye bumps + nostril bumps
     els += [
-        E(U((0, 0.07, 0.80)), (0.17, 0.16, 0.14), q=qu),
-        E(U((0, -0.12, 0.765)), (0.155, 0.20, 0.075), q=qu),
-        E(U((0, -0.28, 0.77)), (0.10, 0.07, 0.062), q=qu, s=2.6),
-        E(U((0.105, 0.02, 0.885)), (0.065, 0.075, 0.06), q=qu, s=2.8),
-        E(U((-0.105, 0.02, 0.885)), (0.065, 0.075, 0.06), q=qu, s=2.8),
-        B(U((0.045, -0.30, 0.815)), 0.022, s=3.0),
-        B(U((-0.045, -0.30, 0.815)), 0.022, s=3.0),
+        E(U((0, 0.08, 0.77)), (0.185, 0.17, 0.15), q=qu),
+        E(U((0, -0.14, 0.735)), (0.17, 0.23, 0.08), q=qu),
+        E(U((0, -0.33, 0.74)), (0.115, 0.08, 0.065), q=qu, s=2.6),
+        E(U((0.115, 0.04, 0.865)), (0.075, 0.08, 0.07), q=qu, s=2.8),
+        E(U((-0.115, 0.04, 0.865)), (0.075, 0.08, 0.07), q=qu, s=2.8),
+        B(U((0.05, -0.355, 0.787)), 0.024, s=3.0),
+        B(U((-0.05, -0.355, 0.787)), 0.024, s=3.0),
     ]
     # lower jaw
     els += [
-        E(D((0, -0.07, 0.645)), (0.15, 0.19, 0.06), q=qd),
-        E(D((0, -0.22, 0.65)), (0.11, 0.09, 0.045), q=qd, s=2.6),
+        E(D((0, -0.08, 0.615)), (0.16, 0.22, 0.06), q=qd),
+        E(D((0, -0.26, 0.62)), (0.12, 0.09, 0.048), q=qd, s=2.6),
     ]
     # legs + big feet with toes
     for sx in (1, -1):
@@ -775,31 +774,31 @@ def build_totodile(pose):
     # teeth: two fangs on the upper jaw, two on the lower
     tm = M('td_teeth', (0.98, 0.98, 0.96), rough=0.3)
     for sx in (1, -1):
-        b0 = U((0.085 * sx, -0.27, J - zb + 0.005))
-        spike('td_tu%d' % sx, b0 + Mu @ Vector((0, 0, 0.02)), b0 - Mu @ Vector((0, 0, 0.055)), 0.02, tm, segs=8)
-        b1 = D((0.08 * sx, -0.23, J - zb - 0.005))
-        spike('td_td%d' % sx, b1 - Md @ Vector((0, 0, 0.02)), b1 + Md @ Vector((0, 0, 0.045)), 0.018, tm, segs=8)
+        b0 = U((0.095 * sx, -0.31, J - zb + 0.008))
+        spike('td_tu%d' % sx, b0 + Mu @ Vector((0, 0, 0.02)), b0 - Mu @ Vector((0, 0, 0.06)), 0.022, tm, segs=8)
+        b1 = D((0.09 * sx, -0.27, J - zb - 0.008))
+        spike('td_td%d' % sx, b1 - Md @ Vector((0, 0, 0.02)), b1 + Md @ Vector((0, 0, 0.05)), 0.02, tm, segs=8)
 
     # eyes: red iris on white, with the black eye-mark behind
     for sx in (1, -1):
-        c0 = U((0.105 * sx, 0.02, 0.885))
-        dvec = Mu @ sdir(58 * sx, 22)
+        c0 = U((0.115 * sx, 0.04, 0.865))
+        dvec = Mu @ sdir(50 * sx, 16)
         p, n = surf(bvh, c0, dvec)
-        decal('td_mask%d' % sx, bvh, p, n, ell_r(0.052, 0.042), M('td_black', (0.06, 0.06, 0.08), rough=0.3),
-              lift=0.001, off=(0.022 * sx, 0.006), rot=-20 * sx)
-        eye('td_e%d' % sx, bvh, c0, dvec, 0.040, 0.044, 'iris', sx=sx, iris_col=(0.80, 0.10, 0.18),
-            iris_s=0.72, iris_off=(-0.26, -0.05), pupil_s=0.5, hl_off=(-0.35, 0.38), bulge=0.01)
+        decal('td_mask%d' % sx, bvh, p, n, ell_r(0.07, 0.052), M('td_black', (0.06, 0.06, 0.08), rough=0.3),
+              lift=0.001, off=(0.03 * sx, 0.008), rot=-18 * sx)
+        eye('td_e%d' % sx, bvh, c0, dvec, 0.047, 0.053, 'iris', sx=sx, iris_col=(0.80, 0.10, 0.18),
+            iris_s=0.70, iris_off=(-0.26, -0.04), pupil_s=0.5, hl_off=(-0.35, 0.38), bulge=0.012)
 
     # arms: raised out (hero) / held out low (sprite), three stubby fingers
     am = M('td_blue', BLU)
     sw = 0.05 * st
     for sx in (1, -1):
-        sh = Vector((0.15 * sx, 0.0, 0.52 + zb))
+        sh = Vector((0.15 * sx, 0.0, 0.49 + zb))
         if hero:
-            hand = Vector((0.33 * sx, -0.06, 0.64 + zb))
+            hand = Vector((0.33 * sx, -0.07, 0.62 + zb))
             fd = Vector((0.6 * sx, -0.2, 0.8)).normalized()
         else:
-            hand = Vector((0.25 * sx, -0.05 + sw * sx, 0.40 + zb))
+            hand = Vector((0.25 * sx, -0.05 + sw * sx, 0.38 + zb))
             fd = Vector((0.5 * sx, -0.4, -0.5)).normalized()
         els = [CAP(sh, hand, 0.05, s=2.4), B(hand, 0.055, s=2.6)]
         side = fd.cross(Z if abs(fd.z) < 0.9 else Vector((0, 1, 0))).normalized()
@@ -814,7 +813,7 @@ def build_totodile(pose):
     tail = [Vector((0, 0.15, 0.24 + zb)), Vector((sway * 0.3, 0.30, 0.15 + zb)), Vector((sway * 0.7, 0.43, 0.10 + zb)),
             Vector((sway, 0.54, 0.09 + zb)), Vector((sway * 1.1, 0.60, 0.10 + zb))]
     loft('td_tail', tail, [(r, r) for r in (0.11, 0.085, 0.06, 0.035, 0.012)], Vector((1, 0, 0)), mat=am, segs=16)
-    for i, (z, L) in enumerate(((0.63, 0.11), (0.52, 0.12), (0.41, 0.11))):
+    for i, (z, L) in enumerate(((0.60, 0.11), (0.49, 0.12), (0.38, 0.11))):
         p, n = surf(bvh, Vector((0, 0.0, z + zb)), bdir(0, 15))
         d = (bdir(0, 35) + n * 0.4).normalized()
         spike('td_sp%d' % i, p - d * 0.02, p + d * L, 0.05, rm, flat=0.35, ref=Vector((1, 0, 0)), segs=12)

@@ -572,8 +572,12 @@ def decal(name, bvh, p, n, shape, mat, lift=0.002, bulge=0.0, rot=0.0, off=(0.0,
 def stroke(name, bvh, p, n, pts2d, radius, mat, lift=0.0025, ink=False, up=Vector((0, 0, 1))):
     """Thin line drawn on the surface (mouths, shell seams)."""
     t1, t2 = frame_at(n, up)
+    dense = [pts2d[0]]                 # densify so long segments hug curved surfaces
+    for (u0, v0), (u1, v1) in zip(pts2d, pts2d[1:]):
+        k = max(1, int(math.hypot(u1 - u0, v1 - v0) / 0.015))
+        dense.extend((u0 + (u1 - u0) * i / k, v0 + (v1 - v0) * i / k) for i in range(1, k + 1))
     path = []
-    for u, v in pts2d:
+    for u, v in dense:
         p0 = Vector(p) + t1 * u + t2 * v
         loc, nor, _, _ = bvh.ray_cast(p0 + n * 0.3, -n)
         if loc is None:

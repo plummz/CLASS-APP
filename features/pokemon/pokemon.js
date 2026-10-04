@@ -416,6 +416,14 @@ const pokemonModule = (() => {
   let trainerEvent = null;           // {tr, phase:'alert'|'talk', until}
   let lastCloudSync = 0, _cloudSyncTimer = null, _pendingCloudSave = null;
   const PARTY_MAX = 6;
+  let battleStarting = false;        // true during the flash before a battle opens (blocks walking/encounters)
+  let _blackoutTimer = null;
+  let progressAt = 0;                // last real progress (catch, win, purchase…) — used to pick the newest save
+  let cloudReadFailed = false;       // never overwrite the cloud copy we couldn't read
+  let knownRemoteProgressAt = 0;
+  let _pendingToasts = [];           // level-up / evolution messages shown after a trainer battle
+  const _partnerRequested = new Set();
+  let _onHide = null;
   const WALK_SPEED = 120;            // game px per second
   const DIR_ROW = {down:0, left:1, right:2, up:3};
   const _fallbackSprites = {};       // sid → Image (PokeAPI front sprite) for partners without a 3D model
@@ -885,7 +893,9 @@ const pokemonModule = (() => {
 
   // Shared by route trainers and gym leaders
   function startTrainerBattle(tr){
+    if(battle||battleStarting) return;
     if(team.every(m=>m.hp<=0)){showToast('Heal your Pokémon first!','#ff6060',2000);return;}
+    battleStarting=true;
     const queue=[...tr.team]; const first=queue.shift();
     const em=mkMon(first.sid,first.lvl);
     markSeen(first.sid);
@@ -901,6 +911,8 @@ const pokemonModule = (() => {
       f++; if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
+        battleStarting=false;
+        if(!canvas) return;
         const pm=leadMon();
         battle={pm,em,type:'trainer',trainer:tr,leaderId:tr.leaderId||null,leaderQueue:queue,phase:'menu',participants:new Set([pm])};
         setBattleScene(); updateBUI(); enableBtns(true); updateBallBtn();
@@ -1751,9 +1763,10 @@ const pokemonModule = (() => {
 
   // Simple drawn trainers for when the 3D art isn't available
   const TRAINER_COLORS={npc_youngster:'#e0802a',npc_lass:'#d04a90',npc_hiker:'#7a5a2a',npc_bugcatcher:'#5a9a2a',npc_swimmer:'#2a7ad0'};
-  function drawTrainersClassic(){
+  function drawTrainersClassic(){ trainersHere().forEach(drawTrainerClassic); }
+  function drawTrainerClassic(tr){
     const now=Date.now();
-    trainersHere().forEach(tr=>{
+    {
       const cx=(tr.tx+0.5)*TSIZE-camX, cy=(tr.ty+0.5)*TSIZE-camY;
       if(cx<-40||cy<-60||cx>VIEW_W+40||cy>VIEW_H+40) return;
       const col=TRAINER_COLORS[tr.kind]||'#888';
@@ -1776,7 +1789,7 @@ const pokemonModule = (() => {
         ctx.fillStyle='rgba(255,80,80,0.85)'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
         ctx.fillText('⚔',cx,cy-22+bob);
       }
-    });
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1930,6 +1943,7 @@ const pokemonModule = (() => {
     const mon=leadMon(); if(!mon) return;
     const A=ART(), key='mon_'+mon.speciesId;
     const px=Math.round(partner.x-camX), py=Math.round(partner.y-camY);
+    if(!A.has(key)&&A.info(key)&&!_partnerRequested.has(key)){ _partnerRequested.add(key); A.load(key); }
     if(A.has(key)){
       A.drawAnchored(ctx,key,DIR_ROW[partner.dir]*3+walkFrame(partner.moving,ts,9),px,py);
       return;
@@ -1958,7 +1972,7 @@ const pokemonModule = (() => {
     if(A.has(key)){
       const e=A.info(key), rows=e.rows||1;
       A.drawAnchored(ctx,key,rows>=4?DIR_ROW[tr.dir]*(e.cols||1):0,x,y);
-    }
+    } else { drawTrainerClassic(tr); return; }
     if(trainerEvent&&trainerEvent.tr===tr){
       // "!" bubble, then a short speech bubble
       if(trainerEvent.phase==='alert'){
@@ -2038,14 +2052,14 @@ const pokemonModule = (() => {
     const idle=Math.sin(ts/1500+tx*1.1+ty*0.9);
     const sway=(ef?ef.sway:0)+idle*0.6;
     const fr=sway<-0.7?0:sway>0.7?2:1;
-    ART().drawTile(ctx,'tall_grass',fr,sx,sy);
+    if(!ART().drawTile(ctx,'tall_grass',fr,sx,sy)) drawTile(sx,sy,T.TALL,tx,ty);
   }
 
   function drawWaterArt(tx0,ty0,tx1,ty1,ts){
     const A=ART(), n=Math.max(1,A.frameCount('water'));
     const fr=Math.floor(ts/140)%n;
     for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++){
-      if(getTile(tx,ty)===T.WATER) A.drawTile(ctx,'water',fr,tx*TSIZE-camX,ty*TSIZE-camY);
+      if(getTile(tx,ty)===T.WATER&&!A.drawTile(ctx,'water',fr,tx*TSIZE-camX,ty*TSIZE-camY)) drawTile(tx*TSIZE-camX,ty*TSIZE-camY,T.WATER,tx,ty);
     }
   }
 
@@ -2060,7 +2074,7 @@ const pokemonModule = (() => {
       if(Math.abs(tx-camFX)<0.05) camFX=tx;
       if(Math.abs(ty-camFY)<0.05) camFY=ty;
     }
-    camX=Math.round(camFX); camY=Math.round(camFY);   // whole pixels keep tiles crisp
+    camX=Math.round(camFX*RS)/RS; camY=Math.round(camFY*RS)/RS;   // whole device pixels keep tiles crisp
   }
 
   function drawOverworldArt(dt,ts){
@@ -2080,7 +2094,8 @@ const pokemonModule = (() => {
     // Everything that stands up, sorted by its foot line
     const list=[];
     for(let ty=ty0;ty<=Math.min(MAP_H-1,ty1+5);ty++){
-      const row=objRows[ty]; if(row) for(const o of row) list.push(o);
+      const row=objRows[ty];
+      if(row) for(const o of row){ if(o.x!==undefined&&(o.x<camX-400||o.x>camX+W+64)) continue; list.push(o); }
       if(ty<=ty1) for(let tx=tx0;tx<=tx1;tx++) if(getTile(tx,ty)===T.TALL) list.push({kind:'tall',tx,ty,sy:(ty+1)*TSIZE-0.25});
     }
     mapItems.forEach(it=>{ if(!it.collected&&it.tx>=tx0-1&&it.tx<=tx1+1&&it.ty>=ty0-1&&it.ty<=ty1+2) list.push({kind:'item',it,sy:(it.ty+0.75)*TSIZE}); });
@@ -2123,8 +2138,9 @@ const pokemonModule = (() => {
   }
 
   /* ── POKÉDEX ── */
+  function markProgress(){ progressAt=Date.now(); }
   function markSeen(sid){ if(sid&&SP[sid]&&!dexSeen.includes(sid)) dexSeen.push(sid); }
-  function markCaught(sid){ markSeen(sid); if(sid&&SP[sid]&&!dexCaught.includes(sid)) dexCaught.push(sid); }
+  function markCaught(sid){ markSeen(sid); if(sid&&SP[sid]&&!dexCaught.includes(sid)) dexCaught.push(sid); markProgress(); }
 
   /* ── POKEMON INSTANCES ── */
   function xpForLevel(lvl){ return Math.floor(0.5*lvl*lvl*lvl); }
@@ -2278,7 +2294,8 @@ const pokemonModule = (() => {
       if(img.dataset.k!==k) return;
       // Showdown sprites are small 3D renders: scale them up; classic 96px sprites less so
       const classic=img.classList.contains('pk-sprite-classic');
-      const sc=classic?(back?1.9:1.55):(back?2.5:2.1);
+      const sc0=classic?(back?1.9:1.55):(back?2.5:2.1);
+      const sc=back?sc0:Math.min(sc0,160/img.naturalHeight,240/img.naturalWidth);
       img.style.width=Math.round(img.naturalWidth*sc)+'px';
       img.style.height=Math.round(img.naturalHeight*sc)+'px';
       img.style.visibility='';
@@ -2324,6 +2341,8 @@ const pokemonModule = (() => {
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
   function startBattle(sid,lvl){
+    if(battle||battleStarting) return;
+    battleStarting=true;
     const em=mkMon(sid,lvl);
     // Hide d-pad during battle
     const dpadEl=document.getElementById('pk-dpad');
@@ -2340,6 +2359,8 @@ const pokemonModule = (() => {
       if(f<8) setTimeout(doFlash,70);
       else{
         fl.remove();
+        battleStarting=false;
+        if(!canvas) return;
         const pm=leadMon();
         battle={pm,em,phase:'menu',participants:new Set([pm])};
         markSeen(sid);
@@ -2354,7 +2375,12 @@ const pokemonModule = (() => {
   }
 
   function closeBattle(){
-    battle=null;
+    battle=null; trainerEvent=null;
+    if(_blackoutTimer){ clearTimeout(_blackoutTimer); _blackoutTimer=null; }
+    if(_pendingToasts.length){
+      const msgs=_pendingToasts; _pendingToasts=[];
+      msgs.forEach((m,i)=>setTimeout(()=>showToast(m.text,m.color,2200),400+i*2300));
+    }
     document.getElementById('pk-battle').classList.add('hidden');
     document.getElementById('pk-blackout').classList.add('hidden');
     const dpadEl=document.getElementById('pk-dpad');
@@ -2389,7 +2415,7 @@ const pokemonModule = (() => {
       const cancel=document.createElement('button');
       cancel.textContent='Cancel'; cancel.className='pk-run-btn';
       cancel.style.marginTop='8px';
-      cancel.onclick=()=>panel.classList.add('hidden');
+      cancel.onclick=()=>{ panel.classList.add('hidden'); enableBtns(true); };
       list.appendChild(cancel);
     }
     panel.classList.remove('hidden');
@@ -2451,8 +2477,8 @@ const pokemonModule = (() => {
       while(m.xp>=m.xpToNext){
         m.level++; applyLevelUp(m);
         const evo=tryEvolve(m);
-        if(evo){ markCaught(m.speciesId); showToast(`${evo} evolved into ${m.name}!`,'#ffd700',2500); }
-        else showToast(`${m.name} grew to Lv.${m.level}!`,'#00ff88',1800);
+        if(evo){ markCaught(m.speciesId); _pendingToasts.push({text:`${evo} evolved into ${m.name}!`,color:'#ffd700'}); }
+        else _pendingToasts.push({text:`${m.name} grew to Lv.${m.level}!`,color:'#00ff88'});
       }
     });
     return xg;
@@ -2478,7 +2504,7 @@ const pokemonModule = (() => {
           if(p.hp<=0){
             const alive=team.filter(m=>m.hp>0);
             if(alive.length) setTimeout(()=>showSwapPanel(true),600);
-            else { setLog('You have no more Pokémon!','You blacked out! 💀'); enableBtns(false); setTimeout(()=>{ const bl=document.getElementById('pk-blackout'); if(bl) bl.classList.remove('hidden'); setTimeout(()=>window.pokemonModule.dismissBlackout(),3000); },1400); }
+            else { setLog('You have no more Pokémon!','You blacked out! 💀'); enableBtns(false); setTimeout(()=>{ const bl=document.getElementById('pk-blackout'); if(bl) bl.classList.remove('hidden'); _blackoutTimer=setTimeout(()=>window.pokemonModule.dismissBlackout(),3000); },1400); }
           } else { enableBtns(true); }
           return;
         }
@@ -2486,7 +2512,7 @@ const pokemonModule = (() => {
           if(!defeatedLeaders.includes(tr.leaderId)) defeatedLeaders.push(tr.leaderId);
           if(tr.badge&&!badges.includes(tr.badge)) badges.push(tr.badge);
         } else if(tr.id&&!defeatedTrainers.includes(tr.id)) defeatedTrainers.push(tr.id);
-        const prize=tr.prize||300; coins+=prize; updateCoinsDisplay();
+        const prize=tr.prize||300; coins+=prize; updateCoinsDisplay(); markProgress();
         updateBUI();
         if(tr.leaderId) setLog(`You defeated ${tr.name}!`,`🏅 ${tr.badge||'Badge'}! +${prize}💰  +${gained} XP`);
         else setLog(`You defeated ${tr.name}!`,`"${tr.lose||'Well done!'}"  +${prize}💰`);
@@ -2504,7 +2530,7 @@ const pokemonModule = (() => {
       });
       // Award coins for winning the battle
       const battleCoins=5+e.level*2+Math.floor((SP[e.speciesId]?.xpY||50)*0.3);
-      coins+=battleCoins; updateCoinsDisplay();
+      coins+=battleCoins; updateCoinsDisplay(); markProgress();
       setLog(`${e.name} fainted!`,`+${xg} XP (${participants.length} shared)  +${battleCoins}💰`);
       const doLvl=()=>{
         if(p.xp>=p.xpToNext){
@@ -2531,7 +2557,7 @@ const pokemonModule = (() => {
         setTimeout(()=>{
           const bl=document.getElementById('pk-blackout');
           if(bl) bl.classList.remove('hidden');
-          setTimeout(()=>window.pokemonModule.dismissBlackout(),3000);
+          _blackoutTimer=setTimeout(()=>window.pokemonModule.dismissBlackout(),3000);
         },1400);
       }
     } else { enableBtns(true); }
@@ -2643,7 +2669,7 @@ const pokemonModule = (() => {
 
   // Trainers spot you when you are in front of them with nothing in between
   function checkTrainerSight(ptx,pty){
-    if(battle||trainerEvent) return;
+    if(battle||trainerEvent||battleStarting) return;
     for(const tr of trainersHere()){
       if(defeatedTrainers.includes(tr.id)) continue;
       const [dx,dy]={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]}[tr.dir];
@@ -2673,6 +2699,7 @@ const pokemonModule = (() => {
     if(trainerEvent.phase==='alert'){ trainerEvent.phase='talk'; trainerEvent.until=now+1700; return; }
     const tr=trainerEvent.tr;
     trainerEvent=null;
+    if(defeatedTrainers.includes(tr.id)) return;
     startTrainerBattle({id:tr.id,name:tr.name,title:'Trainer',team:tr.team,prize:tr.prize,kind:tr.kind,lose:tr.lose});
   }
 
@@ -2683,6 +2710,7 @@ const pokemonModule = (() => {
     lastFrameTs=ts;
     if(battle||gymDialogOpen)return;
     if(!player)return;
+    if(battleStarting){ player.moving=false; return; }
     if(trainerEvent){ stepTrainerEvent(); player.moving=false; drawOverworld(dt,ts); return; }
     const up=keys.ArrowUp||keys.w||dpad.up, dn=keys.ArrowDown||keys.s||dpad.down;
     const lt=keys.ArrowLeft||keys.a||dpad.left, rt=keys.ArrowRight||keys.d||dpad.right;
@@ -2942,7 +2970,7 @@ const pokemonModule = (() => {
       } else { return; }
     }
 
-    coins-=item.price; updateCoinsDisplay();
+    coins-=item.price; updateCoinsDisplay(); markProgress();
     saveGame();
     showToast(`${item.icon} ${item.name} used!`,'#00ff88',1800);
     renderShopItems('buy');
@@ -3029,7 +3057,7 @@ const pokemonModule = (() => {
 
   /* ── PP REGENERATION — +1 PP to every move on every Pokémon every 150 s ── */
   setInterval(()=>{
-    if(!team.length)return;
+    if(!team.length||!canvas)return;   // offline regen on the next visit covers time away
     let anyRestored=false;
     team.forEach(mon=>{
       mon.moves.forEach(mv=>{
@@ -3055,7 +3083,7 @@ const pokemonModule = (() => {
     const saveMapId=isInt?(_interiorReturn?.mapId||'starterTown'):currentMapId;
     const saveSp=MAPS_DATA[saveMapId]?.spawns?.default;
     return {
-      v:2, owner:me()?.username||null,
+      v:2, owner:me()?.username||null, progressAt,
       team:team.map(packMon), box:box.map(packMon),
       px:isInt?(saveSp?.x??24):Math.floor(player.x/TSIZE),
       py:isInt?(saveSp?.y??35):Math.floor(player.y/TSIZE),
@@ -3066,16 +3094,22 @@ const pokemonModule = (() => {
     };
   }
 
+  // Each student gets their own save slot on a shared phone
+  function localKey(){ const u=me()?.username; return u?'pkSave:'+u:'pkSave'; }
+  function writeLocal(sv){
+    try{ localStorage.setItem(localKey(),JSON.stringify(sv)); if(me()) localStorage.setItem('pkLastUser',me().username); }catch(e){}
+  }
+
   function saveGame(){
     if(!player||!team.length)return;
     const sv=buildSave();
-    try{ localStorage.setItem('pkSave',JSON.stringify(sv)); }catch(e){}
+    writeLocal(sv);
     queueCloudSave(sv);
   }
 
   // Keep the cloud copy fresh without writing on every step: at most every 30 s
   function queueCloudSave(sv){
-    if(!me()) return;
+    if(!me()||cloudReadFailed) return;
     _pendingCloudSave=sv;
     if(_cloudSyncTimer) return;
     _cloudSyncTimer=setTimeout(flushCloudSave,Math.max(0,30000-(Date.now()-lastCloudSync)));
@@ -3083,7 +3117,9 @@ const pokemonModule = (() => {
   function flushCloudSave(){
     if(_cloudSyncTimer){ clearTimeout(_cloudSyncTimer); _cloudSyncTimer=null; }
     const sv=_pendingCloudSave; _pendingCloudSave=null;
-    if(!sv) return Promise.resolve(null);
+    if(!sv||cloudReadFailed) return Promise.resolve(null);
+    // Another device made more progress since we loaded: don't overwrite it with older state
+    if(knownRemoteProgressAt&&(sv.progressAt||0)<knownRemoteProgressAt) return Promise.resolve(null);
     lastCloudSync=Date.now();
     return syncPkSave(sv);
   }
@@ -3136,7 +3172,7 @@ const pokemonModule = (() => {
       const {error}=await sb.from('pokemon_saves').upsert({
         username:me().username,
         pokemon_count:all.length,
-        total_levels:sv.team.reduce((s,m)=>s+(m.level||0),0),
+        total_levels:all.reduce((s,m)=>s+(m.level||0),0),
         pk_save:sv,
         updated_at:new Date().toISOString()
       },{onConflict:'username'});
@@ -3145,30 +3181,39 @@ const pokemonModule = (() => {
   }
 
   function readLocalSave(){
-    try{ const raw=localStorage.getItem('pkSave'); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+    const parse=(k)=>{ try{ const raw=localStorage.getItem(k); return raw?JSON.parse(raw):null; }catch(e){ return null; } };
+    const user=me()?.username;
+    if(!user) return parse('pkSave');
+    const mine=parse('pkSave:'+user);
+    if(mine) return mine;
+    // One-time migration of the old shared slot, only if it belongs to this student
+    const legacy=parse('pkSave');
+    let last=null; try{ last=localStorage.getItem('pkLastUser'); }catch(e){}
+    if(legacy&&(legacy.owner===user||(!legacy.owner&&(!last||last===user)))) return {...legacy, owner:user};
+    return null;
   }
 
+  // {ok:false} when the cloud couldn't be reached — never treat that as "no save"
   async function fetchRemoteSave(){
-    if(!me()) return null;
+    if(!me()) return {ok:true,save:null};
     try{
       const {data,error}=await sb.from('pokemon_saves')
         .select('pk_save')
         .eq('username', me().username)
         .maybeSingle();
-      if(error||!data||!data.pk_save) return null;
-      return data.pk_save;
-    }catch(e){ return null; }
+      if(error) return {ok:false};
+      return {ok:true,save:data?.pk_save||null};
+    }catch(e){ return {ok:false}; }
   }
 
   // Pick the right save: the newer of cloud and this device's copy, but never another user's
   function chooseSave(local,remote){
     const user=me()?.username;
     if(!user) return local;
-    const localMine=local&&local.owner===user?local:null;
-    const localUnowned=local&&!local.owner?local:null;   // saves from before owner tagging
-    if(remote&&localMine) return (localMine.savedAt||0)>(remote.savedAt||0)?localMine:remote;
-    if(remote) return remote;
-    return localMine||localUnowned;
+    const localMine=local&&(!local.owner||local.owner===user)?local:null;
+    const when=(sv)=>sv.progressAt||sv.savedAt||0;
+    if(remote&&localMine) return when(localMine)>when(remote)?localMine:remote;
+    return remote||localMine;
   }
 
   /* ── D-PAD ── */
@@ -3314,6 +3359,8 @@ const pokemonModule = (() => {
         _kdown=e=>{ if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){keys[e.key]=true;if(e.key.startsWith('Arrow'))e.preventDefault();} };
         _kup=e=>{ keys[e.key]=false; };
         document.addEventListener('keydown',_kdown); document.addEventListener('keyup',_kup);
+        _onHide=()=>{ if(document.visibilityState==='hidden'){ saveGame(); flushCloudSave(); } };
+        document.addEventListener('visibilitychange',_onHide); window.addEventListener('pagehide',_onHide);
         setupDpad();
         if(animFrame)cancelAnimationFrame(animFrame);
         animFrame=requestAnimationFrame(gameLoop);
@@ -3324,11 +3371,24 @@ const pokemonModule = (() => {
         // If logged in, always prefer the cloud save (prevents "PC overwrote mobile with older localStorage").
         // If cloud is missing, fall back to local.
         const local=readLocalSave();
-        const remote=me()?await fetchRemoteSave():null;
-        if(bootId!==_bootId) return;
+        let res={ok:true,save:null};
+        if(me()){
+          for(let attempt=0;attempt<3;attempt++){
+            res=await fetchRemoteSave();
+            if(bootId!==_bootId) return;
+            if(res.ok) break;
+            await new Promise(r=>setTimeout(r,2500));
+          }
+        }
+        cloudReadFailed=!res.ok;
+        const remote=res.ok?res.save:null;
+        knownRemoteProgressAt=remote?(remote.progressAt||0):0;
         const pick=chooseSave(local,remote);
-        let used=Boolean(pick&&restoreFromSaveObject(pick));
-        if(used&&pick===local&&remote&&me()) queueCloudSave(buildSave());   // this device was ahead: update the cloud
+        let used=false;
+        try{ used=Boolean(pick&&restoreFromSaveObject(pick)); }catch(e){ console.warn('[pokemon] restore failed',e); used=false; }
+        progressAt=pick?.progressAt||pick?.savedAt||0;
+        if(used&&pick===local&&remote&&me()){ knownRemoteProgressAt=0; queueCloudSave(buildSave()); }
+        if(cloudReadFailed) setTimeout(()=>showToast('⚠️ Cloud save unreachable — playing offline, cloud is not overwritten','#ff9900',4000),800);
 
         if(!used){
           loadZone('starterTown');
@@ -3346,6 +3406,8 @@ const pokemonModule = (() => {
       if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
       if(_kdown){document.removeEventListener('keydown',_kdown);_kdown=null;}
       if(_kup){document.removeEventListener('keyup',_kup);_kup=null;}
+      if(_onHide){document.removeEventListener('visibilitychange',_onHide);window.removeEventListener('pagehide',_onHide);_onHide=null;}
+      battleStarting=false;
       if(canvas&&canvas._pkResize)window.removeEventListener('resize',canvas._pkResize);
       saveGame(); flushCloudSave(); canvas=null; ctx=null; battle=null; trainerEvent=null;
       Object.keys(keys).forEach(k=>keys[k]=false);
@@ -3401,7 +3463,8 @@ const pokemonModule = (() => {
       }
     },
     dismissBlackout(){
-      if(!battle&&document.getElementById('pk-blackout')?.classList.contains('hidden')) return;   // already handled
+      if(_blackoutTimer){ clearTimeout(_blackoutTimer); _blackoutTimer=null; }
+      if(!battle) return;   // already handled
       team.forEach(m=>{ m.hp=Math.max(1,Math.floor(m.maxHp/2)); });
       _interiorReturn=null;
       loadZone('starterTown');
@@ -3420,14 +3483,14 @@ const pokemonModule = (() => {
       if(battle){ showToast('Not during a battle!','#ff6b6b',1800); return; }
       if(team.length<=1){ showToast('You need at least one Pokémon in your party.','#ff6b6b',2000); return; }
       const [mon]=team.splice(idx,1); if(!mon) return;
-      box.push(mon); saveGame(); renderDexTab('party');
+      box.push(mon); markProgress(); saveGame(); renderDexTab('party');
       showToast(`${mon.name} was sent to the Box.`,'#00d4ff',1800);
     },
     _fromBox(idx){
       if(battle){ showToast('Not during a battle!','#ff6b6b',1800); return; }
       if(team.length>=PARTY_MAX){ showToast('Party is full — send one to the Box first.','#ff6b6b',2200); return; }
       const [mon]=box.splice(idx,1); if(!mon) return;
-      team.push(mon); saveGame(); renderDexTab('box');
+      team.push(mon); markProgress(); saveGame(); renderDexTab('box');
       showToast(`${mon.name} joined your party!`,'#00ff88',1800);
     },
     async showLeaderboard(tab='caught'){
@@ -3625,14 +3688,21 @@ const pokemonModule = (() => {
     async manualSave(){
       if(!player||!team.length){ showToast('Nothing to save yet!','#ff6b6b',1800); return; }
       // Save locally first (instant), then upload the same save to Supabase.
+      markProgress();
       const sv=buildSave();
-      try{ localStorage.setItem('pkSave',JSON.stringify(sv)); }catch(e){}
+      writeLocal(sv);
       if(!me()){
         showToast('Saved locally ✓ (log in to sync cloud progress)','#ffbb00',2800);
         return;
       }
+      if(cloudReadFailed){
+        // Try reading the cloud again before writing to it
+        const r=await fetchRemoteSave();
+        if(!r.ok){ showToast('Saved on this device ✓ — cloud unreachable, try again later','#ff9900',3500); return; }
+        cloudReadFailed=false;
+      }
       if(_cloudSyncTimer){ clearTimeout(_cloudSyncTimer); _cloudSyncTimer=null; }
-      _pendingCloudSave=null; lastCloudSync=Date.now();
+      _pendingCloudSave=null; lastCloudSync=Date.now(); knownRemoteProgressAt=0;
       showToast('Saving to cloud...','#00d4ff',1000);
       const err=await syncPkSave(sv);
       if(err===null) showToast('Saved to cloud! 💾','#00ff88',2200);

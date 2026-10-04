@@ -981,8 +981,6 @@
           <div class="pk-swap-list" id="pk-swap-list"></div>
         </div>
 
-        <!-- Coin counter — inside pk-screen so it sits over the canvas -->
-        <div id="pk-coins" class="pk-coin-display">💰 0</div>
 
         <!-- Blackout overlay -->
         <div id="pk-blackout" class="pk-blackout hidden">
@@ -990,6 +988,8 @@
           <button class="pk-blackout-btn" onclick="window.pokemonModule.dismissBlackout()">Continue</button>
         </div>
       </div>
+        <!-- Coin counter — over the canvas, hidden during battles -->
+        <div id="pk-coins" class="pk-coin-display">💰 0</div>
       </div><!-- /pk-screen -->
       <div class="dpad" id="pk-dpad">
         <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>

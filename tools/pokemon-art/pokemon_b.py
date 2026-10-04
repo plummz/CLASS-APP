@@ -38,7 +38,7 @@ SPECIES = ['cyndaquil', 'totodile', 'torchic', 'treecko', 'mudkip']
 FRAME = 80
 HERO = 384
 HERO_ELEV = 14.0          # hero: low 3/4 view like the HOME renders (same as pokemon_a)
-HERO_YAW = -28.0          # model turned so it faces the viewer's left a little
+HERO_YAW = -38.0          # model turned so it faces the viewer's left (HOME-like 3/4 view)
 SHEET_SAMPLES = 32
 HERO_SAMPLES = 64
 ROWS = [('down', 0.0), ('left', -90.0), ('right', 90.0), ('up', 180.0)]
@@ -611,33 +611,33 @@ def build_cyndaquil(pose):
     def col(p, n):
         z = p.z - zb
         # dark cap on the head + the top of the snout (boundary just above the eyes)
-        hb = piecewise(p.y, [(-0.62, 0.66), (-0.40, 0.70), (-0.22, 0.745), (-0.10, 0.80), (0.0, 0.80),
-                             (0.08, 0.72), (0.16, 0.60)])
+        hb = piecewise(p.y, [(-0.66, 0.60), (-0.42, 0.64), (-0.24, 0.685), (-0.12, 0.74), (0.0, 0.745),
+                             (0.08, 0.66), (0.16, 0.54)])
         d_head = sstep(-0.012, 0.012, z - hb)
         # dark back: behind a line running down the back, fading out at the hips
-        yb = piecewise(z, [(0.14, 0.26), (0.26, 0.11), (0.40, 0.04), (0.55, 0.0), (0.68, 0.0), (0.9, 0.0)])
-        d_back = sstep(-0.012, 0.012, p.y - yb) * sstep(0.16, 0.23, z)
+        yb = piecewise(z, [(0.12, 0.24), (0.22, 0.10), (0.36, 0.035), (0.50, 0.0), (0.62, 0.0), (0.9, 0.0)])
+        d_back = sstep(-0.012, 0.012, p.y - yb) * sstep(0.14, 0.21, z)
         c = mix(CRM, DARK, max(d_head, d_back))
         if p.z < 0.045 and n.z < -0.5:
             c = mix(c, SOLE, 0.8)
         return c
 
-    hc = Vector((0, -0.05, 0.74 + zb))
+    hc = Vector((0, -0.05, 0.68 + zb))
     els = [
-        E((0, 0.06, 0.28 + zb), (0.235, 0.225, 0.235)),        # pear lower body
-        E((0, -0.02, 0.27 + zb), (0.19, 0.19, 0.19)),          # round belly
-        E((0, 0.05, 0.48 + zb), (0.17, 0.165, 0.13)),          # shoulders
-        E(hc, (0.205, 0.215, 0.175)),                          # head
-        E(hc + Vector((0, 0.05, 0.02)), (0.17, 0.17, 0.15)),   # back of the head
-        CAP((0, -0.16, 0.735 + zb), (0, -0.32, 0.715 + zb), 0.10, s=2.4),     # long snout
-        CAP((0, -0.32, 0.715 + zb), (0, -0.47, 0.69 + zb), 0.07, s=2.6),
-        CAP((0, -0.47, 0.69 + zb), (0, -0.565, 0.672 + zb), 0.045, s=3.0),
+        E((0, 0.06, 0.25 + zb), (0.215, 0.205, 0.21)),         # pear lower body
+        E((0, -0.02, 0.24 + zb), (0.175, 0.175, 0.17)),        # round belly
+        E((0, 0.04, 0.43 + zb), (0.155, 0.15, 0.12)),          # shoulders
+        E(hc, (0.215, 0.225, 0.18)),                           # head
+        E(hc + Vector((0, 0.05, 0.02)), (0.18, 0.18, 0.155)),  # back of the head
+        CAP((0, -0.17, 0.675 + zb), (0, -0.34, 0.655 + zb), 0.105, s=2.4),    # long snout
+        CAP((0, -0.34, 0.655 + zb), (0, -0.50, 0.63 + zb), 0.072, s=2.6),
+        CAP((0, -0.50, 0.63 + zb), (0, -0.60, 0.612 + zb), 0.046, s=3.0),
     ]
     # legs: thick short thighs + small feet
     for sx in (1, -1):
         dy, dz = feet[sx]
-        els.append(E((0.13 * sx, 0.03 + dy * 0.5, 0.12 + zb * 0.5 + dz * 0.5), (0.10, 0.11, 0.10)))
-        els.append(E((0.145 * sx, -0.055 + dy, 0.034 + dz), (0.075, 0.105, 0.034), direction=(0.15 * sx, -1, 0), s=3.0))
+        els.append(E((0.125 * sx, 0.03 + dy * 0.5, 0.11 + zb * 0.5 + dz * 0.5), (0.095, 0.105, 0.095)))
+        els.append(E((0.14 * sx, -0.055 + dy, 0.034 + dz), (0.072, 0.10, 0.034), direction=(0.15 * sx, -1, 0), s=3.0))
     body = blob('cq_body', els, vc_mat('cq_vc'), paint_fn=col)
     bvh = make_bvh([body])
 
@@ -645,11 +645,11 @@ def build_cyndaquil(pose):
     arm_m = M('cq_crm', CRM)
     sw = 0.05 * st
     for sx in (1, -1):
-        sh = Vector((0.15 * sx, -0.04, 0.47 + zb))
+        sh = Vector((0.14 * sx, -0.04, 0.42 + zb))
         if hero:
-            hand = Vector((0.07 * sx, -0.215, 0.45 + zb))
+            hand = Vector((0.065 * sx, -0.20, 0.40 + zb))
         else:
-            hand = Vector((0.10 * sx, -0.19 + sw * sx, 0.41 + zb))
+            hand = Vector((0.095 * sx, -0.18 + sw * sx, 0.36 + zb))
         blob('cq_arm%d' % sx, [CAP(sh, hand, 0.048, s=2.5), B(hand, 0.052, s=3.0)], arm_m)
 
     # closed eyes: smiling arcs on the cream face just under the dark cap
@@ -670,10 +670,10 @@ def build_cyndaquil(pose):
         return mix(c, TIP, sstep(0.75, 1.0, t))
     fm = vc_glow_mat('cq_flame', 1.0)
     rng = random.Random(155)
-    root = Vector((0, 0.02, 0.48 + zb))
+    root = Vector((0, 0.02, 0.43 + zb))
     k = 0
-    for el in (-34, -14, 6, 26, 46, 66, 86):
-        for lat in (-60, -36, -12, 12, 36, 60):
+    for el in (-42, -24, -6, 12, 30, 48, 66):
+        for lat in (-64, -40, -16, 8, 32, 56):
             e2 = el + rng.uniform(-7, 7)
             l2 = lat + rng.uniform(-7, 7) + (12 if (el // 20) % 2 else 0)
             d = bdir(l2, e2)
@@ -682,14 +682,14 @@ def build_cyndaquil(pose):
             except RuntimeError:
                 continue
             # longest straight back / up-back, shorter toward the sides, top and bottom
-            L = 0.24 + 0.24 * math.cos(math.radians(e2 - 22)) ** 2
-            L *= 1.0 - 0.40 * (abs(l2) / 70.0) ** 1.5
-            L *= rng.uniform(0.8, 1.2)
+            L = 0.22 + 0.26 * math.cos(math.radians(e2 - 14)) ** 2
+            L *= 1.0 - 0.38 * (abs(l2) / 70.0) ** 1.5
+            L *= rng.uniform(0.75, 1.25)
             base = p - d * 0.05
-            tip = base + d * L + Vector((0, 0, 0.05 * L))
-            spike('cq_fl%d' % k, base, tip, 0.068, fm, ink=True, segs=10, colfn=fcol)
+            tip = base + d * L + Vector((0, 0, 0.06 * L))
+            spike('cq_fl%d' % k, base, tip, 0.058, fm, ink=True, segs=10, colfn=fcol)
             k += 1
-    pose['_tilt'] = (Vector((0, -0.02, 0.56 + zb)), 0.54 + zb, 0.66 + zb)
+    pose['_tilt'] = (Vector((0, -0.02, 0.50 + zb)), 0.48 + zb, 0.60 + zb)
 
 
 def build_totodile(pose):
@@ -741,7 +741,7 @@ def build_totodile(pose):
         return c
 
     els = [
-        E((0, 0.03, 0.26 + zb), (0.20, 0.185, 0.225)),         # belly
+        E((0, 0.02, 0.255 + zb), (0.205, 0.19, 0.205)),        # belly
         E((0, 0.01, 0.44 + zb), (0.165, 0.15, 0.12)),          # chest
         E((0, 0.07, 0.575 + zb), (0.145, 0.13, 0.08)),         # neck
     ]
@@ -750,8 +750,8 @@ def build_totodile(pose):
         E(U((0, 0.08, 0.77)), (0.185, 0.17, 0.15), q=qu),
         E(U((0, -0.14, 0.735)), (0.17, 0.23, 0.08), q=qu),
         E(U((0, -0.33, 0.74)), (0.115, 0.08, 0.065), q=qu, s=2.6),
-        E(U((0.115, 0.04, 0.865)), (0.075, 0.08, 0.07), q=qu, s=2.8),
-        E(U((-0.115, 0.04, 0.865)), (0.075, 0.08, 0.07), q=qu, s=2.8),
+        E(U((0.128, 0.05, 0.84)), (0.075, 0.08, 0.07), q=qu, s=2.8),
+        E(U((-0.128, 0.05, 0.84)), (0.075, 0.08, 0.07), q=qu, s=2.8),
         B(U((0.05, -0.355, 0.787)), 0.024, s=3.0),
         B(U((-0.05, -0.355, 0.787)), 0.024, s=3.0),
     ]
@@ -763,8 +763,8 @@ def build_totodile(pose):
     # legs + big feet with toes
     for sx in (1, -1):
         dy, dz = feet[sx]
-        els.append(E((0.12 * sx, 0.04 + dy * 0.5, 0.13 + zb * 0.5 + dz * 0.5), (0.095, 0.10, 0.10)))
-        fc = Vector((0.13 * sx, -0.06 + dy, 0.035 + dz))
+        els.append(E((0.135 * sx, 0.03 + dy * 0.5, 0.12 + zb * 0.5 + dz * 0.5), (0.10, 0.11, 0.105)))
+        fc = Vector((0.14 * sx, -0.06 + dy, 0.035 + dz))
         els.append(E(fc, (0.085, 0.12, 0.035), direction=(0.1 * sx, -1, 0), s=3.0))
         for tx in (-0.045, 0.0, 0.045):
             els.append(B(fc + Vector((tx, -0.11, -0.004)), 0.03, s=3.2))
@@ -781,8 +781,8 @@ def build_totodile(pose):
 
     # eyes: red iris on white, with the black eye-mark behind
     for sx in (1, -1):
-        c0 = U((0.115 * sx, 0.04, 0.865))
-        dvec = Mu @ sdir(50 * sx, 16)
+        c0 = U((0.128 * sx, 0.05, 0.84))
+        dvec = Mu @ sdir(62 * sx, 10)
         p, n = surf(bvh, c0, dvec)
         decal('td_mask%d' % sx, bvh, p, n, ell_r(0.07, 0.052), M('td_black', (0.06, 0.06, 0.08), rough=0.3),
               lift=0.001, off=(0.03 * sx, 0.008), rot=-18 * sx)
@@ -841,48 +841,49 @@ def build_torchic(pose):
     def col(p, n):
         z = p.z - zb
         c = ORG
-        c = mix(c, YEL, band(z, 0.37, 0.47, 0.015) * sstep(-0.08, 0.02, -p.y + 0.02))
+        c = mix(c, YEL, band(z, 0.385, 0.47, 0.015) * sstep(-0.08, 0.02, -p.y + 0.02))
         return c
 
-    hc = Vector((0, 0.0, 0.60 + zb))
+    hc = Vector((0, 0.0, 0.615 + zb))
     els = [
         E(hc, (0.272, 0.248, 0.205)),
-        E((0, 0.02, 0.275 + zb), (0.178, 0.172, 0.168)),
-        E((0, 0.01, 0.43 + zb), (0.16, 0.15, 0.08)),
+        E((0, 0.02, 0.305 + zb), (0.168, 0.165, 0.152)),
+        E((0, 0.01, 0.44 + zb), (0.155, 0.145, 0.07)),
     ]
     for sx in (1, -1):        # tiny wings
-        els.append(E((0.17 * sx, 0.03, 0.33 + zb), (0.035, 0.07, 0.055), direction=(0, 1, -0.6), s=3.0))
+        els.append(E((0.16 * sx, 0.03, 0.35 + zb), (0.035, 0.07, 0.055), direction=(0, 1, -0.6), s=3.0))
     body = blob('tc_body', els, vc_mat('tc_vc'), paint_fn=col)
     bvh = make_bvh([body])
 
     # yellow fluffy collar: feather tufts around the neck, hanging down over the chest
     ym = M('tc_yel', YEL, rough=0.5)
-    for ring, (zr, L, w) in enumerate(((0.45, 0.11, 0.05), (0.415, 0.10, 0.046))):
-        n_t = 14 if ring == 0 else 13
+    for ring, (zr, L, w) in enumerate(((0.455, 0.10, 0.048), (0.425, 0.09, 0.044))):
+        n_t = 16 if ring == 0 else 15
         for i in range(n_t):
-            az = -135 + 270 * (i + 0.5 * ring) / (n_t - 1)
-            if az > 136:
+            az = -140 + 280 * (i + 0.5 * ring) / (n_t - 1)
+            if az > 141:
                 continue
-            p, n = surf(bvh, Vector((0, 0.01, zr + zb)), sdir(az, -8))
+            p, n = surf(bvh, Vector((0, 0.01, zr + zb)), sdir(az, -12))
             out = Vector((n.x, n.y, 0)).normalized()
-            dirv = (out * 0.45 + Vector((0, 0, -0.9))).normalized()
-            ll = L * (1.12 if i % 2 == 0 else 0.86)
-            spike('tc_fl%d_%d' % (ring, i), p - dirv * 0.015 + n * 0.01, p + dirv * ll + n * 0.015, w, ym,
-                  flat=0.4, ref=n, segs=10)
+            dirv = (out * 0.3 + Vector((0, 0, -0.95))).normalized()
+            ll = L * (1.15 if i % 2 == 0 else 0.8)
+            spike('tc_fl%d_%d' % (ring, i), p - dirv * 0.015, p + dirv * ll + out * 0.02, w, ym,
+                  flat=0.35, ref=out, segs=10)
 
     # head crest: three broad yellow feathers + small orange ones at the base
     top = surf(bvh, hc, Vector((0, 0.2, 1)))[0]
     feathers = [  # (direction, length, half-width, plane normal, back curl)
-        (Vector((0.05, 0.75, 1.0)), 0.34, 0.075, Vector((0.9, -0.35, 0.0)), 0.05),
-        (Vector((0.22, -0.30, 1.0)), 0.25, 0.062, Vector((0.75, 0.55, 0.0)), -0.02),
-        (Vector((-0.32, 0.10, 1.0)), 0.20, 0.052, Vector((-0.45, -0.9, 0.0)), 0.02),
+        (Vector((0.55, 0.35, 1.0)), 0.34, 0.078, Vector((0.45, -0.9, 0.0)), 0.04),
+        (Vector((0.02, -0.05, 1.0)), 0.27, 0.066, Vector((0.1, -1.0, 0.0)), 0.03),
+        (Vector((-0.45, 0.05, 1.0)), 0.21, 0.056, Vector((-0.35, -0.95, 0.0)), 0.02),
+        (Vector((0.12, 0.85, 0.9)), 0.22, 0.05, Vector((1.0, 0.0, 0.0)), 0.0),
     ]
     for i, (dv, L, w, pn, cu) in enumerate(feathers):
         d = dv.normalized()
         base = top - d * 0.03
         pts = [base + d * (L * t) + Vector((0, cu * t * t, -0.02 * t * t)) for t in (0, 0.18, 0.4, 0.62, 0.82, 0.94, 1.0)]
         rs = [w * f for f in (0.35, 0.85, 1.0, 0.88, 0.55, 0.25, 0.02)]
-        loft('tc_cr%d' % i, pts, [(0.02, r) for r in rs], pn, mat=ym, segs=12)
+        loft('tc_cr%d' % i, pts, [(0.026, r) for r in rs], pn, mat=ym, segs=12)
     om = M('tc_org', ORG)
     for i, dv in enumerate((Vector((0.55, -0.35, 0.7)), Vector((-0.5, -0.25, 0.75)), Vector((0.0, -0.6, 0.7)))):
         d = dv.normalized()
@@ -928,17 +929,18 @@ def build_treecko(pose):
         # long red belly patch from the throat down to the crotch (front only)
         w = 0.095 * math.sqrt(max(0.0, math.sin(math.pi * min(1.0, max(0.0, (z - 0.20) / 0.48)))))
         if z > 0.6:
-            w = max(w, 0.07)
-        r = sstep(-0.006, 0.006, w - abs(p.x)) * sstep(-0.02, 0.02, -p.y + 0.0) * band(z, 0.21, 0.665, 0.012)
+            w = max(w, 0.055)
+        r = sstep(-0.006, 0.006, w - abs(p.x)) * sstep(-0.02, 0.02, -p.y + 0.0) * band(z, 0.21, 0.645, 0.012)
         return mix(c, RED, r)
 
-    hc = Vector((0, -0.01, 0.78 + zb))
+    hc = Vector((0, -0.01, 0.76 + zb))
     els = [
         E(hc, (0.145, 0.165, 0.14)),                               # skull
-        E((0, 0.07, 0.905 + zb), (0.05, 0.13, 0.085), direction=(0, 1, 0.55), s=2.6),   # crest
-        E((0, -0.155, 0.73 + zb), (0.11, 0.125, 0.08)),            # snout
-        E((0, -0.09, 0.665 + zb), (0.09, 0.10, 0.04)),             # jaw
-        CAP((0, 0.0, 0.66 + zb), (0, 0.02, 0.55 + zb), 0.06),      # neck
+        CAP((0, -0.01, 0.82 + zb), (0, 0.085, 0.965 + zb), 0.058, s=2.3),   # pointed crest ridge
+        B((0, 0.09, 0.97 + zb), 0.04, s=2.6),
+        E((0, -0.155, 0.71 + zb), (0.11, 0.125, 0.08)),            # snout
+        E((0, -0.09, 0.645 + zb), (0.09, 0.10, 0.04)),             # jaw
+        CAP((0, 0.0, 0.64 + zb), (0, 0.02, 0.55 + zb), 0.068),     # neck
         E((0, 0.02, 0.43 + zb), (0.12, 0.10, 0.14)),               # chest
         E((0, 0.03, 0.27 + zb), (0.125, 0.11, 0.10)),              # hips
     ]
@@ -987,25 +989,25 @@ def build_treecko(pose):
 
     # big eyes on the sides of the head: yellow with a black slit
     for sx in (1, -1):
-        eye('tk_e%d' % sx, bvh, hc + Vector((0, 0, 0.02)), sdir(57 * sx, 12), 0.056, 0.064, 'slit', sx=sx,
+        eye('tk_e%d' % sx, bvh, hc + Vector((0, 0, 0.02)), sdir(57 * sx, 12), 0.060, 0.068, 'slit', sx=sx,
             sclera_col=(1.0, 0.82, 0.10), hl_off=(-0.30, 0.45), bulge=0.014, tilt=8)
     # mouth line (hero only)
     if hero:
         mm = M('tk_mouth', (0.45, 0.10, 0.10), rough=0.4)
         for sx in (1, -1):
-            p, n = surf(bvh, Vector((0, -0.12, 0.70 + zb)), sdir(55 * sx, -18))
+            p, n = surf(bvh, Vector((0, -0.12, 0.68 + zb)), sdir(55 * sx, -18))
             stroke('tk_m%d' % sx, bvh, p, n, [(-0.06 * sx, 0.005), (-0.02 * sx, 0.0), (0.03 * sx, 0.012), (0.055 * sx, 0.03)],
                    0.006, mm, ink=False)
 
     # huge dark-green tail lying on the ground, curling up at the end (two lobes)
     tm = M('tk_tail', DGRN, rough=0.45)
     sway = 0.04 * st
-    path = [(0, 0.08, 0.26), (0.0, 0.18, 0.17), (sway * 0.4, 0.32, 0.12), (sway * 0.7, 0.48, 0.115),
-            (sway * 0.9, 0.62, 0.13), (sway, 0.72, 0.17), (sway, 0.77, 0.24), (sway, 0.745, 0.30),
-            (sway, 0.69, 0.305), (sway, 0.665, 0.265)]
-    path = [Vector((x, y, z + zb)) for x, y, z in path]
-    rad = [(0.06, 0.06), (0.085, 0.09), (0.11, 0.12), (0.115, 0.125), (0.10, 0.10), (0.075, 0.075),
-           (0.06, 0.06), (0.05, 0.05), (0.04, 0.04), (0.012, 0.012)]
+    path = [(0, 0.06, 0.25), (0.0, 0.17, 0.155), (sway * 0.4, 0.32, 0.115), (sway * 0.7, 0.50, 0.105),
+            (sway * 0.9, 0.67, 0.10), (sway, 0.80, 0.105), (sway, 0.875, 0.14), (sway, 0.885, 0.195),
+            (sway, 0.845, 0.225), (sway, 0.80, 0.205), (sway, 0.795, 0.17)]
+    path = [Vector((x, y, z + zb * (1 - i / 10.0))) for i, (x, y, z) in enumerate(path)]
+    rad = [(0.055, 0.055), (0.08, 0.085), (0.10, 0.105), (0.11, 0.105), (0.10, 0.095), (0.075, 0.07),
+           (0.055, 0.052), (0.045, 0.045), (0.038, 0.038), (0.03, 0.03), (0.01, 0.01)]
     loft('tk_tail', path, rad, Vector((1, 0, 0)), mat=tm, segs=18)
     pose['_tilt'] = (Vector((0, 0.0, 0.60 + zb)), 0.58 + zb, 0.70 + zb)
 
@@ -1020,22 +1022,22 @@ def build_mudkip(pose):
     bob = -0.012 * abs(st)
     zb = bob
 
-    hc = Vector((0, -0.08, 0.47 + zb))
+    hc = Vector((0, -0.08, 0.37 + zb))
 
     def col(p, n):
         z = p.z - zb
         c = BLU
         # pale lower face (wraps from cheek to cheek under the gills)
-        face = (1 - sstep(0.405, 0.43, z)) * (1 - sstep(-0.04, 0.02, p.y)) * sstep(0.27, 0.31, z)
+        face = (1 - sstep(0.295, 0.32, z)) * (1 - sstep(-0.05, 0.01, p.y)) * sstep(0.15, 0.19, z)
         # pale belly
-        belly = sstep(0.3, 0.7, -n.z) * band(z, 0.12, 0.32, 0.03)
+        belly = sstep(0.3, 0.7, -n.z) * band(z, 0.05, 0.22, 0.03)
         return mix(c, LBL, max(face, belly))
 
     els = [
-        E(hc, (0.255, 0.22, 0.20)),                               # head
-        E((0, -0.11, 0.38 + zb), (0.23, 0.17, 0.12)),             # wide jaw / cheeks
-        E((0, 0.14, 0.29 + zb), (0.17, 0.23, 0.14)),              # body
-        E((0, 0.29, 0.29 + zb), (0.13, 0.11, 0.11)),              # rump
+        E(hc, (0.258, 0.222, 0.20)),                              # head
+        E((0, -0.11, 0.275 + zb), (0.232, 0.17, 0.12)),           # wide jaw / cheeks
+        E((0, 0.14, 0.20 + zb), (0.165, 0.22, 0.125)),            # body
+        E((0, 0.28, 0.20 + zb), (0.13, 0.11, 0.10)),              # rump
     ]
     # four stubby legs, diagonal pairs: step-L = front-left + back-right forward
     sgn = {(-1, 1): -1, (1, 1): 1, (-1, -1): 1, (1, -1): -1}   # (step, side) -> forward(-1)/back(+1)
@@ -1048,8 +1050,8 @@ def build_mudkip(pose):
                 fwd = (sx == front_fwd_side) != back
                 dy = -0.05 if fwd else 0.04
                 dz = 0.03 if fwd else 0.0
-            top_ = Vector((0.13 * sx, fy, 0.24 + zb))
-            ft = Vector((0.14 * sx, fy - 0.01 + dy, 0.04 + dz))
+            top_ = Vector((0.125 * sx, fy, 0.15 + zb))
+            ft = Vector((0.135 * sx, fy - 0.01 + dy, 0.04 + dz))
             els.append(CAP(top_, ft, 0.058, s=2.6))
             els.append(E(ft + Vector((0, -0.015, -0.005)), (0.062, 0.07, 0.04), s=3.0))
     body = blob('mk_body', els, vc_mat('mk_vc'), paint_fn=col)
@@ -1058,48 +1060,63 @@ def build_mudkip(pose):
     # head fin: tall rounded paddle leaning back
     bm_ = M('mk_blue', BLU)
     ptop, _ = surf(bvh, hc, Vector((0, 0.12, 1)))
-    fin = smooth_poly([(-0.06, -0.06), (-0.065, 0.12), (-0.05, 0.25), (-0.015, 0.335), (0.03, 0.36),
-                       (0.075, 0.33), (0.10, 0.24), (0.095, 0.12), (0.07, -0.06)], 2)
+    fin = smooth_poly([(-0.07, -0.06), (-0.075, 0.12), (-0.06, 0.26), (-0.02, 0.35), (0.035, 0.38),
+                       (0.085, 0.35), (0.115, 0.25), (0.11, 0.12), (0.085, -0.06)], 2)
 
     def fin_col(u, v, s):
         return mix(BLU, (0.08, 0.50, 0.86), sstep(0.65, 1.0, s) * 0.5)
-    pillow('mk_fin', fin, 0.05, ((0, 1, 0), (0, 0, 1), (1, 0, 0)), ptop - Vector((0, 0, 0.02)),
-           mat=vc_mat('mk_fin_vc'), center=(0.015, 0.14), colfn=fin_col,
+    pillow('mk_fin', fin, 0.07, ((0, 1, 0), (0, 0, 1), (1, 0, 0)), ptop - Vector((0, 0, 0.025)),
+           mat=vc_mat('mk_fin_vc'), center=(0.02, 0.14), colfn=fin_col,
            warp=lambda u, v, w: (u + 0.12 * max(0.0, v) ** 2, v, w))
     # dark line down the fin
     dm = M('mk_finline', (0.05, 0.36, 0.70), rough=0.4)
     for sx in (1, -1):
-        pts = [ptop + Vector((0.0255 * sx, -0.03 + 0.12 * v * v, 0.02 + v)) for v in (0.04, 0.12, 0.2, 0.27)]
-        loft('mk_fl%d' % sx, pts, [(0.006, 0.006)] * 4, Vector((1, 0, 0)), mat=dm, segs=6, ink=False)
+        pts = [ptop + Vector((0.035 * sx, -0.035 + 0.12 * v * v, 0.0 + v)) for v in (0.05, 0.13, 0.21, 0.28)]
+        loft('mk_fl%d' % sx, pts, [(0.0065, 0.0065)] * 4, Vector((1, 0, 0)), mat=dm, segs=6, ink=False)
 
     # orange three-pointed cheek gills, seen face-on from the front
     om = M('mk_org', ORG, rough=0.45)
-    gill = [(-0.01, 0.16), (0.035, 0.05), (0.15, 0.015), (0.045, -0.035), (0.02, -0.135),
+    gill = [(-0.01, 0.16), (0.035, 0.05), (0.155, 0.015), (0.045, -0.035), (0.02, -0.135),
             (-0.045, -0.05), (-0.07, 0.0), (-0.055, 0.06)]
     for sx in (1, -1):
-        p, n = surf(bvh, hc + Vector((0, 0, -0.04)), sdir(84 * sx, -6))
+        p, n = surf(bvh, hc + Vector((0, 0, -0.05)), sdir(84 * sx, -6))
         Uax = Vector((sx * 0.94, 0.34, 0.0)).normalized()
         Wax = Vector((-0.34 * sx, 0.94, 0.0)).normalized()   # roughly facing forward
         org = p + Uax * 0.035
-        pillow('mk_gill%d' % sx, gill, 0.045, (Uax, Z, Wax), org, mat=om, center=(0.0, 0.0))
+        pillow('mk_gill%d' % sx, gill, 0.05, (Uax, Z, Wax), org, mat=om, center=(0.0, 0.0))
 
-    # small black eyes + nostrils
+    # small black eyes, nostrils and a little smile
     for sx in (1, -1):
-        eye('mk_e%d' % sx, bvh, hc, sdir(30 * sx, 6), 0.030, 0.040, 'black', sx=sx, bulge=0.006)
+        eye('mk_e%d' % sx, bvh, hc, sdir(29 * sx, 8), 0.031, 0.042, 'black', sx=sx, bulge=0.006)
+    if hero:
+        nm = M('mk_nose', (0.05, 0.25, 0.45), rough=0.4)
+        for sx in (1, -1):
+            p, n = surf(bvh, hc, sdir(7 * sx, -10))
+            decal('mk_n%d' % sx, bvh, p, n, ell_r(0.007, 0.006), nm, lift=0.001, ink=False)
+        p, n = surf(bvh, hc, sdir(0, -24))
+        stroke('mk_mouth', bvh, p, n, [(-0.035, 0.008), (-0.017, -0.002), (0.0, 0.0), (0.017, -0.002), (0.035, 0.008)],
+               0.004, nm, ink=False)
 
     # tail fin: pale two-lobed fan, pointing back and up
-    tf = smooth_poly([(0.0, -0.035), (0.10, -0.07), (0.22, -0.06), (0.31, -0.01), (0.32, 0.05), (0.26, 0.10),
-                      (0.33, 0.17), (0.35, 0.26), (0.30, 0.32), (0.21, 0.32), (0.11, 0.25), (0.03, 0.13),
+    tf = smooth_poly([(0.0, -0.035), (0.11, -0.075), (0.24, -0.07), (0.33, -0.02), (0.345, 0.05), (0.27, 0.105),
+                      (0.35, 0.17), (0.38, 0.26), (0.33, 0.33), (0.22, 0.33), (0.11, 0.25), (0.03, 0.13),
                       (-0.01, 0.04)], 2)
 
     def tf_col(u, v, s):
         return mix(FIN, (0.40, 0.72, 0.96), sstep(0.7, 1.0, s) * 0.55)
     sway = 0.06 * st
-    tb, _ = surf(bvh, Vector((0, 0.25, 0.30 + zb)), Vector((0, 1, 0.3)))
+    tb, _ = surf(bvh, Vector((0, 0.25, 0.21 + zb)), Vector((0, 1, 0.3)))
     Ut = Vector((sway, 1, 0.25)).normalized()
-    pillow('mk_tail', tf, 0.04, (Ut, Z, Ut.cross(Z).normalized()), tb - Vector((0, 0.04, 0.0)),
-           mat=vc_mat('mk_tail_vc', rough=0.3), center=(0.17, 0.11), colfn=tf_col)
-    pose['_tilt'] = (Vector((0, -0.02, 0.30 + zb)), 0.24 + zb, 0.40 + zb)
+    pillow('mk_tail', tf, 0.045, (Ut, Z, Ut.cross(Z).normalized()), tb - Vector((0, 0.04, 0.0)),
+           mat=vc_mat('mk_tail_vc', rough=0.3), center=(0.18, 0.11), colfn=tf_col)
+    # line dividing the two lobes
+    tl = M('mk_tailline', (0.36, 0.66, 0.92), rough=0.4)
+    Wt = Ut.cross(Z).normalized()
+    org = tb - Vector((0, 0.04, 0.0))
+    for sw_ in (1, -1):
+        pts = [org + Ut * u + Z * v + Wt * (0.021 * sw_) for u, v in ((0.08, 0.06), (0.16, 0.085), (0.24, 0.10))]
+        loft('mk_tl%d' % sw_, pts, [(0.005, 0.005)] * 3, Wt, mat=tl, segs=6, ink=False)
+    pose['_tilt'] = (Vector((0, -0.02, 0.20 + zb)), 0.14 + zb, 0.30 + zb)
 
 
 BUILDERS = dict(cyndaquil=build_cyndaquil, totodile=build_totodile, torchic=build_torchic,

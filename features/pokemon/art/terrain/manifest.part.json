@@ -1,0 +1,113 @@
+{
+ "counter": {
+  "cols": 1,
+  "fh": 64,
+  "file": "terrain/counter.webp",
+  "frames": 1,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "floor_gym": {
+  "cols": 1,
+  "fh": 64,
+  "file": "terrain/floor_gym.webp",
+  "frames": 1,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "floor_house": {
+  "cols": 1,
+  "fh": 64,
+  "file": "terrain/floor_house.webp",
+  "frames": 1,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "floor_mart": {
+  "cols": 1,
+  "fh": 64,
+  "file": "terrain/floor_mart.webp",
+  "frames": 1,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "floor_pc": {
+  "cols": 1,
+  "fh": 64,
+  "file": "terrain/floor_pc.webp",
+  "frames": 1,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "grass": {
+  "cols": 4,
+  "fh": 64,
+  "file": "terrain/grass.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "path": {
+  "cols": 4,
+  "fh": 64,
+  "file": "terrain/path.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "rock_ground": {
+  "cols": 4,
+  "fh": 64,
+  "file": "terrain/rock_ground.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "sand": {
+  "cols": 4,
+  "fh": 64,
+  "file": "terrain/sand.webp",
+  "frames": 4,
+  "fw": 64,
+  "kind": "tile",
+  "rows": 1
+ },
+ "tall_grass": {
+  "cols": 3,
+  "fh": 64,
+  "file": "terrain/tall_grass.webp",
+  "frames": 3,
+  "fw": 64,
+  "kind": "tile",
+  "meta": {
+   "fps": 4,
+   "frames": [
+    "left",
+    "centre",
+    "right"
+   ]
+  },
+  "rows": 1
+ },
+ "water": {
+  "cols": 8,
+  "fh": 64,
+  "file": "terrain/water.webp",
+  "frames": 8,
+  "fw": 64,
+  "kind": "tile",
+  "meta": {
+   "fps": 6,
+   "loop": true
+  },
+  "rows": 1
+ }
+}

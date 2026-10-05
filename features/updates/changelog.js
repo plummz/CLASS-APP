@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.23';
+const APP_VERSION = '1.9.24';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.24',
+    date: 'October 5, 2026',
+    title: 'Install on iPhone and iPad',
+    summary: 'The Install App button now appears on iPhone and iPad and shows how to add the app to your Home Screen.',
+    bullets: [
+      'New: On iPhone and iPad, tap Install App to see the steps: Safari → Share → Add to Home Screen.',
+      'Improved: The installed app opens full screen with the app\'s icon and name.',
+      'Note: Apple only allows installing web apps from Safari.',
+    ]
+  },
   {
     version: '1.9.23',
     date: 'October 5, 2026',

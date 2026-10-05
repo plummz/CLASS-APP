@@ -4233,6 +4233,32 @@ function initAppOpenRealtime() {
 
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const btn = document.getElementById('install-btn'); if (btn) btn.style.display = 'block'; });
+// iPhone/iPad never fire beforeinstallprompt: show the button there and explain Add to Home Screen instead.
+const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandaloneApp = window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
+function showIOSInstallGuide() {
+  if (document.getElementById('ios-install-guide')) return;
+  const box = document.createElement('div');
+  box.id = 'ios-install-guide';
+  box.className = 'ios-install-guide';
+  box.innerHTML = `<div class="ios-install-card" role="dialog" aria-label="Install on iPhone">
+    <div class="ios-install-title">Install on iPhone / iPad</div>
+    <ol>
+      <li>Open this site in <b>Safari</b>.</li>
+      <li>Tap the <b>Share</b> button (square with an arrow up).</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+    </ol>
+    <p>The app opens full screen from your Home Screen, like a normal app.</p>
+    <button type="button" class="ios-install-close">Got it</button>
+  </div>`;
+  box.addEventListener('click', (ev) => { if (ev.target === box || ev.target.classList.contains('ios-install-close')) box.remove(); });
+  document.body.appendChild(box);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  if (!isIOSDevice || isStandaloneApp) return;
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.style.display = 'block';
+});
 
 /* ============================================================
    INITIALIZATION
@@ -4262,7 +4288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const installBtn = document.getElementById('install-btn');
-    if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
+    if (installBtn) installBtn.addEventListener('click', async () => { if (!deferredPrompt) { if (isIOSDevice) showIOSInstallGuide(); return; } deferredPrompt.prompt(); deferredPrompt = null; installBtn.style.display = 'none'; });
     updateFooterYear();
     ensureAdminUpdateControl();
     initAppOpenRealtime();

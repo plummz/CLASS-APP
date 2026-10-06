@@ -1,0 +1,1113 @@
+extends Node3D
+## Battle Royale 3D — match flow: plane → drop → loot → fight → shrinking zone → last one standing.
+## First-person like the Dungeon of Knowledge. Rules follow PUBG / Rules of Survival: a plane
+## crosses the island, everyone drops, loot is in houses, a blue zone shrinks in phases and
+## deals more damage each phase, an airdrop brings the best gear, and the last survivor wins.
+##
+## Developer flags (after "--"): --smoke (headless match test), --screenshots=<dir>,
+## --touch-preview (show touch controls on desktop), --bench (print fps).
+
+const BOT_COUNT := 29
+const PLANE_HEIGHT := 330.0
+const PLANE_SPEED := 85.0
+const SETTINGS_PATH := "user://royale3d.cfg"
+const ZONE_PHASES := [
+	{"wait": 100.0, "shrink": 60.0, "radius": 300.0, "dps": 1.0},
+	{"wait": 70.0, "shrink": 45.0, "radius": 180.0, "dps": 2.0},
+	{"wait": 55.0, "shrink": 40.0, "radius": 105.0, "dps": 4.0},
+	{"wait": 45.0, "shrink": 32.0, "radius": 55.0, "dps": 6.0},
+	{"wait": 35.0, "shrink": 26.0, "radius": 22.0, "dps": 9.0},
+	{"wait": 25.0, "shrink": 22.0, "radius": 0.0, "dps": 14.0},
+]
+
+var world: RoyaleWorld
+var player: RoyalePlayer
+var bots: Array[RoyaleBot] = []
+var combatants: Array[Node3D] = []
+var hud: RoyaleHud
+var touch: RoyaleTouchControls
+var sfx: RoyaleSfx
+var env: WorldEnvironment
+var sun: DirectionalLight3D
+var rng := RandomNumberGenerator.new()
+var phase := "plane"
+var plane_start := Vector2.ZERO
+var plane_end := Vector2.ZERO
+var plane_t := 0.0
+var plane_node: Node3D
+var zone := {"center": Vector2.ZERO, "radius": 600.0, "next_center": Vector2.ZERO, "next_radius": 600.0,
+	"from_center": Vector2.ZERO, "from_radius": 600.0, "phase": -1, "timer": 0.0, "shrinking": false, "dps": 0.6}
+var zone_wall: MeshInstance3D
+var zone_tick := 0.0
+var loot_items: Array[Dictionary] = []
+var loot_grid := {}
+var loot_reserved := {}
+var recent_shots: Array[Dictionary] = []
+var airdrop_pos := Vector3.ZERO
+var airdrop_node: Node3D
+var airdrop_done := false
+var total_players := BOT_COUNT + 1
+var bot_accuracy := 0.85
+var settings := {"sensitivity": 1.0, "volume": 0.8, "low": false}
+var paused := false
+var map_open := false
+var ended := false
+var match_time := 0.0
+var death_log: Array[String] = []
+var smoke_mode := false
+var _nearby_cache: Dictionary = {}
+var _nearby_frame := -1
+var _tracer_pool: Array[MeshInstance3D] = []
+var _tracer_index := 0
+var _gun_scene_cache := {}
+var _loot_mats := {}
+var _next_loot_id := 0
+var _bench := false
+var _bench_frames := 0
+var _bench_time := 0.0
+
+func _ready() -> void:
+	var args := OS.get_cmdline_user_args()
+	smoke_mode = "--smoke" in args
+	_bench = "--bench" in args
+	rng.randomize()
+	_load_settings()
+	if "--quality=low" in args or _query_flag("quality") == "low":
+		settings.low = true
+	sfx = RoyaleSfx.new()
+	add_child(sfx)
+	sfx.set_volume(float(settings.volume))
+	# Show something while the island is generated (it blocks for a few seconds on phones)
+	var loading_layer := CanvasLayer.new()
+	var loading := Label.new()
+	loading.text = "Preparing the island…"
+	loading.add_theme_font_size_override("font_size", 30)
+	loading.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	loading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var backdrop := ColorRect.new()
+	backdrop.color = Color("0d1a12")
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	loading_layer.add_child(backdrop)
+	loading_layer.add_child(loading)
+	add_child(loading_layer)
+	if not smoke_mode:
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_build_environment()
+	world = RoyaleWorld.new()
+	world.name = "World"
+	add_child(world)
+	var t_gen := Time.get_ticks_msec()
+	world.generate(rng.randi(), bool(settings.low) or smoke_mode)
+	var t_loot := Time.get_ticks_msec()
+	_spawn_loot()
+	print("ROYALE_TIMING world=%dms loot=%dms" % [t_loot - t_gen, Time.get_ticks_msec() - t_loot])
+	_build_zone_wall()
+	_build_tracers()
+	player = RoyalePlayer.new()
+	player.game = self
+	add_child(player)
+	player.message.connect(func(t): hud.flash_message(t))
+	player.died.connect(_on_player_died)
+	combatants.append(player)
+	for i in BOT_COUNT:
+		var bot := RoyaleBot.new()
+		bot.setup(i, self, rng)
+		add_child(bot)
+		bots.append(bot)
+		combatants.append(bot)
+	hud = RoyaleHud.new()
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	hud.setup(self)
+	layer.add_child(hud)
+	hud.play_again.connect(_restart)
+	hud.quit_to_arcade.connect(_quit_to_arcade)
+	hud.settings_changed.connect(_apply_settings)
+	touch = RoyaleTouchControls.new()
+	touch.game = self
+	layer.add_child(touch)
+	_apply_settings()
+	loading_layer.queue_free()
+	_start_plane()
+	if smoke_mode:
+		_run_smoke.call_deferred()
+	else:
+		for a in args:
+			if a.begins_with("--screenshots="):
+				_run_screenshots.call_deferred(a.get_slice("=", 1))
+
+func _query_flag(key: String) -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var v: Variant = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('%s') || ''" % key, true)
+	return String(v) if v != null else ""
+
+# ── Settings ─────────────────────────────────────────────────
+
+func _load_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		for k in settings.keys():
+			settings[k] = cfg.get_value("settings", k, settings[k])
+
+func _apply_settings() -> void:
+	var cfg := ConfigFile.new()
+	for k in settings.keys():
+		cfg.set_value("settings", k, settings[k])
+	cfg.save(SETTINGS_PATH)
+	if player:
+		player.touch_sensitivity = float(settings.sensitivity)
+		player.mouse_sensitivity = 0.0022 * float(settings.sensitivity)
+	if sfx: sfx.set_volume(float(settings.volume))
+	if sun: sun.shadow_enabled = not bool(settings.low) and not RoyalePlayer.is_touch_platform()
+	if env:
+		env.environment.fog_density = 0.0022 if bool(settings.low) else 0.0012
+
+# ── Environment ──────────────────────────────────────────────
+
+func _build_environment() -> void:
+	env = WorldEnvironment.new()
+	var e := Environment.new()
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color("4f8fd6")
+	sky_mat.sky_horizon_color = Color("bcd8ef")
+	sky_mat.ground_horizon_color = Color("bcd8ef")
+	sky_mat.ground_bottom_color = Color("3d6c8f")
+	sky.sky_material = sky_mat
+	e.background_mode = Environment.BG_SKY
+	e.sky = sky
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.66, 0.69, 0.74)
+	e.ambient_light_energy = 0.45
+	# Linear: the filmic tonemapper washed colours out in the Compatibility renderer
+	e.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	e.fog_enabled = true
+	e.fog_light_color = Color("b9cde0")
+	e.fog_density = 0.0012
+	e.fog_sky_affect = 0.4
+	if "--nofog" in OS.get_cmdline_user_args(): e.fog_enabled = false
+	env.environment = e
+	add_child(env)
+	sun = DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-52, 35, 0)
+	sun.light_energy = 1.0
+	sun.light_color = Color("fff1dc")
+	sun.shadow_enabled = false
+	sun.directional_shadow_max_distance = 70.0
+	add_child(sun)
+
+func _build_zone_wall() -> void:
+	zone_wall = MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 1.0
+	cyl.bottom_radius = 1.0
+	cyl.height = 500.0
+	cyl.radial_segments = 96
+	cyl.cap_top = false
+	cyl.cap_bottom = false
+	zone_wall.mesh = cyl
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
+void fragment() {
+	float stripe = step(0.5, fract(UV.x * 220.0 + TIME * 0.3));
+	ALBEDO = vec3(0.25, 0.5, 1.0);
+	ALPHA = 0.22 + stripe * 0.08;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = shader
+	zone_wall.material_override = m
+	zone_wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(zone_wall)
+
+func _build_tracers() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.9, 0.55, 0.85)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for i in 24:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.025, 0.025, 1.0)
+		box.material = mat
+		mi.mesh = box
+		mi.visible = false
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		_tracer_pool.append(mi)
+
+func _tracer(from: Vector3, to: Vector3) -> void:
+	if smoke_mode:
+		return
+	var mi := _tracer_pool[_tracer_index]
+	_tracer_index = (_tracer_index + 1) % _tracer_pool.size()
+	var length := from.distance_to(to)
+	if length < 0.5:
+		return
+	mi.global_position = from.lerp(to, 0.5)
+	mi.look_at_from_position(mi.global_position, to, Vector3.UP if absf((to - from).normalized().y) < 0.98 else Vector3.RIGHT)
+	mi.scale = Vector3(1, 1, minf(length, 60.0))
+	mi.visible = true
+	get_tree().create_timer(0.05).timeout.connect(func(): mi.visible = false)
+
+# ── Plane and drop ───────────────────────────────────────────
+
+func _start_plane() -> void:
+	phase = "plane"
+	var a := rng.randf() * TAU
+	var offset := Vector2(-sin(a), cos(a)) * rng.randf_range(-180.0, 180.0)
+	plane_start = Vector2(cos(a), sin(a)) * 640.0 + offset
+	plane_end = -Vector2(cos(a), sin(a)) * 640.0 + offset
+	plane_t = 0.0
+	plane_node = _build_plane()
+	add_child(plane_node)
+	player.state = "plane"
+	var dir := (plane_end - plane_start).normalized()
+	player.yaw = atan2(-dir.x, -dir.y) - PI * 0.5
+	player.pitch = deg_to_rad(-25.0)
+	for bot in bots:
+		bot.state = "plane"
+		bot.visible = false
+		bot.set_meta("jump_at", rng.randf_range(0.12, 0.85))
+	sfx.set_loop("plane")
+	hud.flash_message("Tap JUMP (or press Space) to jump from the plane", 5.0)
+
+func _build_plane() -> Node3D:
+	var n := Node3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("d9dde3")
+	var parts := [[Vector3(0, 0, 0), Vector3(3.2, 3.2, 22.0)], [Vector3(0, 0.3, 1.0), Vector3(24.0, 0.5, 4.0)], [Vector3(0, 2.6, -9.5), Vector3(0.4, 4.0, 3.0)], [Vector3(0, 0.3, -9.5), Vector3(8.0, 0.4, 2.4)]]
+	for p in parts:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = p[1]
+		box.material = mat
+		mi.mesh = box
+		mi.position = p[0]
+		n.add_child(mi)
+	return n
+
+func _update_plane(delta: float) -> void:
+	var length := plane_start.distance_to(plane_end)
+	plane_t += delta * PLANE_SPEED / length
+	var flat := plane_start.lerp(plane_end, clampf(plane_t, 0.0, 1.0))
+	var dir := (plane_end - plane_start).normalized()
+	plane_node.global_position = Vector3(flat.x, PLANE_HEIGHT, flat.y)
+	plane_node.rotation.y = atan2(dir.x, dir.y)
+	if player.state == "plane":
+		# Ride at the tail ramp looking out
+		player.global_position = plane_node.global_position - Vector3(dir.x, 0, dir.y) * 13.0 + Vector3(0, -2.5, 0)
+		if (Input.is_action_just_pressed("jump") and not _ui_blocking()) or plane_t > 0.93:
+			_player_jump()
+	for bot in bots:
+		if bot.state == "plane" and plane_t >= float(bot.get_meta("jump_at")):
+			_bot_jump(bot)
+	if plane_t >= 1.0:
+		plane_node.queue_free()
+		plane_node = null
+		phase = "match"
+		for bot in bots:
+			if bot.state == "plane": _bot_jump(bot)
+
+func _player_jump() -> void:
+	player.start_freefall()
+	sfx.set_loop("wind")
+	hud.flash_message("Steer with the stick · look down to dive faster · CHUTE to open", 4.0)
+
+func _bot_jump(bot: RoyaleBot) -> void:
+	bot.visible = true
+	bot.global_position = player.global_position if plane_node == null else plane_node.global_position + Vector3(0, -3, 0)
+	bot.state = "freefall"
+	# Pick a town near the flight path (or anywhere on land)
+	var choice: Vector3
+	if rng.randf() < 0.6:
+		var best := world.towns[0]
+		var best_score := INF
+		for town in world.towns:
+			var score := _distance_to_path(town.pos) + rng.randf_range(0.0, 450.0)
+			if score < best_score:
+				best_score = score
+				best = town
+		var p: Vector2 = best.pos + Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * float(best.radius) * 0.8
+		choice = Vector3(p.x, 0, p.y)
+	else:
+		choice = world.random_land_point()
+	bot.drop_target = choice
+
+func _distance_to_path(p: Vector2) -> float:
+	var ab := plane_end - plane_start
+	var t := clampf((p - plane_start).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	return p.distance_to(plane_start + ab * t)
+
+func on_player_landed() -> void:
+	sfx.set_loop("")
+	hud.flash_message("Find a weapon in the houses!", 3.0)
+	Input.action_release("jump")
+
+# ── Zone ─────────────────────────────────────────────────────
+
+func _start_zone_phase(index: int) -> void:
+	zone.phase = index
+	var data: Dictionary = ZONE_PHASES[index]
+	zone.from_center = zone.center
+	zone.from_radius = zone.radius
+	var new_r: float = data.radius
+	# The next circle sits inside the current one, on land where possible
+	var c: Vector2 = zone.center
+	for attempt in 20:
+		var a := rng.randf() * TAU
+		var d := rng.randf() * maxf(0.0, float(zone.radius) - new_r) * 0.85
+		var cand: Vector2 = zone.center + Vector2(cos(a), sin(a)) * d
+		if world.is_land(cand.x, cand.y) or attempt == 19:
+			c = cand
+			break
+	zone.next_center = c
+	zone.next_radius = new_r
+	zone.timer = float(data.wait)
+	zone.shrinking = false
+	if index == 1 and not airdrop_done:
+		_spawn_airdrop()
+	if index > 0 and not smoke_mode:
+		hud.flash_message("New safe zone marked on the map", 3.0)
+
+func _update_zone(delta: float) -> void:
+	if zone.phase < 0:
+		if phase == "match" or player.state == "ground":
+			zone.center = Vector2.ZERO
+			zone.radius = 600.0
+			_start_zone_phase(0)
+		return
+	zone.timer -= delta
+	var data: Dictionary = ZONE_PHASES[zone.phase]
+	if not zone.shrinking and zone.timer <= 0.0:
+		zone.shrinking = true
+		zone.timer = float(data.shrink)
+		if not smoke_mode: hud.flash_message("The zone is shrinking!", 2.5)
+	elif zone.shrinking:
+		var t := 1.0 - clampf(zone.timer / float(data.shrink), 0.0, 1.0)
+		zone.center = Vector2(zone.from_center).lerp(zone.next_center, t)
+		zone.radius = lerpf(float(zone.from_radius), float(zone.next_radius), t)
+		zone.dps = float(data.dps)
+		if zone.timer <= 0.0 and int(zone.phase) < ZONE_PHASES.size() - 1:
+			_start_zone_phase(int(zone.phase) + 1)
+	zone_wall.global_position = Vector3(zone.center.x, 150.0, zone.center.y)
+	zone_wall.scale = Vector3(maxf(0.5, float(zone.radius)), 1.0, maxf(0.5, float(zone.radius)))
+	# Damage everyone outside, once per second
+	zone_tick -= delta
+	if zone_tick <= 0.0:
+		zone_tick = 1.0
+		for c in combatants:
+			if not c.is_alive():
+				continue
+			if c is RoyalePlayer and (c as RoyalePlayer).state != "ground": continue
+			if c is RoyaleBot and (c as RoyaleBot).state != "ground": continue
+			if Vector2(c.global_position.x, c.global_position.z).distance_to(zone.center) > float(zone.radius):
+				c.take_damage(float(zone.dps), false, "the zone", true)
+				if c == player:
+					hud.damage_flash(25.0)
+					sfx.play("zone")
+
+func zone_text() -> String:
+	if zone.phase < 0:
+		return "Zone appears after landing"
+	var p := Vector2(player.global_position.x, player.global_position.z)
+	var outside := p.distance_to(zone.next_center) > float(zone.next_radius)
+	var t := "%d:%02d" % [int(zone.timer) / 60, int(zone.timer) % 60]
+	var what := "Shrinking" if zone.shrinking else "Next shrink in"
+	var dist := ""
+	if outside:
+		dist = " · Safe zone %dm" % int(p.distance_to(zone.next_center) - float(zone.next_radius))
+	return "%s %s%s" % [what, t, dist]
+
+# ── Shooting ─────────────────────────────────────────────────
+
+func _ray(from: Vector3, to: Vector3, mask: int, exclude: Array[RID]) -> Dictionary:
+	var q := PhysicsRayQueryParameters3D.create(from, to, mask, exclude)
+	q.collide_with_areas = false
+	return get_world_3d().direct_space_state.intersect_ray(q)
+
+func has_line_of_sight(from: Vector3, to: Vector3, exclude_node: Node3D) -> bool:
+	var ex: Array[RID] = []
+	if exclude_node is CollisionObject3D: ex.append((exclude_node as CollisionObject3D).get_rid())
+	return _ray(from, to, 1, ex).is_empty()
+
+func ray_blocked(from: Vector3, to: Vector3, exclude_node: Node3D) -> bool:
+	return not has_line_of_sight(from, to, exclude_node)
+
+func fire_hitscan(shooter: RoyalePlayer, origin: Vector3, dir: Vector3, gun_id: String, muzzle: Vector3) -> void:
+	var data := Items.gun(gun_id)
+	var reach := float(data.range) * 2.5
+	var hit := _ray(origin, origin + dir * reach, 1 | 4, [shooter.get_rid()])
+	var end := origin + dir * reach
+	if not hit.is_empty():
+		end = hit.position
+		var target: Object = hit.collider
+		if target is RoyaleBot and (target as RoyaleBot).is_alive():
+			var bot := target as RoyaleBot
+			var headshot: bool = float(hit.position.y) >= bot.head_y() - 0.22
+			var dmg := Items.damage_at(gun_id, origin.distance_to(hit.position)) * (2.1 if headshot else 1.0)
+			bot.take_damage(dmg, headshot, shooter.combatant_name)
+			hud.hitmarker(not bot.is_alive())
+			sfx.play("kill" if not bot.is_alive() else "hit", 1.3 if headshot else 1.0)
+	_tracer(muzzle, end)
+	sfx.play(RoyaleSfx.shot_key(gun_id))
+	recent_shots.append({"pos": Vector2(origin.x, origin.z), "t": Time.get_ticks_msec() * 0.001, "mine": true})
+
+func melee(shooter: RoyalePlayer) -> void:
+	var origin := shooter.camera.global_position
+	var dir := -shooter.camera.global_transform.basis.z
+	var hit := _ray(origin, origin + dir * 2.0, 1 | 4, [shooter.get_rid()])
+	sfx.play("punch")
+	if not hit.is_empty() and hit.collider is RoyaleBot:
+		(hit.collider as RoyaleBot).take_damage(18.0, false, shooter.combatant_name)
+		hud.hitmarker(not (hit.collider as RoyaleBot).is_alive())
+
+func bot_shot(bot: RoyaleBot, target: Node3D, hit: bool, dmg: float, headshot: bool, gun_id: String) -> void:
+	var muzzle := bot.global_position + Vector3(0, 1.25, 0) + bot.global_transform.basis.z * 0.6
+	var aim: Vector3 = target.chest_point() if target.has_method("chest_point") else target.global_position + Vector3(0, 1.2, 0)
+	if not hit:
+		aim += Vector3(rng.randf_range(-1.2, 1.2), rng.randf_range(-0.6, 0.9), rng.randf_range(-1.2, 1.2))
+	# Walls still stop bullets even if the bot "rolled" a hit
+	if hit and not has_line_of_sight(muzzle, aim, bot):
+		hit = false
+	if hit and target.is_alive():
+		# Bots are gentler on each other so fights last into the late zones
+		target.take_damage(dmg * (0.45 if target is RoyaleBot else 1.0), headshot, bot.combatant_name)
+		if target == player:
+			hud.damage_flash(dmg)
+	var near_player := bot.global_position.distance_to(player.global_position) < 260.0
+	if near_player:
+		_tracer(muzzle, aim)
+		sfx.play_at(RoyaleSfx.shot_key(gun_id), muzzle)
+	recent_shots.append({"pos": Vector2(bot.global_position.x, bot.global_position.z), "t": Time.get_ticks_msec() * 0.001, "mine": false})
+	if recent_shots.size() > 40:
+		recent_shots.remove_at(0)
+
+func find_combatant(name: String) -> Node3D:
+	for c in combatants:
+		if c.combatant_name == name:
+			return c
+	return null
+
+func alive_count() -> int:
+	var n := 0
+	for c in combatants:
+		if c.is_alive(): n += 1
+	return n
+
+func on_combatant_died(victim: Node3D, killer: String) -> void:
+	var killer_node := find_combatant(killer)
+	death_log.append("%.0fs %s <- %s" % [match_time, victim.combatant_name, killer])
+	if killer_node and killer_node != victim:
+		killer_node.kills += 1
+	var mine := killer_node == player
+	if not smoke_mode:
+		hud.add_feed("%s ✖ %s" % [killer, victim.combatant_name] if killer != "the zone" else "%s was caught by the zone" % victim.combatant_name, mine)
+		if mine: hud.flash_message("You eliminated %s" % victim.combatant_name, 2.0)
+	_drop_death_loot(victim)
+	_check_end()
+
+func _on_player_died(killer: String) -> void:
+	if not smoke_mode:
+		hud.add_feed("%s ✖ You" % killer if killer != "the zone" else "You were caught by the zone", true)
+	_drop_death_loot(player)
+	await get_tree().create_timer(1.8).timeout
+	_finish(false)
+
+func _check_end() -> void:
+	if ended:
+		return
+	if player.is_alive() and alive_count() == 1 and player.state == "ground":
+		_finish(true)
+
+func _finish(won: bool) -> void:
+	if ended:
+		return
+	ended = true
+	var placement := 1 if won else alive_count() + 1
+	var coins := player.kills * 5 + (50 if won else (20 if placement <= 5 else (10 if placement <= 10 else 2)))
+	_award_coins(coins)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	touch.release_all()
+	sfx.set_loop("")
+	if won: sfx.play("kill", 0.7)
+	if not smoke_mode:
+		hud.show_end(won, placement, player.kills, coins)
+
+## Adds to the same coin balance the 2D Battle Royale uses (localStorage 'rl_coins_v1').
+func _award_coins(amount: int) -> void:
+	if not OS.has_feature("web") or amount <= 0:
+		return
+	JavaScriptBridge.eval("""(function(n){
+		function add(s){ var c = parseInt(s.getItem('rl_coins_v1') || '0', 10) || 0; s.setItem('rl_coins_v1', String(c + n)); }
+		try { add(window.parent.localStorage); } catch (e) { try { add(window.localStorage); } catch (e2) {} }
+		try { window.parent.postMessage({ type: 'royale3d-coins', amount: n }, '*'); } catch (e3) {}
+	})(%d)""" % amount, true)
+
+func _quit_to_arcade() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""(function(){
+			try { if (window.parent && window.parent !== window && window.parent.goToPage) { window.parent.goToPage('games'); return; } } catch (e) {}
+			try { window.parent.postMessage({ type: 'royale3d-exit' }, '*'); } catch (e) {}
+			if (window.parent === window) history.back();
+		})()""", true)
+	else:
+		get_tree().quit()
+
+func _restart() -> void:
+	get_tree().reload_current_scene()
+
+# ── Loot ─────────────────────────────────────────────────────
+
+func _cell(p: Vector3) -> Vector2i:
+	return Vector2i(floori(p.x / 24.0), floori(p.z / 24.0))
+
+func _spawn_loot() -> void:
+	for point in world.loot_points:
+		var tier: int = point.tier
+		var count := rng.randi_range(1, 2) + (1 if tier == 2 else 0)
+		for i in count:
+			var pos: Vector3 = point.pos + Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.5, 0.5))
+			var roll := rng.randf()
+			if roll < 0.42:
+				var gid := Items.pick_weighted(Items.GUN_WEIGHTS[tier], rng)
+				_add_loot({"type": "gun", "id": gid}, pos, point.path)
+				_add_loot({"type": "ammo", "id": Items.gun(gid).ammo, "count": int(Items.AMMO[Items.gun(gid).ammo].box) * 2}, pos + Vector3(0.4, 0, 0.3), point.path)
+			elif roll < 0.6:
+				var types := ["9mm", "556", "762", "12g"]
+				var t: String = types[rng.randi_range(0, 3)]
+				_add_loot({"type": "ammo", "id": t, "count": int(Items.AMMO[t].box)}, pos, point.path)
+			elif roll < 0.8:
+				var med: String = ["bandage", "bandage", "bandage", "firstaid", "firstaid", "drink", "drink", "medkit"][rng.randi_range(0, 7)]
+				_add_loot({"type": "med", "id": med, "count": 5 if med == "bandage" else 1}, pos, point.path)
+			elif roll < 0.92:
+				var level := 1
+				var lr := rng.randf()
+				if tier == 2: level = 3 if lr < 0.25 else 2
+				elif tier == 1: level = 2 if lr < 0.4 else 1
+				else: level = 2 if lr < 0.22 else 1
+				_add_loot({"type": "vest" if rng.randf() < 0.5 else "helmet", "level": level}, pos, point.path)
+			else:
+				_add_loot({"type": "grenade", "count": 1}, pos, point.path)
+
+func _loot_material(color: Color) -> StandardMaterial3D:
+	var key := color.to_html()
+	if not _loot_mats.has(key):
+		var m := StandardMaterial3D.new()
+		m.albedo_color = color
+		m.emission_enabled = true
+		m.emission = color
+		m.emission_energy_multiplier = 0.35
+		_loot_mats[key] = m
+	return _loot_mats[key]
+
+func _add_loot(item: Dictionary, pos: Vector3, path: Array) -> Dictionary:
+	item.pos = pos
+	item.path = path
+	item.taken = false
+	item.uid = _next_loot_id
+	_next_loot_id += 1
+	if not item.has("count"): item.count = 1
+	if not smoke_mode:
+		item.node = _make_loot_node(item)
+		item.node.global_position = pos + Vector3(0, 0.12, 0)
+	var key := _cell(pos)
+	if not loot_grid.has(key): loot_grid[key] = []
+	loot_grid[key].append(item)
+	loot_items.append(item)
+	return item
+
+func _make_loot_node(item: Dictionary) -> Node3D:
+	var n := Node3D.new()
+	add_child(n)
+	match String(item.type):
+		"gun":
+			var path := Items.GUN_DIR + String(Items.gun(String(item.id)).model) + ".glb"
+			if not _gun_scene_cache.has(path): _gun_scene_cache[path] = load(path)
+			var g: Node3D = _gun_scene_cache[path].instantiate()
+			g.rotation_degrees = Vector3(0, rng.randf_range(0, 360), 90)
+			g.scale = Vector3.ONE * 1.3
+			n.add_child(g)
+		_:
+			var mi := MeshInstance3D.new()
+			var color := Color.WHITE
+			var size := Vector3(0.35, 0.22, 0.25)
+			match String(item.type):
+				"ammo": color = Items.AMMO[String(item.id)].color
+				"med":
+					color = Items.MEDS[String(item.id)].color
+					size = Vector3(0.3, 0.12, 0.3) if String(item.id) != "drink" else Vector3(0.12, 0.3, 0.12)
+				"vest":
+					color = [Color.WHITE, Color("8aa36b"), Color("5b7fa6"), Color("2e2e38")][int(item.level)]
+					size = Vector3(0.5, 0.15, 0.6)
+				"helmet":
+					color = [Color.WHITE, Color("8aa36b"), Color("5b7fa6"), Color("2e2e38")][int(item.level)]
+					var sphere := SphereMesh.new()
+					sphere.radius = 0.2
+					sphere.height = 0.3
+					sphere.is_hemisphere = true
+					sphere.material = _loot_material(color)
+					mi.mesh = sphere
+				"grenade":
+					color = Color("4d6b3a")
+					size = Vector3(0.14, 0.18, 0.14)
+			if mi.mesh == null:
+				var box := BoxMesh.new()
+				box.size = size
+				box.material = _loot_material(color)
+				mi.mesh = box
+			mi.position.y = size.y * 0.5
+			n.add_child(mi)
+	for m: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		m.visibility_range_end = 90.0
+	return n
+
+func loot_available(item: Dictionary) -> bool:
+	return not item.is_empty() and not bool(item.taken)
+
+func _remove_loot(item: Dictionary) -> void:
+	item.taken = true
+	if item.has("node") and is_instance_valid(item.node):
+		item.node.queue_free()
+	var key := _cell(item.pos)
+	if loot_grid.has(key):
+		loot_grid[key].erase(item)
+	loot_items.erase(item)
+	loot_reserved.erase(item.uid)
+
+func _items_near(pos: Vector3, radius: float) -> Array:
+	var out := []
+	var r := int(ceil(radius / 24.0))
+	var c := _cell(pos)
+	for dz in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var key := Vector2i(c.x + dx, c.y + dz)
+			if loot_grid.has(key):
+				for item in loot_grid[key]:
+					if not bool(item.taken) and Vector3(item.pos).distance_to(pos) <= radius:
+						out.append(item)
+	return out
+
+## The item the PICK UP button would take (guns first, then upgrades).
+func nearby_loot() -> Dictionary:
+	if Engine.get_process_frames() == _nearby_frame:
+		return _nearby_cache
+	_nearby_frame = Engine.get_process_frames()
+	_nearby_cache = {}
+	if player == null or player.state != "ground":
+		return _nearby_cache
+	var best_d := 2.4
+	for item in _items_near(player.global_position, 2.4):
+		if absf(float(item.pos.y) - player.global_position.y) > 1.8:
+			continue
+		var d := Vector3(item.pos).distance_to(player.global_position)
+		var bonus := 0.6 if String(item.type) == "gun" else 0.0
+		if d - bonus < best_d:
+			best_d = d - bonus
+			_nearby_cache = item
+	return _nearby_cache
+
+func prompt_text() -> String:
+	if player == null or player.state != "ground" or ended:
+		return ""
+	var item := nearby_loot()
+	if item.is_empty():
+		return ""
+	var key := "" if RoyalePlayer.is_touch_platform() else " [F]"
+	return "Pick up %s%s" % [Items.describe(item), key]
+
+func pickup_nearby() -> void:
+	var item := nearby_loot()
+	if item.is_empty():
+		return
+	_player_take(item, true)
+
+## Applies an item to the player. Auto-pickup only takes things that are clearly useful.
+func _player_take(item: Dictionary, manual: bool) -> bool:
+	var p := player
+	match String(item.type):
+		"gun":
+			if not manual:
+				return false
+			var dropped := p.give_gun(String(item.id), int(item.get("mag", -1)))
+			if not dropped.is_empty():
+				_add_loot({"type": "gun", "id": dropped.id, "mag": dropped.mag}, p.global_position + Vector3(0.6, 0.0, 0.0), [])
+		"ammo":
+			var have := int(p.ammo[String(item.id)])
+			if have >= Items.MAX_AMMO: return false
+			p.ammo[String(item.id)] = mini(Items.MAX_AMMO, have + int(item.count))
+		"med":
+			var max_n := int(Items.MEDS[String(item.id)].max)
+			if int(p.meds[String(item.id)]) >= max_n: return false
+			p.meds[String(item.id)] = mini(max_n, int(p.meds[String(item.id)]) + int(item.count))
+		"vest":
+			if int(item.level) <= p.vest and not manual: return false
+			p.vest = int(item.level)
+			p.vest_hp = Items.ARMOR_DURABILITY[p.vest]
+		"helmet":
+			if int(item.level) <= p.helmet and not manual: return false
+			p.helmet = int(item.level)
+			p.helmet_hp = Items.ARMOR_DURABILITY[p.helmet]
+		"grenade":
+			if p.grenades >= Items.MAX_GRENADES: return false
+			p.grenades += int(item.count)
+	hud.flash_message("Picked up %s" % Items.describe(item), 1.4)
+	sfx.play("pickup")
+	_remove_loot(item)
+	return true
+
+func _auto_pickup() -> void:
+	if player.state != "ground":
+		return
+	for item in _items_near(player.global_position, 1.3):
+		if String(item.type) != "gun" and absf(float(item.pos.y) - player.global_position.y) < 1.5:
+			_player_take(item, false)
+
+func find_loot_for_bot(bot: RoyaleBot, radius: float) -> Dictionary:
+	var best := {}
+	var best_score := INF
+	for item in _items_near(bot.global_position, radius):
+		if loot_reserved.has(item.uid) and loot_reserved[item.uid] != bot:
+			continue
+		var useful := false
+		match String(item.type):
+			"gun": useful = bot.gun_id.is_empty() or Items.gun(String(item.id)).tier > Items.gun(bot.gun_id).tier
+			"vest": useful = int(item.level) > bot.vest
+			"helmet": useful = int(item.level) > bot.helmet
+			"med": useful = bot.meds < 3
+			"grenade": useful = bot.grenades < 2
+		if not useful:
+			continue
+		var score := Vector3(item.pos).distance_to(bot.global_position) - (25.0 if String(item.type) == "gun" else 0.0)
+		if score < best_score:
+			best_score = score
+			best = item
+	if not best.is_empty():
+		loot_reserved[best.uid] = bot
+	return best
+
+func bot_pickup(bot: RoyaleBot, item: Dictionary) -> void:
+	if not loot_available(item) or Vector3(item.pos).distance_to(bot.global_position) > 2.5:
+		loot_reserved.erase(item.get("uid", -1))
+		return
+	match String(item.type):
+		"gun": bot.set_gun(String(item.id))
+		"vest":
+			bot.vest = int(item.level)
+			bot.vest_hp = Items.ARMOR_DURABILITY[bot.vest]
+		"helmet":
+			bot.helmet = int(item.level)
+			bot.helmet_hp = Items.ARMOR_DURABILITY[bot.helmet]
+		"med": bot.meds += 1
+		"grenade": bot.grenades += 1
+	_remove_loot(item)
+
+## PUBG-style death box: everything the victim carried drops where they fell.
+func _drop_death_loot(victim: Node3D) -> void:
+	var at := victim.global_position + Vector3(0, 0.1, 0)
+	var spread := func(i: int) -> Vector3: return at + Vector3(cos(i * 1.7) * 0.7, 0, sin(i * 1.7) * 0.7)
+	var i := 0
+	if victim is RoyaleBot:
+		var b := victim as RoyaleBot
+		if not b.gun_id.is_empty():
+			_add_loot({"type": "gun", "id": b.gun_id}, spread.call(i), []); i += 1
+			_add_loot({"type": "ammo", "id": Items.gun(b.gun_id).ammo, "count": 40}, spread.call(i), []); i += 1
+		if b.vest > 0: _add_loot({"type": "vest", "level": b.vest}, spread.call(i), []); i += 1
+		if b.helmet > 0: _add_loot({"type": "helmet", "level": b.helmet}, spread.call(i), []); i += 1
+		if b.meds > 0: _add_loot({"type": "med", "id": "firstaid", "count": 1}, spread.call(i), []); i += 1
+		_add_loot({"type": "med", "id": "bandage", "count": 3}, spread.call(i), [])
+
+# ── Grenades and airdrop ─────────────────────────────────────
+
+func throw_grenade() -> void:
+	if player.grenades <= 0 or player.state != "ground":
+		return
+	player.grenades -= 1
+	var g := RigidBody3D.new()
+	g.collision_layer = 0
+	g.collision_mask = 1
+	g.mass = 0.4
+	var cs := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.1
+	cs.shape = sphere
+	g.add_child(cs)
+	var mi := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.1
+	mesh.height = 0.2
+	mesh.material = _loot_material(Color("4d6b3a"))
+	mi.mesh = mesh
+	g.add_child(mi)
+	add_child(g)
+	var dir := -player.camera.global_transform.basis.z
+	g.global_position = player.camera.global_position + dir * 0.5
+	g.linear_velocity = dir * 17.0 + Vector3(0, 3.5, 0) + player.velocity * 0.5
+	hud.flash_message("Grenade out!", 1.2)
+	get_tree().create_timer(3.5).timeout.connect(func():
+		if is_instance_valid(g):
+			_explode(g.global_position, player.combatant_name)
+			g.queue_free())
+
+func _explode(pos: Vector3, owner_name: String) -> void:
+	sfx.play_at("explosion", pos)
+	if pos.distance_to(player.global_position) < 40.0:
+		player.shake_left = 0.4
+	for c in combatants:
+		if not c.is_alive():
+			continue
+		var d := c.global_position.distance_to(pos)
+		if d < 7.5 and has_line_of_sight(pos + Vector3(0, 0.4, 0), c.global_position + Vector3(0, 1.0, 0), null):
+			c.take_damage(115.0 * (1.0 - d / 7.5), false, owner_name)
+			if c == player: hud.damage_flash(60.0)
+			elif owner_name == player.combatant_name: hud.hitmarker(not c.is_alive())
+	if not smoke_mode:
+		var flash := MeshInstance3D.new()
+		var s := SphereMesh.new()
+		s.radius = 1.0
+		s.height = 2.0
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = Color(1.0, 0.7, 0.3, 0.8)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		s.material = m
+		flash.mesh = s
+		add_child(flash)
+		flash.global_position = pos
+		var tween := create_tween()
+		tween.tween_property(flash, "scale", Vector3.ONE * 6.0, 0.35)
+		tween.parallel().tween_property(m, "albedo_color:a", 0.0, 0.35)
+		tween.tween_callback(flash.queue_free)
+
+func _spawn_airdrop() -> void:
+	airdrop_done = true
+	var a := rng.randf() * TAU
+	var c: Vector2 = zone.next_center + Vector2(cos(a), sin(a)) * float(zone.next_radius) * rng.randf_range(0.0, 0.7)
+	if not world.is_land(c.x, c.y):
+		c = zone.next_center
+	airdrop_pos = Vector3(c.x, world.height_at(c.x, c.y), c.y)
+	airdrop_node = Node3D.new()
+	add_child(airdrop_node)
+	var crate := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(1.4, 1.0, 1.4)
+	box.material = _loot_material(Color("d64545"))
+	crate.mesh = box
+	crate.position.y = 0.5
+	airdrop_node.add_child(crate)
+	var chute := MeshInstance3D.new()
+	var sp := SphereMesh.new()
+	sp.radius = 2.2
+	sp.height = 1.6
+	sp.is_hemisphere = true
+	sp.material = _loot_material(Color("f2f2f2"))
+	chute.mesh = sp
+	chute.position.y = 4.0
+	chute.name = "Chute"
+	airdrop_node.add_child(chute)
+	airdrop_node.global_position = airdrop_pos + Vector3(0, 220.0, 0)
+	if not smoke_mode:
+		hud.flash_message("Airdrop incoming! (red marker on the map)", 4.0)
+
+func _update_airdrop(delta: float) -> void:
+	if airdrop_node == null or not is_instance_valid(airdrop_node):
+		return
+	airdrop_node.global_position.y -= 9.0 * delta
+	if airdrop_node.global_position.y <= airdrop_pos.y:
+		airdrop_node.global_position.y = airdrop_pos.y
+		var chute := airdrop_node.get_node_or_null("Chute")
+		if chute: chute.queue_free()
+		var special := "awm" if rng.randf() < 0.5 else "m249"
+		var at := airdrop_pos + Vector3(0, 1.0, 0)
+		_add_loot({"type": "gun", "id": special}, at + Vector3(0.9, -0.9, 0), [])
+		_add_loot({"type": "ammo", "id": Items.gun(special).ammo, "count": 60}, at + Vector3(-0.9, -0.9, 0), [])
+		_add_loot({"type": "vest", "level": 3}, at + Vector3(0, -0.9, 0.9), [])
+		_add_loot({"type": "helmet", "level": 3}, at + Vector3(0, -0.9, -0.9), [])
+		_add_loot({"type": "med", "id": "medkit", "count": 1}, at + Vector3(0.9, -0.9, 0.9), [])
+		airdrop_node = null
+
+# ── Input and frame loop ─────────────────────────────────────
+
+func _ui_blocking() -> bool:
+	return paused or map_open or ended
+
+func toggle_pause() -> void:
+	if ended:
+		return
+	paused = not paused
+	hud.show_pause(paused)
+	if paused:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		touch.release_all()
+	# The match keeps running while paused (it's a live battle), only input stops
+
+func toggle_map() -> void:
+	map_open = not map_open
+	hud.set_map_open(map_open)
+	if map_open: touch.release_all()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if player == null or hud == null:
+		return
+	if event.is_action_pressed("pause"):
+		if map_open: toggle_map()
+		else: toggle_pause()
+	elif event.is_action_pressed("map") and not ended:
+		toggle_map()
+	if _ui_blocking() or player == null or not player.is_alive():
+		return
+	if event.is_action_pressed("reload"): player.start_reload()
+	elif event.is_action_pressed("interact"): pickup_nearby()
+	elif event.is_action_pressed("heal"): player.start_heal()
+	elif event.is_action_pressed("throw"): throw_grenade()
+	elif event.is_action_pressed("swap"): player.switch_slot()
+	elif event.is_action_pressed("slot1"): player.switch_slot(0)
+	elif event.is_action_pressed("slot2"): player.switch_slot(1)
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT and not RoyalePlayer.is_touch_platform():
+		player.aiming = (event as InputEventMouseButton).pressed
+
+func play_sfx(name: String, _pos: Vector3) -> void:
+	sfx.play(name)
+
+func _physics_process(delta: float) -> void:
+	if player == null or hud == null:
+		return  # still generating the island
+	match_time += delta
+	if plane_node != null:
+		_update_plane(delta)
+	if player.state == "freefall" and Input.is_action_just_pressed("jump") and not _ui_blocking():
+		player.open_chute()
+	_update_zone(delta)
+	_update_airdrop(delta)
+	# Thin the haze at altitude so the island stays clear from the plane
+	var base_fog := 0.0022 if bool(settings.low) else 0.0012
+	env.environment.fog_density = base_fog * clampf(1.0 - (player.global_position.y - 40.0) / 260.0, 0.18, 1.0)
+	if not ended:
+		player.controls_enabled = not _ui_blocking()
+		player.try_fire(Input.is_action_pressed("fire") and not _ui_blocking())
+		_auto_pickup()
+		_check_end()
+
+func _process(delta: float) -> void:
+	if _bench:
+		_bench_frames += 1
+		_bench_time += delta
+		if _bench_time > 5.0:
+			print("ROYALE_BENCH fps=%.1f" % (_bench_frames / _bench_time))
+			_bench_frames = 0
+			_bench_time = 0.0
+
+# ── Developer checks ─────────────────────────────────────────
+
+func _run_smoke() -> void:
+	print("ROYALE_SMOKE start loot=%d points=%d towns=%d" % [loot_items.size(), world.loot_points.size(), world.towns.size()])
+	assert(loot_items.size() > 100, "too little loot")
+	assert(world.towns.size() == 7, "towns")
+	# Skip the plane: put the player in the middle town and let the bots drop in
+	_player_jump()
+	var t0: Dictionary = world.towns[0]
+	player.global_position = Vector3(t0.pos.x, float(t0.y) + 1.0, t0.pos.y)
+	player.state = "ground"
+	player.health = 100000.0
+	player.give_gun("m416")
+	player.ammo["556"] = 240
+	Engine.time_scale = 8.0
+	var start_alive := alive_count()
+	var elapsed := 0.0
+	while elapsed < 900.0 and alive_count() > 2:
+		await get_tree().create_timer(1.0, true, false, true).timeout
+		elapsed += 1.0
+		if int(elapsed) % 8 == 0:
+			var landed := 0
+			var armed := 0
+			var modes := {}
+			for b in bots:
+				if b.state == "ground": landed += 1
+				if b.is_alive() and not b.gun_id.is_empty(): armed += 1
+				if b.is_alive() and b.gun_id.is_empty():
+					var key := "%s/%s" % [b.mode, "far" if b.far else "near"]
+					modes[key] = int(modes.get(key, 0)) + 1
+			print("   unarmed bots by mode: ", modes)
+			print("ROYALE_SMOKE game_t=%.0fs alive=%d landed=%d armed=%d zone_phase=%d r=%.0f loot=%d" % [match_time, alive_count(), landed, armed, zone.phase, zone.radius, loot_items.size()])
+	var end_alive := alive_count()
+	print("ROYALE_SMOKE end game_time=%.0fs alive %d -> %d zone_phase=%d" % [match_time, start_alive, end_alive, zone.phase])
+	var zone_deaths := 0
+	for line in death_log:
+		if line.ends_with("the zone"): zone_deaths += 1
+	print("ROYALE_SMOKE deaths: %d by zone, %d by players" % [zone_deaths, death_log.size() - zone_deaths])
+	for line in death_log.slice(0, 12): print("  ", line)
+	var ok := end_alive < start_alive - 10 and int(zone.phase) >= 2 and match_time > 300.0
+	print("ROYALE_SMOKE_PASS" if ok else "ROYALE_SMOKE_FAIL")
+	get_tree().quit(0 if ok else 1)
+
+func _run_screenshots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	if "--clean" in OS.get_cmdline_user_args():
+		hud.visible = false
+		touch.visible = false
+	await get_tree().create_timer(1.5).timeout
+	await _shot(dir + "/01_plane.png")
+	_player_jump()
+	await get_tree().create_timer(1.2).timeout
+	await _shot(dir + "/02_freefall.png")
+	var t0: Dictionary = world.towns[0]
+	player.global_position = Vector3(t0.pos.x + 6.0, float(t0.y) + 0.5, t0.pos.y + 6.0)
+	player.state = "ground"
+	player.yaw = 0.6
+	player.pitch = -0.05
+	player.give_gun("m416")
+	player.ammo["556"] = 120
+	await get_tree().create_timer(1.0).timeout
+	await _shot(dir + "/03_town.png")
+	player.yaw += 2.2
+	await get_tree().create_timer(0.5).timeout
+	await _shot(dir + "/04_town_b.png")
+	player.global_position = Vector3(0, world.height_at(0, 200) + 30.0, 200)
+	player.pitch = -0.35
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/05_overview.png")
+	player.global_position = Vector3(t0.pos.x + 6.0, float(t0.y) + 0.5, t0.pos.y + 6.0)
+	player.pitch = 0.0
+	player.give_gun("kar98k")
+	player.aiming = true
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/06_scope.png")
+	player.aiming = false
+	toggle_map()
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/07_map.png")
+	toggle_map()
+	# A bot standing in front of the camera, aiming
+	var bot := bots[0]
+	bot.state = "ground"
+	bot.visible = true
+	bot.set_gun("akm")
+	var open_ground: Vector2 = t0.pos + Vector2(float(t0.radius) + 45.0, 0.0)
+	player.global_position = Vector3(open_ground.x, world.height_at(open_ground.x, open_ground.y) + 0.3, open_ground.y)
+	player.yaw = PI * 0.5
+	player.pitch = -0.08
+	await get_tree().create_timer(0.3).timeout
+	var fwd := -player.global_transform.basis.z
+	fwd.y = 0.0
+	var spot := player.global_position + fwd.normalized() * 5.0
+	bot.global_position = Vector3(spot.x, world.height_at(spot.x, spot.z) + 0.05, spot.z)
+	bot.rotation.y = atan2(-fwd.x, -fwd.z)
+	bot.enemy = player
+	bot.mode = "fight"
+	player.give_gun("m416")
+	player.aiming = false
+	await get_tree().create_timer(1.2).timeout
+	await _shot(dir + "/08_bot.png")
+	print("ROYALE_SCREENSHOTS_DONE")
+	get_tree().quit()
+
+func _shot(path: String) -> void:
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path)
+	print("saved ", path)

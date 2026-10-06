@@ -18,6 +18,7 @@ const bcrypt   = require('bcryptjs');
 const crypto   = require('crypto');
 const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 const helmet   = require('helmet');
 const pdfParse = require('pdf-parse');
 const mammoth  = require('mammoth');
@@ -141,6 +142,8 @@ if (!ALLOWED_ORIGIN && process.env.NODE_ENV === 'production') {
 
 const RESOLVED_CORS_ORIGIN = ALLOWED_ORIGIN || false;
 const app = express();
+// gzip text, scripts and the 3D game's WebAssembly (about 4x smaller downloads on phones)
+app.use(compression({ filter: (req, res) => /\.(pck|wasm)$/.test(req.path) || compression.filter(req, res) }));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: RESOLVED_CORS_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
 
@@ -546,6 +549,11 @@ function requireSelf(paramField) {
   }];
 }
 app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_CACHE_OPTIONS));
+// Battle Royale 3D (Godot web build). The engine needs WebAssembly and eval, so this folder gets
+// its own CSP, and it must revalidate (Godot keeps the same file names between builds).
+const ROYALE3D_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; frame-ancestors 'self'";
+app.use('/features/royale3d/game', (req, res, next) => { res.setHeader('Content-Security-Policy', ROYALE3D_CSP); next(); },
+  express.static(path.join(__dirname, 'features', 'royale3d', 'game'), { maxAge: 0, etag: true }));
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
 app.use(express.static(path.join(__dirname)));

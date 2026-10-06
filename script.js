@@ -3346,6 +3346,7 @@ const pageConfig = {
   announcement:{ bg: 'bg-galaxy', particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📢 ANNOUNCEMENT' },
   games:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎮 Arcade' },
   dungeon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🏰 Dungeon' },
+  royale3d: { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale 3D' },
   pokemon:  { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '⚔️ Pokemon' },
   royale:   { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '🎯 Battle Royale' },
   witfb:    { bg: 'bg-galaxy',   particles: 'particles-galaxy',   wave: false, mountain: false, aurora: false, label: '📘 Social Media Pages' },
@@ -3475,7 +3476,7 @@ function setPageBackground(pageName, background) {
 }
 
 // Game pages draw their own scenes, so the app-wide background never applies to them
-const GAME_PAGES = new Set(['pokemon', 'royale', 'pacman', 'candy', 'tetris', 'dungeon', 'lobby']);
+const GAME_PAGES = new Set(['pokemon', 'royale', 'royale3d', 'pacman', 'candy', 'tetris', 'dungeon', 'lobby']);
 
 function applyPageBackground(pageName = currentPage) {
   const cfg = pageConfig[pageName];
@@ -3533,6 +3534,7 @@ window.goToPage = function(pageName) {
   if (currentPage === 'candy'  && typeof candyModule  !== 'undefined') candyModule.destroy();
   if (currentPage === 'tetris' && typeof tetrisModule !== 'undefined') tetrisModule.destroy();
   if (currentPage === 'dungeon') window.dungeonModule?.destroy();
+  if (currentPage === 'royale3d') window.royale3dModule?.destroy();
   // Alarm: tear down clock when leaving
   if (currentPage === 'alarm' && typeof alarmModule !== 'undefined') alarmModule.destroy();
   // File Summarizer: close quiz modal/score screen when navigating away
@@ -3554,11 +3556,11 @@ window.goToPage = function(pageName) {
 
   // Hide chat bauble on pages where it blocks controls or the AI input
   const chatBauble = document.getElementById('chat-bauble');
-  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'tetris' || pageName === 'dungeon' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
+  if (chatBauble) chatBauble.style.display = (pageName === 'pokemon' || pageName === 'royale' || pageName === 'pacman' || pageName === 'candy' || pageName === 'tetris' || pageName === 'dungeon' || pageName === 'royale3d' || pageName === 'lobby' || pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational') ? 'none' : '';
 
   // Hide live clock on AI page — it overlaps the chat header
   const liveClock = document.getElementById('live-clock');
-  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational' || pageName === 'dungeon') ? 'none' : '';
+  if (liveClock) liveClock.style.display = (pageName === 'ai' || pageName === 'outputai' || pageName === 'codelab' || pageName === 'coding-educational' || pageName === 'dungeon' || pageName === 'royale3d') ? 'none' : '';
 
   const old = pageConfig[currentPage];
   const oldPage = document.getElementById('page-' + currentPage);
@@ -3605,6 +3607,7 @@ window.goToPage = function(pageName) {
   if (pageName === 'candy'  && typeof candyModule  !== 'undefined') runSafeUiAction('Candy Match', () => candyModule.init());
   if (pageName === 'tetris' && typeof tetrisModule !== 'undefined') runSafeUiAction('Tetris', () => tetrisModule.init());
   if (pageName === 'dungeon' && window.dungeonModule) runSafeUiAction('Dungeon of Knowledge', () => window.dungeonModule.init());
+  if (pageName === 'royale3d' && window.royale3dModule) runSafeUiAction('Battle Royale 3D', () => window.royale3dModule.init());
   if (pageName === 'personal-tools' && typeof personalToolsModule !== 'undefined') runSafeUiAction('Personal Tools', () => personalToolsModule.init());
   if (pageName === 'alarm' && typeof alarmModule !== 'undefined') runSafeUiAction('Alarm Clock', () => alarmModule.init());
   if (pageName === 'notepad' && typeof notepadModule !== 'undefined') runSafeUiAction('Notepad', () => notepadModule.init());

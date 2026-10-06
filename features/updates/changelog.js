@@ -1,6 +1,23 @@
 ﻿(function () {
-const APP_VERSION = '1.9.25';
+const APP_VERSION = '1.9.26';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.26',
+    date: 'October 7, 2026',
+    title: 'New: Battle Royale 3D',
+    summary: 'Battle Royale is now a full 3D first-person game inspired by PUBG and Rules of Survival. The original 2D version stays in the Arcade as Battle Royale Classic.',
+    bullets: [
+      'New: Jump from a plane, skydive and parachute onto a 1 km island with 7 towns, a military base, forests and beaches.',
+      'New: 30 players (you and 29 bots). Bots loot houses, fight, heal and run from the zone.',
+      'New: 11 guns (pistols, SMGs, shotgun, M416, AKM, SKS, Kar98k, plus AWM and M249 from the airdrop) with 4 ammo types, aim-down-sights, scopes, recoil and headshots.',
+      'New: Level 1-3 vests and helmets, bandages, first aid kits, med kits, energy drinks and frag grenades.',
+      'New: A blue zone that shrinks in 6 phases, an airdrop with the best gear, a minimap, full map, compass, kill feed and Winner Winner Chicken Dinner.',
+      'New: Phone controls like PUBG Mobile (move stick, FIRE on both sides, AIM, RELOAD, JUMP, CROUCH, PRONE, PICK UP, HEAL, GRENADE).',
+      'Improved: Coins from 3D matches go to the same balance as the 2D Battle Royale.',
+      'Improved: The server now compresses files, so the whole app loads faster (the main script downloads about 4x smaller).',
+      'Improved: Service worker cache bumped to v1.5.94-20261007-royale3d.',
+    ]
+  },
   {
     version: '1.9.25',
     date: 'October 7, 2026',

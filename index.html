@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="features/candy/candy.css?v=11">
   <link rel="stylesheet" href="features/tetris/tetris.css?v=1">
   <link rel="stylesheet" href="features/dungeon/dungeon.css?v=1">
+  <link rel="stylesheet" href="features/royale3d/royale3d.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
   <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
@@ -723,16 +724,30 @@
           <div class="game-card-shine"></div>
         </div>
 
-        <!-- Battle Royale -->
+        <!-- Battle Royale 3D (first person, Godot) -->
+        <div class="game-card" onclick="goToPage('royale3d')">
+          <div class="game-thumb royale3d-thumb">
+            <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ff6b3d,#c0262d)">NEW · 3D</div>
+          </div>
+          <div class="game-info">
+            <div class="game-tags"><span class="game-tag">BATTLE ROYALE</span><span class="game-tag">30 PLAYERS</span><span class="game-tag">FPS</span></div>
+            <h3 class="game-name">Battle Royale 3D</h3>
+            <p class="game-desc">Jump from the plane, loot houses for guns, armor and meds, outlast the shrinking zone and grab the airdrop. Last one standing wins.</p>
+            <button class="game-play-btn royale3d-btn-play">▶  PLAY NOW</button>
+          </div>
+          <div class="game-card-shine"></div>
+        </div>
+
+        <!-- Battle Royale Classic (2D) -->
         <div class="game-card" onclick="goToPage('royale')">
           <div class="game-thumb royale-thumb">
             <canvas id="games-royale-preview" class="royale-mini-canvas"></canvas>
-            <div class="game-thumb-badge royale-badge">LIVE</div>
+            <div class="game-thumb-badge royale-badge">CLASSIC 2D</div>
           </div>
           <div class="game-info">
-            <div class="game-tags"><span class="game-tag">BATTLE ROYALE</span><span class="game-tag">40 PLAYERS</span></div>
-            <h3 class="game-name">Battle Royale</h3>
-            <p class="game-desc">Drop in, loot weapons, survive the zone. Customize your skin, earn coins, and be the last one standing.</p>
+            <div class="game-tags"><span class="game-tag">TOP-DOWN</span><span class="game-tag">LIGHT ON PHONES</span></div>
+            <h3 class="game-name">Battle Royale Classic</h3>
+            <p class="game-desc">The original top-down battle royale. Same coins as the 3D version, and runs well on older phones.</p>
             <button class="game-play-btn royale-btn">▶  PLAY NOW</button>
           </div>
           <div class="game-card-shine"></div>
@@ -893,6 +908,18 @@
   </div>
 
   <!-- ── DUNGEON OF KNOWLEDGE ──────────────────────────────── -->
+  <!-- ── BATTLE ROYALE 3D ──────────────────────────────────── -->
+  <div class="page" id="page-royale3d">
+    <div class="royale3d-bar">
+      <button class="royale3d-btn" type="button" onclick="goToPage('games')">← Games</button>
+      <span class="royale3d-title">BATTLE ROYALE 3D</span>
+      <button class="royale3d-btn" type="button" onclick="window.royale3dModule.toggleFullscreen()" title="Full screen">⛶ Full screen</button>
+    </div>
+    <div class="royale3d-stage" id="royale3d-stage">
+      <div class="royale3d-status hidden" id="royale3d-status" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div class="page" id="page-dungeon">
     <div class="dungeon-bar">
       <button class="dungeon-btn" type="button" onclick="goToPage('games')">← Games</button>
@@ -1743,8 +1770,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=20"></script>
-  <script src="script.js?v=127"></script>
+  <script src="features/updates/changelog.js?v=21"></script>
+  <script src="script.js?v=128"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>
@@ -1767,6 +1794,7 @@
   <script src="features/candy/candy.js?v=10"></script>
   <script src="features/tetris/tetris.js?v=1"></script>
   <script src="features/dungeon/dungeon.js?v=1"></script>
+  <script src="features/royale3d/royale3d.js?v=1"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=8" defer></script>

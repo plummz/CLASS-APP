@@ -1,0 +1,91 @@
+/* Battle Royale 3D page (same layout as the Dungeon of Knowledge page) */
+#page-royale3d {
+  position: fixed !important;
+  inset: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 9994;
+  overflow: hidden !important;
+  background: #10101a;
+  display: none;
+}
+#page-royale3d.active { display: flex; flex-direction: column; }
+
+/* Bar sits above the game (not over it) so it never covers the game HUD */
+.royale3d-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left));
+  background: linear-gradient(90deg, #1a1410, #0d1a12);
+  border-bottom: 1px solid rgba(255, 120, 80, 0.25);
+}
+.royale3d-title {
+  flex: 1;
+  min-width: 0;
+  color: #ffe08a;
+  font: 800 14px/1.2 system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.royale3d-btn {
+  height: 36px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: 700 13px system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.royale3d-btn:active { transform: scale(0.96); }
+
+.royale3d-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #10101a;
+}
+#royale3d-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.royale3d-status {
+  position: absolute;
+  inset: auto 16px 16px;
+  z-index: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #f3e6c8;
+  font: 600 13px/1.4 system-ui, sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+.royale3d-status.hidden { display: none; }
+
+/* In fullscreen the game owns the whole screen; system back / Esc leaves fullscreen */
+#page-royale3d:fullscreen .royale3d-bar { display: none; }
+
+/* Floating app buttons would cover the game's touch controls (FIRE sits bottom-right) */
+body:has(#page-royale3d.active) #install-btn,
+body:has(#page-royale3d.active) #custom-bg-btn { display: none !important; }
+
+/* Arcade card */
+.royale3d-thumb {
+  background: #10101a url('royale3d-thumb.jpg') center / cover no-repeat;
+}
+.royale3d-btn-play {
+  background: linear-gradient(135deg, #ff6b3d, #c0262d) !important;
+  color: #fff !important;
+}

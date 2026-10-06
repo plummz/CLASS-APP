@@ -4784,14 +4784,10 @@ function handleNotificationDeepLink() {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data?.type === 'APP_CACHE_UPDATED' && event.data.version && event.data.version !== APP_VERSION) {
-      const cacheReloadKey = 'classAppCacheReloadedVersion';
-      if (sessionStorage.getItem(cacheReloadKey) !== event.data.version) {
-        sessionStorage.setItem(cacheReloadKey, event.data.version);
-        window.location.reload();
-      }
-      return;
-    }
+    // A new service worker took over. Don't reload: the page was already fetched network-first,
+    // so it is current. (This used to compare the cache label with APP_VERSION, which never
+    // match, so every deploy and every first visit reloaded the app and replayed the splash.)
+    if (event.data?.type === 'APP_CACHE_UPDATED') return;
     if (event.data?.type === 'OPEN_PRIVATE_CHAT' && event.data.sender) {
       openChat('private', event.data.sender);
     }

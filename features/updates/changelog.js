@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.24';
+const APP_VERSION = '1.9.25';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.25',
+    date: 'October 7, 2026',
+    title: 'Faster Start, No Surprise Reloads',
+    summary: 'The app no longer restarts its loading screen by itself, and it opens faster.',
+    bullets: [
+      'Fixed: Opening the app right after an update (or for the first time on a device) no longer reloads it and replays the loading screen.',
+      'Improved: The loading screen closes as soon as the app is ready (about 1 second) instead of always waiting 3.5 seconds.',
+      'Improved: Service worker cache bumped to v1.5.93-20261007-no-surprise-reload.',
+    ]
+  },
   {
     version: '1.9.24',
     date: 'October 5, 2026',

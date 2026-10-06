@@ -7,7 +7,7 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=46">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
@@ -1572,17 +1572,26 @@
     const canvas = document.getElementById('splash-canvas');
     let raf = null;
 
-    // Dismiss after 2.8s (and on tap) even if canvas/animation fails.
+    // Dismiss once the page has loaded (shown at least 0.9s so it doesn't flash), on tap,
+    // or after 2.8s at the latest even if loading or the canvas animation fails.
+    const splashShownAt = Date.now();
+    let splashDismissing = false;
     function dismissSplash() {
       const splashEl = document.getElementById('splash-screen');
-      if (!splashEl) return;
+      if (!splashEl || splashDismissing) return;
+      splashDismissing = true;
       splashEl.classList.add('splash-out');
       setTimeout(() => {
         splashEl.remove();
         if (raf) cancelAnimationFrame(raf);
         window.dispatchEvent(new Event('classapp:splash-dismissed'));
-      }, 650);
+      }, 400);
     }
+    function dismissWhenLoaded() {
+      setTimeout(dismissSplash, Math.max(0, 900 - (Date.now() - splashShownAt)));
+    }
+    if (document.readyState === 'complete') dismissWhenLoaded();
+    else window.addEventListener('load', dismissWhenLoaded, { once: true });
     setTimeout(dismissSplash, 2800);
     if (splash) splash.addEventListener('click', dismissSplash);
 
@@ -1734,8 +1743,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=19"></script>
-  <script src="script.js?v=126"></script>
+  <script src="features/updates/changelog.js?v=20"></script>
+  <script src="script.js?v=127"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=1" defer></script>

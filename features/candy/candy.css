@@ -1167,3 +1167,43 @@
 .candy-board.candy-board-blast {
   animation: candy-board-blast-anim .55s ease-out forwards !important;
 }
+
+/* ── v1.9.27: colour bomb, hints, stars ─────────────────────────────── */
+/* Colour bomb: a spinning rainbow ball (it has no candy colour of its own) */
+.candy-gem.t-color {
+  background: conic-gradient(#ff4d6d, #ffb020, #ffe14d, #4dd88a, #3ab0ff, #a46bff, #ff4d6d);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.55), inset 0 0 8px rgba(0, 0, 0, 0.35);
+  animation: candy-rainbow-spin 3s linear infinite;
+}
+@keyframes candy-rainbow-spin { to { transform: rotate(360deg); } }
+
+/* Hint: the two candies of a possible move wiggle after a few idle seconds */
+.candy-gem.anim-hint { animation: candy-hint 0.9s ease-in-out infinite; }
+@keyframes candy-hint {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.12) rotate(-8deg); }
+  75% { transform: scale(1.12) rotate(8deg); }
+}
+
+/* Stars on the level-complete card and in level select */
+.candy-overlay-stars {
+  font-size: 40px;
+  letter-spacing: 6px;
+  color: #ffd84d;
+  text-shadow: 0 0 14px rgba(255, 216, 77, 0.6);
+  margin-bottom: 4px;
+}
+.clb-stars {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #ffd84d;
+  line-height: 1;
+}
+.candy-restart-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .candy-gem.t-color, .candy-gem.anim-hint { animation: none; }
+  .candy-gem.anim-hint { outline: 3px solid #ffd84d; outline-offset: 2px; border-radius: 50%; }
+}

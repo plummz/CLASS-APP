@@ -165,12 +165,13 @@ window.candyModule = (() => {
   }
 
   // ── Match finding ─────────────────────────────────────────────────────
-  // normalType: returns the display type (0-4) for both regular and special gems
+  // normalType: the candy colour (0-4) for regular and special gems; -2 for the colour bomb
+  // (it has no colour, so it never forms a normal match), -1 for an empty cell.
   function normalType(v) {
     if (v < 0) return -1;
     if (!isSpecial(v)) return v;
-    // specials encode type as (SPECIAL_BASE + typeIdx*5 + sIdx) → use % 5 for display type
-    return (v - SPECIAL_BASE) % 5;
+    if (specialKey(v) === 'color') return -2;
+    return (v - SPECIAL_BASE) % SPECIAL_STRIDE;
   }
 
   function findMatches(b) {
@@ -198,34 +199,94 @@ window.candyModule = (() => {
     return matched;
   }
 
-  // ── Special candy config (adjust weights here) ────────────────────────
+  // ── Special candies (earned by match shape, like Candy Crush) ───────────
+  //   4 in a line          → striped candy: clears its row (horizontal match) or column (vertical)
+  //   L or T shape         → bomb ('board' key, kept for its styling): clears a 3×3 area
+  //   5 in a line          → colour bomb: swap it with any candy to clear that colour
+  // A rare random special can also fall in as a bonus. Swapping two specials combines them.
   const SPECIAL_CONFIG = {
     row:   { weight: 14, label: '⚡', color: '#ff6b35', glow: '#ff9955' },
     col:   { weight: 14, label: '💎', color: '#35b5ff', glow: '#66ccff' },
-    color: { weight:  6, label: '✨', color: '#cc44ff', glow: '#ee88ff' },
-    board: { weight:  1, label: '💥', color: '#ffdd00', glow: '#ffee66' },
+    board: { weight:  6, label: '💥', color: '#ffdd00', glow: '#ffee66' },
+    color: { weight:  2, label: '🌈', color: '#cc44ff', glow: '#ee88ff' },
   };
   const SPECIAL_TOTAL = Object.values(SPECIAL_CONFIG).reduce((s,v)=>s+v.weight,0);
   const SPECIAL_TYPES = Object.keys(SPECIAL_CONFIG);
-  // Encode specials as values 100+: 100=row, 101=col, 102=color, 103=board
-  const SPECIAL_BASE  = 100;
-  const SPECIAL_IDX   = Object.fromEntries(SPECIAL_TYPES.map((k,i)=>[k,SPECIAL_BASE+i]));
-  const SPECIAL_FROM  = Object.fromEntries(SPECIAL_TYPES.map((k,i)=>[SPECIAL_BASE+i,k]));
+  // Encoding: SPECIAL_BASE + kindIndex * SPECIAL_STRIDE + colour (the colour bomb uses colour 7)
+  const SPECIAL_BASE   = 100;
+  const SPECIAL_STRIDE = 8;
 
   function isSpecial(v) { return v >= SPECIAL_BASE; }
-  function specialKey(v){ return SPECIAL_FROM[v] || null; }
-  function specialVal(k){ return SPECIAL_IDX[k]; }
+  function specialKey(v){ return isSpecial(v) ? (SPECIAL_TYPES[Math.floor((v - SPECIAL_BASE) / SPECIAL_STRIDE)] || null) : null; }
+  function makeSpecial(key, colour) {
+    return SPECIAL_BASE + SPECIAL_TYPES.indexOf(key) * SPECIAL_STRIDE + (key === 'color' ? 7 : colour);
+  }
 
-  // Spawn chance per new gem: ~9% overall
-  const SPECIAL_SPAWN_CHANCE = 0.09;
+  // Rare bonus special in newly dropped candies (specials are mostly earned now)
+  const SPECIAL_SPAWN_CHANCE = 0.02;
 
-  function rollSpecial() {
+  function rollSpecial(types) {
     let r = Math.random() * SPECIAL_TOTAL;
     for (const [k,cfg] of Object.entries(SPECIAL_CONFIG)) {
       r -= cfg.weight;
-      if (r <= 0) return specialVal(k);
+      if (r <= 0) return makeSpecial(k, rand(types));
     }
-    return specialVal('row');
+    return makeSpecial('row', rand(types));
+  }
+
+  // Runs of 3+ in a row or column: [{ cells:[idx...], dir:'h'|'v', type }]
+  function findRuns(b) {
+    const runs = [];
+    for (let r = 0; r < ROWS; r++) {
+      let c = 0;
+      while (c < COLS) {
+        const t = normalType(b[idx(r, c)]);
+        let e = c + 1;
+        while (e < COLS && t >= 0 && normalType(b[idx(r, e)]) === t) e++;
+        if (t >= 0 && e - c >= 3) runs.push({ cells: Array.from({ length: e - c }, (_, k) => idx(r, c + k)), dir: 'h', type: t });
+        c = e;
+      }
+    }
+    for (let c = 0; c < COLS; c++) {
+      let r = 0;
+      while (r < ROWS) {
+        const t = normalType(b[idx(r, c)]);
+        let e = r + 1;
+        while (e < ROWS && t >= 0 && normalType(b[idx(e, c)]) === t) e++;
+        if (t >= 0 && e - r >= 3) runs.push({ cells: Array.from({ length: e - r }, (_, k) => idx(r + k, c)), dir: 'v', type: t });
+        r = e;
+      }
+    }
+    return runs;
+  }
+
+  // Which specials this match creates, and where: [{ at, value }]
+  function planSpecials(b, swapCells) {
+    const runs = findRuns(b);
+    const plans = [];
+    const used = new Set();
+    const pick = (cells) => cells.find(i => swapCells.includes(i)) ?? cells[Math.floor(cells.length / 2)];
+    // Colour bombs from 5+ in a line
+    runs.filter(run => run.cells.length >= 5).forEach(run => {
+      const at = pick(run.cells);
+      plans.push({ at, value: makeSpecial('color', 0) });
+      run.cells.forEach(i => used.add(i));
+    });
+    // Bombs where a horizontal and vertical run of the same colour cross (L / T shapes)
+    runs.filter(r1 => r1.dir === 'h').forEach(h => {
+      runs.filter(r2 => r2.dir === 'v' && r2.type === h.type).forEach(v => {
+        const cross = h.cells.find(i => v.cells.includes(i));
+        if (cross === undefined || used.has(cross)) return;
+        plans.push({ at: cross, value: makeSpecial('board', h.type) });
+        h.cells.concat(v.cells).forEach(i => used.add(i));
+      });
+    });
+    // Striped candies from 4 in a line
+    runs.filter(run => run.cells.length === 4 && !run.cells.some(i => used.has(i))).forEach(run => {
+      const at = pick(run.cells);
+      plans.push({ at, value: makeSpecial(run.dir === 'h' ? 'row' : 'col', run.type) });
+    });
+    return plans;
   }
 
   // ── Centralized audio manager ─────────────────────────────────────────
@@ -441,7 +502,7 @@ window.candyModule = (() => {
     for (let i = 0; i < b.length; i++) {
       if (b[i] < 0) {
         // Small chance to spawn a special candy
-        b[i] = Math.random() < SPECIAL_SPAWN_CHANCE ? rollSpecial() : rand(types);
+        b[i] = Math.random() < SPECIAL_SPAWN_CHANCE ? rollSpecial(types) : rand(types);
         newSet.add(i);
       }
     }
@@ -468,29 +529,36 @@ window.candyModule = (() => {
       for (let r = 0; r < ROWS; r++) cleared.add(idx(r, trigC));
       candyAudio.colClear();
     } else if (key === 'color') {
-      let targetType = rand(5);
-      for (const mi of matchedType instanceof Set ? matchedType : []) {
-        const v = b[mi];
-        if (!isSpecial(v) && v >= 0) { targetType = v; break; }
-      }
-      if (typeof matchedType === 'number' && matchedType >= 0 && matchedType < 100) targetType = matchedType;
+      // Clear every candy of the target colour (the colour it was swapped with, or the most common)
+      let targetType = typeof matchedType === 'number' && matchedType >= 0 ? matchedType : mostCommonType(b);
       showChainGlow(targetType, b);
       spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
       await delay(180);
       for (let i = 0; i < b.length; i++) {
         if (normalType(b[i]) === targetType) cleared.add(i);
       }
+      cleared.add(idx(trigR, trigC));
       candyAudio.colorClear();
     } else if (key === 'board') {
+      // Bomb: 3×3 blast around the candy
       showBoardWipe();
       spawnCandyParticles(trigR, trigC, cfg.glow || cfg.color);
-      await delay(250);
-      for (let i = 0; i < b.length; i++) {
-        if (!blockerSet.has(i)) cleared.add(i);
+      await delay(160);
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const r = trigR + dr, c = trigC + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) cleared.add(idx(r, c));
+        }
       }
       candyAudio.boardWipe();
     }
     return cleared;
+  }
+
+  function mostCommonType(b) {
+    const counts = {};
+    b.forEach(v => { const t = normalType(v); if (t >= 0) counts[t] = (counts[t] || 0) + 1; });
+    return Number(Object.entries(counts).sort((a, c) => c[1] - a[1])[0]?.[0] ?? 0);
   }
 
   // ── Special animation helpers ─────────────────────────────────────────
@@ -515,7 +583,7 @@ window.candyModule = (() => {
 
   function showChainGlow(targetType, b) {
     for (let i = 0; i < b.length; i++) {
-      if (b[i] !== targetType) continue;
+      if (normalType(b[i]) !== targetType) continue;
       const r = Math.floor(i / COLS), c = i % COLS;
       const cell = cellEl(r, c);
       if (!cell) continue;
@@ -603,7 +671,7 @@ window.candyModule = (() => {
 
         const gem = document.createElement('div');
         // Special candies render as their underlying type for shape, plus a glow class
-        const displayType = isSpc ? normalType(t) : t;
+        const displayType = isSpc ? (sKey === 'color' ? '-color' : normalType(t)) : t;
         gem.className = 'candy-gem t' + displayType + (isNew ? ' anim-drop' : '') + (isSpc ? ' candy-special candy-special-' + sKey : '');
         if (sCfg) gem.style.setProperty('--special-color', sCfg.color);
         cell.appendChild(gem);
@@ -756,12 +824,97 @@ window.candyModule = (() => {
   // ── Core interaction ──────────────────────────────────────────────────
   function handleClick(r, c) {
     if (!active || busy || moves <= 0) return;
+    if (suppressClick) { suppressClick = false; return; }
+    resetHint();
     if (!selected) { selectCell(r, c); return; }
     const { r: sr, c: sc } = selected;
     if (sr === r && sc === c) { clearSelection(); return; }
     if (Math.abs(sr - r) + Math.abs(sc - c) !== 1) { selectCell(r, c); return; }
     clearSelection();
     doSwap(sr, sc, r, c);
+  }
+
+  // Swipe a candy toward a neighbour to swap (mouse or finger)
+  let swipeStart = null;
+  let suppressClick = false;
+  function bindSwipe() {
+    const boardEl = $id('candy-board');
+    if (!boardEl || boardEl._swipeBound) return;
+    boardEl._swipeBound = true;
+    boardEl.addEventListener('pointerdown', (e) => {
+      const cell = e.target.closest('.candy-cell');
+      if (!cell || !active || busy) return;
+      swipeStart = { x: e.clientX, y: e.clientY, r: Number(cell.dataset.r), c: Number(cell.dataset.c), id: e.pointerId };
+    });
+    boardEl.addEventListener('pointermove', (e) => {
+      if (!swipeStart || e.pointerId !== swipeStart.id || busy) return;
+      const dx = e.clientX - swipeStart.x, dy = e.clientY - swipeStart.y;
+      const cellSize = (boardEl.getBoundingClientRect().width || 320) / COLS;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < cellSize * 0.35) return;
+      const { r, c } = swipeStart;
+      swipeStart = null;
+      const r2 = r + (Math.abs(dy) > Math.abs(dx) ? Math.sign(dy) : 0);
+      const c2 = c + (Math.abs(dx) >= Math.abs(dy) ? Math.sign(dx) : 0);
+      if (r2 < 0 || r2 >= ROWS || c2 < 0 || c2 >= COLS || moves <= 0) return;
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 400);
+      clearSelection();
+      resetHint();
+      doSwap(r, c, r2, c2);
+    });
+    const end = () => { swipeStart = null; };
+    boardEl.addEventListener('pointerup', end);
+    boardEl.addEventListener('pointercancel', end);
+    boardEl.style.touchAction = 'none';
+  }
+
+  // ── Hints and reshuffles ──────────────────────────────────────────────
+  let hintTimer = null;
+  function resetHint() {
+    clearTimeout(hintTimer);
+    document.querySelectorAll('#candy-board .anim-hint').forEach(el => el.classList.remove('anim-hint'));
+    if (!active || moves <= 0) return;
+    hintTimer = setTimeout(showHint, 6000);
+  }
+  function showHint() {
+    if (!active || busy) return;
+    const mv = findPossibleMove(board);
+    if (!mv) return;
+    [gemEl(mv[0], mv[1]), gemEl(mv[2], mv[3])].forEach(g => g?.classList.add('anim-hint'));
+  }
+  function swapMakesMatch(b, r1, c1, r2, c2) {
+    const a = b[idx(r1, c1)], d = b[idx(r2, c2)];
+    if (specialKey(a) === 'color' || specialKey(d) === 'color') return true;
+    if (isSpecial(a) && isSpecial(d)) return true;
+    b[idx(r1, c1)] = d; b[idx(r2, c2)] = a;
+    const ok = findMatches(b).size > 0;
+    b[idx(r1, c1)] = a; b[idx(r2, c2)] = d;
+    return ok;
+  }
+  function findPossibleMove(b) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (c + 1 < COLS && swapMakesMatch(b, r, c, r, c + 1)) return [r, c, r, c + 1];
+        if (r + 1 < ROWS && swapMakesMatch(b, r, c, r + 1, c)) return [r, c, r + 1, c];
+      }
+    }
+    return null;
+  }
+  async function shuffleIfStuck() {
+    if (findPossibleMove(board)) return;
+    setStatus('No moves left — shuffling!');
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const values = board.slice();
+      for (let i = values.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [values[i], values[j]] = [values[j], values[i]];
+      }
+      board = values;
+      if (findMatches(board).size === 0 && findPossibleMove(board)) break;
+    }
+    if (!findPossibleMove(board)) board = generateBoard(levelCfg.types);
+    await delay(400);
+    render(new Set(board.map((_, i) => i)));
   }
 
   async function doSwap(r1, c1, r2, c2) {
@@ -775,6 +928,15 @@ window.candyModule = (() => {
       board[idx(r1, c1)] = board[idx(r2, c2)];
       board[idx(r2, c2)] = tmp;
       render();
+
+      // Colour bombs and special + special swaps go off without needing a match
+      if (await trySpecialSwap(r1, c1, r2, c2)) {
+        moves--;
+        updateHUD();
+        await maybeSaveScore();
+        if (!checkLevelComplete()) checkGameOver();
+        return;
+      }
 
       const matches = findMatches(board);
 
@@ -800,14 +962,95 @@ window.candyModule = (() => {
       if (!checkLevelComplete()) checkGameOver();
     } finally {
       busy = false;
+      if (active && moves > 0 && !document.querySelector('.candy-overlay')) {
+        await shuffleIfStuck();
+        resetHint();
+      }
     }
+  }
+
+  // Colour bomb + candy, colour bomb + colour bomb, and special + special combinations
+  async function trySpecialSwap(r1, c1, r2, c2) {
+    const i1 = idx(r1, c1), i2 = idx(r2, c2);
+    const a = board[i1], b = board[i2];
+    const ka = specialKey(a), kb = specialKey(b);
+    if (!ka && !kb) return false;
+    if (ka !== 'color' && kb !== 'color' && !(ka && kb)) return false;
+    const cleared = new Set([i1, i2]);
+    if (ka === 'color' && kb === 'color') {
+      showBoardWipe();
+      candyAudio.boardWipe();
+      await delay(250);
+      board.forEach((_, i) => cleared.add(i));
+    } else if (ka === 'color' || kb === 'color') {
+      const [bombR, bombC] = ka === 'color' ? [r1, c1] : [r2, c2];
+      const other = ka === 'color' ? b : a;
+      const target = normalType(other);
+      const otherKey = specialKey(other);
+      if (otherKey && otherKey !== 'color') {
+        // Every candy of that colour turns into the same special and goes off
+        const hits = [];
+        board.forEach((v, i) => { if (normalType(v) === target) { board[i] = makeSpecial(otherKey, target); hits.push(i); } });
+        render();
+        showChainGlow(target, board);
+        await delay(300);
+        for (const i of hits) {
+          (await activateSpecial(board[i], Math.floor(i / COLS), i % COLS, target, board)).forEach(x => cleared.add(x));
+        }
+      } else {
+        (await activateSpecial(makeSpecial('color', 0), bombR, bombC, target, board)).forEach(x => cleared.add(x));
+      }
+    } else {
+      // Two specials: striped + striped = cross; striped + bomb = 3 rows and 3 columns; bomb + bomb = 5×5
+      const kinds = [ka, kb].sort().join('+');
+      const cr = r2, cc = c2;
+      spawnCandyParticles(cr, cc, '#ffdd00');
+      if (kinds === 'board+board') {
+        showBoardWipe(); candyAudio.boardWipe();
+        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+          const r = cr + dr, c = cc + dc;
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) cleared.add(idx(r, c));
+        }
+      } else if (kinds.includes('board')) {
+        for (let d = -1; d <= 1; d++) {
+          showBeamAnim(Math.min(ROWS - 1, Math.max(0, cr + d)), cc, 'row');
+          showBeamAnim(cr, Math.min(COLS - 1, Math.max(0, cc + d)), 'col');
+          for (let k = 0; k < COLS; k++) { if (cr + d >= 0 && cr + d < ROWS) cleared.add(idx(cr + d, k)); }
+          for (let k = 0; k < ROWS; k++) { if (cc + d >= 0 && cc + d < COLS) cleared.add(idx(k, cc + d)); }
+        }
+        candyAudio.boardWipe();
+      } else {
+        showBeamAnim(cr, cc, 'row'); showBeamAnim(cr, cc, 'col');
+        for (let k = 0; k < COLS; k++) cleared.add(idx(cr, k));
+        for (let k = 0; k < ROWS; k++) cleared.add(idx(k, cc));
+        candyAudio.rowClear(); candyAudio.colClear();
+      }
+      await delay(200);
+    }
+    score += cleared.size * 20;
+    triggerChainFX(Math.min(10, 3 + Math.floor(cleared.size / 8)));
+    await animPop(cleared);
+    cleared.forEach(i => {
+      if (blockerSet.has(i)) blockerSet.delete(i);
+      board[i] = -1;
+    });
+    dropBoard(board);
+    const newCells = fillNewGems(board, levelCfg.types);
+    candyAudio.drop();
+    render(newCells);
+    await delay(430);
+    const follow = findMatches(board);
+    if (follow.size) await cascade(follow);
+    else updateHUD();
+    return true;
   }
 
 
   // ── Cascade resolver ──────────────────────────────────────────────────
-  async function cascade(initialMatches, swapR1=0, swapC1=0, swapR2=0, swapC2=0) {
+  async function cascade(initialMatches, swapR1=-1, swapC1=-1, swapR2=-1, swapC2=-1) {
     let matchSet = initialMatches;
     let chain    = 0;
+    const swapCells = swapR1 >= 0 ? [idx(swapR1, swapC1), idx(swapR2, swapC2)] : [];
 
     while (matchSet.size > 0) {
       chain++;
@@ -820,34 +1063,37 @@ window.candyModule = (() => {
       candyAudio.pop(chain);
       if (matchSet.size >= 5) triggerEffect('bigMatch');
 
-      // Detect specials inside this match set and collect extra cleared cells
+      // Specials earned by this match's shape (only the first step uses the swapped cells)
+      const plans = planSpecials(board, chain === 1 ? swapCells : []);
+
+      // Specials caught inside the match go off
       const specialClear = new Set();
       const specials = [];
       matchSet.forEach(i => {
         if (isSpecial(board[i])) {
-          const r = Math.floor(i / COLS), c = i % COLS;
-          // Determine the adjacent non-special candy type that triggered the match
-          const adjI = matchSet.values().next().value;
-          const adjT = board[adjI] < 100 ? board[adjI] : rand(5);
-          specials.push({ v: board[i], r, c, adjT });
+          specials.push({ v: board[i], r: Math.floor(i / COLS), c: i % COLS, adjT: normalType(board[i]) });
         }
       });
 
       await animPop(matchSet);
 
-      // Activate each special (serially to avoid overlap)
       for (const sp of specials) {
         const cleared = await activateSpecial(sp.v, sp.r, sp.c, sp.adjT, board);
         cleared.forEach(i => specialClear.add(i));
       }
 
-      // Clear data
+      // Clear data, then place the newly earned specials
       matchSet.forEach(i  => { board[i] = -1; });
       specialClear.forEach(i => {
         if (!blockerSet.has(i)) board[i] = -1;
         else blockerSet.delete(i);
       });
       clearMatchedBlockers(matchSet);
+      plans.forEach(plan => {
+        board[plan.at] = plan.value;
+        const key = specialKey(plan.value);
+        setStatus(key === 'color' ? '🌈 Colour bomb!' : key === 'board' ? '💥 Bomb candy!' : '⚡ Striped candy!');
+      });
       dropBoard(board);
       const newCells = fillNewGems(board, levelCfg.types);
       candyAudio.drop();
@@ -862,15 +1108,26 @@ window.candyModule = (() => {
   // ── Win / lose conditions ─────────────────────────────────────────────
   function checkLevelComplete() {
     if (score >= levelCfg.target && blockerSet.size === 0) {
-      const coinsEarned = Math.round(score / 38) + levelCfg.n;
+      // Sugar Crush: every unused move is worth bonus points
+      const bonus = moves * 60;
+      if (bonus > 0) {
+        score += bonus;
+        setStatus(`🍭 Sugar Crush! +${bonus.toLocaleString()} for ${moves} unused move${moves === 1 ? '' : 's'}`);
+        moves = 0;
+      } else {
+        setStatus('');
+      }
+      const stars = score >= levelCfg.target * 2 ? 3 : score >= levelCfg.target * 1.5 ? 2 : 1;
+      saveStars(currentLevel, stars);
+      const coinsEarned = Math.round(score / 38) + levelCfg.n + (stars - 1) * 10;
       coins += coinsEarned;
       updateHUD();
       if (currentLevel >= highestUnlocked && currentLevel < MAX_LEVEL) {
         highestUnlocked = currentLevel + 1;
       }
       saveProgress().catch(() => {});
-      setStatus('');
-      showLevelComplete(coinsEarned);
+      clearTimeout(hintTimer);
+      showLevelComplete(coinsEarned, stars);
       triggerEffect('levelComplete');
       candyAudio.levelComplete();
       return true;
@@ -881,6 +1138,19 @@ window.candyModule = (() => {
     return false;
   }
 
+  // Stars per level are kept on this device
+  const STARS_KEY = 'candy_stars_v1';
+  function loadStars() {
+    try { return JSON.parse(localStorage.getItem(STARS_KEY) || '{}') || {}; } catch (_) { return {}; }
+  }
+  function saveStars(level, stars) {
+    const all = loadStars();
+    if ((all[level] || 0) >= stars) return;
+    all[level] = stars;
+    try { localStorage.setItem(STARS_KEY, JSON.stringify(all)); } catch (_) {}
+  }
+  function starsText(n) { return '★'.repeat(n) + '☆'.repeat(3 - n); }
+
   function checkGameOver() {
     if (moves <= 0) {
       setStatus('');
@@ -889,12 +1159,13 @@ window.candyModule = (() => {
     }
   }
 
-  function showLevelComplete(coinsEarned) {
+  function showLevelComplete(coinsEarned, stars = 1) {
     const boardEl = $id('candy-board'); if (!boardEl) return;
     document.querySelector('.candy-overlay')?.remove();
     const ov = document.createElement('div');
     ov.className = 'candy-overlay candy-lc-overlay';
     ov.innerHTML = `
+      <div class="candy-overlay-stars" aria-label="${stars} of 3 stars">${starsText(stars)}</div>
       <div class="candy-overlay-title">Level ${currentLevel} Clear! 🍭</div>
       <div class="candy-overlay-score">Score: ${score.toLocaleString()} · +${coinsEarned} 🪙</div>
       <div class="candy-overlay-btns">
@@ -911,6 +1182,8 @@ window.candyModule = (() => {
     $id('candy-ov-map')?.addEventListener('click', openLevelSelect);
   }
 
+  const EXTRA_MOVES_PRICE = 25;
+
   function showOverlay(title, finalScore) {
     const boardEl = $id('candy-board'); if (!boardEl) return;
     document.querySelector('.candy-overlay')?.remove();
@@ -920,11 +1193,22 @@ window.candyModule = (() => {
       <div class="candy-overlay-title">${title}</div>
       <div class="candy-overlay-score">Score: ${finalScore.toLocaleString()} · Level ${currentLevel}</div>
       <div class="candy-overlay-btns">
+        <button class="candy-restart-btn" id="candy-ov-more" ${coins >= EXTRA_MOVES_PRICE ? '' : 'disabled'}>+5 Moves · ${EXTRA_MOVES_PRICE} 🪙</button>
         <button class="candy-restart-btn" id="candy-ov-restart">↺ Retry</button>
         <button class="candy-restart-btn candy-lb-btn" id="candy-ov-lb">🏆 Scores</button>
       </div>`;
     boardEl.style.position = 'relative';
     boardEl.appendChild(ov);
+    $id('candy-ov-more')?.addEventListener('click', () => {
+      if (coins < EXTRA_MOVES_PRICE) return;
+      coins -= EXTRA_MOVES_PRICE;
+      moves += 5;
+      ov.remove();
+      setStatus('+5 moves — keep going!');
+      updateHUD();
+      saveProgress().catch(() => {});
+      resetHint();
+    });
     $id('candy-ov-restart')?.addEventListener('click', restart);
     $id('candy-ov-lb')?.addEventListener('click', openLeaderboard);
   }
@@ -946,7 +1230,10 @@ window.candyModule = (() => {
     blockerSet    = placeBlockers(levelCfg.blockers);
     setStatus('');
     document.querySelector('.candy-overlay')?.remove();
+    while (!findPossibleMove(board)) board = generateBoard(levelCfg.types);
     render();
+    bindSwipe();
+    resetHint();
   }
 
   // ── Effect system ─────────────────────────────────────────────────────
@@ -1224,6 +1511,7 @@ window.candyModule = (() => {
     const end   = Math.min(MAX_LEVEL, (p + 1) * PAGE_SIZE);
 
     let cells = '';
+    const starMap = loadStars();
     for (let n = start; n <= end; n++) {
       const unlocked  = n <= highestUnlocked;
       const isCurrent = n === currentLevel;
@@ -1234,7 +1522,7 @@ window.candyModule = (() => {
         ${unlocked ? `onclick="window.candyModule._startLevel(${n})"` : ''}
         title="${title}">
         <span class="clb-num">${n}</span>
-        ${unlocked ? '' : '🔒'}
+        ${unlocked ? (starMap[n] ? `<span class="clb-stars">${starsText(starMap[n])}</span>` : '') : '🔒'}
       </button>`;
     }
 
@@ -1425,6 +1713,7 @@ window.candyModule = (() => {
   }
 
   function destroy() {
+    clearTimeout(hintTimer);
     active   = false;
     busy     = false;
     selected = null;
@@ -1443,5 +1732,13 @@ window.candyModule = (() => {
     _buySkin, _equipSkin,
     _buyEffect, _equipEffect,
     toggleLowEnd,
+    // For automated tests: read the board, find a valid move, or set up a scenario
+    _test: {
+      board: () => board.slice(),
+      hintMove: () => findPossibleMove(board),
+      setBoard: (values) => { board = values.slice(); render(); },
+      state: () => ({ score, moves, level: currentLevel, busy, coins }),
+      specialKey, makeSpecial,
+    },
   };
 })();

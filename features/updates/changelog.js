@@ -1,6 +1,23 @@
 ﻿(function () {
-const APP_VERSION = '1.9.26';
+const APP_VERSION = '1.9.27';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.27',
+    date: 'October 7, 2026',
+    title: 'Candy Match: Real Special Candies, Swipe and Stars',
+    summary: 'Special candies are now earned by the shape of your match, you can swipe to swap, and every level gives 1-3 stars.',
+    bullets: [
+      'New: Match 4 for a striped candy (clears its row or column), make an L or T for a bomb candy (3x3 blast), and match 5 for a rainbow colour bomb.',
+      'New: Swap a colour bomb with any candy to clear that whole colour. Swap two specials together for a bigger combo.',
+      'New: Swipe a candy to swap it (tapping two candies still works).',
+      'New: A hint wiggles a possible move after a few seconds, and the board reshuffles if no moves are left.',
+      'New: Sugar Crush turns unused moves into bonus points, and levels give 1-3 stars (shown in Level Select).',
+      'New: Out of moves? Buy +5 moves for 25 coins.',
+      'Fixed: Special candies kept a fixed colour (row clearers were always red); they now keep the colour of the candy they came from.',
+      'Fixed: The random board-wipe special cleared the whole board; it is now a 3x3 bomb.',
+      'Fixed: Math formula fonts were blocked by the security policy.',
+    ]
+  },
   {
     version: '1.9.26',
     date: 'October 7, 2026',

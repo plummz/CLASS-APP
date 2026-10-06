@@ -72,7 +72,7 @@ func _visible_button(b: Dictionary) -> bool:
 		"ground": return p.state == "ground"
 		"plane": return p.state == "plane"
 		"freefall": return p.state == "freefall"
-		"pickup": return p.state == "ground" and not game.nearby_loot().is_empty()
+		"pickup": return p.state == "ground" and not game.interact_label().is_empty()
 		"heal": return p.state == "ground" and not p.best_heal().is_empty()
 		"grenade": return p.state == "ground" and p.grenades > 0
 	return false
@@ -203,14 +203,15 @@ func _draw() -> void:
 		if action == "interact": fill = Color(0.95, 0.75, 0.25, 0.8)
 		draw_circle(c, r, fill)
 		draw_arc(c, r, 0, TAU, 48, RING, 3.0 * u, true)
-		draw_string(font, c + Vector2(-r, r * 0.12), String(b.label), HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, int(clampf(r * 0.34, 13.0 * u, 24.0 * u)), INK_ON if on or action == "interact" else INK)
+		var label: String = game.interact_label() if action == "interact" else String(b.label)
+		draw_string(font, c + Vector2(-r, r * 0.12), label, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, int(clampf(r * 0.34, 13.0 * u, 24.0 * u)), INK_ON if on or action == "interact" else INK)
 
 ## Redraw only when something visible changes (vector redraws every frame cost frame rate).
 func _process(_delta: float) -> void:
 	if not visible or game == null or game.player == null:
 		return
 	var p: RoyalePlayer = game.player
-	var st := "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [p.state, p.stance, p.aiming, stick_finger, stick_vector.snapped(Vector2(0.03, 0.03)), Input.is_action_pressed("fire"), game._ui_blocking(), game.nearby_loot().is_empty(), p.best_heal().is_empty(), p.grenades > 0]
+	var st := "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [p.state, p.stance, p.aiming, stick_finger, stick_vector.snapped(Vector2(0.03, 0.03)), Input.is_action_pressed("fire"), game._ui_blocking(), game.interact_label(), p.best_heal().is_empty(), p.grenades > 0]
 	if st != _last_state:
 		_last_state = st
 		queue_redraw()

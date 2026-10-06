@@ -1,6 +1,18 @@
 ﻿(function () {
-const APP_VERSION = '1.9.27';
+const APP_VERSION = '1.9.28';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.28',
+    date: 'October 7, 2026',
+    title: 'Battle Royale 3D: Doors and Walk-in Houses Fixed',
+    summary: 'You can now walk into houses, and houses have real doors you open and close.',
+    bullets: [
+      'Fixed: Houses had a step at the doorway that stopped you from walking in. Floors are now level with the ground.',
+      'New: Hinged doors on every house. Press F, or tap OPEN / CLOSE next to a door. Bots open doors too.',
+      'Improved: You step up small ledges and curbs automatically.',
+      'Improved: More of each town is walk-in houses (the detailed shop and house models are scenery you can hide behind, not enter).',
+    ]
+  },
   {
     version: '1.9.27',
     date: 'October 7, 2026',

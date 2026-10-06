@@ -52,6 +52,7 @@ Godot 4.7.2 with the Web export templates.
 G="$USERPROFILE/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe"
 "$G" --headless --path . --script res://tools/trim_characters.gd     # after changing characters
 "$G" --headless --path . -- --smoke                                   # full bot match, prints ROYALE_SMOKE_PASS
+"$G" --headless --path . -- --doortest                                # walks into houses (door closed = blocked, open = inside)
 "$G" --path . --resolution 1280x720 -- --screenshots=<dir> [--clean] [--touch-preview]
 "$G" --headless --path . --export-release Web ../../features/royale3d/game/index.html
 ```

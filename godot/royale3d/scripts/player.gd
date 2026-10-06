@@ -519,6 +519,12 @@ func _ground(delta: float) -> void:
 	else:
 		velocity.y -= GRAVITY * delta
 	move_and_slide()
+	# Step up small ledges (curbs, sills) instead of stopping dead in front of them
+	if is_on_floor() and direction.length_squared() > 0.01 and is_on_wall():
+		var step := Vector3(0, 0.38, 0)
+		var ahead := direction.normalized() * 0.25
+		if not test_move(global_transform, step) and not test_move(global_transform.translated(step), ahead):
+			global_position += step + ahead
 	# Water: wading slows you and deep water pushes you back to shore
 	if global_position.y < -0.6:
 		velocity.x *= 0.6

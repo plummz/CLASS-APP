@@ -130,7 +130,9 @@ func _ready() -> void:
 	_apply_settings()
 	loading_layer.queue_free()
 	_start_plane()
-	if smoke_mode:
+	if "--doortest" in args:
+		_run_door_test.call_deferred()
+	elif smoke_mode:
 		_run_smoke.call_deferred()
 	else:
 		for a in args:
@@ -715,17 +717,55 @@ func nearby_loot() -> Dictionary:
 func prompt_text() -> String:
 	if player == null or player.state != "ground" or ended:
 		return ""
-	var item := nearby_loot()
-	if item.is_empty():
-		return ""
 	var key := "" if RoyalePlayer.is_touch_platform() else " [F]"
-	return "Pick up %s%s" % [Items.describe(item), key]
+	var item := nearby_loot()
+	if not item.is_empty():
+		return "Pick up %s%s" % [Items.describe(item), key]
+	var door := nearby_door()
+	if not door.is_empty():
+		return ("Close door%s" if bool(door.open) else "Open door%s") % key
+	return ""
 
+## Label for the context button: PICK UP, OPEN or CLOSE (empty = hide the button).
+func interact_label() -> String:
+	if player == null or player.state != "ground":
+		return ""
+	if not nearby_loot().is_empty():
+		return "PICK UP"
+	var door := nearby_door()
+	if not door.is_empty():
+		return "CLOSE" if bool(door.open) else "OPEN"
+	return ""
+
+func nearby_door() -> Dictionary:
+	if player == null or world == null:
+		return {}
+	return world.nearest_door(player.global_position + Vector3(0, 1.0, 0) - player.global_transform.basis.z * 0.4, 2.2)
+
+## F / context button: pick up loot first, otherwise open or close the nearest door.
 func pickup_nearby() -> void:
 	var item := nearby_loot()
-	if item.is_empty():
+	if not item.is_empty():
+		_player_take(item, true)
 		return
-	_player_take(item, true)
+	var door := nearby_door()
+	if not door.is_empty():
+		world.set_door_open(door, not bool(door.open))
+		sfx.play("pickup", 0.6)
+
+var _door_clock := 0.0
+## Bots open doors they walk up to (like players pressing F).
+func _bots_open_doors(delta: float) -> void:
+	_door_clock -= delta
+	if _door_clock > 0.0:
+		return
+	_door_clock = 0.3
+	for bot in bots:
+		if bot.state != "ground" or not bot.is_alive() or bot.far:
+			continue
+		var door := world.nearest_door(bot.global_position + Vector3(0, 1.0, 0), 1.9)
+		if not door.is_empty() and not bool(door.open):
+			world.set_door_open(door, true)
 
 ## Applies an item to the player. Auto-pickup only takes things that are clearly useful.
 func _player_take(item: Dictionary, manual: bool) -> bool:
@@ -984,6 +1024,7 @@ func _physics_process(delta: float) -> void:
 		player.open_chute()
 	_update_zone(delta)
 	_update_airdrop(delta)
+	_bots_open_doors(delta)
 	# Thin the haze at altitude so the island stays clear from the plane
 	var base_fog := 0.0022 if bool(settings.low) else 0.0012
 	env.environment.fog_density = base_fog * clampf(1.0 - (player.global_position.y - 40.0) / 260.0, 0.18, 1.0)
@@ -1103,6 +1144,18 @@ func _run_screenshots(dir: String) -> void:
 	player.aiming = false
 	await get_tree().create_timer(1.2).timeout
 	await _shot(dir + "/08_bot.png")
+	# A house door: closed, then opened with the context button
+	var house: Dictionary = world.houses[0]
+	var to: Vector3 = Vector3(house.door_in) - Vector3(house.door_out)
+	player.global_position = Vector3(house.door_out) + to.normalized() * 0.6 + Vector3(0, 0.1, 0)
+	player.yaw = atan2(-to.x, -to.z)
+	player.pitch = 0.0
+	bots[0].global_position = Vector3(0, -50, 0)
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/09_door_closed.png")
+	pickup_nearby()
+	await get_tree().create_timer(0.8).timeout
+	await _shot(dir + "/10_door_open.png")
 	print("ROYALE_SCREENSHOTS_DONE")
 	get_tree().quit()
 
@@ -1111,3 +1164,46 @@ func _shot(path: String) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
 	print("saved ", path)
+
+## Walks the player into several houses: blocked while the door is closed, inside once it's open.
+func _run_door_test() -> void:
+	await get_tree().create_timer(0.5).timeout
+	if plane_node: plane_node.queue_free(); plane_node = null
+	player.state = "ground"
+	player.health = 100000.0
+	var passed := 0
+	var tested := 0
+	for house in world.houses.slice(0, 6):
+		tested += 1
+		var node: Node3D = house.node
+		var start: Vector3 = house.door_out
+		var target: Vector3 = house.door_in
+		var results := []
+		for open_first in [false, true]:
+			player.global_position = start + Vector3(0, 0.1, 0)
+			player.velocity = Vector3.ZERO
+			var to := target - start
+			player.yaw = atan2(-to.x, -to.z)
+			player.pitch = 0.0
+			await get_tree().physics_frame
+			var door := world.nearest_door(start + to.normalized() * 2.5 + Vector3(0, 1.0, 0), 2.5)
+			world.set_door_open(door, false)
+			await get_tree().create_timer(0.5).timeout
+			if open_first:
+				player.global_position = start + to.normalized() * 1.2 + Vector3(0, 0.1, 0)
+				await get_tree().physics_frame
+				pickup_nearby()   # same as pressing F next to the door
+				await get_tree().create_timer(0.6).timeout
+				player.global_position = start + Vector3(0, 0.1, 0)
+			Input.action_press("move_forward")
+			await get_tree().create_timer(3.0).timeout
+			Input.action_release("move_forward")
+			var local := node.to_local(player.global_position)
+			var inside: bool = absf(local.x) < float(house.w) * 0.5 - 0.2 and absf(local.z) < float(house.d) * 0.5 - 0.2
+			results.append(inside)
+		var ok: bool = results[0] == false and results[1] == true
+		if ok: passed += 1
+		print("DOORTEST house %d: closed->inside=%s open->inside=%s %s" % [tested, results[0], results[1], "OK" if ok else "FAIL"])
+	print("DOORTEST %d/%d passed" % [passed, tested])
+	print("DOORTEST_PASS" if passed == tested else "DOORTEST_FAIL")
+	get_tree().quit()

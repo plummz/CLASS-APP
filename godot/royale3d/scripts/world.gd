@@ -11,6 +11,7 @@ const CHUNK := 32                 ## terrain cells per render chunk
 const WATER_Y := 0.0
 const WALL_T := 0.25
 const STOREY := 3.0
+const FLOOR_TOP := 0.05   ## floor surface above the ground: low enough to walk straight in
 
 const TOWN_NAMES := ["Rizal Heights", "Mabini Port", "Campus Row", "Bonifacio Farm", "Luna Ridge", "Aguinaldo Square"]
 
@@ -33,6 +34,8 @@ var town_mask := PackedByteArray()   ## per terrain vertex: 0 = open land, n = i
 var _heights_ready := false
 var towns: Array[Dictionary] = []         ## {name, pos: Vector2, radius, y, tier}
 var loot_points: Array[Dictionary] = []   ## {pos: Vector3, tier, path: Array[Vector3]}
+var doors: Array[Dictionary] = []         ## {hinge: Node3D, center: Vector3, open: bool, swing: float}
+var houses: Array[Dictionary] = []        ## {node, w, d, door_out: Vector3, door_in: Vector3}
 var map_texture: ImageTexture
 var quality_low := false
 
@@ -291,7 +294,7 @@ func _build_town(town: Dictionary) -> void:
 				_add_loot_point(Vector3(p.x, y + 0.3, p.y), 2, [])
 			continue
 		var roll := rng.randf()
-		if roll < 0.62 or walk_in < 4:
+		if roll < 0.75 or walk_in < 4:
 			walk_in += 1
 			var w := 8.0 if rng.randf() < 0.5 else 10.0
 			var d: float = [8.0, 10.0, 12.0][rng.randi_range(0, 2)]
@@ -386,12 +389,12 @@ func _build_house(origin: Vector3, yaw: float, w: float, d: float, floors: int, 
 	var hd := d * 0.5
 	var floor_color := Color("8a6a4a") if not warehouse else Color("6d6f6a")
 	var height := STOREY if not warehouse else 5.0
-	# Foundation / floor
-	_box(st, body, Vector3(0, 0.1, 0), Vector3(w, 0.4, d), floor_color)
+	# Floor slab: its top is only FLOOR_TOP above the ground so there is no step at the door
+	_box(st, body, Vector3(0, FLOOR_TOP - 0.2, 0), Vector3(w, 0.4, d), floor_color)
 	var door_w := 1.5 if not warehouse else 4.0
 	var door_h := 2.3 if not warehouse else 3.6
 	for f in floors:
-		var by := 0.3 + f * STOREY
+		var by := FLOOR_TOP + f * STOREY
 		var win := [0.0, 1.2, 1.0, 2.1]
 		# Front wall (-Z) has the door on the ground floor
 		var front_openings: Array = [[w * 0.5, door_w, 0.0, door_h]] if f == 0 else [[w * 0.5, 1.2, 1.0, 2.1]]
@@ -415,22 +418,22 @@ func _build_house(origin: Vector3, yaw: float, w: float, d: float, floors: int, 
 			var door_in := Vector3(0, by, -hd + 1.4)
 			var path: Array[Vector3] = [node.to_global(door_out), node.to_global(door_in)]
 			if f == 1:
-				path.append(node.to_global(Vector3(hw - 1.4, 0.3, hd - 1.0)))
+				path.append(node.to_global(Vector3(hw - 1.4, FLOOR_TOP, hd - 1.0)))
 				path.append(node.to_global(Vector3(hw - 1.4, by, -hd + 1.6)))
 			_add_loot_point(node.to_global(local), tier, path)
 	if floors == 2:
 		# Upper floor with a stair hole along the right wall, plus a ramp-style staircase
 		var hole_w := 1.5
-		var slab_y := 0.3 + STOREY - 0.1
+		var slab_y := FLOOR_TOP + STOREY - 0.1
 		_box(st, body, Vector3(-hole_w * 0.5, slab_y, 0), Vector3(w - hole_w, 0.2, d), floor_color)
 		_box(st, body, Vector3(hw - hole_w * 0.5, slab_y, -hd + 1.0), Vector3(hole_w, 0.2, 2.0), floor_color)
 		var run := d - 3.2
 		var angle := atan2(STOREY, run)
 		var ramp_len := sqrt(run * run + STOREY * STOREY)
 		var ramp_basis := Basis(Vector3.RIGHT, angle)
-		_box(st, body, Vector3(hw - hole_w * 0.5 - 0.05, 0.3 + STOREY * 0.5, hd - 1.1 - run * 0.5 + 0.0), Vector3(hole_w - 0.2, 0.18, ramp_len), Color("9a7a58"), true, ramp_basis)
+		_box(st, body, Vector3(hw - hole_w * 0.5 - 0.05, FLOOR_TOP + STOREY * 0.5, hd - 1.1 - run * 0.5 + 0.0), Vector3(hole_w - 0.2, 0.18, ramp_len), Color("9a7a58"), true, ramp_basis)
 	# Roof slab with a slight overhang
-	var top := 0.3 + floors * STOREY if not warehouse else 0.3 + height
+	var top := FLOOR_TOP + floors * STOREY if not warehouse else FLOOR_TOP + height
 	_box(st, body, Vector3(0, top + 0.12, 0), Vector3(w + 0.6, 0.25, d + 0.6), roof_color)
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
@@ -441,6 +444,72 @@ func _build_house(origin: Vector3, yaw: float, w: float, d: float, floors: int, 
 	mat.metallic_specular = 0.1
 	mi.material_override = mat
 	node.add_child(mi)
+	# Hinged doors in the ground-floor doorways (warehouses keep open loading bays)
+	if not warehouse:
+		_add_door(node, Vector3(w * 0.5 - hw, FLOOR_TOP, -hd), door_w, door_h, 1.0)
+		if d >= 10.0:
+			_add_door(node, Vector3(w * 0.7 - hw, FLOOR_TOP, hd), door_w, door_h, -1.0)
+	houses.append({"node": node, "w": w, "d": d, "door_out": node.to_global(Vector3(0, FLOOR_TOP, -hd - 2.5)), "door_in": node.to_global(Vector3(0, FLOOR_TOP, -hd + 1.5))})
+
+## A door panel that swings on a hinge at the doorway's left edge. side = 1 for the front wall
+## (opens inward toward +Z), -1 for the back wall.
+func _add_door(house: Node3D, doorway_center: Vector3, width: float, height: float, side: float) -> void:
+	var hinge := Node3D.new()
+	hinge.position = doorway_center + Vector3(-width * 0.5 * side, 0, 0)
+	house.add_child(hinge)
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	hinge.add_child(body)
+	var panel_size := Vector3(width - 0.06, height - 0.04, 0.07)
+	var offset := Vector3(width * 0.5 * side, height * 0.5, 0)
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = panel_size
+	cs.shape = shape
+	cs.position = offset
+	body.add_child(cs)
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = panel_size
+	box.material = _door_material()
+	mesh.mesh = box
+	mesh.position = offset
+	body.add_child(mesh)
+	# Handle
+	var knob := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.04
+	sphere.height = 0.08
+	knob.mesh = sphere
+	knob.position = offset + Vector3(width * 0.38 * side, -0.1, -0.06)
+	body.add_child(knob)
+	doors.append({"hinge": hinge, "center": house.to_global(doorway_center + Vector3(0, 1.0, 0)), "open": false, "swing": -side})
+
+var _door_mat: StandardMaterial3D
+func _door_material() -> StandardMaterial3D:
+	if _door_mat == null:
+		_door_mat = StandardMaterial3D.new()
+		_door_mat.albedo_color = Color("7a5232")
+		_door_mat.roughness = 0.8
+	return _door_mat
+
+func nearest_door(pos: Vector3, max_dist := 2.2) -> Dictionary:
+	var best := {}
+	var best_d := max_dist
+	for door in doors:
+		var d := pos.distance_to(door.center)
+		if d < best_d:
+			best_d = d
+			best = door
+	return best
+
+func set_door_open(door: Dictionary, open: bool) -> void:
+	if door.is_empty() or bool(door.open) == open:
+		return
+	door.open = open
+	var hinge: Node3D = door.hinge
+	var tween := hinge.create_tween()
+	tween.tween_property(hinge, "rotation:y", deg_to_rad(100.0) * float(door.swing) if open else 0.0, 0.35).set_trans(Tween.TRANS_SINE)
 
 func _add_loot_point(pos: Vector3, tier: int, path: Array) -> void:
 	var typed: Array[Vector3] = []

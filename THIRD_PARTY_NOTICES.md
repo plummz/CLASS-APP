@@ -7,3 +7,4 @@
   `godot/royale3d/assets/LICENSE-*.txt`.
 - **Godot Engine 4.7** (Battle Royale 3D runtime): MIT.
 - **Dungeon of Knowledge** is embedded from the Study Arena project (KayKit assets, CC0).
+- **Battle Royale 3D furniture** (`godot/royale3d/assets/furniture/`): Kenney Furniture Kit, CC0 1.0.

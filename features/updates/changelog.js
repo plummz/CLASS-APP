@@ -1,6 +1,26 @@
 ﻿(function () {
-const APP_VERSION = '1.9.28';
+const APP_VERSION = '1.9.29';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.29',
+    date: 'October 7, 2026',
+    title: 'Battle Royale 3D: New Buildings, Interiors, Crates, Backpack and Settings',
+    summary: 'Every town building can now be entered, houses have furnished rooms, crates drop from the sky and from fallen players, and the drop, zone and phone layout feel much better.',
+    bullets: [
+      'New: Houses with pitched roofs, framed glass windows, porches and chimneys, plus shops, apartments, warehouses and barns. Every town building can be entered.',
+      'New: Furnished rooms: living rooms, kitchens, bedrooms and bathrooms with sofas, TVs, beds, kitchens, desks, showers and more. Stairs have real steps.',
+      'New: Supply crates parachute into the safe zone each phase, and fallen players leave a crate with everything they carried. Walk up to see the list and take what you want.',
+      'New: Backpack (BAG button or Tab) to see, use and drop your items.',
+      'New: Settings for look and scope speed, field of view, graphics, sound, vibration, left-handed mode, button size and opacity, and moving any button where you like.',
+      'New: A mountain, a lake, roads between towns, farm fields and parks.',
+      'Improved: Falling is about twice as fast, with skydiving arms, wind, a parachute jolt and an altitude meter.',
+      'Improved: The zone shows when it is shrinking, where the safe area is, and tints the screen when you are outside it.',
+      'Fixed: Invisible walls around tents, shelters and decorative buildings.',
+      'Fixed: Results and pause buttons were pushed into a corner; they are centred now.',
+      'Fixed: The zone wall looked like rain from far away.',
+      'Fixed: On phones in landscape the game now fills the whole screen.',
+    ]
+  },
   {
     version: '1.9.28',
     date: 'October 7, 2026',

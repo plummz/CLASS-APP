@@ -43,12 +43,19 @@ var loot_items: Array[Dictionary] = []
 var loot_grid := {}
 var loot_reserved := {}
 var recent_shots: Array[Dictionary] = []
+var zone_alert := ""        ## shown by the HUD: "", "soon", "shrinking"
+var crates: Array[Dictionary] = []      ## {pos, items, node, kind, label, ready}
+var falling_crates: Array[Dictionary] = []
+var _nearby_crate: Dictionary = {}
+var _crate_frame := -1
 var airdrop_pos := Vector3.ZERO
 var airdrop_node: Node3D
 var airdrop_done := false
 var total_players := BOT_COUNT + 1
 var bot_accuracy := 0.85
-var settings := {"sensitivity": 1.0, "volume": 0.8, "low": false}
+var settings := {"sensitivity": 1.0, "scope_sensitivity": 0.8, "volume": 0.8, "low": false, "fov": 78.0,
+	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false,
+	"layout": {}}
 var paused := false
 var map_open := false
 var ended := false
@@ -161,6 +168,11 @@ func _apply_settings() -> void:
 	if player:
 		player.touch_sensitivity = float(settings.sensitivity)
 		player.mouse_sensitivity = 0.0022 * float(settings.sensitivity)
+		player.scope_sensitivity = float(settings.scope_sensitivity)
+		player.invert_y = bool(settings.invert)
+		player.base_fov = float(settings.fov)
+	if touch: touch.apply_settings(settings)
+	if hud: hud.apply_settings(settings)
 	if sfx: sfx.set_volume(float(settings.volume))
 	if sun: sun.shadow_enabled = not bool(settings.low) and not RoyalePlayer.is_touch_platform()
 	if env:
@@ -214,10 +226,19 @@ func _build_zone_wall() -> void:
 	shader.code = """
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
+uniform float shrinking = 0.0;
 void fragment() {
-	float stripe = step(0.5, fract(UV.x * 220.0 + TIME * 0.3));
-	ALBEDO = vec3(0.25, 0.5, 1.0);
-	ALPHA = 0.22 + stripe * 0.08;
+	// A smooth glowing curtain: strongest at the ground and fading upward, with a slow soft
+	// shimmer (thin stripes looked like rain from inside the zone). It brightens and pulses
+	// while the zone is shrinking.
+	float height = 1.0 - UV.y;                       // 0 at the top of the wall, 1 at the base
+	float fade = smoothstep(0.0, 0.85, height);
+	float shimmer = 0.5 + 0.5 * sin(UV.x * 40.0 + TIME * 0.6) * sin(UV.x * 17.0 - TIME * 0.4);
+	float pulse = 0.5 + 0.5 * sin(TIME * mix(1.2, 5.0, shrinking));
+	vec3 calm = vec3(0.25, 0.5, 1.0);
+	vec3 hot = vec3(0.6, 0.4, 1.0);
+	ALBEDO = mix(calm, hot, shrinking * pulse);
+	ALPHA = fade * (0.16 + shimmer * 0.06 + shrinking * 0.14 * pulse);
 }
 """
 	var m := ShaderMaterial.new()
@@ -373,6 +394,8 @@ func _start_zone_phase(index: int) -> void:
 	zone.shrinking = false
 	if index == 1 and not airdrop_done:
 		_spawn_airdrop()
+	elif index >= 1 and index <= 4:
+		_spawn_supply_drop()
 	if index > 0 and not smoke_mode:
 		hud.flash_message("New safe zone marked on the map", 3.0)
 
@@ -383,12 +406,23 @@ func _update_zone(delta: float) -> void:
 			zone.radius = 600.0
 			_start_zone_phase(0)
 		return
+	var before := float(zone.timer)
 	zone.timer -= delta
 	var data: Dictionary = ZONE_PHASES[zone.phase]
+	if not zone.shrinking and not smoke_mode:
+		for warn in [30.0, 10.0]:
+			if before > warn and float(zone.timer) <= warn:
+				hud.flash_message("The zone starts shrinking in %d seconds!" % int(warn), 3.0)
+				sfx.play("zone", 1.4)
+	zone_alert = "shrinking" if zone.shrinking else ("soon" if float(zone.timer) <= 30.0 else "")
+	var wall_mat := zone_wall.material_override as ShaderMaterial
+	wall_mat.set_shader_parameter("shrinking", 1.0 if zone.shrinking else 0.0)
 	if not zone.shrinking and zone.timer <= 0.0:
 		zone.shrinking = true
 		zone.timer = float(data.shrink)
-		if not smoke_mode: hud.flash_message("The zone is shrinking!", 2.5)
+		if not smoke_mode:
+			hud.flash_message("⚠ The zone is shrinking! Move to the safe area.", 3.0)
+			sfx.play("zone", 0.7)
 	elif zone.shrinking:
 		var t := 1.0 - clampf(zone.timer / float(data.shrink), 0.0, 1.0)
 		zone.center = Vector2(zone.from_center).lerp(zone.next_center, t)
@@ -670,7 +704,11 @@ func _make_loot_node(item: Dictionary) -> Node3D:
 	return n
 
 func loot_available(item: Dictionary) -> bool:
-	return not item.is_empty() and not bool(item.taken)
+	if item.is_empty():
+		return false
+	if item.has("crate"):
+		return crates.has(item.crate) and not (item.crate.items as Array).is_empty()
+	return not bool(item.get("taken", false))
 
 func _remove_loot(item: Dictionary) -> void:
 	item.taken = true
@@ -721,6 +759,8 @@ func prompt_text() -> String:
 	var item := nearby_loot()
 	if not item.is_empty():
 		return "Pick up %s%s" % [Items.describe(item), key]
+	if not nearby_crate().is_empty():
+		return ""   # the crate's loot list is on screen
 	var door := nearby_door()
 	if not door.is_empty():
 		return ("Close door%s" if bool(door.open) else "Open door%s") % key
@@ -732,6 +772,8 @@ func interact_label() -> String:
 		return ""
 	if not nearby_loot().is_empty():
 		return "PICK UP"
+	if not nearby_crate().is_empty():
+		return ""   # the crate list has its own Take / Take all buttons
 	var door := nearby_door()
 	if not door.is_empty():
 		return "CLOSE" if bool(door.open) else "OPEN"
@@ -747,6 +789,10 @@ func pickup_nearby() -> void:
 	var item := nearby_loot()
 	if not item.is_empty():
 		_player_take(item, true)
+		return
+	var crate := nearby_crate()
+	if not crate.is_empty():
+		take_from_crate(crate, -1)
 		return
 	var door := nearby_door()
 	if not door.is_empty():
@@ -769,6 +815,14 @@ func _bots_open_doors(delta: float) -> void:
 
 ## Applies an item to the player. Auto-pickup only takes things that are clearly useful.
 func _player_take(item: Dictionary, manual: bool) -> bool:
+	if not _apply_item_to_player(item, manual):
+		return false
+	hud.flash_message("Picked up %s" % Items.describe(item), 1.4)
+	sfx.play("pickup")
+	_remove_loot(item)
+	return true
+
+func _apply_item_to_player(item: Dictionary, manual: bool) -> bool:
 	var p := player
 	match String(item.type):
 		"gun":
@@ -787,18 +841,17 @@ func _player_take(item: Dictionary, manual: bool) -> bool:
 			p.meds[String(item.id)] = mini(max_n, int(p.meds[String(item.id)]) + int(item.count))
 		"vest":
 			if int(item.level) <= p.vest and not manual: return false
+			if p.vest > 0 and manual: _add_loot({"type": "vest", "level": p.vest, "hp": p.vest_hp}, p.global_position + Vector3(0.5, 0, 0.3), [])
 			p.vest = int(item.level)
-			p.vest_hp = Items.ARMOR_DURABILITY[p.vest]
+			p.vest_hp = float(item.get("hp", Items.ARMOR_DURABILITY[p.vest]))
 		"helmet":
 			if int(item.level) <= p.helmet and not manual: return false
+			if p.helmet > 0 and manual: _add_loot({"type": "helmet", "level": p.helmet, "hp": p.helmet_hp}, p.global_position + Vector3(-0.5, 0, 0.3), [])
 			p.helmet = int(item.level)
-			p.helmet_hp = Items.ARMOR_DURABILITY[p.helmet]
+			p.helmet_hp = float(item.get("hp", Items.ARMOR_DURABILITY[p.helmet]))
 		"grenade":
 			if p.grenades >= Items.MAX_GRENADES: return false
-			p.grenades += int(item.count)
-	hud.flash_message("Picked up %s" % Items.describe(item), 1.4)
-	sfx.play("pickup")
-	_remove_loot(item)
+			p.grenades = mini(Items.MAX_GRENADES, p.grenades + int(item.count))
 	return true
 
 func _auto_pickup() -> void:
@@ -827,11 +880,44 @@ func find_loot_for_bot(bot: RoyaleBot, radius: float) -> Dictionary:
 		if score < best_score:
 			best_score = score
 			best = item
-	if not best.is_empty():
+	# Crates (death boxes and supply drops) count as loot too
+	for c in crates:
+		if not bool(c.ready) or (c.items as Array).is_empty():
+			continue
+		var d := Vector3(c.pos).distance_to(bot.global_position)
+		if d > radius:
+			continue
+		for it in c.items:
+			var good: bool = (String(it.type) == "gun" and (bot.gun_id.is_empty() or Items.gun(String(it.id)).tier > Items.gun(bot.gun_id).tier)) \
+				or (String(it.type) == "vest" and int(it.level) > bot.vest) or (String(it.type) == "helmet" and int(it.level) > bot.helmet)
+			if good and d - 20.0 < best_score:
+				best_score = d - 20.0
+				best = {"crate": c, "pos": c.pos, "path": [], "uid": -1}
+				break
+	if not best.is_empty() and not best.has("crate"):
 		loot_reserved[best.uid] = bot
 	return best
 
 func bot_pickup(bot: RoyaleBot, item: Dictionary) -> void:
+	if item.has("crate"):
+		var crate: Dictionary = item.crate
+		if not crates.has(crate) or Vector3(crate.pos).distance_to(bot.global_position) > 3.0:
+			return
+		for it in (crate.items as Array).duplicate():
+			match String(it.type):
+				"gun":
+					if bot.gun_id.is_empty() or Items.gun(String(it.id)).tier > Items.gun(bot.gun_id).tier:
+						bot.set_gun(String(it.id)); crate.items.erase(it)
+				"vest":
+					if int(it.level) > bot.vest:
+						bot.vest = int(it.level); bot.vest_hp = Items.ARMOR_DURABILITY[bot.vest]; crate.items.erase(it)
+				"helmet":
+					if int(it.level) > bot.helmet:
+						bot.helmet = int(it.level); bot.helmet_hp = Items.ARMOR_DURABILITY[bot.helmet]; crate.items.erase(it)
+				"med":
+					if bot.meds < 3: bot.meds += 1; crate.items.erase(it)
+		_remove_crate_if_empty(crate)
+		return
 	if not loot_available(item) or Vector3(item.pos).distance_to(bot.global_position) > 2.5:
 		loot_reserved.erase(item.get("uid", -1))
 		return
@@ -847,20 +933,115 @@ func bot_pickup(bot: RoyaleBot, item: Dictionary) -> void:
 		"grenade": bot.grenades += 1
 	_remove_loot(item)
 
-## PUBG-style death box: everything the victim carried drops where they fell.
+## PUBG-style death crate: a box holding exactly what the victim carried.
 func _drop_death_loot(victim: Node3D) -> void:
-	var at := victim.global_position + Vector3(0, 0.1, 0)
-	var spread := func(i: int) -> Vector3: return at + Vector3(cos(i * 1.7) * 0.7, 0, sin(i * 1.7) * 0.7)
-	var i := 0
+	var items: Array = []
 	if victim is RoyaleBot:
 		var b := victim as RoyaleBot
 		if not b.gun_id.is_empty():
-			_add_loot({"type": "gun", "id": b.gun_id}, spread.call(i), []); i += 1
-			_add_loot({"type": "ammo", "id": Items.gun(b.gun_id).ammo, "count": 40}, spread.call(i), []); i += 1
-		if b.vest > 0: _add_loot({"type": "vest", "level": b.vest}, spread.call(i), []); i += 1
-		if b.helmet > 0: _add_loot({"type": "helmet", "level": b.helmet}, spread.call(i), []); i += 1
-		if b.meds > 0: _add_loot({"type": "med", "id": "firstaid", "count": 1}, spread.call(i), []); i += 1
-		_add_loot({"type": "med", "id": "bandage", "count": 3}, spread.call(i), [])
+			items.append({"type": "gun", "id": b.gun_id, "mag": b.mag})
+			items.append({"type": "ammo", "id": Items.gun(b.gun_id).ammo, "count": 60})
+		if b.vest > 0: items.append({"type": "vest", "level": b.vest, "hp": b.vest_hp})
+		if b.helmet > 0: items.append({"type": "helmet", "level": b.helmet, "hp": b.helmet_hp})
+		if b.meds > 0: items.append({"type": "med", "id": "firstaid", "count": b.meds})
+		items.append({"type": "med", "id": "bandage", "count": 3})
+		if b.grenades > 0: items.append({"type": "grenade", "count": b.grenades})
+	elif victim is RoyalePlayer:
+		var p := victim as RoyalePlayer
+		for g in p.slots:
+			if not g.is_empty(): items.append({"type": "gun", "id": g.id, "mag": g.mag})
+		for a in p.ammo: if int(p.ammo[a]) > 0: items.append({"type": "ammo", "id": a, "count": p.ammo[a]})
+		if p.vest > 0: items.append({"type": "vest", "level": p.vest, "hp": p.vest_hp})
+		if p.helmet > 0: items.append({"type": "helmet", "level": p.helmet, "hp": p.helmet_hp})
+		for m in p.meds: if int(p.meds[m]) > 0: items.append({"type": "med", "id": m, "count": p.meds[m]})
+		if p.grenades > 0: items.append({"type": "grenade", "count": p.grenades})
+	var at := victim.global_position
+	at.y = world.height_at(at.x, at.z) if at.y < world.height_at(at.x, at.z) + 0.5 else at.y
+	_make_crate(at, items, "death", "%s's crate" % victim.combatant_name, true)
+
+func _make_crate(pos: Vector3, items: Array, kind: String, label: String, ready: bool) -> Dictionary:
+	var crate := {"pos": pos, "items": items, "kind": kind, "label": label, "ready": ready}
+	crates.append(crate)
+	if smoke_mode:
+		return crate
+	var n := Node3D.new()
+	add_child(n)
+	n.global_position = pos
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	if kind == "death":
+		box.size = Vector3(0.9, 0.55, 0.6)
+		box.material = _loot_material(Color("3b3f45"))
+	else:
+		box.size = Vector3(1.3, 0.95, 1.3)
+		box.material = _loot_material(Color("2f6fd6") if kind == "supply" else Color("d64545"))
+	mi.mesh = box
+	mi.position.y = box.size.y * 0.5
+	n.add_child(mi)
+	var stripe := MeshInstance3D.new()
+	var sbox := BoxMesh.new()
+	sbox.size = Vector3(box.size.x + 0.02, 0.1, box.size.z + 0.02)
+	sbox.material = _loot_material(Color("f2c94c"))
+	stripe.mesh = sbox
+	stripe.position.y = box.size.y * 0.7
+	n.add_child(stripe)
+	var tag := Label3D.new()
+	tag.text = label
+	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	tag.font_size = 22
+	tag.outline_size = 8
+	tag.pixel_size = 0.004
+	tag.position.y = box.size.y + 0.6
+	tag.visibility_range_end = 40.0
+	tag.no_depth_test = false
+	n.add_child(tag)
+	crate.node = n
+	return crate
+
+func _remove_crate_if_empty(crate: Dictionary) -> void:
+	if not (crate.items as Array).is_empty():
+		return
+	crates.erase(crate)
+	if crate.has("node") and is_instance_valid(crate.node):
+		var n: Node3D = crate.node
+		n.create_tween().tween_property(n, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
+		get_tree().create_timer(0.35).timeout.connect(n.queue_free)
+
+## The crate the player is standing next to (its contents show in the loot list).
+func nearby_crate() -> Dictionary:
+	if Engine.get_process_frames() == _crate_frame:
+		return _nearby_crate
+	_crate_frame = Engine.get_process_frames()
+	_nearby_crate = {}
+	if player == null or player.state != "ground":
+		return _nearby_crate
+	var best := 2.8
+	for c in crates:
+		if not bool(c.ready) or (c.items as Array).is_empty():
+			continue
+		var d := Vector3(c.pos).distance_to(player.global_position)
+		if d < best:
+			best = d
+			_nearby_crate = c
+	return _nearby_crate
+
+## Take one item from a crate (index) — or all of them (index -1).
+func take_from_crate(crate: Dictionary, index: int) -> void:
+	if crate.is_empty():
+		return
+	var items: Array = crate.items
+	var picks: Array = []
+	if index < 0:
+		picks = items.duplicate()
+	elif index < items.size():
+		picks = [items[index]]
+	for item in picks:
+		var copy: Dictionary = item.duplicate()
+		copy.pos = player.global_position
+		if _apply_item_to_player(copy, true):
+			items.erase(item)
+	sfx.play("pickup")
+	_remove_crate_if_empty(crate)
 
 # ── Grenades and airdrop ─────────────────────────────────────
 
@@ -926,55 +1107,97 @@ func _explode(pos: Vector3, owner_name: String) -> void:
 
 func _spawn_airdrop() -> void:
 	airdrop_done = true
+	var special := "awm" if rng.randf() < 0.5 else "m249"
+	var items := [
+		{"type": "gun", "id": special},
+		{"type": "ammo", "id": Items.gun(special).ammo, "count": 60},
+		{"type": "vest", "level": 3},
+		{"type": "helmet", "level": 3},
+		{"type": "med", "id": "medkit", "count": 1},
+	]
+	_drop_crate_from_sky(items, "airdrop", "Airdrop")
+	if not smoke_mode:
+		hud.flash_message("Airdrop incoming! (red marker on the map)", 4.0)
+
+## A supply crate parachutes into the safe zone with a random set of good gear.
+func _spawn_supply_drop() -> void:
+	var items: Array = []
+	var gid := Items.pick_weighted(Items.GUN_WEIGHTS[2], rng)
+	items.append({"type": "gun", "id": gid})
+	items.append({"type": "ammo", "id": Items.gun(gid).ammo, "count": 60})
+	items.append({"type": ["vest", "helmet"][rng.randi_range(0, 1)], "level": rng.randi_range(2, 3)})
+	items.append({"type": "med", "id": ["firstaid", "medkit", "drink"][rng.randi_range(0, 2)], "count": 1})
+	if rng.randf() < 0.6: items.append({"type": "grenade", "count": 2})
+	items.append({"type": "med", "id": "bandage", "count": 5})
+	_drop_crate_from_sky(items, "supply", "Supply crate")
+	if not smoke_mode:
+		hud.flash_message("Supply crate dropping! (blue marker on the map)", 3.5)
+
+func _drop_crate_from_sky(items: Array, kind: String, label: String) -> void:
 	var a := rng.randf() * TAU
 	var c: Vector2 = zone.next_center + Vector2(cos(a), sin(a)) * float(zone.next_radius) * rng.randf_range(0.0, 0.7)
 	if not world.is_land(c.x, c.y):
 		c = zone.next_center
-	airdrop_pos = Vector3(c.x, world.height_at(c.x, c.y), c.y)
-	airdrop_node = Node3D.new()
-	add_child(airdrop_node)
-	var crate := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(1.4, 1.0, 1.4)
-	box.material = _loot_material(Color("d64545"))
-	crate.mesh = box
-	crate.position.y = 0.5
-	airdrop_node.add_child(crate)
-	var chute := MeshInstance3D.new()
-	var sp := SphereMesh.new()
-	sp.radius = 2.2
-	sp.height = 1.6
-	sp.is_hemisphere = true
-	sp.material = _loot_material(Color("f2f2f2"))
-	chute.mesh = sp
-	chute.position.y = 4.0
-	chute.name = "Chute"
-	airdrop_node.add_child(chute)
-	airdrop_node.global_position = airdrop_pos + Vector3(0, 220.0, 0)
-	if not smoke_mode:
-		hud.flash_message("Airdrop incoming! (red marker on the map)", 4.0)
+	var ground := Vector3(c.x, world.height_at(c.x, c.y), c.y)
+	var crate := _make_crate(ground + Vector3(0, 200.0, 0), items, kind, label, false)
+	crate.target = ground
+	if kind == "airdrop":
+		airdrop_pos = ground
+	if crate.has("node"):
+		var chute := MeshInstance3D.new()
+		var sp := SphereMesh.new()
+		sp.radius = 2.2
+		sp.height = 1.6
+		sp.is_hemisphere = true
+		sp.material = _loot_material(Color("f2f2f2") if kind == "supply" else Color("ff6b3d"))
+		chute.mesh = sp
+		chute.position.y = 4.2
+		chute.name = "Chute"
+		crate.node.add_child(chute)
+		# Coloured smoke trail so it can be spotted from far away
+		var smoke := CPUParticles3D.new()
+		smoke.amount = 24
+		smoke.lifetime = 2.5
+		smoke.direction = Vector3.UP
+		smoke.initial_velocity_min = 2.0
+		smoke.initial_velocity_max = 4.0
+		smoke.gravity = Vector3(0, 0.6, 0)
+		smoke.scale_amount_min = 1.0
+		smoke.scale_amount_max = 2.5
+		var puff := SphereMesh.new()
+		puff.radius = 0.4
+		puff.height = 0.8
+		var pm := StandardMaterial3D.new()
+		pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		pm.albedo_color = Color(0.3, 0.55, 1.0, 0.45) if kind == "supply" else Color(1.0, 0.35, 0.3, 0.45)
+		pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		puff.material = pm
+		smoke.mesh = puff
+		smoke.name = "Smoke"
+		smoke.emitting = false
+		crate.node.add_child(smoke)
+	falling_crates.append(crate)
 
 func _update_airdrop(delta: float) -> void:
-	if airdrop_node == null or not is_instance_valid(airdrop_node):
-		return
-	airdrop_node.global_position.y -= 9.0 * delta
-	if airdrop_node.global_position.y <= airdrop_pos.y:
-		airdrop_node.global_position.y = airdrop_pos.y
-		var chute := airdrop_node.get_node_or_null("Chute")
-		if chute: chute.queue_free()
-		var special := "awm" if rng.randf() < 0.5 else "m249"
-		var at := airdrop_pos + Vector3(0, 1.0, 0)
-		_add_loot({"type": "gun", "id": special}, at + Vector3(0.9, -0.9, 0), [])
-		_add_loot({"type": "ammo", "id": Items.gun(special).ammo, "count": 60}, at + Vector3(-0.9, -0.9, 0), [])
-		_add_loot({"type": "vest", "level": 3}, at + Vector3(0, -0.9, 0.9), [])
-		_add_loot({"type": "helmet", "level": 3}, at + Vector3(0, -0.9, -0.9), [])
-		_add_loot({"type": "med", "id": "medkit", "count": 1}, at + Vector3(0.9, -0.9, 0.9), [])
-		airdrop_node = null
+	for crate in falling_crates.duplicate():
+		var target: Vector3 = crate.target
+		crate.pos = Vector3(crate.pos) + Vector3(0, -10.0 * delta, 0)
+		if Vector3(crate.pos).y <= target.y:
+			crate.pos = target
+			crate.ready = true
+			falling_crates.erase(crate)
+			if crate.has("node"):
+				var chute: Node = crate.node.get_node_or_null("Chute")
+				if chute: chute.queue_free()
+				var smoke: CPUParticles3D = crate.node.get_node_or_null("Smoke")
+				if smoke: smoke.emitting = true
+		if crate.has("node") and is_instance_valid(crate.node):
+			(crate.node as Node3D).global_position = crate.pos
 
 # ── Input and frame loop ─────────────────────────────────────
 
 func _ui_blocking() -> bool:
-	return paused or map_open or ended
+	return paused or map_open or ended or (hud != null and hud.modal_open())
 
 func toggle_pause() -> void:
 	if ended:
@@ -985,6 +1208,16 @@ func toggle_pause() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		touch.release_all()
 	# The match keeps running while paused (it's a live battle), only input stops
+
+## Ask the CLASS-APP page to go full screen (and landscape on phones).
+func request_fullscreen() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("""(function(){
+			try { if (window.parent && window.parent.royale3dModule) { window.parent.royale3dModule.toggleFullscreen(); return; } } catch (e) {}
+			var d = document.documentElement; if (d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(function(){ try { screen.orientation.lock('landscape'); } catch (e) {} }).catch(function(){});
+		})()""", true)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_WINDOWED)
 
 func toggle_map() -> void:
 	map_open = not map_open
@@ -999,6 +1232,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		else: toggle_pause()
 	elif event.is_action_pressed("map") and not ended:
 		toggle_map()
+	elif event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).physical_keycode in [KEY_TAB, KEY_B] and not ended and not paused:
+		hud.toggle_backpack()
 	if _ui_blocking() or player == null or not player.is_alive():
 		return
 	if event.is_action_pressed("reload"): player.start_reload()
@@ -1010,6 +1245,42 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("slot2"): player.switch_slot(1)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT and not RoyalePlayer.is_touch_platform():
 		player.aiming = (event as InputEventMouseButton).pressed
+
+## Backpack: drop a gun / armour, or use a med item.
+func drop_from_backpack(kind: String, key: String) -> void:
+	var at := player.global_position + (-player.global_transform.basis.z) * 0.8
+	match kind:
+		"gun":
+			var i := int(key)
+			var g: Dictionary = player.slots[i]
+			if g.is_empty(): return
+			_add_loot({"type": "gun", "id": g.id, "mag": g.mag}, at, [])
+			player.slots[i] = {}
+			if player.active == i and not player.slots[1 - i].is_empty(): player.active = 1 - i
+			player._refresh_gun_model()
+		"vest":
+			if player.vest == 0: return
+			_add_loot({"type": "vest", "level": player.vest, "hp": player.vest_hp}, at, [])
+			player.vest = 0
+		"helmet":
+			if player.helmet == 0: return
+			_add_loot({"type": "helmet", "level": player.helmet, "hp": player.helmet_hp}, at, [])
+			player.helmet = 0
+		"ammo":
+			var n := int(player.ammo[key])
+			if n <= 0: return
+			_add_loot({"type": "ammo", "id": key, "count": n}, at, [])
+			player.ammo[key] = 0
+		"med":
+			var m := int(player.meds[key])
+			if m <= 0: return
+			_add_loot({"type": "med", "id": key, "count": m}, at, [])
+			player.meds[key] = 0
+		"grenade":
+			if player.grenades <= 0: return
+			_add_loot({"type": "grenade", "count": player.grenades}, at, [])
+			player.grenades = 0
+	sfx.play("pickup", 0.8)
 
 func play_sfx(name: String, _pos: Vector3) -> void:
 	sfx.play(name)
@@ -1156,6 +1427,48 @@ func _run_screenshots(dir: String) -> void:
 	pickup_nearby()
 	await get_tree().create_timer(0.8).timeout
 	await _shot(dir + "/10_door_open.png")
+	# Inside: just past the door, looking into the house, then toward the back rooms
+	player.global_position = Vector3(house.door_in) + Vector3(0, 0.1, 0)
+	player.pitch = -0.12
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/11_inside.png")
+	player.yaw += 0.6
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/12_inside_b.png")
+	# The town from a rooftop height
+	player.global_position = Vector3(house.door_out) + Vector3(0, 9.0, 0) - to.normalized() * 14.0
+	player.yaw = atan2(-to.x, -to.z)
+	player.pitch = -0.35
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/13_street.png")
+	# Crate loot list next to a death crate
+	player.global_position = Vector3(house.door_out) - to.normalized() * 3.0 + Vector3(0, 0.2, 0)
+	player.pitch = -0.3
+	var fake := bots[1]
+	fake.global_position = player.global_position + (-player.global_transform.basis.z) * 1.6
+	fake.set_gun("akm"); fake.vest = 2; fake.vest_hp = 220.0; fake.meds = 2
+	_drop_death_loot(fake)
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/14_crate.png")
+	hud.toggle_backpack()
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/15_backpack.png")
+	hud.toggle_backpack()
+	toggle_pause()
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/16_pause.png")
+	hud.pause_layer.visible = false
+	hud.settings_layer.visible = true
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/17_settings.png")
+	hud.start_layout_edit()
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/18_layout_edit.png")
+	hud.finish_layout_edit()
+	toggle_pause()
+	hud.show_end(false, 7, 3, 37)
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/19_end.png")
 	print("ROYALE_SCREENSHOTS_DONE")
 	get_tree().quit()
 

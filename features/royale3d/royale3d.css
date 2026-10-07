@@ -89,3 +89,11 @@ body:has(#page-royale3d.active) #custom-bg-btn { display: none !important; }
   background: linear-gradient(135deg, #ff6b3d, #c0262d) !important;
   color: #fff !important;
 }
+
+/* Phones in landscape: the game takes the whole screen. The bar is hidden (Leave match and
+   Full screen are in the in-game pause menu) and the page uses the real visible height, so
+   browser toolbars don't leave gaps. */
+#page-royale3d.active { height: 100vh; height: 100dvh; }
+@media (orientation: landscape) and (max-height: 540px) {
+  #page-royale3d .royale3d-bar { display: none; }
+}

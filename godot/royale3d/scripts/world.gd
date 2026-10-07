@@ -42,6 +42,9 @@ var quality_low := false
 var _multimesh_buckets := {}   ## "model|chunk" -> {mesh_list, transforms}
 var _scene_cache := {}
 var _static_body: StaticBody3D
+var buildings: RoyaleBuildings
+var roads: Array = []   ## [Vector2 a, Vector2 b] road segments between towns
+var features: Array[Dictionary] = []  ## mountain / lake shaping {pos, radius, height}
 
 func generate(seed_value: int, low_quality := false) -> void:
 	quality_low = low_quality
@@ -59,7 +62,10 @@ func generate(seed_value: int, low_quality := false) -> void:
 	add_child(_static_body)
 	var t := Time.get_ticks_msec()
 	var marks := []
+	buildings = RoyaleBuildings.new(self, rng)
+	_place_features()
 	_place_towns()
+	_place_roads()
 	_build_heights(); marks.append("heights %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_build_terrain(); marks.append("terrain %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_build_water()
@@ -79,7 +85,21 @@ func _raw_height(x: float, z: float) -> float:
 	var mask := 1.0 - smoothstep(0.72, 1.0, d)
 	var hills := (noise.get_noise_2d(x, z) * 0.5 + 0.5)
 	var h := hills * hills * 34.0 * mask + mask * 3.5 - (1.0 - mask) * 9.0
+	# A mountain and a lake give the island landmarks and high ground to fight over
+	for f in features:
+		var dist := Vector2(x, z).distance_to(f.pos)
+		var r: float = f.radius
+		if dist < r:
+			var t := 1.0 - dist / r
+			h += float(f.height) * t * t * (3.0 - 2.0 * t) * mask
 	return h
+
+func _place_features() -> void:
+	features.clear()
+	var a := rng.randf() * TAU
+	features.append({"pos": Vector2(cos(a), sin(a)) * 210.0, "radius": 140.0, "height": 55.0, "kind": "mountain"})
+	var b := a + PI * rng.randf_range(0.7, 1.3)
+	features.append({"pos": Vector2(cos(b), sin(b)) * 160.0, "radius": 70.0, "height": -26.0, "kind": "lake"})
 
 func _place_towns() -> void:
 	towns.clear()
@@ -96,11 +116,42 @@ func _place_towns() -> void:
 	var a2 := base_angle + TAU * 1.5 / float(TOWN_NAMES.size() - 1)
 	towns.append({"name": "Fort Santiago Base", "pos": Vector2(cos(a2), sin(a2)) * 345.0, "radius": 58.0, "tier": 2, "military": true})
 	for town in towns:
+		for f in features:
+			var away: Vector2 = town.pos - Vector2(f.pos)
+			var min_d: float = float(f.radius) + float(town.radius) + 10.0
+			if away.length() < min_d:
+				town.pos = Vector2(f.pos) + away.normalized() * min_d
 		var p: Vector2 = town.pos
 		town.y = maxf(2.5, _raw_height(p.x, p.y))
 
 ## Ground height. After generation this samples the prebuilt grid (fast enough for bots to
 ## call every frame); during generation it computes the noise and town flattening directly.
+func _place_roads() -> void:
+	roads.clear()
+	# Each town connects to its two nearest neighbours
+	for i in towns.size():
+		var dists: Array = []
+		for j in towns.size():
+			if j != i: dists.append([Vector2(towns[i].pos).distance_to(towns[j].pos), j])
+		dists.sort_custom(func(p, q): return float(p[0]) < float(q[0]))
+		for k in mini(2, dists.size()):
+			var j: int = dists[k][1]
+			var seg := [Vector2(towns[mini(i, j)].pos), Vector2(towns[maxi(i, j)].pos)]
+			if not roads.has(seg): roads.append(seg)
+
+func _road_distance(p: Vector2) -> float:
+	var best := INF
+	for seg in roads:
+		var a: Vector2 = seg[0]
+		var b: Vector2 = seg[1]
+		# Quick reject: outside the segment's bounding box (plus margin)
+		if p.x < minf(a.x, b.x) - 6.0 or p.x > maxf(a.x, b.x) + 6.0 or p.y < minf(a.y, b.y) - 6.0 or p.y > maxf(a.y, b.y) + 6.0:
+			continue
+		var ab: Vector2 = Vector2(seg[1]) - a
+		var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+		best = minf(best, p.distance_to(a + ab * t))
+	return best
+
 func height_at(x: float, z: float) -> float:
 	if _heights_ready:
 		var fx := clampf((x + MAP_SIZE * 0.5) / GRID, 0.0, VERTS - 1.001)
@@ -167,14 +218,28 @@ func _ground_color(x: float, z: float, h: float, slope: float, mask: int) -> Col
 	# Palette matched to the Kenney Nature Kit (mint-teal grass, warm sand, grey rock)
 	if h < 1.6:
 		c = Color("e8cfa2").lerp(Color("dcc08f"), n)
-	elif slope > 0.55:
+	elif h > 52.0:
+		c = Color("eef2f4").lerp(Color("d5dde2"), n)      # snow cap
+	elif slope > 0.5 or h > 40.0:
 		c = Color("8d959b").lerp(Color("737b82"), n)
 	elif h > 22.0:
 		c = Color("2f8f72").lerp(Color("27795f"), n)
 	else:
 		c = Color("3cae86").lerp(Color("2f9a76"), n)
 	if mask > 0:
-		c = c.lerp(Color("c7a982") if not bool(towns[mask - 1].military) else Color("8e8b80"), 0.6)
+		var town: Dictionary = towns[mask - 1]
+		var sp: float = town.get("spacing", 17.0)
+		var lx := fposmod(x - float(town.pos.x) + sp * 0.5, sp)
+		var lz := fposmod(z - float(town.pos.y) + sp * 0.5, sp)
+		var street := minf(lx, sp - lx) < 2.4 or minf(lz, sp - lz) < 2.4
+		if bool(town.military):
+			c = Color("8e8b80").lerp(Color("7f7c72"), n)
+		elif street:
+			c = Color("6e6a66").lerp(Color("625e5a"), n * 0.6)   # paved street
+		else:
+			c = c.lerp(Color("5fbf8f"), 0.4)                     # tidy yards
+	elif h > 1.6 and _road_distance(Vector2(x, z)) < 3.2:
+		c = Color("b59a72").lerp(Color("a78c64"), n)           # dirt road
 	return c
 
 func _build_terrain() -> void:
@@ -273,45 +338,77 @@ func _build_town(town: Dictionary) -> void:
 	var r: float = town.radius
 	var y: float = town.y
 	var military := bool(town.military)
-	var spacing := 17.0 if not military else 22.0
+	var farm := String(town.name).contains("Farm")
+	var spacing := 17.0 if not military else 24.0
+	town.spacing = spacing
 	var count := int(r / spacing)
 	var plots: Array[Vector2] = []
 	for gz in range(-count, count + 1):
 		for gx in range(-count, count + 1):
-			var p := center + Vector2(gx, gz) * spacing + Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2))
+			var p := center + Vector2(gx, gz) * spacing
 			if p.distance_to(center) > r - 6.0:
 				continue
 			plots.append(p)
 	plots.shuffle()
-	var walk_in := 0
+	# About a third of the plots stay open: yards and small parks with trees and benches
+	var keep := int(ceil(plots.size() * 0.66))
+	for k in range(keep, plots.size()):
+		var park := plots[k]
+		for t in 3:
+			var tp := park + Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6))
+			_add_instance(TREES_LOW[rng.randi_range(0, TREES_LOW.size() - 1)], Vector3(tp.x, y, tp.y), rng.randf_range(4.5, 6.5), true, 0.35)
+		_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(park.x, y, park.y), 3.0, false, 0.0)
+	plots = plots.slice(0, keep)
 	for p in plots:
 		var yaw := float(rng.randi_range(0, 3)) * PI * 0.5
+		var pos := Vector3(p.x, y, p.y)
 		if military:
-			if rng.randf() < 0.55:
-				_build_house(Vector3(p.x, y, p.y), yaw, 12.0, 18.0, 1, Color("8d9188"), Color("4b524a"), 2, true)
+			if rng.randf() < 0.6:
+				buildings.build("warehouse", pos, yaw, 2, Color.WHITE, Color.WHITE)
 			else:
-				_place_decor("res://assets/survival/structure-metal.glb", Vector3(p.x, y, p.y), yaw, 4.2)
-				_add_loot_point(Vector3(p.x, y + 0.3, p.y), 2, [])
+				_place_decor("res://assets/survival/structure-metal.glb", pos, yaw, 4.2)
+				_add_loot_point(pos + Vector3(0, 0.3, 0), 2, [])
 			continue
+		var wall: Color = WALL_COLORS[rng.randi_range(0, WALL_COLORS.size() - 1)]
+		var roof: Color = ROOF_COLORS[rng.randi_range(0, ROOF_COLORS.size() - 1)]
 		var roll := rng.randf()
-		if roll < 0.75 or walk_in < 4:
-			walk_in += 1
-			var w := 8.0 if rng.randf() < 0.5 else 10.0
-			var d: float = [8.0, 10.0, 12.0][rng.randi_range(0, 2)]
-			var floors := 2 if rng.randf() < 0.3 else 1
-			_build_house(Vector3(p.x, y, p.y), yaw, w, d, floors, WALL_COLORS[rng.randi_range(0, WALL_COLORS.size() - 1)], ROOF_COLORS[rng.randi_range(0, ROOF_COLORS.size() - 1)], int(town.tier), false)
-		elif roll < 0.85:
-			var letter := "abcdefghijklmnopqrstu"[rng.randi_range(0, 20)]
-			_place_decor("res://assets/suburban/building-type-%s.glb" % letter, Vector3(p.x, y, p.y), yaw, 7.5)
+		if farm and roll < 0.3:
+			buildings.build("barn", pos, yaw, int(town.tier), wall, roof)
+		elif int(town.tier) == 1 and roll < 0.3:
+			buildings.build("shop", pos, yaw, int(town.tier), wall, roof)
+		elif int(town.tier) == 1 and roll < 0.45:
+			buildings.build("apartment", pos, yaw, int(town.tier), wall, roof)
+		elif roll < 0.12:
+			buildings.build("shop", pos, yaw, int(town.tier), wall, roof)
 		else:
-			var letter2 := "abcdefgh"[rng.randi_range(0, 7)]
-			_place_decor("res://assets/commercial/building-%s.glb" % letter2, Vector3(p.x, y, p.y), yaw, 7.0)
-	# A few barrels and crates in the streets for cover
+			buildings.build("house", pos, yaw, int(town.tier), wall, roof)
+		# Yard details: fence, planter or a tree
+		if rng.randf() < 0.5:
+			_place_decor("res://assets/suburban/fence-1x4.glb", pos + Basis(Vector3.UP, yaw) * Vector3(rng.randf_range(-3, 3), 0, 7.6), yaw, 3.0)
+		if rng.randf() < 0.4:
+			_place_decor("res://assets/suburban/tree-large.glb", pos + Basis(Vector3.UP, yaw) * Vector3(6.5, 0, 6.5), 0.0, 6.0)
+	# Barrels and crates in the streets for cover
 	for i in int(r / 6.0):
 		var a := rng.randf() * TAU
 		var p2 := center + Vector2(cos(a), sin(a)) * rng.randf_range(4.0, r)
 		var model: String = ["res://assets/survival/barrel.glb", "res://assets/survival/box-large.glb", "res://assets/guns/crate-wide.glb"][rng.randi_range(0, 2)]
 		_place_decor(model, Vector3(p2.x, y, p2.y), rng.randf() * TAU, 1.6 if model.ends_with("crate-wide.glb") else 1.4)
+	if farm:
+		_build_fields(town)
+
+## Crop fields with fences around a farm town.
+func _build_fields(town: Dictionary) -> void:
+	var crops := ["crops_cornStageD", "crops_wheatStageB", "crops_leafsStageB", "crop_pumpkin", "crop_melon"]
+	for f in 4:
+		var a := rng.randf() * TAU
+		var c: Vector2 = Vector2(town.pos) + Vector2(cos(a), sin(a)) * (float(town.radius) + 30.0)
+		if not is_land(c.x, c.y):
+			continue
+		var model: String = crops[rng.randi_range(0, crops.size() - 1)]
+		for gz in range(-4, 5):
+			for gx in range(-6, 7):
+				var p := c + Vector2(gx * 2.0, gz * 2.6)
+				_add_instance(model, Vector3(p.x, height_at(p.x, p.y), p.y), 2.6, false, 0.0)
 
 ## Adds a box (centre, size) in house-local space to the surface tool and a collision box.
 func _box(st: SurfaceTool, body: StaticBody3D, center: Vector3, size: Vector3, color: Color, collide := true, basis := Basis.IDENTITY) -> void:
@@ -329,11 +426,17 @@ func _box(st: SurfaceTool, body: StaticBody3D, center: Vector3, size: Vector3, c
 		var shade := 0.82 + 0.18 * maxf(0.0, n.y) + 0.06 * n.x
 		var c := Color(color.r * shade, color.g * shade, color.b * shade)
 		var q: Array = face[1]
-		for idx in [0, 1, 2, 0, 2, 3]:
+		# Godot draws clockwise faces (seen from outside) and culls the rest; pick the
+		# triangle order that faces outward so top faces (floors, roofs) aren't culled.
+		var v0: Vector3 = basis * Vector3(q[0])
+		var v1: Vector3 = basis * Vector3(q[1])
+		var v2: Vector3 = basis * Vector3(q[2])
+		var order := [0, 1, 2, 0, 2, 3] if (v1 - v0).cross(v2 - v0).dot(n) < 0.0 else [0, 2, 1, 0, 3, 2]
+		for idx in order:
 			st.set_color(c)
 			st.set_normal(n)
 			st.add_vertex(center + basis * Vector3(q[idx]))
-	if collide:
+	if collide and body != null:
 		var cs := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
 		shape.size = size
@@ -374,82 +477,6 @@ func _wall(st: SurfaceTool, body: StaticBody3D, a: Vector3, b: Vector3, base_y: 
 		c.y = base_y + (float(sp[2]) + float(sp[3])) * 0.5
 		var size := Vector3(len_s, h, WALL_T) if axis_x else Vector3(WALL_T, h, len_s)
 		_box(st, body, c, size, color)
-
-func _build_house(origin: Vector3, yaw: float, w: float, d: float, floors: int, wall_color: Color, roof_color: Color, tier: int, warehouse: bool) -> void:
-	var node := Node3D.new()
-	node.position = origin
-	node.rotation.y = yaw
-	add_child(node)
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	node.add_child(body)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var hw := w * 0.5
-	var hd := d * 0.5
-	var floor_color := Color("8a6a4a") if not warehouse else Color("6d6f6a")
-	var height := STOREY if not warehouse else 5.0
-	# Floor slab: its top is only FLOOR_TOP above the ground so there is no step at the door
-	_box(st, body, Vector3(0, FLOOR_TOP - 0.2, 0), Vector3(w, 0.4, d), floor_color)
-	var door_w := 1.5 if not warehouse else 4.0
-	var door_h := 2.3 if not warehouse else 3.6
-	for f in floors:
-		var by := FLOOR_TOP + f * STOREY
-		var win := [0.0, 1.2, 1.0, 2.1]
-		# Front wall (-Z) has the door on the ground floor
-		var front_openings: Array = [[w * 0.5, door_w, 0.0, door_h]] if f == 0 else [[w * 0.5, 1.2, 1.0, 2.1]]
-		if w >= 10.0 and f == 0:
-			front_openings.append([w * 0.2, 1.2, 1.0, 2.1])
-		_wall(st, body, Vector3(-hw, 0, -hd), Vector3(hw, 0, -hd), by, height, front_openings, wall_color)
-		# Back wall gets a back door on the ground floor of bigger houses
-		var back_openings: Array = [[w * 0.3, 1.2, 1.0, 2.1]]
-		if f == 0 and (d >= 10.0 or warehouse):
-			back_openings = [[w * 0.7, door_w, 0.0, door_h]]
-		_wall(st, body, Vector3(-hw, 0, hd), Vector3(hw, 0, hd), by, height, back_openings, wall_color)
-		_wall(st, body, Vector3(-hw, 0, -hd), Vector3(-hw, 0, hd), by, height, [[d * 0.5, 1.4, 1.0, 2.1]] if not warehouse else [[d * 0.3, 2.0, 1.5, 3.0], [d * 0.7, 2.0, 1.5, 3.0]], wall_color)
-		_wall(st, body, Vector3(hw, 0, -hd), Vector3(hw, 0, hd), by, height, [[d * 0.5, 1.4, 1.0, 2.1]] if not warehouse else [[d * 0.5, 2.0, 1.5, 3.0]], wall_color)
-		# Loot spots on this floor
-		var spots := 2 if not warehouse else 5
-		for i in spots:
-			var local := Vector3(rng.randf_range(-hw + 1.2, hw - 1.2), by + 0.05, rng.randf_range(-hd + 1.2, hd - 1.2))
-			if floors == 2 and local.x > hw - 2.4:
-				local.x = -local.x  # keep clear of the stairs
-			var door_out := Vector3(0, by, -hd - 1.6)
-			var door_in := Vector3(0, by, -hd + 1.4)
-			var path: Array[Vector3] = [node.to_global(door_out), node.to_global(door_in)]
-			if f == 1:
-				path.append(node.to_global(Vector3(hw - 1.4, FLOOR_TOP, hd - 1.0)))
-				path.append(node.to_global(Vector3(hw - 1.4, by, -hd + 1.6)))
-			_add_loot_point(node.to_global(local), tier, path)
-	if floors == 2:
-		# Upper floor with a stair hole along the right wall, plus a ramp-style staircase
-		var hole_w := 1.5
-		var slab_y := FLOOR_TOP + STOREY - 0.1
-		_box(st, body, Vector3(-hole_w * 0.5, slab_y, 0), Vector3(w - hole_w, 0.2, d), floor_color)
-		_box(st, body, Vector3(hw - hole_w * 0.5, slab_y, -hd + 1.0), Vector3(hole_w, 0.2, 2.0), floor_color)
-		var run := d - 3.2
-		var angle := atan2(STOREY, run)
-		var ramp_len := sqrt(run * run + STOREY * STOREY)
-		var ramp_basis := Basis(Vector3.RIGHT, angle)
-		_box(st, body, Vector3(hw - hole_w * 0.5 - 0.05, FLOOR_TOP + STOREY * 0.5, hd - 1.1 - run * 0.5 + 0.0), Vector3(hole_w - 0.2, 0.18, ramp_len), Color("9a7a58"), true, ramp_basis)
-	# Roof slab with a slight overhang
-	var top := FLOOR_TOP + floors * STOREY if not warehouse else FLOOR_TOP + height
-	_box(st, body, Vector3(0, top + 0.12, 0), Vector3(w + 0.6, 0.25, d + 0.6), roof_color)
-	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.vertex_color_is_srgb = true
-	mat.roughness = 0.95
-	mat.metallic_specular = 0.1
-	mi.material_override = mat
-	node.add_child(mi)
-	# Hinged doors in the ground-floor doorways (warehouses keep open loading bays)
-	if not warehouse:
-		_add_door(node, Vector3(w * 0.5 - hw, FLOOR_TOP, -hd), door_w, door_h, 1.0)
-		if d >= 10.0:
-			_add_door(node, Vector3(w * 0.7 - hw, FLOOR_TOP, hd), door_w, door_h, -1.0)
-	houses.append({"node": node, "w": w, "d": d, "door_out": node.to_global(Vector3(0, FLOOR_TOP, -hd - 2.5)), "door_in": node.to_global(Vector3(0, FLOOR_TOP, -hd + 1.5))})
 
 ## A door panel that swings on a hinge at the doorway's left edge. side = 1 for the front wall
 ## (opens inward toward +Z), -1 for the back wall.
@@ -521,7 +548,8 @@ func _load_scene(path: String) -> PackedScene:
 		_scene_cache[path] = load(path) if ResourceLoader.exists(path) else null
 	return _scene_cache[path]
 
-## Decorative (closed) model with a collision box from its bounds.
+## Decorative model. Collision follows the actual mesh shape (a box from the bounds made
+## invisible walls around tents, shelters and fences).
 func _place_decor(path: String, pos: Vector3, yaw: float, scale_value: float) -> void:
 	var scene := _load_scene(path)
 	if scene == null:
@@ -531,22 +559,20 @@ func _place_decor(path: String, pos: Vector3, yaw: float, scale_value: float) ->
 	inst.rotation.y = yaw
 	inst.scale = Vector3.ONE * scale_value
 	add_child(inst)
-	var box := AABB()
-	var first := true
 	for m: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if quality_low else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		var local_tf := _relative_transform(inst, m)
-		var b := local_tf * m.get_aabb()
-		box = b if first else box.merge(b)
-		first = false
-	if first:
-		return
-	var cs := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = box.size * scale_value
-	cs.shape = shape
-	cs.transform = Transform3D(Basis(Vector3.UP, yaw), pos + Basis(Vector3.UP, yaw) * (box.get_center() * scale_value))
-	_static_body.add_child(cs)
+		if m.mesh == null:
+			continue
+		var shape: Shape3D = _trimesh_cache.get(m.mesh)
+		if shape == null:
+			shape = m.mesh.create_trimesh_shape()
+			_trimesh_cache[m.mesh] = shape
+		var cs := CollisionShape3D.new()
+		cs.shape = shape
+		cs.transform = Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos) * _relative_transform(inst, m)
+		_static_body.add_child(cs)
+
+var _trimesh_cache := {}
 
 func _relative_transform(root: Node3D, node: Node3D) -> Transform3D:
 	var tf := Transform3D.IDENTITY
@@ -599,13 +625,18 @@ func _scatter_nature() -> void:
 		_place_decor("res://assets/survival/tent.glb", Vector3(p.x, y, p.y), rng.randf() * TAU, 2.6)
 		_add_loot_point(Vector3(p.x + 2.5, y + 0.2, p.y + 1.0), 0, [])
 
-func _add_instance(model: String, pos: Vector3, scale_value: float, collide: bool, radius: float) -> void:
-	var chunk := Vector2i(floori((pos.x + MAP_SIZE * 0.5) / 256.0), floori((pos.z + MAP_SIZE * 0.5) / 256.0))
-	var key := "%s|%d_%d" % [model, chunk.x, chunk.y]
+## Batches any model by 'path' into MultiMeshes per chunk; vis = draw distance (0 = default).
+func add_model_instance(path: String, tf: Transform3D, chunk_size: float, vis: float) -> void:
+	var chunk := Vector2i(floori((tf.origin.x + MAP_SIZE * 0.5) / chunk_size), floori((tf.origin.z + MAP_SIZE * 0.5) / chunk_size))
+	var key := "%s|%d_%d|%d" % [path, chunk.x, chunk.y, int(chunk_size)]
 	if not _multimesh_buckets.has(key):
-		_multimesh_buckets[key] = {"model": model, "transforms": []}
+		_multimesh_buckets[key] = {"path": path, "transforms": [], "vis": vis}
+	_multimesh_buckets[key].transforms.append(tf)
+
+func _add_instance(model: String, pos: Vector3, scale_value: float, collide: bool, radius: float) -> void:
 	var yaw := rng.randf() * TAU
-	_multimesh_buckets[key].transforms.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos))
+	var vis := 70.0 if (model.begins_with("grass") or model.begins_with("flower") or model.begins_with("crop")) else (180.0 if model.begins_with("plant") else 0.0)
+	add_model_instance(NATURE + model + ".glb", Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 256.0, vis)
 	if collide:
 		var cs := CollisionShape3D.new()
 		if radius > 0.8:
@@ -625,19 +656,18 @@ func _flush_multimeshes() -> void:
 	var mesh_cache := {}
 	for key: String in _multimesh_buckets:
 		var bucket: Dictionary = _multimesh_buckets[key]
-		var model := String(bucket.model)
-		if not mesh_cache.has(model):
+		var path := String(bucket.path)
+		if not mesh_cache.has(path):
 			var parts: Array = []
-			var scene := _load_scene(NATURE + model + ".glb")
+			var scene := _load_scene(path)
 			if scene != null:
 				var inst: Node3D = scene.instantiate()
 				for m: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
 					parts.append([m.mesh, _relative_transform(inst, m)])
 				inst.free()
-			mesh_cache[model] = parts
-		var is_grass := model.begins_with("grass") or model.begins_with("flower")
-		var is_bush := model.begins_with("plant")
-		for part in mesh_cache[model]:
+			mesh_cache[path] = parts
+		var vis := float(bucket.vis)
+		for part in mesh_cache[path]:
 			var mm := MultiMesh.new()
 			mm.transform_format = MultiMesh.TRANSFORM_3D
 			mm.mesh = part[0]
@@ -647,11 +677,10 @@ func _flush_multimeshes() -> void:
 				mm.set_instance_transform(i, Transform3D(tfs[i]) * Transform3D(part[1]))
 			var mmi := MultiMeshInstance3D.new()
 			mmi.multimesh = mm
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if (quality_low or is_grass or is_bush) else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-			if is_grass:
-				mmi.visibility_range_end = 70.0
-			elif is_bush:
-				mmi.visibility_range_end = 180.0
+			var small := vis > 0.0
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if (quality_low or small) else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			if vis > 0.0:
+				mmi.visibility_range_end = vis
 			add_child(mmi)
 	_multimesh_buckets.clear()
 
@@ -673,6 +702,8 @@ func _build_map_texture() -> void:
 				c = Color("3cae86").lerp(Color("27795f"), clampf(h / 34.0, 0.0, 1.0))
 			if town_mask[i] > 0:
 				c = Color("b8ad95")
+			elif h > 40.0:
+				c = Color("9aa1a6") if h < 52.0 else Color("eef2f4")
 			img.set_pixel(px, py, c)
 	map_texture = ImageTexture.create_from_image(img)
 

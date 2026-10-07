@@ -16,10 +16,10 @@ const ACCELERATION := 26.0
 const GRAVITY := 19.0
 const JUMP_VELOCITY := 5.6
 const EYE := {"stand": 1.62, "crouch": 1.05, "prone": 0.38}
-const FREEFALL_SPEED := 46.0
-const PARACHUTE_FALL := 5.5
-const PARACHUTE_GLIDE := 11.0
-const AUTO_CHUTE_HEIGHT := 90.0
+const FREEFALL_SPEED := 58.0      ## level fall; diving (looking down) goes up to ~75 m/s
+const PARACHUTE_FALL := 9.0
+const PARACHUTE_GLIDE := 14.0
+const AUTO_CHUTE_HEIGHT := 60.0
 
 var game: Node
 var state := "plane"
@@ -48,6 +48,7 @@ var recoil_pitch := 0.0
 
 var mouse_sensitivity := 0.0022
 var touch_sensitivity := 1.0
+var scope_sensitivity := 0.8
 var invert_y := false
 var base_fov := 78.0
 var yaw := 0.0
@@ -59,6 +60,10 @@ var gun_holder: Node3D
 var muzzle_light: OmniLight3D
 var muzzle_flash: MeshInstance3D
 var chute: Node3D
+var arms: Node3D
+var wind: CPUParticles3D
+var land_dip := 0.0
+var chute_jolt := 0.0
 var bob_phase := 0.0
 var kick := 0.0
 var shake_left := 0.0
@@ -111,6 +116,8 @@ func _ready() -> void:
 	muzzle_flash.visible = false
 	view_model.add_child(muzzle_flash)
 	_build_chute()
+	_build_arms()
+	_build_wind()
 
 func _build_chute() -> void:
 	chute = Node3D.new()
@@ -128,6 +135,83 @@ func _build_chute() -> void:
 	canopy.mesh = sphere
 	canopy.position = Vector3(0, 5.6, 0.6)
 	chute.add_child(canopy)
+	# Straps from the shoulders up to the canopy edge
+	var strap_mat := StandardMaterial3D.new()
+	strap_mat.albedo_color = Color("2b2b2b")
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var strap := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.015
+			cyl.bottom_radius = 0.015
+			var from := Vector3(sx * 0.25, 1.45, 0.0)
+			var to := Vector3(sx * 2.6, 5.0, 0.6 + sz * 2.0)
+			cyl.height = from.distance_to(to)
+			cyl.material = strap_mat
+			strap.mesh = cyl
+			strap.position = (from + to) * 0.5
+			strap.look_at_from_position(strap.position, to, Vector3.FORWARD)
+			strap.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+			chute.add_child(strap)
+
+## Arms reaching forward while skydiving / holding the parachute toggles.
+func _build_arms() -> void:
+	arms = Node3D.new()
+	arms.visible = false
+	camera.add_child(arms)
+	var skin := StandardMaterial3D.new()
+	skin.albedo_color = Color("c98f6b")
+	var sleeve := StandardMaterial3D.new()
+	sleeve.albedo_color = Color("3e5a3a")
+	for sx in [-1.0, 1.0]:
+		var arm := Node3D.new()
+		arm.name = "Arm%d" % int(sx)
+		arm.position = Vector3(sx * 0.32, -0.32, -0.25)
+		arms.add_child(arm)
+		var upper := MeshInstance3D.new()
+		var cap := CapsuleMesh.new()
+		cap.radius = 0.06
+		cap.height = 0.5
+		cap.material = sleeve
+		upper.mesh = cap
+		upper.rotation_degrees = Vector3(-70, 0, sx * 25)
+		upper.position = Vector3(sx * 0.05, 0.05, -0.18)
+		arm.add_child(upper)
+		var hand := MeshInstance3D.new()
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.06
+		sphere.height = 0.11
+		sphere.material = skin
+		hand.mesh = sphere
+		hand.position = Vector3(sx * 0.14, 0.12, -0.42)
+		arm.add_child(hand)
+	for m: MeshInstance3D in arms.find_children("*", "MeshInstance3D", true, false):
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## Thin streaks rushing past the camera while falling fast.
+func _build_wind() -> void:
+	wind = CPUParticles3D.new()
+	wind.emitting = false
+	wind.amount = 70
+	wind.lifetime = 0.35
+	wind.local_coords = true
+	wind.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	wind.emission_box_extents = Vector3(3.0, 2.2, 0.5)
+	wind.direction = Vector3(0, 0, 1)
+	wind.spread = 4.0
+	wind.gravity = Vector3.ZERO
+	wind.initial_velocity_min = 30.0
+	wind.initial_velocity_max = 45.0
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.012, 0.012, 1.2)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(1, 1, 1, 0.35)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	streak.material = m
+	wind.mesh = streak
+	wind.position = Vector3(0, 0, -6.0)
+	camera.add_child(wind)
 
 # ── Input ────────────────────────────────────────────────────
 
@@ -156,7 +240,7 @@ func _apply_look(amount: Vector2) -> void:
 
 ## Slower look while zoomed so scopes stay controllable.
 func current_zoom_scale() -> float:
-	return 1.0 / sqrt(maxf(1.0, current_zoom())) if aiming else 1.0
+	return scope_sensitivity / sqrt(maxf(1.0, current_zoom())) if aiming else 1.0
 
 func current_zoom() -> float:
 	var g := current_gun()
@@ -400,14 +484,21 @@ func die(attacker: String) -> void:
 
 func start_freefall() -> void:
 	state = "freefall"
-	velocity = Vector3.ZERO
+	velocity = Vector3(0, -8.0, 0)
 	pitch = deg_to_rad(-55.0)
+	arms.visible = true
+	wind.emitting = true
 
 func open_chute() -> void:
 	if state != "freefall":
 		return
 	state = "parachute"
 	chute.visible = true
+	chute.scale = Vector3(0.2, 0.2, 0.2)
+	chute.create_tween().tween_property(chute, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	chute_jolt = 1.0   # the canopy catching air jerks the view
+	shake_left = 0.35
+	wind.emitting = false
 	if game: game.play_sfx("chute", global_position)
 
 func ground_height_below() -> float:
@@ -459,10 +550,10 @@ func _freefall(delta: float) -> void:
 	var dive := clampf(-pitch / deg_to_rad(85.0), 0.0, 1.0)
 	var forward := -transform.basis.z
 	var right := transform.basis.x
-	var horizontal := (forward * (-input.y) + right * input.x) * (14.0 + 14.0 * (1.0 - dive))
-	velocity.x = move_toward(velocity.x, horizontal.x, 12.0 * delta)
-	velocity.z = move_toward(velocity.z, horizontal.z, 12.0 * delta)
-	velocity.y = -(FREEFALL_SPEED * (0.7 + 0.5 * dive))
+	var horizontal := (forward * (-input.y) + right * input.x) * (18.0 + 16.0 * (1.0 - dive))
+	velocity.x = move_toward(velocity.x, horizontal.x, 14.0 * delta)
+	velocity.z = move_toward(velocity.z, horizontal.z, 14.0 * delta)
+	velocity.y = move_toward(velocity.y, -(FREEFALL_SPEED * (0.85 + 0.45 * dive)), 40.0 * delta)
 	move_and_slide()
 	var agl := global_position.y - ground_height_below()
 	if agl < AUTO_CHUTE_HEIGHT:
@@ -485,8 +576,11 @@ func _parachute(delta: float) -> void:
 func _land() -> void:
 	state = "ground"
 	chute.visible = false
+	arms.visible = false
+	wind.emitting = false
 	velocity = Vector3.ZERO
 	pitch = 0.0
+	land_dip = 1.0   # knees bend on touchdown
 	if game: game.on_player_landed()
 
 func _ground(delta: float) -> void:
@@ -548,13 +642,33 @@ func _update_feel(delta: float) -> void:
 	if shake_left > 0.0:
 		shake_left -= delta
 		target += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.05
+	var t := Time.get_ticks_msec() * 0.001
+	wind.emitting = state == "freefall"
+	if state == "ground" or state == "dead":
+		arms.visible = false
+	if state == "freefall":
+		target += Vector3(sin(t * 7.0) * 0.03, cos(t * 9.0) * 0.03, 0)
+		camera.rotation.z = sin(t * 1.3) * 0.04 + (Input.get_axis("move_left", "move_right") * -0.18 if controls_enabled else 0.0)
+		arms.position = Vector3(sin(t * 6.0) * 0.01, cos(t * 8.0) * 0.012, 0)
+	elif state == "parachute":
+		camera.rotation.z = lerpf(camera.rotation.z, (Input.get_axis("move_left", "move_right") * -0.12 if controls_enabled else 0.0), 1.0 - exp(-delta * 4.0))
+		arms.visible = true
+		arms.position = arms.position.lerp(Vector3(0, 0.22, 0.05), 1.0 - exp(-delta * 6.0))   # hands up on the toggles
+	else:
+		camera.rotation.z = lerpf(camera.rotation.z, 0.0, 1.0 - exp(-delta * 8.0))
+	if chute_jolt > 0.0:
+		chute_jolt = move_toward(chute_jolt, 0.0, delta * 2.5)
+		target += Vector3(0, -0.35 * sin(chute_jolt * PI), 0)
+	if land_dip > 0.0:
+		land_dip = move_toward(land_dip, 0.0, delta * 2.8)
+		target += Vector3(0, -0.45 * sin(land_dip * PI), 0)
 	camera.position = camera.position.lerp(target, 1.0 - exp(-delta * 14.0))
 	kick = move_toward(kick, 0.0, delta * 5.0)
 	var wanted_fov := base_fov
 	if aiming and state == "ground":
 		wanted_fov = base_fov / current_zoom()
 	elif state == "freefall":
-		wanted_fov = base_fov + 8.0
+		wanted_fov = base_fov + 6.0 + 12.0 * clampf(-velocity.y / 75.0, 0.0, 1.0)
 	camera.fov = lerpf(camera.fov, wanted_fov, 1.0 - exp(-delta * 12.0))
 	# Gun: centred when aiming, lowered while sprinting, healing or reloading
 	var vm_target := Vector3(0.2, -0.22, -0.4)

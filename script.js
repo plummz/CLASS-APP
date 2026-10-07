@@ -2207,6 +2207,8 @@ let isAuthenticated = Boolean(currentUser?.username);
 let authRequestInFlight = false;
 let appPresenceChannel = null;
 let livePresenceUsers = new Set();
+let livePresenceInfo = {};          // username -> { page, status: 'online' | 'away', activeAt, displayName }
+let presenceStatus = 'online';      // this device: 'online' or 'away' (set by features/presence)
 let lastSeenHeartbeatId = null;
 let lastSeenWriteAt = 0;
 let authBindingsReady = false;
@@ -2327,6 +2329,7 @@ function isUserLiveOnline(user) {
 function refreshPresenceViews() {
   renderUserDirectory();
   renderChatUsersList();
+  window.dispatchEvent(new CustomEvent('classapp:presence', { detail: livePresenceInfo }));
 }
 
 function getUserLastSeenAt(user) {
@@ -2351,10 +2354,45 @@ function relativeActiveText(dateValue) {
   return `Active ${seen.toLocaleDateString()}`;
 }
 
+// What someone is doing, from the page their app is on
+function presenceActivityText(page) {
+  const games = { games: 'In the Arcade', dungeon: 'Playing Dungeon of Knowledge', royale3d: 'Playing Battle Royale 3D', royale: 'Playing Battle Royale', pokemon: 'Playing Pokémon', pacman: 'Playing Pac-Man', candy: 'Playing Candy Match', tetris: 'Playing Tetris', lobby: 'In the Lobby' };
+  if (games[page]) return games[page];
+  const label = String(pageConfig?.[page]?.label || '').replace(/^[^A-Za-z0-9]+/, '').trim();
+  return label ? `In ${label.charAt(0) + label.slice(1).toLowerCase()}` : '';
+}
+
+function getUserPresence(user) {
+  const username = typeof user === 'string' ? user : user?.username;
+  return username ? livePresenceInfo[username] || null : null;
+}
+
 function getUserActivityLabel(user) {
-  if (isUserLiveOnline(user)) return 'Online now';
+  if (isUserLiveOnline(user)) {
+    const info = getUserPresence(user);
+    if (info?.status === 'away') return 'Away';
+    const doing = presenceActivityText(info?.page);
+    return doing ? `Online · ${doing}` : 'Online now';
+  }
   return relativeActiveText(getUserLastSeenAt(user));
 }
+
+// The presence payload this device shares (page, online / away)
+function presenceMeta() {
+  return {
+    username: currentUser?.username,
+    displayName: currentUser?.display_name || currentUser?.username,
+    page: currentPage,
+    status: presenceStatus,
+    activeAt: new Date().toISOString(),
+  };
+}
+
+function trackPresence() {
+  if (!appPresenceChannel || !currentUser?.username) return;
+  appPresenceChannel.track(presenceMeta()).catch?.(() => {});
+}
+window.trackPresence = trackPresence;
 
 async function persistLastSeen({ online = true, force = false } = {}) {
   if (!currentUser?.username) return;
@@ -2399,16 +2437,24 @@ function initAppPresence() {
     .on('presence', { event: 'sync' }, () => {
       const state = appPresenceChannel.presenceState() || {};
       livePresenceUsers = new Set(Object.keys(state));
+      // Several devices per user: online beats away; the most recent page wins
+      const info = {};
+      Object.entries(state).forEach(([username, metas]) => {
+        const list = Array.isArray(metas) ? metas : [];
+        const latest = list.slice().sort((a, b) => String(b.activeAt || '').localeCompare(String(a.activeAt || '')))[0] || {};
+        info[username] = {
+          page: latest.page || '',
+          displayName: latest.displayName || username,
+          activeAt: latest.activeAt || '',
+          status: list.some((m) => (m.status || 'online') === 'online') ? 'online' : 'away',
+        };
+      });
+      livePresenceInfo = info;
       refreshPresenceViews();
     })
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
-        await appPresenceChannel.track({
-          username: currentUser.username,
-          displayName: currentUser.display_name || currentUser.username,
-          page: currentPage,
-          activeAt: new Date().toISOString(),
-        });
+        await appPresenceChannel.track(presenceMeta());
       }
     });
 }
@@ -2419,6 +2465,7 @@ function destroyAppPresence() {
   try { sb?.removeChannel?.(appPresenceChannel); } catch (_) {}
   appPresenceChannel = null;
   livePresenceUsers = new Set();
+  livePresenceInfo = {};
 }
 
 function setAuthMessage(message = '', type = 'error') {
@@ -2718,7 +2765,7 @@ function getInitials(user) {
 
 function makeAvatarHTML(user, cls, liveOnline) {
   const initials = escapeHTML(getInitials(user));
-  const onlineCls = liveOnline ? ' online' : '';
+  const onlineCls = liveOnline ? (getUserPresence(user)?.status === 'away' ? ' online away' : ' online') : '';
   if (user.avatar) {
     return `<div class="${cls}${onlineCls}"><img src="${escapeHTML(user.avatar)}" alt="${initials}" onerror="this.style.display='none';this.parentElement.dataset.fb='1';this.parentElement.textContent='${initials}'"></div>`;
   }
@@ -2809,7 +2856,7 @@ function renderUserDirectory() {
         ${makeAvatarHTML(user, 'user-avatar-mini', liveOnline)}
         <div>
           <div class="user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="user-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
+          <div class="user-status ${liveOnline ? (getUserPresence(user)?.status === 'away' ? 'away' : 'online') : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         <button class="user-view-btn" onclick="openUserProfile('${safeUsername}')">Profile</button>
       </div>
@@ -2837,7 +2884,7 @@ function renderChatUsersList() {
         ${makeAvatarHTML(user, 'chat-user-avatar', liveOnline)}
         <div style="flex:1;min-width:0;">
           <div class="chat-user-name">${escapeHTML(user.display_name || user.username)}</div>
-          <div class="chat-status ${liveOnline ? 'online' : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
+          <div class="chat-status ${liveOnline ? (getUserPresence(user)?.status === 'away' ? 'away' : 'online') : 'offline'}">${escapeHTML(getUserActivityLabel(user))}</div>
         </div>
         ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
         <button onclick="openChat('private', '${safeUsername}')" style="background:#00ff88; border:none; padding:5px 10px; border-radius:5px; font-weight:bold; cursor:pointer; color:black;">Chat</button>
@@ -3574,13 +3621,9 @@ window.goToPage = function(pageName) {
   }
 
   currentPage = pageName;
+  window.dispatchEvent(new CustomEvent('classapp:page', { detail: pageName }));
   if (appPresenceChannel && currentUser?.username) {
-    appPresenceChannel.track({
-      username: currentUser.username,
-      displayName: currentUser.display_name || currentUser.username,
-      page: currentPage,
-      activeAt: new Date().toISOString(),
-    }).catch(() => {});
+    trackPresence();
     persistLastSeen({ online: true });
   }
   const cfg = pageConfig[pageName];

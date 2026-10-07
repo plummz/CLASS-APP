@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.9.29';
+const APP_VERSION = '1.9.30';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.30',
+    date: 'October 7, 2026',
+    title: 'Better Online Status',
+    summary: 'See who is online, who is away, and what they are doing, from any page.',
+    bullets: [
+      'New: An "online" button shows how many classmates are online. Tap it to see who, what they are doing (for example "In Battle Royale 3D") and to chat with them.',
+      'New: Away status. You show as away (yellow) after 3 minutes without using the app or when the app is in the background.',
+      'Improved: Avatars and chat show green for online and yellow for away, and status updates as people move between pages.',
+    ]
+  },
   {
     version: '1.9.29',
     date: 'October 7, 2026',

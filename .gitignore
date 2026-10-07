@@ -9,3 +9,8 @@ native-app/release/*.apk
 # Pokémon art scratch renders
 tools/pokemon-art/_work/
 tools/pokemon-art/__pycache__/
+
+# Raw Mixamo / source art (Mixamo terms: no redistribution of raw files)
+godot/royale3d/assets_src/
+# Mixamo-derived soldier (rebuild with tools/build_assets.gd after downloading the Mixamo files)
+godot/royale3d/assets/soldier/

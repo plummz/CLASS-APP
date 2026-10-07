@@ -148,14 +148,18 @@ func _host_go() -> void:
 
 func _send_my_state() -> void:
 	var p: RoyalePlayer = game.player
+	var flags := (1 if p.aiming or p.trigger_held else 0) | (2 if p.reloading > 0.0 else 0) | (4 if p.healing > 0.0 else 0) | (8 if p._throw_t > 0.0 else 0)
+	if p.vehicle and p.vehicle.kind != "boat": flags |= 16   # seated in a car / on a motorcycle
+	if p.vehicle and p.vehicle.kind == "car": flags |= 32
 	send({"t": "p", "p": v3(p.global_position), "y": snappedf(p.global_rotation.y + PI, 0.01), "s": p.state, "c": p.stance,
-		"g": String(p.current_gun().get("id", "")), "hp": int(p.health), "v": snappedf(Vector2(p.velocity.x, p.velocity.z).length(), 0.1)})
+		"g": String(p.current_gun().get("id", "")), "hp": int(p.health), "f": flags, "ap": snappedf(p.pitch, 0.02),
+		"o": p.outfit, "k": p.weapon_skin})
 
 func _send_bots() -> void:
 	var list := []
 	for b: RoyaleBot in game.bots:
 		list.append([snappedf(b.global_position.x, 0.01), snappedf(b.global_position.y, 0.01), snappedf(b.global_position.z, 0.01),
-			snappedf(b.rotation.y, 0.01), BOT_STATES.find(b.state), maxi(0, BOT_ANIMS.find(b.current_anim)), int(b.health), b.gun_id])
+			snappedf(b.rotation.y, 0.01), BOT_STATES.find(b.state), maxi(0, BOT_ANIMS.find(b.current_anim)), int(b.health), b.gun_id, 1 if b.crouched else 0])
 	send({"t": "bots", "b": list, "s": _bot_shots.slice(0, 40)})
 	_bot_shots.clear()
 
@@ -207,8 +211,12 @@ func _handle(m: Dictionary) -> void:
 				game.net_supply_crate(String(m.get("id", "")), String(m.get("k", "supply")), String(m.get("l", "")), m.get("items", []), to_v3(m.get("p")))
 		"door":
 			game.net_door(int(m.get("i", -1)), bool(m.get("o", false)))
+		"veh", "vin", "vout":
+			game.net_vehicle(m, from)
 		"nade":
 			game.explosion_effect(to_v3(m.get("p")))
+		"rocket":
+			game.remote_rocket(to_v3(m.get("o")), to_v3(m.get("d")))
 		"zone":
 			if from == host and not is_host:
 				game.net_zone(m)

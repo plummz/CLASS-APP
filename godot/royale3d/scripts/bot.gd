@@ -1,8 +1,9 @@
 class_name RoyaleBot
 extends CharacterBody3D
 ## An AI survivor: parachutes in, loots houses (through their doors), fights anyone it can see,
-## heals when hurt and keeps ahead of the shrinking zone. Far from the player it switches to a
-## cheap kinematic update with no animation or collision.
+## heals when hurt and keeps ahead of the shrinking zone. Drawn as the shared tactical soldier
+## (RoyaleSoldier) in one of the free outfits. Far from every player it switches to a cheap
+## kinematic update and its animation slows down or freezes.
 
 const CHAR_DIR := "res://assets/characters_trim/"
 const MODELS := ["Barbarian.scn", "Knight.scn", "Rogue.scn", "Rogue_Hooded.scn", "Mage.scn"]
@@ -51,8 +52,7 @@ var stuck_timer := 0.0
 var last_pos := Vector3.ZERO
 var far := false
 var model: Node3D
-var anim: AnimationPlayer
-var hand: Node3D
+var soldier: RoyaleSoldier
 var chute_mesh: MeshInstance3D
 var current_anim := ""
 var _gun_node: Node3D
@@ -65,29 +65,10 @@ func setup(index: int, game_ref: Node, rng: RandomNumberGenerator) -> void:
 	game = game_ref
 	combatant_name = NAMES[index % NAMES.size()]
 	skill = clampf(rng.randf_range(0.25, 0.85), 0.0, 1.0)
-	var model_name: String = MODELS[index % MODELS.size()]
-	var path_str := CHAR_DIR + model_name
-	if not _scene_cache.has(path_str):
-		_scene_cache[path_str] = load(path_str)
-	model = _scene_cache[path_str].instantiate()
-	model.scale = Vector3.ONE * 0.6
-	add_child(model)
-	for m: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
-		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# Hide the swords, shields and hats held in the hand slots; a gun goes in the right hand
-	for slot: BoneAttachment3D in model.find_children("*", "BoneAttachment3D", true, false):
-		if slot.name.begins_with("handslot"):
-			for c in slot.get_children():
-				if c is Node3D: (c as Node3D).visible = false
-			if slot.name == "handslot_r":
-				hand = slot
-	var players := model.find_children("*", "AnimationPlayer", true, false)
-	if not players.is_empty():
-		anim = players[0]
-		# Imported clips don't loop by default; locomotion and aiming must
-		for clip in ["Idle", "Running_A", "Walking_A", "2H_Ranged_Aiming", "2H_Ranged_Shoot", "Jump_Idle", "Use_Item"]:
-			if anim.has_animation(clip):
-				anim.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+	soldier = RoyaleSoldier.new()
+	model = soldier
+	add_child(soldier)
+	soldier.set_outfit(Skins.BOT_OUTFITS[index % Skins.BOT_OUTFITS.size()])
 	chute_mesh = MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 2.6
@@ -107,6 +88,7 @@ func _ready() -> void:
 	collision_mask = 1
 	floor_max_angle = deg_to_rad(50.0)
 	var cs := CollisionShape3D.new()
+	cs.name = "Hitbox"
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.34
 	capsule.height = 1.75
@@ -119,26 +101,16 @@ func is_alive() -> bool:
 	return state != "dead"
 
 func head_y() -> float:
-	return global_position.y + (1.0 if crouched else 1.5)
+	return global_position.y + (1.08 if crouched else 1.62)
 
 func chest_point() -> Vector3:
-	return global_position + Vector3(0, 0.75 if crouched else 1.15, 0)
+	return global_position + Vector3(0, 0.8 if crouched else 1.25, 0)
 
 func set_gun(id: String) -> void:
 	gun_id = id
 	mag = int(Items.gun(id).mag)
-	if _gun_node:
-		_gun_node.queue_free()
-		_gun_node = null
-	if hand == null:
-		return
-	var path_str := Items.GUN_DIR + String(Items.gun(id).model) + ".glb"
-	if not _scene_cache.has(path_str):
-		_scene_cache[path_str] = load(path_str)
-	_gun_node = _scene_cache[path_str].instantiate()
-	_gun_node.scale = Vector3.ONE * 1.5
-	_gun_node.rotation_degrees = Vector3(0, 180, 0)
-	hand.add_child(_gun_node)
+	if soldier:
+		soldier.set_gun(id)
 
 # ── Damage ───────────────────────────────────────────────────
 
@@ -167,6 +139,7 @@ func take_damage(amount: float, headshot: bool, attacker: String, zone_damage :=
 			enemy = shooter
 			enemy_seen_at = Time.get_ticks_msec() * 0.001
 			mode = "fight"
+		if soldier: soldier.hit_reaction()
 	health -= dmg
 	if health <= 0.0:
 		health = 0.0
@@ -179,6 +152,7 @@ func _die(attacker: String) -> void:
 	velocity = Vector3.ZERO
 	chute_mesh.visible = false
 	_play("Death_A", 0.1)
+	if soldier: soldier.die()
 	if game:
 		game.on_combatant_died(self, attacker)
 
@@ -276,6 +250,7 @@ func _scan_for_enemy() -> Node3D:
 func _physics_process(delta: float) -> void:
 	if game == null:
 		return
+	_drive_soldier()
 	if puppet:
 		_puppet_update(delta)
 		return
@@ -292,7 +267,6 @@ func _physics_process(delta: float) -> void:
 			return
 	# Full AI and physics near any human (in a room match the host runs bots for everyone)
 	far = game.nearest_human_distance(global_position) > FAR_DISTANCE
-	model.visible = global_position.distance_to(game.player.global_position) < FAR_DISTANCE * 1.6
 	think_timer -= delta
 	if think_timer <= 0.0:
 		think_timer = (0.35 if not far else 0.9) + randf() * 0.15
@@ -490,25 +464,50 @@ func apply_snapshot(row: Array) -> void:
 	if g != gun_id:
 		if g.is_empty():
 			gun_id = ""
-			if _gun_node:
-				_gun_node.queue_free()
-				_gun_node = null
+			if soldier: soldier.set_gun("")
 		else:
 			set_gun(g)
+	if row.size() >= 9:
+		crouched = bool(row[8])
 	_play(RoyaleNet.BOT_ANIMS[clampi(int(row[5]), 0, RoyaleNet.BOT_ANIMS.size() - 1)])
 
 func _puppet_update(delta: float) -> void:
 	if not _snap_ok or state == "dead":
 		return
 	far = global_position.distance_to(game.player.global_position) > FAR_DISTANCE
-	model.visible = not far or global_position.distance_to(game.player.global_position) < FAR_DISTANCE * 1.6
 	global_position = global_position.lerp(_snap_pos, 1.0 - exp(-delta * 10.0))
 	rotation.y = lerp_angle(rotation.y, _snap_yaw, 1.0 - exp(-delta * 10.0))
 
-func _play(name: String, blend := 0.2) -> void:
-	if anim == null or far or current_anim == name:
-		return
-	if not anim.has_animation(name):
+## The bot logic still names KayKit-style actions; they map onto the soldier's layers (legs
+## follow the real movement on their own). The name is also what room matches sync.
+func _play(name: String, _blend := 0.2) -> void:
+	if current_anim == name:
 		return
 	current_anim = name
-	anim.play(name, blend)
+	if soldier == null:
+		return
+	soldier.aiming = name in ["2H_Ranged_Aiming", "2H_Ranged_Shoot"]
+	soldier.reloading = name == "2H_Ranged_Reload"
+	soldier.healing = name == "Use_Item"
+	soldier.punching = name == "Unarmed_Melee_Attack_Punch_A"
+	if name == "2H_Ranged_Shoot":
+		soldier.firing = true
+	else:
+		soldier.firing = false
+
+## State, stance and level of detail for the soldier (by distance to this device's player).
+func _drive_soldier() -> void:
+	if soldier == null or game == null or game.player == null:
+		return
+	soldier.state = state
+	soldier.stance = "crouch" if crouched and state == "ground" else "stand"
+	soldier.has_gun = not gun_id.is_empty()
+	var d := global_position.distance_to(game.player.global_position)
+	soldier.detail = 1 if d < 35.0 else (2 if d < 90.0 else (4 if d < 200.0 else 0))
+	soldier.visible = d < FAR_DISTANCE * 1.6
+	# Crouching lowers the hitbox too
+	var cs: CollisionShape3D = get_node_or_null("Hitbox")
+	if cs:
+		var h := 1.2 if crouched else 1.75
+		(cs.shape as CapsuleShape3D).height = h
+		cs.position.y = h * 0.5

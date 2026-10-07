@@ -12,8 +12,24 @@ const TRIM := Color("f2efe8")
 const PLINTH := Color("6b6560")
 const FRAME := Color("e9e4da")
 const STAIR := Color("8a6a4a")
-const TILE := Color("d9dde0")
-const WOOD_FLOOR := Color("9a7550")
+const TILE := Color(0.85, 0.87, 0.88, RoyaleMaterials.TILES)
+const WOOD_FLOOR := Color(0.6, 0.46, 0.31, RoyaleMaterials.WOOD)
+const CONCRETE_FLOOR := Color(0.43, 0.44, 0.42, RoyaleMaterials.CONCRETE)
+const INTERIOR := "res://assets/interior/"
+## Kenney furniture -> Quaternius Ultimate House Interior Pack (CC0); fitted to the Kenney
+## piece's footprint so room layouts stay the same. Anything unmapped keeps the Kenney model.
+const QUATERNIUS := {
+	"rugRectangle": "rug", "rugRound": "round_rug", "rugDoormat": "rug",
+	"cabinetTelevision": "drawer_2", "tableCoffee": "table_round_small", "tableCoffeeGlass": "table_round_small_2",
+	"loungeSofa": "couch_medium", "loungeDesignSofa": "couch_large", "loungeChair": "couch_small_2",
+	"bookcaseOpen": "shelf_large", "bookcaseClosedWide": "drawer_4", "pottedPlant": "houseplant_3",
+	"plantSmall1": "houseplant_5", "lampRoundFloor": "light_floor_2", "lampRoundTable": "table_lamp",
+	"ceilingFan": "light_chandelier", "kitchenFridgeLarge": "kitchen_fridge", "kitchenStove": "oven",
+	"kitchenSink": "kitchen_sink", "kitchenCabinet": "drawer_3", "table": "table_round_large",
+	"tableCloth": "table_round_large", "chairCushion": "chair", "chairDesk": "chair_2", "trashcan": "trashcan_2",
+	"bedDouble": "bed_king", "bedSingle": "bed_single", "bedBunk": "bunk_bed", "cabinetBedDrawerTable": "night_stand",
+	"toilet": "toilet", "bathroomSink": "bathroom_sink", "bathtub": "bathtub", "washer": "washing_machine",
+}
 
 var world: Node   ## RoyaleWorld
 var rng: RandomNumberGenerator
@@ -63,7 +79,7 @@ func _build(origin: Vector3, yaw: float, w: float, d: float, floors: int, wall_c
 	var door_h := 2.3 if not big else 3.8
 	var stairs := floors >= 2
 	var stair_w := 1.4
-	var floor_col := WOOD_FLOOR if not big else Color("6d6f6a")
+	var floor_col := WOOD_FLOOR if not big else CONCRETE_FLOOR
 
 	# Floor slab level with the ground, and a plinth band around the outside
 	world._box(st, body, Vector3(0, ft - 0.2, 0), Vector3(w, 0.4, d), floor_col)
@@ -118,7 +134,7 @@ func _build(origin: Vector3, yaw: float, w: float, d: float, floors: int, wall_c
 		if kind == "house":
 			_box_vis(st, Vector3(-hw * 0.5, top + 1.6, hd * 0.3), Vector3(0.7, 2.0, 0.7), Color("8a5a48"))  # chimney
 	else:
-		world._box(st, body, Vector3(0, top + 0.12, 0), Vector3(w + 0.5, 0.25, d + 0.5), roof_color)
+		world._box(st, body, Vector3(0, top + 0.12, 0), Vector3(w + 0.5, 0.25, d + 0.5), Color(roof_color, RoyaleMaterials.CONCRETE))
 		_box_vis(st, Vector3(0, top + 0.45, -hd - 0.2), Vector3(w + 0.5, 0.45, 0.1), roof_color.lightened(0.15))
 		_box_vis(st, Vector3(0, top + 0.45, hd + 0.2), Vector3(w + 0.5, 0.45, 0.1), roof_color.lightened(0.15))
 		if kind == "shop":
@@ -135,12 +151,7 @@ func _build(origin: Vector3, yaw: float, w: float, d: float, floors: int, wall_c
 
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.vertex_color_is_srgb = true
-	mat.roughness = 0.92
-	mat.metallic_specular = 0.12
-	mi.material_override = mat
+	mi.material_override = RoyaleMaterials.building_material()
 	node.add_child(mi)
 	var gmi := MeshInstance3D.new()
 	gmi.mesh = glass.commit()
@@ -291,19 +302,33 @@ func _room(node: Node3D, body: StaticBody3D, type: String, r: Rect2, by: float, 
 ## Places a furniture model (batched) with optional collision from its bounds.
 func _furn(node: Node3D, body: StaticBody3D, model: String, local_pos: Vector3, yaw: float, collide := true) -> void:
 	var path := FURN + model + ".glb"
-	var tf := node.global_transform * Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * FURN_SCALE), local_pos)
+	var scale_v := FURN_SCALE
+	var box := _model_aabb(path)
+	if QUATERNIUS.has(model):
+		var q_path := INTERIOR + String(QUATERNIUS[model]) + ".scn"
+		var q_box := _model_aabb(q_path)
+		if q_box.size != Vector3.ZERO and box.size != Vector3.ZERO:
+			# Same footprint as the Kenney piece (largest horizontal side), but never taller
+			# than ~1.25x its height so ceiling lights and shelves still fit
+			var want := maxf(box.size.x, box.size.z) * FURN_SCALE
+			var s := want / maxf(0.01, maxf(q_box.size.x, q_box.size.z))
+			if box.size.y > 0.05:
+				s = minf(s, box.size.y * FURN_SCALE * 1.25 / maxf(0.01, q_box.size.y))
+			path = q_path
+			scale_v = s
+			box = q_box
+	var tf := node.global_transform * Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_v), local_pos)
 	world.add_model_instance(path, tf, 64.0, 70.0)
 	if not collide:
 		return
-	var box := _model_aabb(path)
 	if box.size == Vector3.ZERO:
 		return
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = box.size * FURN_SCALE
+	shape.size = box.size * scale_v
 	cs.shape = shape
 	var basis := Basis(Vector3.UP, yaw)
-	cs.transform = Transform3D(basis, local_pos + basis * (box.get_center() * FURN_SCALE))
+	cs.transform = Transform3D(basis, local_pos + basis * (box.get_center() * scale_v))
 	body.add_child(cs)
 
 func _model_aabb(path: String) -> AABB:
@@ -384,7 +409,7 @@ func _gable_roof(st: SurfaceTool, body: StaticBody3D, w: float, d: float, top: f
 	var slope_len := span / cos(a)
 	for s in [-1.0, 1.0]:
 		var center := Vector3(0, top + rise * 0.5 - ov * tan(a) * 0.5, s * span * 0.5)
-		world._box(st, body, center, Vector3(w + ov * 2.0, 0.16, slope_len), roof_color, true, Basis(Vector3.RIGHT, a * s))
+		world._box(st, body, center, Vector3(w + ov * 2.0, 0.16, slope_len), Color(roof_color, RoyaleMaterials.ROOF), true, Basis(Vector3.RIGHT, a * s))
 	# Gable triangles (both windings so they show from inside and outside)
 	var peak := top + hd * tan(a)
 	for sx in [-1.0, 1.0]:

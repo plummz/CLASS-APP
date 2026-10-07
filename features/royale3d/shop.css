@@ -1,0 +1,66 @@
+/* Battle Royale 3D shop (above the full-screen game page) */
+.rl3d-shop {
+  position: fixed;
+  inset: 0;
+  z-index: 10055;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(3, 6, 12, 0.65);
+  backdrop-filter: blur(4px);
+}
+.rl3d-shop[hidden] { display: none; }
+.shop-card-wrap {
+  width: min(760px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px 18px;
+  border: 1px solid rgba(255, 210, 120, 0.3);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #151a24, #0b0f16);
+  color: #eef2f7;
+  font: 15px/1.4 system-ui, sans-serif;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.shop-head { display: flex; align-items: center; gap: 12px; }
+.shop-head strong { flex: 1; font-size: 18px; color: #ffe08a; }
+.shop-coins { padding: 4px 12px; border-radius: 999px; background: rgba(255, 210, 90, 0.15); color: #ffd45a; font-weight: 800; }
+.shop-close { width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); color: inherit; font-size: 22px; cursor: pointer; }
+.shop-tabs { display: flex; gap: 8px; margin: 12px 0 6px; }
+.shop-tabs button { flex: 1; min-height: 42px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; background: rgba(255, 255, 255, 0.05); color: inherit; font: 700 14px system-ui, sans-serif; cursor: pointer; }
+.shop-tabs button.on { background: #f2994a; border-color: transparent; color: #1a1209; }
+.shop-note { margin: 6px 2px 12px; color: #9fb0c4; font-size: 13px; }
+.shop-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.shop-card { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.shop-card.tier-rare { border-color: rgba(80, 160, 255, 0.45); }
+.shop-card.tier-epic { border-color: rgba(176, 102, 255, 0.55); }
+.shop-card.tier-legendary { border-color: rgba(255, 196, 64, 0.7); box-shadow: inset 0 0 18px rgba(255, 196, 64, 0.12); }
+.shop-name { font-weight: 700; }
+.shop-meta { font-size: 12px; color: #9fb0c4; }
+.tier-rare .shop-meta { color: #7ab8ff; }
+.tier-epic .shop-meta { color: #c79bff; }
+.tier-legendary .shop-meta { color: #ffd45a; }
+.shop-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.shop-btn { min-height: 34px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: inherit; font: 700 13px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+.shop-btn.buy { background: #f2c94c; border-color: transparent; color: #1a1209; }
+.shop-btn.up { background: rgba(176, 102, 255, 0.25); border-color: rgba(176, 102, 255, 0.6); }
+.shop-btn.on { background: #27ae60; border-color: transparent; color: #fff; }
+.shop-btn.plain { margin-top: 12px; }
+.shop-max { align-self: center; font-size: 12px; font-weight: 800; color: #ffd45a; }
+
+/* Rifle silhouette filled with the finish */
+.shop-gun {
+  height: 58px;
+  border-radius: 8px;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60'><path d='M4 30 L30 24 L46 24 L50 18 L120 18 L124 14 L150 14 L152 18 L196 18 L196 24 L150 24 L148 30 L112 30 L106 44 L94 44 L98 30 L70 30 L64 50 L48 50 L52 32 L30 38 L6 40 Z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60'><path d='M4 30 L30 24 L46 24 L50 18 L120 18 L124 14 L150 14 L152 18 L196 18 L196 24 L150 24 L148 30 L112 30 L106 44 L94 44 L98 30 L70 30 L64 50 L48 50 L52 32 L30 38 L6 40 Z'/></svg>") center / contain no-repeat;
+}
+.shop-gun.style-flow { background: repeating-linear-gradient(100deg, var(--fa) 0 18px, var(--fb) 24px, var(--fa) 32px); background-size: 200% 100%; animation: shop-flow 2.4s linear infinite; }
+.shop-gun.style-pulse { background: linear-gradient(90deg, var(--fa), var(--fb), var(--fa)); background-size: 300% 100%; animation: shop-flow 1.6s linear infinite, shop-pulse 1.2s ease-in-out infinite; }
+.shop-gun.style-prism { background: conic-gradient(from 0deg, #ff5f6d, #ffc371, #f9f871, #5fe3a1, #37d6ff, #a66bff, #ff5f6d); animation: shop-spin 4s linear infinite; }
+@keyframes shop-flow { to { background-position: -200% 0; } }
+@keyframes shop-pulse { 50% { filter: brightness(1.6); } }
+@keyframes shop-spin { to { filter: hue-rotate(360deg); } }
+.shop-outfit { height: 58px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; }
+@media (prefers-reduced-motion: reduce) { .shop-gun { animation: none !important; } }

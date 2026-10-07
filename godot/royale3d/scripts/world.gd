@@ -4,7 +4,10 @@ extends Node3D
 ## named towns with walk-in houses, a military base, decorative city buildings, trees, bushes
 ## and rocks. Exposes loot spawn points (with door waypoints for bots) and a minimap texture.
 
-const MAP_SIZE := 1024.0          ## metres, centred on the origin
+const MAP_SIZE := 1024.0          ## metres, centred on the origin (main island height grid)
+const MAP_VIEW := 1700.0          ## metres shown on the map / where you can swim (includes Isla Verde)
+const ISLAND2_R := 95.0           ## Isla Verde: a small island across the strait
+const I2_VERTS := 65              ## its own 4 m height grid (256 m square)
 const GRID := 4.0                 ## terrain vertex spacing (m)
 const VERTS := 257                ## MAP_SIZE / GRID + 1
 const CHUNK := 32                 ## terrain cells per render chunk
@@ -16,12 +19,20 @@ const FLOOR_TOP := 0.05   ## floor surface above the ground: low enough to walk 
 const TOWN_NAMES := ["Rizal Heights", "Mabini Port", "Campus Row", "Bonifacio Farm", "Luna Ridge", "Aguinaldo Square"]
 
 const NATURE := "res://assets/nature/"
-const TREES_LOW := ["tree_oak", "tree_default", "tree_detailed", "tree_fat"]
-const TREES_HIGH := ["tree_pineRoundA", "tree_pineRoundC", "tree_pineTallA", "tree_pineTallB", "tree_tall"]
+const MEGAKIT := "res://assets/megakit/"
+## Quaternius Stylized Nature MegaKit (CC0). Names starting with "mk:" are MegaKit models; the
+## scale passed by the scatter code is multiplied by MK_SCALE so the old size ranges still work.
+const TREES_LOW := ["mk:tree", "mk:tree_2", "mk:tree_3", "mk:tree_4", "mk:tree_5", "mk:tree", "mk:tree_3", "mk:twisted_tree_4"]
+const TREES_HIGH := ["mk:pine", "mk:pine_2", "mk:pine_3", "mk:pine_4", "mk:pine_5"]
 const TREES_BEACH := ["tree_palmTall", "tree_palm"]
-const BUSHES := ["plant_bush", "plant_bushLarge", "plant_bushDetailed"]
-const ROCKS := ["rock_largeA", "rock_largeB", "rock_largeC", "rock_largeD", "rock_largeE", "rock_tallA", "rock_tallB"]
-const GRASS := ["grass_large", "grass", "flower_redA", "flower_yellowA", "flower_purpleA"]
+const BUSHES := ["mk:bush", "mk:bush_with_flowers", "mk:plant_big_2", "mk:fern"]
+const ROCKS := ["mk:rock_medium", "mk:rock_medium_2", "mk:rock_medium_3"]
+const GRASS := ["mk:grass", "mk:grass_wispy", "mk:grass_wispy_2", "mk:tall_grass", "mk:grass", "mk:clover", "mk:flower_group", "mk:flower_single"]
+const MK_SCALE := {"tree": 0.155, "pine": 0.15, "twisted": 0.09, "bush": 0.33, "plant": 0.33, "fern": 0.3, "rock": 0.32,
+	"grass": 0.18, "tall": 0.17, "clover": 0.22, "flower": 0.15, "dead": 0.12}
+## How much each kind sways in the wind (per metre squared of height, see RoyaleMaterials.WIND_SHADER)
+const MK_WIND := {"grass": 0.14, "tall": 0.12, "clover": 0.12, "flower": 0.1, "bush": 0.03, "plant": 0.04, "fern": 0.03,
+	"tree": 0.0011, "pine": 0.0008, "twisted": 0.0005, "dead": 0.0004}
 
 const WALL_COLORS := [Color("e8dcc4"), Color("cfe3ea"), Color("f1e3a6"), Color("f4f1ea"), Color("c98b74"), Color("b9d4b4")]
 const ROOF_COLORS := [Color("6b4a3a"), Color("4a5568"), Color("7a3b2e"), Color("3f5f4a")]
@@ -45,6 +56,8 @@ var _static_body: StaticBody3D
 var buildings: RoyaleBuildings
 var roads: Array = []   ## [Vector2 a, Vector2 b] road segments between towns
 var features: Array[Dictionary] = []  ## mountain / lake shaping {pos, radius, height}
+var island2 := {}                      ## {center: Vector2, heights: PackedFloat32Array, town: Dictionary}
+var vehicle_spawns: Array[Dictionary] = []  ## {kind, model, pos, yaw}
 
 func generate(seed_value: int, low_quality := false) -> void:
 	quality_low = low_quality
@@ -73,6 +86,9 @@ func generate(seed_value: int, low_quality := false) -> void:
 		_build_town(town)
 	marks.append("towns %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_scatter_nature(); marks.append("nature %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
+	_build_island2(); marks.append("island2 %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
+	_plan_vehicles()
+	_build_sea_floor()
 	_flush_multimeshes(); marks.append("multimesh %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_build_map_texture(); marks.append("map %d" % (Time.get_ticks_msec() - t))
 	print("ROYALE_TIMING ", ", ".join(marks))
@@ -153,6 +169,13 @@ func _road_distance(p: Vector2) -> float:
 	return best
 
 func height_at(x: float, z: float) -> float:
+	if not island2.is_empty() and island2.has("heights"):
+		var c: Vector2 = island2.center
+		var half := (I2_VERTS - 1) * GRID * 0.5
+		if absf(x - c.x) < half and absf(z - c.y) < half:
+			return _i2_height(x, z)
+	if _heights_ready and (absf(x) > MAP_SIZE * 0.5 or absf(z) > MAP_SIZE * 0.5):
+		return -12.0   # open sea beyond the main island's grid
 	if _heights_ready:
 		var fx := clampf((x + MAP_SIZE * 0.5) / GRID, 0.0, VERTS - 1.001)
 		var fz := clampf((z + MAP_SIZE * 0.5) / GRID, 0.0, VERTS - 1.001)
@@ -242,19 +265,44 @@ func _ground_color(x: float, z: float, h: float, slope: float, mask: int) -> Col
 		c = Color("b59a72").lerp(Color("a78c64"), n)           # dirt road
 	return c
 
+## Texture weights for the terrain shader: COLOR = grass, sand, rock, dirt; UV2 = asphalt, concrete.
+func _ground_weights(x: float, z: float, h: float, slope: float, mask: int) -> Array:
+	var w := Color(0, 0, 0, 0)
+	var w2 := Vector2.ZERO
+	var beach := 1.0 - smoothstep(1.2, 2.2, h)
+	var rock := maxf(smoothstep(0.38, 0.62, slope), smoothstep(36.0, 44.0, h))
+	w.g = beach
+	w.b = rock * (1.0 - beach)
+	w.r = maxf(0.0, 1.0 - w.g - w.b)
+	if mask > 0:
+		var town: Dictionary = towns[mask - 1]
+		var sp: float = town.get("spacing", 17.0)
+		var lx := fposmod(x - float(town.pos.x) + sp * 0.5, sp)
+		var lz := fposmod(z - float(town.pos.y) + sp * 0.5, sp)
+		var street := minf(lx, sp - lx) < 2.4 or minf(lz, sp - lz) < 2.4
+		if bool(town.military):
+			return [Color(0, 0, 0, 0.15), Vector2(0, 1)]
+		elif street:
+			return [Color(0, 0, 0, 0.05), Vector2(1, 0)]
+	elif h > 1.6:
+		var rd := _road_distance(Vector2(x, z))
+		if rd < 3.6:
+			var k := 1.0 - smoothstep(2.6, 3.6, rd)
+			w = w * (1.0 - k)
+			w.a = k
+	return [w, w2]
+
 func _build_terrain() -> void:
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.vertex_color_is_srgb = true
-	material.roughness = 1.0
-	material.metallic_specular = 0.0
+	var material := RoyaleMaterials.terrain_material()
 	# Positions, normals and colours are computed once per vertex, then indexed per chunk.
 	var positions := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
+	var weights2 := PackedVector2Array()
 	positions.resize(VERTS * VERTS)
 	normals.resize(VERTS * VERTS)
 	colors.resize(VERTS * VERTS)
+	weights2.resize(VERTS * VERTS)
 	for iz in VERTS:
 		for ix in VERTS:
 			var i := iz * VERTS + ix
@@ -264,7 +312,9 @@ func _build_terrain() -> void:
 			var n := Vector3(_h(ix - 1, iz) - _h(ix + 1, iz), 2.0 * GRID, _h(ix, iz - 1) - _h(ix, iz + 1)).normalized()
 			positions[i] = Vector3(x, h, z)
 			normals[i] = n
-			colors[i] = _ground_color(x, z, h, 1.0 - n.y, town_mask[i])
+			var gw := _ground_weights(x, z, h, 1.0 - n.y, town_mask[i])
+			colors[i] = gw[0]
+			weights2[i] = gw[1]
 	var cells := VERTS - 1
 	for cz in range(0, cells, CHUNK):
 		for cx in range(0, cells, CHUNK):
@@ -274,6 +324,7 @@ func _build_terrain() -> void:
 			var verts := PackedVector3Array()
 			var norms := PackedVector3Array()
 			var cols := PackedColorArray()
+			var uv2s := PackedVector2Array()
 			var indices := PackedInt32Array()
 			for iz in range(cz, ez + 1):
 				for ix in range(cx, ex + 1):
@@ -281,6 +332,7 @@ func _build_terrain() -> void:
 					verts.append(positions[i])
 					norms.append(normals[i])
 					cols.append(colors[i])
+					uv2s.append(weights2[i])
 			for lz in range(ez - cz):
 				for lx in range(ex - cx):
 					var a := lz * cw + lx
@@ -290,6 +342,7 @@ func _build_terrain() -> void:
 			arrays[Mesh.ARRAY_VERTEX] = verts
 			arrays[Mesh.ARRAY_NORMAL] = norms
 			arrays[Mesh.ARRAY_COLOR] = cols
+			arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 			arrays[Mesh.ARRAY_INDEX] = indices
 			var mesh := ArrayMesh.new()
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -321,12 +374,9 @@ func _build_water() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(MAP_SIZE * 3.0, MAP_SIZE * 3.0)
 	water.mesh = plane
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.1, 0.36, 0.6, 0.94)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.roughness = 0.4
-	m.metallic_specular = 0.3
-	water.material_override = m
+	plane.subdivide_width = 64
+	plane.subdivide_depth = 64
+	water.material_override = RoyaleMaterials.water_material()
 	water.position.y = WATER_Y
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(water)
@@ -424,7 +474,7 @@ func _box(st: SurfaceTool, body: StaticBody3D, center: Vector3, size: Vector3, c
 	for face in faces:
 		var n: Vector3 = basis * Vector3(face[0])
 		var shade := 0.82 + 0.18 * maxf(0.0, n.y) + 0.06 * n.x
-		var c := Color(color.r * shade, color.g * shade, color.b * shade)
+		var c := Color(color.r * shade, color.g * shade, color.b * shade, color.a)
 		var q: Array = face[1]
 		# Godot draws clockwise faces (seen from outside) and culls the rest; pick the
 		# triangle order that faces outward so top faces (floors, roofs) aren't culled.
@@ -612,8 +662,12 @@ func _scatter_nature() -> void:
 				_add_instance(ROCKS[rng.randi_range(0, ROCKS.size() - 1)], Vector3(px, h - 0.3, pz), rng.randf_range(2.0, 4.5), true, 1.1)
 			elif roll < density * 0.42 + 0.16:
 				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
-			elif roll < density * 0.42 + 0.3 and not quality_low:
-				_add_instance(GRASS[rng.randi_range(0, GRASS.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
+			elif roll < density * 0.42 + 0.45 and not quality_low:
+				# A tuft cluster: several blades and the odd flower around one spot
+				for k in rng.randi_range(4, 8):
+					var gx := px + rng.randf_range(-2.5, 2.5)
+					var gz := pz + rng.randf_range(-2.5, 2.5)
+					_add_instance(GRASS[rng.randi_range(0, GRASS.size() - 1)], Vector3(gx, height_at(gx, gz), gz), rng.randf_range(2.5, 4.0), false, 0.0)
 		z += cell
 	# A handful of outdoor loot caches (campsites)
 	for i in 14:
@@ -633,10 +687,25 @@ func add_model_instance(path: String, tf: Transform3D, chunk_size: float, vis: f
 		_multimesh_buckets[key] = {"path": path, "transforms": [], "vis": vis}
 	_multimesh_buckets[key].transforms.append(tf)
 
+static func mk_kind(name: String) -> String:
+	for k in ["twisted", "tree", "pine", "bush", "plant", "fern", "rock", "grass", "tall", "clover", "flower", "dead"]:
+		if name.begins_with(k):
+			return k
+	return ""
+
 func _add_instance(model: String, pos: Vector3, scale_value: float, collide: bool, radius: float) -> void:
 	var yaw := rng.randf() * TAU
-	var vis := 70.0 if (model.begins_with("grass") or model.begins_with("flower") or model.begins_with("crop")) else (180.0 if model.begins_with("plant") else 0.0)
-	add_model_instance(NATURE + model + ".glb", Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 256.0, vis)
+	var path := NATURE + model + ".glb"
+	var name := model
+	if model.begins_with("mk:"):
+		name = model.substr(3)
+		path = MEGAKIT + name + ".scn"
+		var kind := mk_kind(name)
+		scale_value *= float(MK_SCALE.get(kind, 0.2))
+		if kind == "twisted": radius = 0.9
+	var small := name.begins_with("grass") or name.begins_with("flower") or name.begins_with("crop") or name.begins_with("tall") or name.begins_with("clover")
+	var vis := 65.0 if small else (180.0 if (name.begins_with("plant") or name.begins_with("bush") or name.begins_with("fern")) else 0.0)
+	add_model_instance(path, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 128.0 if small else 256.0, vis)
 	if collide:
 		var cs := CollisionShape3D.new()
 		if radius > 0.8:
@@ -662,8 +731,14 @@ func _flush_multimeshes() -> void:
 			var scene := _load_scene(path)
 			if scene != null:
 				var inst: Node3D = scene.instantiate()
+				var sway := float(MK_WIND.get(mk_kind(path.get_file().get_basename()), 0.0)) if path.begins_with(MEGAKIT) else 0.0
 				for m: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
-					parts.append([m.mesh, _relative_transform(inst, m)])
+					var mesh: Mesh = m.mesh
+					if sway > 0.0:
+						mesh = mesh.duplicate(false)
+						for si in mesh.get_surface_count():
+							mesh.surface_set_material(si, RoyaleMaterials.wind_material(mesh.surface_get_material(si), sway))
+					parts.append([mesh, _relative_transform(inst, m)])
 				inst.free()
 			mesh_cache[path] = parts
 		var vis := float(bucket.vis)
@@ -687,28 +762,210 @@ func _flush_multimeshes() -> void:
 # ── Minimap texture ──────────────────────────────────────────
 
 func _build_map_texture() -> void:
-	var size := 256
+	var size := 360
 	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var step := MAP_VIEW / size
 	for py in size:
 		for px in size:
-			var i := py * VERTS + px   # the 256 px map lines up with the 4 m height grid
-			var h := heights[i]
+			var x := -MAP_VIEW * 0.5 + (px + 0.5) * step
+			var z := -MAP_VIEW * 0.5 + (py + 0.5) * step
+			var h := height_at(x, z)
 			var c: Color
 			if h < 0.6:
 				c = Color("1f5f8b").lerp(Color("2b77a8"), clampf((h + 9.0) / 9.0, 0.0, 1.0))
 			elif h < 1.6:
 				c = Color("e8cfa2")
 			else:
-				c = Color("3cae86").lerp(Color("27795f"), clampf(h / 34.0, 0.0, 1.0))
-			if town_mask[i] > 0:
+				c = Color("4f9a5a").lerp(Color("2f6f3e"), clampf(h / 34.0, 0.0, 1.0))
+			var t := town_at(x, z)
+			if not t.is_empty() or (not island2.is_empty() and Vector2(x, z).distance_to(island2.center) < 36.0):
 				c = Color("b8ad95")
 			elif h > 40.0:
-				c = Color("9aa1a6") if h < 52.0 else Color("eef2f4")
+				c = Color("9aa1a6") if h < 60.0 else Color("eef2f4")
 			img.set_pixel(px, py, c)
 	map_texture = ImageTexture.create_from_image(img)
 
 func world_to_map(p: Vector3) -> Vector2:
-	return Vector2(p.x / MAP_SIZE + 0.5, p.z / MAP_SIZE + 0.5)
+	return Vector2(p.x / MAP_VIEW + 0.5, p.z / MAP_VIEW + 0.5)
+
+# ── Isla Verde (second island) ───────────────────────────────
+
+func _i2_height(x: float, z: float) -> float:
+	var c: Vector2 = island2.center
+	var half := (I2_VERTS - 1) * GRID * 0.5
+	var fx := clampf((x - c.x + half) / GRID, 0.0, I2_VERTS - 1.001)
+	var fz := clampf((z - c.y + half) / GRID, 0.0, I2_VERTS - 1.001)
+	var ix := int(fx)
+	var iz := int(fz)
+	var hs: PackedFloat32Array = island2.heights
+	var i := iz * I2_VERTS + ix
+	var a := lerpf(hs[i], hs[i + 1], fx - ix)
+	var b := lerpf(hs[i + I2_VERTS], hs[i + I2_VERTS + 1], fx - ix)
+	return lerpf(a, b, fz - iz)
+
+## A small hilly island ~640 m out with a walled outpost (military loot) and beaches.
+func _build_island2() -> void:
+	var a := rng.randf() * TAU
+	var center := Vector2(cos(a), sin(a)) * 640.0
+	var half := (I2_VERTS - 1) * GRID * 0.5
+	var hs := PackedFloat32Array()
+	hs.resize(I2_VERTS * I2_VERTS)
+	for iz in I2_VERTS:
+		for ix in I2_VERTS:
+			var x := center.x - half + ix * GRID
+			var z := center.y - half + iz * GRID
+			var d := Vector2(x, z).distance_to(center) / ISLAND2_R + warp.get_noise_2d(x * 2.0, z * 2.0) * 0.12
+			var mask := 1.0 - smoothstep(0.7, 1.0, d)
+			var hills := noise.get_noise_2d(x * 2.3, z * 2.3) * 0.5 + 0.5
+			var h := hills * 12.0 * mask + mask * 3.0 - (1.0 - mask) * 8.0
+			var od := Vector2(x, z).distance_to(center)
+			h = lerpf(h, 3.2, 1.0 - smoothstep(34.0, 52.0, od))
+			hs[iz * I2_VERTS + ix] = h
+	island2 = {"center": center, "heights": hs, "angle": a}
+	# Mesh with the same photo-texture terrain shader
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var uv2s := PackedVector2Array()
+	var idx := PackedInt32Array()
+	for iz in I2_VERTS:
+		for ix in I2_VERTS:
+			var h := hs[iz * I2_VERTS + ix]
+			var x := center.x - half + ix * GRID
+			var z := center.y - half + iz * GRID
+			var hl := hs[iz * I2_VERTS + maxi(ix - 1, 0)]
+			var hr := hs[iz * I2_VERTS + mini(ix + 1, I2_VERTS - 1)]
+			var hd := hs[maxi(iz - 1, 0) * I2_VERTS + ix]
+			var hu := hs[mini(iz + 1, I2_VERTS - 1) * I2_VERTS + ix]
+			var n := Vector3(hl - hr, 2.0 * GRID, hd - hu).normalized()
+			verts.append(Vector3(x, h, z))
+			norms.append(n)
+			var od := Vector2(x, z).distance_to(center)
+			if od < 32.0:
+				cols.append(Color(0, 0, 0, 0.1)); uv2s.append(Vector2(0, 1))
+			else:
+				var beach := 1.0 - smoothstep(1.2, 2.2, h)
+				var rock := smoothstep(0.4, 0.65, 1.0 - n.y)
+				cols.append(Color(maxf(0.0, 1.0 - beach - rock), beach, rock * (1.0 - beach), 0)); uv2s.append(Vector2.ZERO)
+	for iz in I2_VERTS - 1:
+		for ix in I2_VERTS - 1:
+			var p := iz * I2_VERTS + ix
+			idx.append_array([p, p + 1, p + I2_VERTS + 1, p, p + I2_VERTS + 1, p + I2_VERTS])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = RoyaleMaterials.terrain_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	var tb := StaticBody3D.new()
+	tb.collision_layer = 1
+	var shape := HeightMapShape3D.new()
+	shape.map_width = I2_VERTS
+	shape.map_depth = I2_VERTS
+	var scaled := PackedFloat32Array()
+	scaled.resize(hs.size())
+	for i in hs.size():
+		scaled[i] = hs[i] / GRID
+	shape.map_data = scaled
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	cs.scale = Vector3.ONE * GRID
+	tb.add_child(cs)
+	tb.position = Vector3(center.x, 0, center.y)
+	add_child(tb)
+	# The outpost: warehouses, metal shelters, crates (military-tier loot)
+	var town := {"name": "Isla Verde Outpost", "pos": center, "radius": 40.0, "tier": 2, "military": true, "y": 3.2}
+	island2.town = town
+	_build_town(town)
+	# Trees, bushes and grass on the rest of the island
+	var cell := 7.0
+	var z0 := center.y - ISLAND2_R
+	while z0 < center.y + ISLAND2_R:
+		var x0 := center.x - ISLAND2_R
+		while x0 < center.x + ISLAND2_R:
+			var px := x0 + rng.randf_range(0, cell)
+			var pz := z0 + rng.randf_range(0, cell)
+			x0 += cell
+			var h := height_at(px, pz)
+			if h < 1.2 or Vector2(px, pz).distance_to(center) < 50.0:
+				continue
+			var roll := rng.randf()
+			if h < 2.2 and roll < 0.15:
+				_add_instance(TREES_BEACH[rng.randi_range(0, 1)], Vector3(px, h, pz), rng.randf_range(4.5, 6.5), true, 0.3)
+			elif roll < 0.22:
+				_add_instance(TREES_LOW[rng.randi_range(0, TREES_LOW.size() - 1)], Vector3(px, h, pz), rng.randf_range(5.0, 8.0), true, 0.35)
+			elif roll < 0.32:
+				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
+			elif roll < 0.6 and not quality_low:
+				for k in 4:
+					var gx := px + rng.randf_range(-2.0, 2.0)
+					var gz := pz + rng.randf_range(-2.0, 2.0)
+					_add_instance(GRASS[rng.randi_range(0, GRASS.size() - 1)], Vector3(gx, height_at(gx, gz), gz), rng.randf_range(2.5, 4.0), false, 0.0)
+		z0 += cell
+
+## A flat sea floor everywhere (the height grids end at their edges).
+func _build_sea_floor() -> void:
+	var sb := StaticBody3D.new()
+	sb.collision_layer = 1
+	var cs := CollisionShape3D.new()
+	cs.shape = WorldBoundaryShape3D.new()
+	sb.add_child(cs)
+	sb.position.y = -12.5
+	add_child(sb)
+
+# ── Vehicles ─────────────────────────────────────────────────
+
+## Cars and motorcycles parked at the edge of every town, ro-ro ferries at both shores.
+func _plan_vehicles() -> void:
+	vehicle_spawns.clear()
+	for town in towns:
+		var c: Vector2 = town.pos
+		var r := float(town.radius) + 7.0
+		for k in 3:
+			var a := rng.randf() * TAU
+			var p := c + Vector2(cos(a), sin(a)) * r
+			var h := height_at(p.x, p.y)
+			if h < 1.5:
+				continue
+			var kind := "moto" if k == 2 else "car"
+			var model: String = "motorcycle" if kind == "moto" else RoyaleVehicle.CARS[rng.randi_range(0, RoyaleVehicle.CARS.size() - 1)]
+			vehicle_spawns.append({"kind": kind, "model": model, "pos": Vector3(p.x, h + 0.4, p.y), "yaw": a + PI * 0.5})
+	if island2.is_empty():
+		return
+	var dir: Vector2 = Vector2(island2.center).normalized()
+	# Two ferries on the main island's shore facing the strait, bows to the beach
+	for side in [-1.0, 1.0]:
+		var perp: Vector2 = Vector2(-dir.y, dir.x) * float(side) * 22.0
+		var p := _shore_from(Vector2.ZERO + perp, dir)
+		if p != Vector2.INF:
+			var w := p + dir * 11.0
+			vehicle_spawns.append({"kind": "boat", "model": "", "pos": Vector3(w.x, WATER_Y, w.y), "yaw": atan2(dir.x, dir.y)})
+	# One at Isla Verde, bow toward its beach
+	var q := _shore_from(Vector2(island2.center), -dir)
+	if q != Vector2.INF:
+		var w2 := q - dir * 11.0
+		vehicle_spawns.append({"kind": "boat", "model": "", "pos": Vector3(w2.x, WATER_Y, w2.y), "yaw": atan2(-dir.x, -dir.y)})
+
+## Walks from 'from' along 'dir' until the water is deep enough for a ferry.
+func _shore_from(from: Vector2, dir: Vector2) -> Vector2:
+	var p := from
+	var was_land := false
+	for i in 500:
+		p += dir * 2.0
+		var h := height_at(p.x, p.y)
+		if h > 0.5:
+			was_land = true
+		elif was_land and h < -2.0:
+			return p
+	return Vector2.INF
 
 func random_land_point(margin := 120.0) -> Vector3:
 	for i in 60:

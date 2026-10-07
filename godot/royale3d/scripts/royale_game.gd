@@ -35,8 +35,8 @@ var plane_start := Vector2.ZERO
 var plane_end := Vector2.ZERO
 var plane_t := 0.0
 var plane_node: Node3D
-var zone := {"center": Vector2.ZERO, "radius": 600.0, "next_center": Vector2.ZERO, "next_radius": 600.0,
-	"from_center": Vector2.ZERO, "from_radius": 600.0, "phase": -1, "timer": 0.0, "shrinking": false, "dps": 0.6}
+var zone := {"center": Vector2.ZERO, "radius": 780.0, "next_center": Vector2.ZERO, "next_radius": 780.0,
+	"from_center": Vector2.ZERO, "from_radius": 780.0, "phase": -1, "timer": 0.0, "shrinking": false, "dps": 0.6}
 var zone_wall: MeshInstance3D
 var zone_tick := 0.0
 var loot_items: Array[Dictionary] = []
@@ -54,7 +54,7 @@ var airdrop_done := false
 var total_players := BOT_COUNT + 1
 var bot_accuracy := 0.85
 var settings := {"sensitivity": 1.0, "scope_sensitivity": 0.8, "volume": 0.8, "low": false, "fov": 78.0,
-	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false,
+	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false, "view": "tps",
 	"layout": {}}
 var paused := false
 var map_open := false
@@ -73,6 +73,9 @@ var _bench := false
 var _bench_frames := 0
 var _bench_time := 0.0
 var net: RoyaleNet
+var loadout := {"weapon": "", "outfit": "standard", "level": 1}
+var rockets: Array[Dictionary] = []
+var vehicles: Array = []
 var bot_count := BOT_COUNT
 var loot_by_uid := {}
 var crates_by_id := {}
@@ -117,6 +120,9 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 	_build_environment()
+	# Wind direction for the match (grass and trees sway along it); from the seed so everyone in
+	# a room match sees the same wind
+	RoyaleMaterials.wind_dir = Vector2.from_angle(float(rng.seed % 628) / 100.0)
 	world = RoyaleWorld.new()
 	world.name = "World"
 	add_child(world)
@@ -125,6 +131,7 @@ func _ready() -> void:
 	var t_loot := Time.get_ticks_msec()
 	_spawn_loot()
 	_loot_ready = true
+	_spawn_vehicles()
 	print("ROYALE_TIMING world=%dms loot=%dms" % [t_loot - t_gen, Time.get_ticks_msec() - t_loot])
 	_build_zone_wall()
 	_build_tracers()
@@ -132,6 +139,8 @@ func _ready() -> void:
 	player.game = self
 	add_child(player)
 	player.message.connect(func(t): hud.flash_message(t))
+	loadout = Skins.read_loadout()
+	player.set_loadout(String(loadout.weapon), int(loadout.level), String(loadout.outfit))
 	player.died.connect(_on_player_died)
 	combatants.append(player)
 	for i in bot_count:
@@ -197,6 +206,7 @@ func _apply_settings() -> void:
 		player.scope_sensitivity = float(settings.scope_sensitivity)
 		player.invert_y = bool(settings.invert)
 		player.base_fov = float(settings.fov)
+		player.view_mode = String(settings.get("view", "tps"))
 	if touch: touch.apply_settings(settings)
 	if hud: hud.apply_settings(settings)
 	if sfx: sfx.set_volume(float(settings.volume))
@@ -445,7 +455,7 @@ func _update_zone(delta: float) -> void:
 	if zone.phase < 0:
 		if (phase == "match" or player.state == "ground") and (not net.active or net.is_host):
 			zone.center = Vector2.ZERO
-			zone.radius = 600.0
+			zone.radius = 780.0   # wide enough to include Isla Verde at the start
 			_start_zone_phase(0)
 		return
 	var before := float(zone.timer)
@@ -562,6 +572,10 @@ func bot_shot(bot: RoyaleBot, target: Node3D, hit: bool, dmg: float, headshot: b
 	if net.active:
 		net.bot_shot(bots.find(bot), aim)
 	var near_player := bot.global_position.distance_to(player.global_position) < 260.0
+	if near_player and bot.soldier:
+		bot.soldier.shoot_fx()
+		if bot.soldier.muzzle:
+			muzzle = bot.soldier.muzzle.global_position
 	if near_player:
 		_tracer(muzzle, aim)
 		sfx.play_at(RoyaleSfx.shot_key(gun_id), muzzle)
@@ -724,11 +738,9 @@ func _make_loot_node(item: Dictionary) -> Node3D:
 	add_child(n)
 	match String(item.type):
 		"gun":
-			var path := Items.GUN_DIR + String(Items.gun(String(item.id)).model) + ".glb"
-			if not _gun_scene_cache.has(path): _gun_scene_cache[path] = load(path)
-			var g: Node3D = _gun_scene_cache[path].instantiate()
+			var g := Items.gun_node(String(item.id))
 			g.rotation_degrees = Vector3(0, rng.randf_range(0, 360), 90)
-			g.scale = Vector3.ONE * 1.3
+			g.position.y = 0.06
 			n.add_child(g)
 		_:
 			var mi := MeshInstance3D.new()
@@ -835,6 +847,8 @@ func prompt_text() -> String:
 func interact_label() -> String:
 	if player == null or player.state != "ground":
 		return ""
+	if player.vehicle:
+		return "EXIT"
 	if not nearby_loot().is_empty():
 		return "PICK UP"
 	if not nearby_crate().is_empty():
@@ -842,6 +856,11 @@ func interact_label() -> String:
 	var door := nearby_door()
 	if not door.is_empty():
 		return "CLOSE" if bool(door.open) else "OPEN"
+	if player.vehicle:
+		return "EXIT"
+	var v := nearby_vehicle()
+	if v:
+		return v.label()
 	return ""
 
 func nearby_door() -> Dictionary:
@@ -849,8 +868,12 @@ func nearby_door() -> Dictionary:
 		return {}
 	return world.nearest_door(player.global_position + Vector3(0, 1.0, 0) - player.global_transform.basis.z * 0.4, 2.2)
 
-## F / context button: pick up loot first, otherwise open or close the nearest door.
+## F / context button: pick up loot first, otherwise open or close the nearest door, otherwise
+## get in (or out of) a vehicle.
 func pickup_nearby() -> void:
+	if player.vehicle:
+		_leave_vehicle()
+		return
 	var item := nearby_loot()
 	if not item.is_empty():
 		_player_take(item, true)
@@ -863,6 +886,10 @@ func pickup_nearby() -> void:
 	if not door.is_empty():
 		set_door(door, not bool(door.open))
 		sfx.play("pickup", 0.6)
+		return
+	var v := nearby_vehicle()
+	if v:
+		_enter_vehicle(v)
 
 var _door_clock := 0.0
 ## Bots open doors they walk up to (like players pressing F).
@@ -1139,6 +1166,7 @@ func throw_grenade() -> void:
 	if player.grenades <= 0 or player.state != "ground":
 		return
 	player.grenades -= 1
+	player.note_throw()
 	var g := RigidBody3D.new()
 	g.collision_layer = 0
 	g.collision_mask = 1
@@ -1167,14 +1195,14 @@ func throw_grenade() -> void:
 			_explode(g.global_position, player.combatant_name)
 			g.queue_free())
 
-func _explode(pos: Vector3, owner_name: String) -> void:
+func _explode(pos: Vector3, owner_name: String, damage := 115.0, radius := 7.5) -> void:
 	explosion_effect(pos)
 	for c in combatants:
 		if not c.is_alive():
 			continue
 		var d := c.global_position.distance_to(pos)
-		if d < 7.5 and has_line_of_sight(pos + Vector3(0, 0.4, 0), c.global_position + Vector3(0, 1.0, 0), null):
-			c.take_damage(115.0 * (1.0 - d / 7.5), false, owner_name)
+		if d < radius and has_line_of_sight(pos + Vector3(0, 0.4, 0), c.global_position + Vector3(0, 1.0, 0), null):
+			c.take_damage(damage * (1.0 - d / radius), false, owner_name)
 			if c == player: hud.damage_flash(60.0)
 			elif owner_name == player.combatant_name: hud.hitmarker(not c.is_alive())
 
@@ -1202,7 +1230,7 @@ func explosion_effect(pos: Vector3) -> void:
 
 func _spawn_airdrop() -> void:
 	airdrop_done = true
-	var special := "awm" if rng.randf() < 0.5 else "m249"
+	var special: String = ["awm", "m249", "rpg", "gatling"][rng.randi_range(0, 3)]
 	var items := [
 		{"type": "gun", "id": special},
 		{"type": "ammo", "id": Items.gun(special).ammo, "count": 60},
@@ -1326,7 +1354,15 @@ func toggle_map() -> void:
 	hud.set_map_open(map_open)
 	if map_open: touch.release_all()
 
+func toggle_view() -> void:
+	settings.view = "fps" if String(settings.get("view", "tps")) == "tps" else "tps"
+	_apply_settings()
+	hud.flash_message("Third-person view" if settings.view == "tps" else "First-person view", 1.4)
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_V and not _ui_blocking():
+		toggle_view()
+		return
 	if player == null or hud == null:
 		return
 	if event.is_action_pressed("pause"):
@@ -1400,6 +1436,7 @@ func _physics_process(delta: float) -> void:
 		player.open_chute()
 	_update_zone(delta)
 	_update_airdrop(delta)
+	_update_rockets(delta)
 	_bots_open_doors(delta)
 	# Thin the haze at altitude so the island stays clear from the plane
 	var base_fog := 0.0022 if bool(settings.low) else 0.0012
@@ -1418,6 +1455,155 @@ func _process(delta: float) -> void:
 			print("ROYALE_BENCH fps=%.1f" % (_bench_frames / _bench_time))
 			_bench_frames = 0
 			_bench_time = 0.0
+
+# ── Rockets (RPG-7) ──────────────────────────────────────────
+
+func fire_rocket(shooter: Node3D, origin: Vector3, dir: Vector3, muzzle: Vector3, gun_id: String) -> void:
+	var data := Items.gun(gun_id)
+	_launch_rocket(muzzle, (origin + dir * 400.0 - muzzle).normalized() if dir.length() > 0.0 else dir, String(shooter.combatant_name), float(data.speed), float(data.dmg), float(data.splash), float(data.radius), true, shooter)
+	sfx.play("explosion", 1.8)
+	recent_shots.append({"pos": Vector2(origin.x, origin.z), "t": Time.get_ticks_msec() * 0.001, "mine": shooter == player})
+	if net.active:
+		net.send({"t": "rocket", "o": RoyaleNet.v3(muzzle), "d": RoyaleNet.v3((origin + dir * 400.0 - muzzle).normalized())})
+
+## Classmate's rocket: same flight, but their game deals the damage.
+func remote_rocket(from: Vector3, dir: Vector3) -> void:
+	var data := Items.gun("rpg")
+	_launch_rocket(from, dir.normalized(), "", float(data.speed), 0.0, 0.0, float(data.radius), false, null)
+
+func _launch_rocket(from: Vector3, dir: Vector3, owner_name: String, speed: float, direct: float, splash: float, radius: float, deals_damage: bool, shooter: Node3D) -> void:
+	var node := Node3D.new()
+	add_child(node)
+	node.global_position = from
+	if dir.length() > 0.01:
+		node.look_at(from + dir, Vector3.UP if absf(dir.y) < 0.98 else Vector3.RIGHT)
+	var body := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.03
+	cyl.bottom_radius = 0.045
+	cyl.height = 0.6
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("4d5a3a")
+	cyl.material = m
+	body.mesh = cyl
+	body.rotation.x = -PI * 0.5
+	node.add_child(body)
+	var flame := OmniLight3D.new()
+	flame.light_color = Color("ffb04a")
+	flame.light_energy = 2.0
+	flame.omni_range = 5.0
+	flame.position = Vector3(0, 0, 0.35)
+	node.add_child(flame)
+	var trail := CPUParticles3D.new()
+	trail.amount = 40
+	trail.lifetime = 1.2
+	trail.local_coords = false
+	trail.direction = Vector3(0, 0, 1)
+	trail.spread = 12.0
+	trail.initial_velocity_min = 1.0
+	trail.initial_velocity_max = 2.0
+	trail.gravity = Vector3(0, 0.8, 0)
+	trail.scale_amount_min = 0.6
+	trail.scale_amount_max = 1.6
+	var puff := SphereMesh.new()
+	puff.radius = 0.18
+	puff.height = 0.36
+	var pm := StandardMaterial3D.new()
+	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pm.albedo_color = Color(0.85, 0.85, 0.85, 0.45)
+	pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	puff.material = pm
+	trail.mesh = puff
+	trail.position = Vector3(0, 0, 0.35)
+	node.add_child(trail)
+	var ex: Array[RID] = []
+	if shooter is CollisionObject3D:
+		ex.append((shooter as CollisionObject3D).get_rid())
+	rockets.append({"node": node, "dir": dir.normalized(), "speed": speed, "left": 4.5, "owner": owner_name,
+		"direct": direct, "splash": splash, "radius": radius, "damage": deals_damage, "exclude": ex})
+
+func _update_rockets(delta: float) -> void:
+	for r in rockets.duplicate():
+		var node: Node3D = r.node
+		var from := node.global_position
+		var to := from + Vector3(r.dir) * float(r.speed) * delta
+		r.left = float(r.left) - delta
+		var hit := _ray(from, to, 1 | 4, r.exclude)
+		if hit.is_empty() and r.left > 0.0 and to.y > world.height_at(to.x, to.z) - 0.2:
+			node.global_position = to
+			continue
+		var at: Vector3 = to if hit.is_empty() else hit.position
+		rockets.erase(r)
+		node.queue_free()
+		if bool(r.damage):
+			if not hit.is_empty() and (hit.collider is RoyaleBot or hit.collider is RoyaleRemote) and hit.collider.is_alive():
+				hit.collider.take_damage(float(r.direct), false, String(r.owner))
+				if String(r.owner) == player.combatant_name: hud.hitmarker(not hit.collider.is_alive())
+			_explode(at, String(r.owner), float(r.splash), float(r.radius))
+		else:
+			explosion_effect(at)
+
+# ── Vehicles ─────────────────────────────────────────────────
+
+func _spawn_vehicles() -> void:
+	for spawn in world.vehicle_spawns:
+		var v := RoyaleVehicle.new()
+		v.name = "Vehicle%d" % vehicles.size()
+		add_child(v)
+		v.setup(self, String(spawn.kind), String(spawn.model), vehicles.size())
+		v.place(spawn.pos, float(spawn.yaw))
+		vehicles.append(v)
+
+func nearby_vehicle() -> RoyaleVehicle:
+	if player == null or player.state != "ground" or player.vehicle != null:
+		return null
+	var best: RoyaleVehicle = null
+	var best_d := 3.6
+	for v: RoyaleVehicle in vehicles:
+		if not v.is_free():
+			continue
+		var d := player.global_position.distance_to(v.seat_transform().origin if v.kind == "boat" else v.body.global_position)
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
+
+func _enter_vehicle(v: RoyaleVehicle) -> void:
+	player.enter_vehicle(v)
+	v.driver = player
+	hud.flash_message({"car": "Driving: stick to steer, JUMP to brake, EXIT to get out", "moto": "Riding: stick to steer, JUMP to brake, EXIT to get off",
+		"boat": "Ferry: stick to steer — park the ramp on a beach to load cars"}.get(v.kind, ""), 4.0)
+	sfx.play("pickup", 0.5)
+	if net.active:
+		net.send({"t": "vin", "i": v.index})
+
+func _leave_vehicle() -> void:
+	var v: RoyaleVehicle = player.vehicle
+	if v == null:
+		return
+	v.driver = null
+	player.exit_vehicle()
+	if net.active:
+		net.send({"t": "vout", "i": v.index, "p": RoyaleNet.v3(v.body.global_position), "y": snappedf(v.heading, 0.01)})
+
+func net_vehicle(m: Dictionary, from: String) -> void:
+	var i := int(m.get("i", -1))
+	if i < 0 or i >= vehicles.size():
+		return
+	var v: RoyaleVehicle = vehicles[i]
+	match String(m.get("t", "")):
+		"veh", "vin":
+			if v.driver == player and String(m.t) == "vin":
+				_leave_vehicle()   # both got in at once: theirs wins
+			if m.has("p"):
+				v.apply_net(m, from)
+			else:
+				v.remote_driver = from
+		"vout":
+			v.remote_driver = ""
+			if m.has("p"):
+				v.place(RoyaleNet.to_v3(m.get("p")), float(m.get("y", v.heading)))
+				v.speed = 0.0
 
 # ── Room matches ─────────────────────────────────────────────
 
@@ -1457,6 +1643,9 @@ func remote_shot(from: Vector3, to: Vector3, gun_id: String) -> void:
 		recent_shots.remove_at(0)
 
 func remote_left(r: RoyaleRemote) -> void:
+	for v: RoyaleVehicle in vehicles:
+		if v.remote_driver == r.username:
+			v.remote_driver = ""
 	if not smoke_mode:
 		hud.add_feed("%s left the match" % r.combatant_name, false)
 	_check_end()
@@ -1467,6 +1656,9 @@ func net_bot_shot(index: int, aim: Vector3) -> void:
 	var bot := bots[index]
 	var muzzle := bot.global_position + Vector3(0, 1.25, 0) + bot.global_transform.basis.z * 0.6
 	if bot.global_position.distance_to(player.global_position) < 260.0:
+		if bot.soldier:
+			bot.soldier.shoot_fx()
+			if bot.soldier.muzzle: muzzle = bot.soldier.muzzle.global_position
 		_tracer(muzzle, aim)
 		sfx.play_at(RoyaleSfx.shot_key(bot.gun_id), muzzle)
 	recent_shots.append({"pos": Vector2(bot.global_position.x, bot.global_position.z), "t": Time.get_ticks_msec() * 0.001, "mine": false})
@@ -1567,6 +1759,7 @@ func _run_smoke() -> void:
 	get_tree().quit(0 if ok else 1)
 
 func _run_screenshots(dir: String) -> void:
+	player.god = true
 	DirAccess.make_dir_recursive_absolute(dir)
 	if "--clean" in OS.get_cmdline_user_args():
 		hud.visible = false
@@ -1675,6 +1868,95 @@ func _run_screenshots(dir: String) -> void:
 	await _shot(dir + "/18_layout_edit.png")
 	hud.finish_layout_edit()
 	toggle_pause()
+	hud.settings_layer.visible = false
+	# New content: skins, heavy weapons, vehicles, the ferry and Isla Verde
+	player.set_loadout("lava", 3, "tiger")
+	player.slots[0] = {}
+	player.slots[1] = {}
+	player.give_gun("gatling")
+	player.ammo["556"] = 200
+	player.global_position = Vector3(house.door_out) - to.normalized() * 6.0 + Vector3(0, 0.3, 0)
+	player.yaw = atan2(-to.x, -to.z) + PI * 0.75
+	player.pitch = -0.1
+	await get_tree().create_timer(0.5).timeout
+	for i in 50:
+		player.try_fire(true)
+		await get_tree().physics_frame
+	await _shot(dir + "/20_gatling_lava_tiger.png")
+	player.try_fire(false)
+	player.give_gun("rpg")
+	player.ammo["rocket"] = 4
+	player.view_mode = "fps"
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/21_rpg_fps.png")
+	player.try_fire(true)
+	await get_tree().create_timer(0.35).timeout
+	await _shot(dir + "/22_rocket_flying.png")
+	player.try_fire(false)
+	player.view_mode = "tps"
+	# Drive a car
+	var car: RoyaleVehicle = null
+	var moto: RoyaleVehicle = null
+	var ferry: RoyaleVehicle = null
+	for v: RoyaleVehicle in vehicles:
+		if v.kind == "car" and car == null: car = v
+		if v.kind == "moto" and moto == null: moto = v
+		if v.kind == "boat" and ferry == null: ferry = v
+	print("VEHICLES total=%d car=%s moto=%s ferry=%s" % [vehicles.size(), car != null, moto != null, ferry != null])
+	for v: RoyaleVehicle in vehicles:
+		if v.kind == "boat":
+			print("BOAT spawn=%s now=%s" % [world.vehicle_spawns[v.index].pos, v.body.global_position])
+	if car:
+		player.global_position = car.body.global_position + Vector3(2, 0.5, 0)
+		await get_tree().create_timer(0.3).timeout
+		_enter_vehicle(car)
+		player.yaw = car.heading
+		for i in 90:
+			car.drive(Vector2(0.3, -1.0), false, 1.0 / 60.0)
+			await get_tree().physics_frame
+		await _shot(dir + "/23_car.png")
+		print("CAR speed=%.1f moved_to=%s" % [car.speed, car.body.global_position])
+		_leave_vehicle()
+	if moto:
+		player.global_position = moto.body.global_position + Vector3(1.5, 0.5, 0)
+		await get_tree().create_timer(0.3).timeout
+		_enter_vehicle(moto)
+		player.yaw = moto.heading
+		for i in 70:
+			moto.drive(Vector2(-0.4, -1.0), false, 1.0 / 60.0)
+			await get_tree().physics_frame
+		await _shot(dir + "/24_moto.png")
+		_leave_vehicle()
+	if ferry:
+		player.global_position = ferry.seat_transform().origin + Vector3(0, 0.5, 0)
+		await get_tree().create_timer(0.3).timeout
+		_enter_vehicle(ferry)
+		player.yaw = ferry.heading + PI
+		player.pitch = -0.25
+		for i in 60:
+			ferry.drive(Vector2(0, 1.0), false, 1.0 / 60.0)
+			await get_tree().physics_frame
+		await _shot(dir + "/25_ferry.png")
+		if OS.get_cmdline_user_args().has("--debug-water"):
+			for c in world.get_children():
+				if c is MeshInstance3D and (c as MeshInstance3D).mesh is PlaneMesh: c.visible = false
+			zone_wall.visible = false
+			print("DEBUG cam=%s player=%s" % [player.camera.global_position, player.global_position])
+			await _shot(dir + "/25b_ferry_nowater.png")
+		_leave_vehicle()
+	if not world.island2.is_empty():
+		var c2: Vector2 = world.island2.center
+		player.global_position = Vector3(c2.x - 60, 30, c2.y - 60)
+		player.yaw = atan2(-(c2.x - player.global_position.x) * -1.0, (c2.y - player.global_position.z))
+		var look := Vector3(c2.x, 4, c2.y) - player.global_position
+		player.yaw = atan2(-look.x, -look.z)
+		player.pitch = -0.35
+		await get_tree().create_timer(0.8).timeout
+		await _shot(dir + "/26_isla_verde.png")
+	toggle_map()
+	await get_tree().create_timer(0.4).timeout
+	await _shot(dir + "/27_map_both_islands.png")
+	toggle_map()
 	hud.show_end(false, 7, 3, 37)
 	await get_tree().create_timer(0.4).timeout
 	await _shot(dir + "/19_end.png")

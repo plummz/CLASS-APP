@@ -1,6 +1,22 @@
 ﻿(function () {
-const APP_VERSION = '1.9.31';
+const APP_VERSION = '1.10.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.10.0',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Soldiers, Vehicles, a Second Island and the Shop',
+    summary: 'Realistic tactical soldiers with motion-captured movement, third-person camera, real guns plus the RPG-7 and Gatling, cars, motorcycles and ro-ro ferries, a new island, photo-textured map and a skin shop.',
+    bullets: [
+      'New: Everyone is a tactical soldier (helmet, vest, backpack, camo, gloves, boots) with motion-captured movement: walk, run, sprint, strafe, backpedal, crouch, prone crawl, aim, fire, reload, heal, throw, skydive, parachute and death. The upper body aims and shoots while the legs keep moving.',
+      'New: Third-person camera over the shoulder (aiming switches to the sights). First person is still in Settings, or press V.',
+      'New: Realistic guns for every weapon, plus the RPG-7 (rockets with splash damage) and the Gatling (spins up, huge fire rate, slows you down). Muzzle flashes and flying shell casings.',
+      'New: Shop on the Battle Royale page: 16 weapon finishes (Common, Rare, Epic, Legendary, with gradients, camo, animated flows, neon pulses, prism and gold), each upgradable to Lv 3, and 11 outfits. Bought with your match coins.',
+      'New: Drive cars and motorcycles (seated inside), and three ro-ro ferries that carry you and your car across to Isla Verde, a new island with a military outpost.',
+      'New: Photo-textured ground, roads, brick and plaster walls, tiled roofs and wooden floors; new trees, bushes, flowers and grass that sway with the wind; animated sea; new furniture in every room.',
+      'Improved: Classmates in room matches see your outfit, weapon skin, stance, aim and vehicle.',
+      'Fixed: Riders no longer stand on top of vehicles; ferries stay where they are parked.',
+    ]
+  },
   {
     version: '1.9.31',
     date: 'October 7, 2026',

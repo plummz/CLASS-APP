@@ -1,8 +1,10 @@
 class_name RoyalePlayer
 extends CharacterBody3D
-## First-person survivor (same POV and touch feel as the Dungeon of Knowledge explorer).
-## States: plane → freefall → parachute → ground → dead. Stand / crouch / prone, two weapon
-## slots, aim-down-sights with scope zoom, recoil, reload, vest/helmet, timed healing and boost.
+## The survivor. Third person by default (over-the-shoulder camera on a spring arm, the full
+## animated soldier body) with first-person aiming down sights; first person can be chosen in
+## Settings. States: plane → freefall → parachute → ground → dead. Stand / crouch / prone, two
+## weapon slots, scopes, recoil, reload, vest/helmet, timed healing and boost, RPG rockets and a
+## Gatling that spins up before firing.
 
 signal fired(gun_id: String)
 signal died(killer: String)
@@ -33,7 +35,7 @@ var helmet := 0
 var helmet_hp := 0.0
 var slots: Array[Dictionary] = [{}, {}]   ## {id, mag}
 var active := 0
-var ammo := {"9mm": 0, "556": 0, "762": 0, "12g": 0}
+var ammo := {"9mm": 0, "556": 0, "762": 0, "12g": 0, "rocket": 0}
 var meds := {"bandage": 0, "firstaid": 0, "medkit": 0, "drink": 0}
 var grenades := 0
 var kills := 0
@@ -68,8 +70,20 @@ var bob_phase := 0.0
 var kick := 0.0
 var shake_left := 0.0
 var touch_look := Vector2.ZERO
-var _gun_cache := {}
 var _shown_gun := ""
+var body: RoyaleSoldier            ## third-person body (also seen by nobody else: remote players have their own)
+var spring: SpringArm3D
+var view_mode := "tps"             ## "tps" or "fps"
+var weapon_skin := ""
+var weapon_level := 1
+var outfit := "standard"
+var spin := 0.0                    ## Gatling barrel spin-up 0..1
+var trigger_held := false
+var _throw_t := 0.0
+var _punch_t := 0.0
+var _fire_anim_t := 0.0
+var _tps_amount := 1.0             ## 1 = over the shoulder, 0 = eyes (smoothly blended)
+var vehicle: RoyaleVehicle = null
 
 func _ready() -> void:
 	collision_layer = 2
@@ -87,12 +101,21 @@ func _ready() -> void:
 	head = Node3D.new()
 	head.position.y = EYE.stand
 	add_child(head)
+	spring = SpringArm3D.new()
+	spring.collision_mask = 1
+	spring.margin = 0.18
+	spring.spring_length = 2.6
+	spring.add_excluded_object(get_rid())
+	head.add_child(spring)
 	camera = Camera3D.new()
 	camera.fov = base_fov
 	camera.near = 0.05
 	camera.far = 900.0
 	camera.current = true
-	head.add_child(camera)
+	spring.add_child(camera)
+	body = RoyaleSoldier.new()
+	body.rotation.y = PI          # the soldier faces +Z; the player looks down -Z
+	add_child(body)
 	view_model = Node3D.new()
 	view_model.position = Vector3(0.2, -0.22, -0.4)
 	camera.add_child(view_model)
@@ -118,6 +141,16 @@ func _ready() -> void:
 	_build_chute()
 	_build_arms()
 	_build_wind()
+	body.set_outfit.call_deferred(outfit)
+
+func set_loadout(skin: String, level: int, outfit_id: String) -> void:
+	weapon_skin = skin
+	weapon_level = level
+	outfit = outfit_id
+	if body and body.is_inside_tree():
+		body.set_outfit(outfit)
+	_shown_gun = "-"
+	_refresh_gun_model()
 
 func _build_chute() -> void:
 	chute = Node3D.new()
@@ -288,22 +321,17 @@ func _refresh_gun_model() -> void:
 	_shown_gun = id
 	for c in gun_holder.get_children():
 		c.queue_free()
+	if body:
+		body.set_gun(id, weapon_skin)
+	spin = 0.0
 	if id.is_empty():
 		return
-	var path := Items.GUN_DIR + String(Items.gun(id).model) + ".glb"
-	if not _gun_cache.has(path):
-		_gun_cache[path] = load(path) if ResourceLoader.exists(path) else null
-	if _gun_cache[path] == null:
-		return
-	var model: Node3D = _gun_cache[path].instantiate()
-	# Kenney blasters point down -Z; keep them small and to the right of the view
-	model.rotation_degrees = Vector3(0, 180, 0)
-	model.scale = Vector3.ONE * 0.46
-	for m: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
-		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var model := Items.gun_node(id, weapon_skin, weapon_level)
+	# Grip at the right hand, stock near the cheek
+	model.position = Vector3(0, -0.02, 0.12)
 	gun_holder.add_child(model)
-	var length: float = {"pistol": 0.3, "smg": 0.34, "shotgun": 0.38, "ar": 0.42, "dmr": 0.6, "sniper": 0.85, "lmg": 0.5}.get(String(Items.gun(id).kind), 0.4)
-	muzzle_flash.position = Vector3(0, 0.08, -length)
+	var tip: Node3D = model.get_node_or_null("Muzzle")
+	muzzle_flash.position = (tip.position + model.position) if tip else Vector3(0, 0.08, -0.5)
 	muzzle_light.position = muzzle_flash.position
 
 func start_reload() -> void:
@@ -342,9 +370,12 @@ func current_spread() -> float:
 func try_fire(trigger_down: bool) -> void:
 	var just_pressed := trigger_down and not trigger_was_down
 	trigger_was_down = trigger_down
+	trigger_held = trigger_down and state == "ground"
 	if not trigger_down or state != "ground" or fire_cooldown > 0.0:
 		return
 	var g := current_gun()
+	if not g.is_empty() and String(Items.gun(String(g.id)).kind) == "minigun" and spin < 1.0:
+		return   # the barrels have to spin up first
 	if g.is_empty():
 		if just_pressed: _punch()
 		return
@@ -358,15 +389,31 @@ func try_fire(trigger_down: bool) -> void:
 			if game: game.play_sfx("empty", global_position)
 			start_reload()
 		return
+	if vehicle and vehicle.kind != "boat":
+		return
 	cancel_heal()
 	g.mag = int(g.mag) - 1
 	fire_cooldown = Items.seconds_per_shot(String(g.id))
-	var origin := camera.global_position
 	var forward := -camera.global_transform.basis.z
-	for i in int(data.pellets):
-		var s := deg_to_rad(current_spread())
-		var dir := forward.rotated(camera.global_transform.basis.x, randf_range(-s, s) * 0.5).rotated(camera.global_transform.basis.y, randf_range(-s, s) * 0.5)
-		if game: game.fire_hitscan(self, origin, dir.normalized(), String(g.id), muzzle_flash.global_position)
+	# Shots go where the crosshair points; in third person they start level with the head so
+	# nothing between the camera and the player can block them
+	var origin := camera.global_position
+	var head_pos := head.global_position
+	var along := (head_pos - origin).dot(forward)
+	if along > 0.0:
+		origin += forward * along
+	var muzzle_pos := muzzle_flash.global_position
+	if _tps_amount > 0.5 and body and body.muzzle:
+		muzzle_pos = body.muzzle.global_position
+	body.shoot_fx()
+	_fire_anim_t = 0.25
+	if String(data.kind) == "launcher":
+		if game: game.fire_rocket(self, origin, forward, muzzle_pos, String(g.id))
+	else:
+		for i in int(data.pellets):
+			var s := deg_to_rad(current_spread())
+			var dir := forward.rotated(camera.global_transform.basis.x, randf_range(-s, s) * 0.5).rotated(camera.global_transform.basis.y, randf_range(-s, s) * 0.5)
+			if game: game.fire_hitscan(self, origin, dir.normalized(), String(g.id), muzzle_pos)
 	spread_bloom = minf(spread_bloom + 0.35 * float(data.recoil), 2.5)
 	var r: float = float(data.recoil) * (0.55 if aiming else 1.0) * ({"stand": 1.0, "crouch": 0.8, "prone": 0.6}[stance])
 	pitch = clampf(pitch + deg_to_rad(r * 0.9), deg_to_rad(-85.0), deg_to_rad(80.0))
@@ -380,6 +427,7 @@ func try_fire(trigger_down: bool) -> void:
 func _punch() -> void:
 	fire_cooldown = 0.5
 	kick = 0.6
+	_punch_t = 0.6
 	if game: game.melee(self)
 
 func _flash() -> void:
@@ -443,8 +491,10 @@ func head_y() -> float:
 func chest_point() -> Vector3:
 	return global_position + Vector3(0, float(EYE[stance]) * 0.7, 0)
 
+var god := false   ## developer screenshots only
+
 func take_damage(amount: float, headshot: bool, attacker: String, zone_damage := false) -> void:
-	if state == "dead":
+	if state == "dead" or god:
 		return
 	var dmg := amount
 	if not zone_damage:
@@ -471,13 +521,17 @@ func take_damage(amount: float, headshot: bool, attacker: String, zone_damage :=
 func die(attacker: String) -> void:
 	if state == "dead":
 		return
+	if vehicle and game:
+		game._leave_vehicle()
 	state = "dead"
 	controls_enabled = false
 	aiming = false
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(view_model, "position", Vector3(0.4, -1.0, -0.3), 0.5)
-	tween.tween_property(head, "position:y", 0.3, 0.9).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(head, "rotation:z", 1.2, 0.8).set_delay(0.2)
+	if body: body.die()
+	if view_mode == "fps":
+		tween.tween_property(head, "position:y", 0.3, 0.9).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		tween.tween_property(head, "rotation:z", 1.2, 0.8).set_delay(0.2)
 	died.emit(attacker)
 
 # ── Drop ─────────────────────────────────────────────────────
@@ -486,7 +540,7 @@ func start_freefall() -> void:
 	state = "freefall"
 	velocity = Vector3(0, -8.0, 0)
 	pitch = deg_to_rad(-55.0)
-	arms.visible = true
+	arms.visible = view_mode == "fps"
 	wind.emitting = true
 
 func open_chute() -> void:
@@ -524,6 +578,11 @@ func _physics_process(delta: float) -> void:
 		health = minf(100.0, health + delta * (1.0 if boost > 0.0 else 0.0))
 	rotation.y = yaw
 	head.rotation.x = pitch
+	if vehicle != null and state == "ground":
+		_drive(delta)
+		_update_body(delta)
+		_update_feel(delta)
+		return
 	match state:
 		"plane":
 			velocity = Vector3.ZERO
@@ -538,9 +597,10 @@ func _physics_process(delta: float) -> void:
 			velocity.z = move_toward(velocity.z, 0.0, ACCELERATION * delta)
 			if not is_on_floor(): velocity.y -= GRAVITY * delta
 			move_and_slide()
+	_update_body(delta)
 	# The ground ends at the edge of the map square: stay inside it and never sink through
 	if state != "plane":
-		var edge: float = RoyaleWorld.MAP_SIZE * 0.5 - 3.0
+		var edge: float = RoyaleWorld.MAP_VIEW * 0.5 - 5.0
 		global_position.x = clampf(global_position.x, -edge, edge)
 		global_position.z = clampf(global_position.z, -edge, edge)
 		if global_position.y < -20.0 and game:
@@ -607,6 +667,8 @@ func _ground(delta: float) -> void:
 	if aiming: speed *= 0.65
 	if healing > 0.0: speed *= 0.45
 	if boost > 60.0: speed *= 1.06
+	var cg := current_gun()
+	if not cg.is_empty(): speed *= float(Items.gun(String(cg.id)).get("heavy", 1.0))
 	var direction := transform.basis * Vector3(input.x, 0.0, input.y)
 	direction.y = 0.0
 	direction = direction.normalized() * minf(1.0, input.length())
@@ -627,10 +689,13 @@ func _ground(delta: float) -> void:
 		var ahead := direction.normalized() * 0.25
 		if not test_move(global_transform, step) and not test_move(global_transform.translated(step), ahead):
 			global_position += step + ahead
-	# Water: wading slows you and deep water pushes you back to shore
+	# Water: wading slows you; in deep water you swim at the surface
 	if global_position.y < -0.6:
 		velocity.x *= 0.6
 		velocity.z *= 0.6
+	if global_position.y < RoyaleWorld.WATER_Y - 1.35:
+		global_position.y = RoyaleWorld.WATER_Y - 1.35
+		velocity.y = maxf(velocity.y, 0.0)
 	var eye: float = EYE[stance]
 	head.position.y = move_toward(head.position.y, eye, delta * 4.0)
 	var body: CollisionShape3D = get_node("Body")
@@ -638,6 +703,88 @@ func _ground(delta: float) -> void:
 	var want_h: float = {"stand": 1.74, "crouch": 1.2, "prone": 0.7}[stance]
 	capsule.height = want_h
 	body.position.y = want_h * 0.5
+
+func enter_vehicle(v: RoyaleVehicle) -> void:
+	vehicle = v
+	aiming = false
+	cancel_heal()
+	reloading = 0.0
+	stance = "stand"
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector3.ZERO
+
+func exit_vehicle() -> void:
+	var v := vehicle
+	vehicle = null
+	stance = "stand"
+	collision_layer = 2
+	collision_mask = 1
+	if body:
+		body.seated = false
+		body.in_car = false
+		body.rotation = Vector3(0, PI, 0)
+	if v:
+		global_position = v.exit_point() + Vector3(0, 0.6, 0)
+	velocity = Vector3.ZERO
+
+func _drive(delta: float) -> void:
+	var input := _input_vector()
+	vehicle.drive(input, controls_enabled and Input.is_action_pressed("jump"), delta)
+	global_position = vehicle.seat_transform().origin
+	rotation.y = yaw
+	# Sit facing the vehicle's direction (the camera can still look around)
+	if body:
+		body.seated = vehicle.kind != "boat"
+		body.in_car = vehicle.kind == "car"
+		if vehicle.kind != "boat":
+			body.global_basis = Basis(vehicle.visual.global_basis.get_rotation_quaternion())   # models face +Z like the soldier
+
+func note_throw() -> void:
+	_throw_t = 1.1
+
+## Drives the soldier body and blends the camera between over-the-shoulder and the eyes.
+func _update_body(delta: float) -> void:
+	var g := current_gun()
+	var kind := "" if g.is_empty() else String(Items.gun(String(g.id)).kind)
+	# Gatling: hold the trigger to spin the barrels up
+	if kind == "minigun":
+		var spin_time := float(Items.gun(String(g.id)).get("spin", 0.8))
+		spin = move_toward(spin, 1.0 if (trigger_held and reloading <= 0.0) else 0.0, delta / spin_time)
+		for holder in [gun_holder, body.gun if body else null]:
+			if holder == null: continue
+			var drum: Node3D = holder.find_child("Barrels", true, false)
+			if drum: drum.rotate_z(spin * delta * 38.0)
+	_throw_t -= delta
+	_punch_t -= delta
+	_fire_anim_t -= delta
+	if body:
+		body.state = state
+		body.stance = stance
+		body.has_gun = not g.is_empty()
+		body.aiming = aiming or trigger_held
+		body.firing = _fire_anim_t > 0.0
+		body.reloading = reloading > 0.0
+		body.healing = healing > 0.0
+		body.throwing = _throw_t > 0.0
+		body.punching = _punch_t > 0.0
+		body.aim_pitch = pitch
+	# Third person unless aiming down sights (or first person chosen in Settings)
+	var tps := (view_mode == "tps" and not (aiming and state == "ground")) or vehicle != null
+	_tps_amount = move_toward(_tps_amount, 1.0 if tps else 0.0, delta / 0.16)
+	var air := state in ["freefall", "parachute", "plane"]
+	var dist := (5.5 if air else (1.9 if stance == "prone" else 2.6)) * _tps_amount
+	if vehicle: dist = {"car": 7.0, "moto": 5.0, "boat": 11.0}.get(vehicle.kind, 6.0)
+	spring.spring_length = lerpf(spring.spring_length, dist, 1.0 - exp(-delta * 10.0))
+	spring.position = Vector3(0.45, 0.12 if stance != "prone" else 0.35, 0.0) * _tps_amount
+	var show_body := _tps_amount > 0.35
+	view_model.visible = not show_body
+	if body:
+		body.set_body_visible(show_body)
+		body.detail = 1
+
+	if show_body:
+		arms.visible = false
 
 func _update_feel(delta: float) -> void:
 	var planar := Vector2(velocity.x, velocity.z).length()
@@ -652,7 +799,7 @@ func _update_feel(delta: float) -> void:
 		target += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * 0.05
 	var t := Time.get_ticks_msec() * 0.001
 	wind.emitting = state == "freefall"
-	if state == "ground" or state == "dead":
+	if state == "ground" or state == "dead" or _tps_amount > 0.35:
 		arms.visible = false
 	if state == "freefall":
 		target += Vector3(sin(t * 7.0) * 0.03, cos(t * 9.0) * 0.03, 0)
@@ -660,7 +807,7 @@ func _update_feel(delta: float) -> void:
 		arms.position = Vector3(sin(t * 6.0) * 0.01, cos(t * 8.0) * 0.012, 0)
 	elif state == "parachute":
 		camera.rotation.z = lerpf(camera.rotation.z, (Input.get_axis("move_left", "move_right") * -0.12 if controls_enabled else 0.0), 1.0 - exp(-delta * 4.0))
-		arms.visible = true
+		arms.visible = _tps_amount <= 0.35
 		arms.position = arms.position.lerp(Vector3(0, 0.22, 0.05), 1.0 - exp(-delta * 6.0))   # hands up on the toggles
 	else:
 		camera.rotation.z = lerpf(camera.rotation.z, 0.0, 1.0 - exp(-delta * 8.0))

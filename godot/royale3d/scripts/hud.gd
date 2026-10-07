@@ -372,6 +372,7 @@ func _build_settings() -> void:
 	layout_row.add_child(_button("Reset buttons", func(): st.layout = {}; changed.call(), 200.0))
 	box.add_child(layout_row)
 	box.add_child(_section("Display"))
+	box.add_child(_check_row("Third-person camera (V)", String(st.get("view", "tps")) == "tps", func(on): st.view = "tps" if on else "fps"; changed.call()))
 	box.add_child(_slider_row("Field of view", 65.0, 95.0, st.fov, func(v): st.fov = v; changed.call()))
 	box.add_child(_check_row("High graphics (shadows, grass)", not bool(st.low), func(on): st.low = not on; changed.call()))
 	box.add_child(_check_row("Show FPS", st.show_fps, func(on): st.show_fps = on; changed.call()))
@@ -716,8 +717,8 @@ func _map_draw(target: Control, rect: Rect2, center_world: Vector2, world_span: 
 	var tex: Texture2D = world.map_texture
 	var p: RoyalePlayer = game.player
 	var tex_size := Vector2(tex.get_width(), tex.get_height())
-	var uv_center := Vector2(center_world.x / world.MAP_SIZE + 0.5, center_world.y / world.MAP_SIZE + 0.5)
-	var uv_span := world_span / world.MAP_SIZE
+	var uv_center := Vector2(center_world.x / world.MAP_VIEW + 0.5, center_world.y / world.MAP_VIEW + 0.5)
+	var uv_span := world_span / world.MAP_VIEW
 	var src := Rect2((uv_center - Vector2.ONE * uv_span * 0.5) * tex_size, Vector2.ONE * uv_span * tex_size)
 	target.draw_texture_rect_region(tex, rect, src)
 	var to_screen := func(w: Vector2) -> Vector2:
@@ -768,7 +769,7 @@ func _draw_big_map() -> void:
 	var side := minf(s.x, s.y) * 0.9
 	var rect := Rect2((s - Vector2(side, side)) * 0.5, Vector2(side, side))
 	big_map.draw_rect(Rect2(Vector2.ZERO, s), Color(0, 0, 0, 0.6))
-	_map_draw(big_map, rect, Vector2.ZERO, RoyaleWorld.MAP_SIZE, true)
+	_map_draw(big_map, rect, Vector2.ZERO, RoyaleWorld.MAP_VIEW, true)
 	big_map.draw_rect(rect, Color.WHITE, false, 2.0)
 	big_map.draw_string(ThemeDB.fallback_font, rect.position + Vector2(0, -10), "MAP — tap MAP or press M to close", HORIZONTAL_ALIGNMENT_LEFT, -1, int(18 * ui_scale), Color.WHITE)
 

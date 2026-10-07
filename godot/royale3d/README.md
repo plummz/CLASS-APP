@@ -60,3 +60,33 @@ G="$USERPROFILE/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win6
 The export goes to `features/royale3d/game/`, which the CLASS-APP server serves with its own
 CSP (WebAssembly needs `wasm-unsafe-eval`) and `Cache-Control: max-age=0` so phones pick up new
 builds. Commit the exported files together with the source changes.
+
+## Soldiers, vehicles and art (v1.10)
+
+- **Soldier** (`scripts/soldier.gd`): one Mixamo rig shared by the player (third person),
+  bots and classmates. An AnimationTree blends standing / crouched / prone / unarmed movement
+  from the real ground speed and direction, layers aim, fire, reload, heal, throw, punch and hit
+  reactions on the spine and arms, and swaps to skydive, parachute, driving and death clips.
+  The spine bends with the aim pitch. The rifle grip offset (`RoyaleSoldier.gun_rot_deg`) was
+  measured in the aim pose so the barrel points straight ahead; re-measure if the rig changes.
+- **Guns** (`Items.gun_node`): Quaternius models scaled to real length, barrel -Z, with a
+  `Muzzle` marker. The Gatling is built from shapes (its `Barrels` node spins).
+- **Skins** (`scripts/skins.gd`, shop UI in `features/royale3d/shop.js`): weapon finishes and
+  outfits are shaders, so a new skin is one dictionary entry in both files (same id, name, tier).
+- **Vehicles** (`scripts/vehicle.gd`): cars and motorcycles are CharacterBody3D arcade cars; ro-ro
+  ferries are AnimatableBody3D platforms that carry anything standing on the deck.
+- **Isla Verde**: second island built in `world.gd` (`_build_island2`), with its own height grid.
+- **Materials** (`scripts/materials.gd`): Poly Haven photo textures on terrain and buildings,
+  water shader, wind sway for MegaKit plants.
+
+### Rebuilding the art
+
+`assets_src/` (ignored by Godot and git) holds the downloads: Mixamo FBX files (Swat Guy + 34
+clips: see `tools/build_assets.gd` for the file names), the Quaternius / poly.pizza GLB packs and
+the Poly Haven JPGs. Run:
+
+    godot --headless --path . --script res://tools/build_assets.gd [-- only=soldier,guns,interior,nature,vehicles,textures]
+
+Mixamo files can't be shared, so `assets/soldier/` is not in git either; download them again
+from Mixamo (character "Swat Guy", FBX, 30 fps, clips "without skin", locomotion "in place")
+and run the tool before exporting. Preview the rig with `tools/preview_soldier.gd` (needs a window).

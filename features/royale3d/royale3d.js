@@ -3,7 +3,7 @@
  * compressed) and is removed on leave to free WebGL memory and stop audio. Coins earned in a
  * match are added to the same balance as the 2D Battle Royale ('rl_coins_v1'). */
 (function () {
-  const GAME_URL = 'features/royale3d/game/index.html?v=5';
+  const GAME_URL = 'features/royale3d/game/index.html?v=6';
 
   let frame = null;
 

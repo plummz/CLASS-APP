@@ -84,6 +84,11 @@ var _punch_t := 0.0
 var _fire_anim_t := 0.0
 var _tps_amount := 1.0             ## 1 = over the shoulder, 0 = eyes (smoothly blended)
 var vehicle: RoyaleVehicle = null
+var canopy_mat: StandardMaterial3D
+var aim_assist := true
+var assist_target: Node3D = null    ## enemy under the crosshair (aim assist)
+var _assist_angle := 0.0
+var _assist_frame := 0
 
 func _ready() -> void:
 	collision_layer = 2
@@ -165,6 +170,7 @@ func _build_chute() -> void:
 	m.albedo_color = Color("ff8a3c")
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	sphere.material = m
+	canopy_mat = m
 	canopy.mesh = sphere
 	canopy.position = Vector3(0, 5.6, 0.6)
 	chute.add_child(canopy)
@@ -267,6 +273,9 @@ func add_touch_look(delta_screens: Vector2) -> void:
 		_apply_look(delta_screens * 1.35 * touch_sensitivity * current_zoom_scale())
 
 func _apply_look(amount: Vector2) -> void:
+	# Aim assist "slowdown": the crosshair drags a little while it's over an enemy
+	if aim_assist and assist_target != null:
+		amount *= 0.55
 	yaw -= amount.x
 	pitch -= amount.y * (-1.0 if invert_y else 1.0)
 	pitch = clampf(pitch, deg_to_rad(-85.0), deg_to_rad(80.0))
@@ -395,6 +404,9 @@ func try_fire(trigger_down: bool) -> void:
 	g.mag = int(g.mag) - 1
 	fire_cooldown = Items.seconds_per_shot(String(g.id))
 	var forward := -camera.global_transform.basis.z
+	# Aim assist "magnetism": a shot that only just misses the enemy under the crosshair goes to them
+	if aim_assist and assist_target != null and _assist_angle < deg_to_rad(2.2):
+		forward = (assist_target.chest_point() - camera.global_position).normalized()
 	# Shots go where the crosshair points; in third person they start level with the head so
 	# nothing between the camera and the player can block them
 	var origin := camera.global_position
@@ -740,11 +752,54 @@ func _drive(delta: float) -> void:
 		if vehicle.kind != "boat":
 			body.global_basis = Basis(vehicle.visual.global_basis.get_rotation_quaternion())   # models face +Z like the soldier
 
+## Aim assist for human players (bots aim by themselves): finds the enemy nearest the crosshair
+## and, while aiming or shooting, eases the view toward their chest. Stronger on touch screens.
+func _update_aim_assist(delta: float) -> void:
+	assist_target = null
+	if not aim_assist or game == null or state != "ground" or not controls_enabled or vehicle != null:
+		return
+	var g := current_gun()
+	if g.is_empty():
+		return
+	_assist_frame += 1
+	var reach := float(Items.gun(String(g.id)).range) * 1.6
+	var cam_pos := camera.global_position
+	var fwd := -camera.global_transform.basis.z
+	var cone := deg_to_rad(7.0) / sqrt(current_zoom() if aiming else 1.0)
+	var best: Node3D = null
+	var best_angle := cone
+	for c in game.combatants:
+		if c == self or not c.is_alive() or not (c is RoyaleBot or c is RoyaleRemote):
+			continue
+		if String(c.get("state")) != "ground":
+			continue
+		var chest: Vector3 = c.chest_point()
+		var to := chest - cam_pos
+		var d := to.length()
+		if d > reach or d < 0.5:
+			continue
+		var ang := fwd.angle_to(to / d)
+		if ang < best_angle and game.has_line_of_sight(head.global_position, chest, self):
+			best_angle = ang
+			best = c
+	assist_target = best
+	_assist_angle = best_angle
+	if best == null or not (aiming or trigger_held):
+		return
+	# Pull: ease yaw/pitch toward the chest (gentle with a mouse, firmer with touch)
+	var to2: Vector3 = best.chest_point() - cam_pos
+	var want_yaw := atan2(-to2.x, -to2.z)
+	var want_pitch := atan2(to2.y, Vector2(to2.x, to2.z).length())
+	var strength := (5.0 if is_touch_platform() else 1.6) * (1.0 - best_angle / cone)
+	yaw = lerp_angle(yaw, want_yaw, clampf(strength * delta, 0.0, 0.5))
+	pitch = lerpf(pitch, want_pitch, clampf(strength * delta * 0.7, 0.0, 0.4))
+
 func note_throw() -> void:
 	_throw_t = 1.1
 
 ## Drives the soldier body and blends the camera between over-the-shoulder and the eyes.
 func _update_body(delta: float) -> void:
+	_update_aim_assist(delta)
 	var g := current_gun()
 	var kind := "" if g.is_empty() else String(Items.gun(String(g.id)).kind)
 	# Gatling: hold the trigger to spin the barrels up
@@ -774,9 +829,21 @@ func _update_body(delta: float) -> void:
 	_tps_amount = move_toward(_tps_amount, 1.0 if tps else 0.0, delta / 0.16)
 	var air := state in ["freefall", "parachute", "plane"]
 	var dist := (5.5 if air else (1.9 if stance == "prone" else 2.6)) * _tps_amount
+	if state == "parachute":
+		dist = 8.5 * _tps_amount
 	if vehicle: dist = {"car": 7.0, "moto": 5.0, "boat": 11.0}.get(vehicle.kind, 6.0)
 	spring.spring_length = lerpf(spring.spring_length, dist, 1.0 - exp(-delta * 10.0))
 	spring.position = Vector3(0.45, 0.12 if stance != "prone" else 0.35, 0.0) * _tps_amount
+	if state == "parachute":
+		# Under the canopy: hang the camera low behind the soldier and see through the chute
+		spring.position = Vector3(0.0, -0.6, 0.0) * _tps_amount
+		spring.rotation.x = clampf(-pitch, -0.2, 0.6) * _tps_amount   # don't swing up into the canopy
+	else:
+		spring.rotation.x = 0.0
+	if canopy_mat:
+		var see_through := state == "parachute" and _tps_amount > 0.35
+		canopy_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if see_through else BaseMaterial3D.TRANSPARENCY_DISABLED
+		canopy_mat.albedo_color = Color(1.0, 0.54, 0.24, 0.45 if see_through else 1.0)
 	var show_body := _tps_amount > 0.35
 	view_model.visible = not show_body
 	if body:

@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.10.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.10.1',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Parachute View, Clear Doorways, Aim Assist',
+    summary: 'You can see your soldier under the parachute, furniture no longer blocks doors, and players get aim assist.',
+    bullets: [
+      'New: Aim assist for players (Settings → Aim assist, on by default). The crosshair slows and turns red over an enemy, aiming or shooting eases onto them (stronger on phones than with a mouse), and near misses still hit. Works on bots and classmates.',
+      'Fixed: With the parachute open, the camera hangs behind and below the canopy and the canopy turns see-through, so your soldier stays in view.',
+      'Fixed: Furniture no longer blocks front and back doors, doorways between rooms or the stairs, and new furniture is sized to fit the room.',
+    ]
+  },
   {
     version: '1.10.0',
     date: 'October 8, 2026',

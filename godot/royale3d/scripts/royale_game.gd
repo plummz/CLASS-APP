@@ -54,7 +54,7 @@ var airdrop_done := false
 var total_players := BOT_COUNT + 1
 var bot_accuracy := 0.85
 var settings := {"sensitivity": 1.0, "scope_sensitivity": 0.8, "volume": 0.8, "low": false, "fov": 78.0,
-	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false, "view": "tps",
+	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false, "view": "tps", "aim_assist": true,
 	"layout": {}}
 var paused := false
 var map_open := false
@@ -207,6 +207,7 @@ func _apply_settings() -> void:
 		player.invert_y = bool(settings.invert)
 		player.base_fov = float(settings.fov)
 		player.view_mode = String(settings.get("view", "tps"))
+		player.aim_assist = bool(settings.get("aim_assist", true))
 	if touch: touch.apply_settings(settings)
 	if hud: hud.apply_settings(settings)
 	if sfx: sfx.set_volume(float(settings.volume))
@@ -1957,6 +1958,41 @@ func _run_screenshots(dir: String) -> void:
 	await get_tree().create_timer(0.4).timeout
 	await _shot(dir + "/27_map_both_islands.png")
 	toggle_map()
+	# Parachute seen from behind (the canopy must not hide the soldier)
+	player.global_position = Vector3(house.door_out) + Vector3(0, 70, 0)
+	player.state = "freefall"
+	player.open_chute()
+	player.pitch = -0.3
+	await get_tree().create_timer(1.2).timeout
+	await _shot(dir + "/28_parachute.png")
+	player.global_position = Vector3(house.door_in) + Vector3(0, 0.3, 0)
+	player.state = "ground"
+	player.chute.visible = false
+	# Looking back at the front door from inside the house
+	player.yaw = atan2(to.x, to.z)
+	player.pitch = -0.1
+	await get_tree().create_timer(0.6).timeout
+	await _shot(dir + "/29_door_from_inside.png")
+	# Aim assist: a bot a few degrees off the crosshair; aiming should bring it under it
+	player.give_gun("m416")
+	var tgt := bots[2]
+	var fwd_flat := Vector3(-sin(player.yaw), 0, -cos(player.yaw))
+	player.global_position = Vector3(house.door_out) - to.normalized() * 2.0 + Vector3(0, 0.3, 0)
+	player.yaw = atan2(-(-to.normalized()).x, -(-to.normalized()).z)
+	fwd_flat = Vector3(-sin(player.yaw), 0, -cos(player.yaw))
+	tgt.global_position = player.global_position + fwd_flat.rotated(Vector3.UP, deg_to_rad(4.0)) * 14.0
+	tgt.state = "ground"
+	tgt.mode = "heal"; tgt.heal_timer = 30.0
+	player.pitch = 0.0
+	player.aiming = true
+	await get_tree().physics_frame
+	var a0 := (-player.camera.global_transform.basis.z).angle_to(tgt.chest_point() - player.camera.global_position)
+	for i in 45:
+		await get_tree().physics_frame
+	var a1 := (-player.camera.global_transform.basis.z).angle_to(tgt.chest_point() - player.camera.global_position)
+	print("AIM_ASSIST before=%.1f deg after=%.1f deg locked=%s" % [rad_to_deg(a0), rad_to_deg(a1), player.assist_target != null])
+	player.aiming = false
+	await _shot(dir + "/30_aim_assist.png")
 	hud.show_end(false, 7, 3, 37)
 	await get_tree().create_timer(0.4).timeout
 	await _shot(dir + "/19_end.png")

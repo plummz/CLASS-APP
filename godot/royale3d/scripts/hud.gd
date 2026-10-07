@@ -363,6 +363,7 @@ func _build_settings() -> void:
 	box.add_child(_slider_row("Look speed", 0.3, 2.5, st.sensitivity, func(v): st.sensitivity = v; changed.call()))
 	box.add_child(_slider_row("Scope look speed", 0.2, 1.5, st.scope_sensitivity, func(v): st.scope_sensitivity = v; changed.call()))
 	box.add_child(_check_row("Invert look up/down", st.invert, func(on): st.invert = on; changed.call()))
+	box.add_child(_check_row("Aim assist", bool(st.get("aim_assist", true)), func(on): st.aim_assist = on; changed.call()))
 	box.add_child(_check_row("Vibration", st.vibration, func(on): st.vibration = on; changed.call()))
 	box.add_child(_check_row("Left-handed (swap sides)", st.lefty, func(on): st.lefty = on; changed.call()))
 	box.add_child(_slider_row("Button size", 0.7, 1.5, st.btn_scale, func(v): st.btn_scale = v; changed.call()))
@@ -777,7 +778,7 @@ func _draw_crosshair() -> void:
 	var p: RoyalePlayer = game.player
 	var c := crosshair.size * 0.5
 	var gap := 6.0 + p.current_spread() * 7.0
-	var col := Color(1, 1, 1, 0.9)
+	var col := Color(1, 0.3, 0.3, 0.95) if p.assist_target != null else Color(1, 1, 1, 0.9)
 	if p.aiming:
 		crosshair.draw_circle(c, 2.0, Color(1, 0.2, 0.2, 0.95))
 	else:

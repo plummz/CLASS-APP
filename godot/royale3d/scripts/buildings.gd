@@ -34,6 +34,7 @@ const QUATERNIUS := {
 var world: Node   ## RoyaleWorld
 var rng: RandomNumberGenerator
 var _aabb_cache := {}
+var _clear: Array[Rect2] = []   ## house-local XZ areas furniture must not cover (doors, doorways, stairs)
 var _glass_mat: StandardMaterial3D
 
 func _init(world_ref: Node, rng_ref: RandomNumberGenerator) -> void:
@@ -80,6 +81,7 @@ func _build(origin: Vector3, yaw: float, w: float, d: float, floors: int, wall_c
 	var stairs := floors >= 2
 	var stair_w := 1.4
 	var floor_col := WOOD_FLOOR if not big else CONCRETE_FLOOR
+	_clear.clear()
 
 	# Floor slab level with the ground, and a plinth band around the outside
 	world._box(st, body, Vector3(0, ft - 0.2, 0), Vector3(w, 0.4, d), floor_col)
@@ -173,6 +175,17 @@ func _furnish_floor(node: Node3D, body: StaticBody3D, st: SurfaceTool, kind: Str
 	var hw := w * 0.5
 	var hd := d * 0.5
 	var inner_r := hw - (stair_w + 0.1 if stairs else 0.0)   # rooms stop at the stair strip
+	# Walkways that must stay free on this floor
+	_clear.clear()
+	var big := kind in ["warehouse", "barn"]
+	var dw := 4.6 if big else 2.4
+	if f == 0:
+		_clear.append(Rect2(-dw * 0.5, -hd, dw, 2.6 if not big else 4.5))                    # front door
+		if d >= 10.0 or big:
+			var bx := w * 0.7 - hw
+			_clear.append(Rect2(bx - dw * 0.5, hd - (2.4 if not big else 4.5), dw, 2.6 if not big else 4.5))   # back door
+	if stairs:
+		_clear.append(Rect2(inner_r - 0.3, -hd, hw - inner_r + 0.3, d))                    # stair strip
 	var wall_col := Color("efe9df")
 	var door_out := node.to_global(Vector3(0, by, -hd - 1.6))
 	var door_in := node.to_global(Vector3(0, by, -hd + 1.4))
@@ -190,10 +203,13 @@ func _furnish_floor(node: Node3D, body: StaticBody3D, st: SurfaceTool, kind: Str
 			var height: float = world.STOREY
 			world._wall(st, body, Vector3(-hw + 0.13, 0, split), Vector3(inner_r, 0, split), by, height, [[(inner_r + hw - 0.13) * 0.5, 1.1, 0.0, 2.25]], wall_col)
 			var mid_x := (-hw + inner_r) * 0.5
+			var door_x := -hw + 0.13 + (inner_r + hw - 0.13) * 0.5
+			_clear.append(Rect2(door_x - 1.0, split - 1.4, 2.0, 2.8))                            # doorway to the back rooms
 			var through := node.to_global(Vector3(mid_x, by, split))
 			var base_path: Array = [door_out, door_in] if f == 0 else [door_out, door_in] + up_path
 			# Back area split left / right
 			var back_split := -hw + (inner_r + hw) * 0.55
+			_clear.append(Rect2(back_split - 1.4, (split + hd) * 0.5 - 1.0, 2.8, 2.0))         # doorway between back rooms
 			world._wall(st, body, Vector3(back_split, 0, split), Vector3(back_split, 0, hd - 0.13), by, height, [[(hd - split) * 0.5, 1.0, 0.0, 2.25]], wall_col)
 			var front_room := Rect2(-hw, -hd, inner_r + hw, hd + split)
 			var back_left := Rect2(-hw, split, back_split + hw, hd - split)
@@ -310,13 +326,31 @@ func _furn(node: Node3D, body: StaticBody3D, model: String, local_pos: Vector3, 
 		if q_box.size != Vector3.ZERO and box.size != Vector3.ZERO:
 			# Same footprint as the Kenney piece (largest horizontal side), but never taller
 			# than ~1.25x its height so ceiling lights and shelves still fit
-			var want := maxf(box.size.x, box.size.z) * FURN_SCALE
-			var s := want / maxf(0.01, maxf(q_box.size.x, q_box.size.z))
+			# Match both the long and the short side of the Kenney piece (whichever is smaller)
+			var k_long := maxf(box.size.x, box.size.z) * FURN_SCALE
+			var k_short := minf(box.size.x, box.size.z) * FURN_SCALE
+			var s := minf(k_long / maxf(0.01, maxf(q_box.size.x, q_box.size.z)), k_short / maxf(0.01, minf(q_box.size.x, q_box.size.z)))
 			if box.size.y > 0.05:
 				s = minf(s, box.size.y * FURN_SCALE * 1.25 / maxf(0.01, q_box.size.y))
 			path = q_path
 			scale_v = s
 			box = q_box
+	# Skip anything that would stand in a doorway or on the stairs (rugs and ceiling lights are fine)
+	var above_floor := fposmod(local_pos.y - world.FLOOR_TOP, world.STOREY)
+	if box.size != Vector3.ZERO and not model.begins_with("rug") and model != "ceilingFan" and above_floor < 1.2:
+		var basis_f := Basis(Vector3.UP, yaw)
+		var foot := Rect2()
+		var first := true
+		for cx in [box.position.x, box.end.x]:
+			for cz in [box.position.z, box.end.z]:
+				var p3: Vector3 = local_pos + basis_f * (Vector3(cx, 0, cz) * scale_v)
+				var pt := Vector2(p3.x, p3.z)
+				foot = Rect2(pt, Vector2.ZERO) if first else foot.expand(pt)
+				first = false
+		foot = foot.grow(-0.05)
+		for r in _clear:
+			if r.intersects(foot):
+				return
 	var tf := node.global_transform * Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_v), local_pos)
 	world.add_model_instance(path, tf, 64.0, 70.0)
 	if not collide:

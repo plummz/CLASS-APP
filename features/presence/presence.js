@@ -118,6 +118,7 @@
     }
     const invite = e.target.closest?.('[data-presence-invite]');
     if (invite) {
+      document.getElementById('presence-panel').hidden = true;
       window.classAppRooms?.invite(invite.dataset.presenceInvite);
       return;
     }

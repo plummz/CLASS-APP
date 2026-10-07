@@ -56,6 +56,10 @@ var hand: Node3D
 var chute_mesh: MeshInstance3D
 var current_anim := ""
 var _gun_node: Node3D
+var puppet := false        ## room match guest: the host's game runs this bot, we just show it
+var _snap_pos := Vector3.ZERO
+var _snap_yaw := 0.0
+var _snap_ok := false
 
 func setup(index: int, game_ref: Node, rng: RandomNumberGenerator) -> void:
 	game = game_ref
@@ -140,6 +144,11 @@ func set_gun(id: String) -> void:
 
 func take_damage(amount: float, headshot: bool, attacker: String, zone_damage := false) -> void:
 	if state == "dead":
+		return
+	if puppet:
+		# The host's game owns this bot's health; tell it about the hit
+		if not zone_damage:
+			game.net.send({"t": "bhit", "i": game.bots.find(self), "d": snappedf(amount, 0.1), "h": headshot, "by": attacker})
 		return
 	var dmg := amount
 	if not zone_damage:
@@ -243,15 +252,13 @@ func _scan_for_enemy() -> Node3D:
 	for c: Node3D in game.combatants:
 		if c == self or not c.is_alive():
 			continue
-		if c is RoyalePlayer and (c as RoyalePlayer).state != "ground":
-			continue
-		if c is RoyaleBot and (c as RoyaleBot).state != "ground":
+		if String(c.get("state")) != "ground":
 			continue
 		var d := global_position.distance_to(c.global_position)
 		# Crouched / prone targets are harder to notice
 		var stealth := 1.0
-		if c is RoyalePlayer:
-			stealth = {"stand": 1.0, "crouch": 0.7, "prone": 0.45}[(c as RoyalePlayer).stance]
+		if c is RoyalePlayer or c is RoyaleRemote:
+			stealth = {"stand": 1.0, "crouch": 0.7, "prone": 0.45}.get(String(c.get("stance")), 1.0)
 		var to := (c.global_position - global_position).normalized()
 		var facing := Vector3(sin(rotation.y), 0, cos(rotation.y))
 		if d > 12.0 and facing.dot(to) < -0.15:
@@ -269,6 +276,9 @@ func _scan_for_enemy() -> Node3D:
 func _physics_process(delta: float) -> void:
 	if game == null:
 		return
+	if puppet:
+		_puppet_update(delta)
+		return
 	match state:
 		"plane":
 			return
@@ -280,7 +290,8 @@ func _physics_process(delta: float) -> void:
 				velocity.y -= GRAVITY * delta
 				move_and_slide()
 			return
-	far = global_position.distance_to(game.player.global_position) > FAR_DISTANCE
+	# Full AI and physics near any human (in a room match the host runs bots for everyone)
+	far = game.nearest_human_distance(global_position) > FAR_DISTANCE
 	model.visible = global_position.distance_to(game.player.global_position) < FAR_DISTANCE * 1.6
 	think_timer -= delta
 	if think_timer <= 0.0:
@@ -455,6 +466,44 @@ func _move_toward(direction: Vector3, speed: float, delta: float) -> void:
 	if dir.length() > 0.1 and mode != "fight":
 		rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), 0.25)
 	move_and_slide()
+
+# ── Room match guest: follow the host's snapshots ────────────
+
+## row = [x, y, z, yaw, state index, animation index, health, gun id] (see RoyaleNet._send_bots)
+func apply_snapshot(row: Array) -> void:
+	if state == "dead":
+		return
+	var new_state: String = RoyaleNet.BOT_STATES[clampi(int(row[4]), 0, RoyaleNet.BOT_STATES.size() - 1)]
+	if new_state == "dead":
+		return   # "bdied" brings the killer and the crate
+	_snap_pos = Vector3(float(row[0]), float(row[1]), float(row[2]))
+	_snap_yaw = float(row[3])
+	if not _snap_ok or global_position.distance_to(_snap_pos) > 40.0:
+		global_position = _snap_pos
+		rotation.y = _snap_yaw
+	_snap_ok = true
+	state = new_state
+	visible = state != "plane"
+	chute_mesh.visible = state == "parachute" and not far
+	health = float(row[6])
+	var g := String(row[7])
+	if g != gun_id:
+		if g.is_empty():
+			gun_id = ""
+			if _gun_node:
+				_gun_node.queue_free()
+				_gun_node = null
+		else:
+			set_gun(g)
+	_play(RoyaleNet.BOT_ANIMS[clampi(int(row[5]), 0, RoyaleNet.BOT_ANIMS.size() - 1)])
+
+func _puppet_update(delta: float) -> void:
+	if not _snap_ok or state == "dead":
+		return
+	far = global_position.distance_to(game.player.global_position) > FAR_DISTANCE
+	model.visible = not far or global_position.distance_to(game.player.global_position) < FAR_DISTANCE * 1.6
+	global_position = global_position.lerp(_snap_pos, 1.0 - exp(-delta * 10.0))
+	rotation.y = lerp_angle(rotation.y, _snap_yaw, 1.0 - exp(-delta * 10.0))
 
 func _play(name: String, blend := 0.2) -> void:
 	if anim == null or far or current_anim == name:

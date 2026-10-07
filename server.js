@@ -146,6 +146,7 @@ const app = express();
 app.use(compression({ filter: (req, res) => /\.(pck|wasm)$/.test(req.path) || compression.filter(req, res) }));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: RESOLVED_CORS_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'] } });
+require('./royale-rooms')(io);   // Battle Royale 3D rooms (invite online classmates, play together)
 
 // Security headers â€” CSP disabled to avoid breaking inline scripts (tighten in later phase)
 app.use(helmet({

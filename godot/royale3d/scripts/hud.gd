@@ -51,6 +51,7 @@ var end_layer: CenterContainer
 var end_panel: PanelContainer
 var end_title: Label
 var end_stats: Label
+var again_button: Button
 var edit_bar: PanelContainer
 var message_time := 0.0
 var hit_time := 0.0
@@ -525,12 +526,14 @@ func _build_end() -> void:
 	end_stats = _label("", 20)
 	end_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(end_stats)
-	box.add_child(_button("Play again", func(): play_again.emit()))
+	again_button = _button("Play again", func(): play_again.emit())
+	box.add_child(again_button)
 	box.add_child(_button("Back to Arcade", func(): quit_to_arcade.emit()))
 
 func show_end(won: bool, placement: int, kills: int, coins: int) -> void:
 	end_title.text = "WINNER WINNER\nCHICKEN DINNER!" if won else "#%d of %d" % [placement, game.total_players]
 	end_stats.text = "Kills: %d\nPlace: #%d\nCoins earned: +%d" % [kills, placement, coins]
+	again_button.text = "Back to room" if game.net != null and game.net.active else "Play again"
 	bag_layer.visible = false
 	settings_layer.visible = false
 	pause_layer.visible = false

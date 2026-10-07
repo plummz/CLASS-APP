@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.9.30';
+const APP_VERSION = '1.9.31';
 const APP_CHANGELOG = [
+  {
+    version: '1.9.31',
+    date: 'October 7, 2026',
+    title: 'Battle Royale 3D: Play With Classmates',
+    summary: 'Make a room, invite classmates who are online, and drop onto the same island together. Bots fill the rest of the 30 spots.',
+    bullets: [
+      'New: Rooms. Tap "Play with friends" on the Battle Royale 3D page, or Invite in the online list, to invite classmates who are online (up to 8 in a room).',
+      'New: Invites pop up on any page with Join and No thanks. The host starts the match when everyone is in.',
+      'New: Everyone in the room plays on the same island, with the same loot, plane route, zone and supply crates. Classmates show with blue name tags.',
+      'New: Shoot, grenade and eliminate classmates. Picked-up loot, dropped items, crates and doors stay in sync for everyone.',
+      'New: If the host leaves, the next player in the room keeps the match going.',
+      'Improved: Bots fight real players too, and stay fully active near any player, not only near you.',
+    ]
+  },
   {
     version: '1.9.30',
     date: 'October 7, 2026',

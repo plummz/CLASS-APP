@@ -538,6 +538,14 @@ func _physics_process(delta: float) -> void:
 			velocity.z = move_toward(velocity.z, 0.0, ACCELERATION * delta)
 			if not is_on_floor(): velocity.y -= GRAVITY * delta
 			move_and_slide()
+	# The ground ends at the edge of the map square: stay inside it and never sink through
+	if state != "plane":
+		var edge: float = RoyaleWorld.MAP_SIZE * 0.5 - 3.0
+		global_position.x = clampf(global_position.x, -edge, edge)
+		global_position.z = clampf(global_position.z, -edge, edge)
+		if global_position.y < -20.0 and game:
+			global_position.y = game.world.height_at(global_position.x, global_position.z) + 0.3
+			velocity.y = 0.0
 	_update_feel(delta)
 
 func _input_vector() -> Vector2:

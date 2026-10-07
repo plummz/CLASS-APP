@@ -72,12 +72,28 @@ var _next_loot_id := 0
 var _bench := false
 var _bench_frames := 0
 var _bench_time := 0.0
+var net: RoyaleNet
+var bot_count := BOT_COUNT
+var loot_by_uid := {}
+var crates_by_id := {}
+var _loot_ready := false
+var _supply_n := 0
+var _wait_layer: CanvasLayer
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	smoke_mode = "--smoke" in args
 	_bench = "--bench" in args
 	rng.randomize()
+	net = RoyaleNet.new()
+	net.name = "Net"
+	net.game = self
+	add_child(net)
+	net.debug = _query_flag("nettest") == "1"
+	if not smoke_mode and net.read_match():
+		rng.seed = net.seed_value   # same island and starting loot for everyone in the room
+		bot_count = BOT_COUNT + 1 - net.players.size()
+	total_players = bot_count + (net.players.size() if net.active else 1)
 	_load_settings()
 	if "--quality=low" in args or _query_flag("quality") == "low":
 		settings.low = true
@@ -108,6 +124,7 @@ func _ready() -> void:
 	world.generate(rng.randi(), bool(settings.low) or smoke_mode)
 	var t_loot := Time.get_ticks_msec()
 	_spawn_loot()
+	_loot_ready = true
 	print("ROYALE_TIMING world=%dms loot=%dms" % [t_loot - t_gen, Time.get_ticks_msec() - t_loot])
 	_build_zone_wall()
 	_build_tracers()
@@ -117,12 +134,14 @@ func _ready() -> void:
 	player.message.connect(func(t): hud.flash_message(t))
 	player.died.connect(_on_player_died)
 	combatants.append(player)
-	for i in BOT_COUNT:
+	for i in bot_count:
 		var bot := RoyaleBot.new()
 		bot.setup(i, self, rng)
 		add_child(bot)
 		bots.append(bot)
 		combatants.append(bot)
+	if net.active:
+		_setup_room_match()
 	hud = RoyaleHud.new()
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -135,6 +154,13 @@ func _ready() -> void:
 	touch.game = self
 	layer.add_child(touch)
 	_apply_settings()
+	if net.active:
+		# Wait (behind the loading screen) until everyone's island is ready
+		loading.text = "Waiting for your classmates to load the island…"
+		loading_layer.layer = 20
+		_wait_layer = loading_layer
+		player.global_position = Vector3(0, PLANE_HEIGHT, 0)
+		return
 	loading_layer.queue_free()
 	_start_plane()
 	if "--doortest" in args:
@@ -279,12 +305,23 @@ func _tracer(from: Vector3, to: Vector3) -> void:
 
 # ── Plane and drop ───────────────────────────────────────────
 
-func _start_plane() -> void:
+## Room matches: the host calls this with no route (and sends it); guests get the host's route.
+func begin_plane(route_start := Vector2.INF, route_end := Vector2.INF) -> void:
+	if _wait_layer:
+		_wait_layer.queue_free()
+		_wait_layer = null
+	_start_plane(route_start, route_end)
+
+func _start_plane(route_start := Vector2.INF, route_end := Vector2.INF) -> void:
 	phase = "plane"
-	var a := rng.randf() * TAU
-	var offset := Vector2(-sin(a), cos(a)) * rng.randf_range(-180.0, 180.0)
-	plane_start = Vector2(cos(a), sin(a)) * 640.0 + offset
-	plane_end = -Vector2(cos(a), sin(a)) * 640.0 + offset
+	if route_start == Vector2.INF:
+		var a := rng.randf() * TAU
+		var offset := Vector2(-sin(a), cos(a)) * rng.randf_range(-180.0, 180.0)
+		plane_start = Vector2(cos(a), sin(a)) * 640.0 + offset
+		plane_end = -Vector2(cos(a), sin(a)) * 640.0 + offset
+	else:
+		plane_start = route_start
+		plane_end = route_end
 	plane_t = 0.0
 	plane_node = _build_plane()
 	add_child(plane_node)
@@ -324,17 +361,19 @@ func _update_plane(delta: float) -> void:
 	if player.state == "plane":
 		# Ride at the tail ramp looking out
 		player.global_position = plane_node.global_position - Vector3(dir.x, 0, dir.y) * 13.0 + Vector3(0, -2.5, 0)
-		if (Input.is_action_just_pressed("jump") and not _ui_blocking()) or plane_t > 0.93:
+		# Auto-jump before the plane leaves the island (landing past the coast meant open sea)
+		var leaving := plane_t > 0.55 and not world.is_land(flat.x, flat.y)
+		if (Input.is_action_just_pressed("jump") and not _ui_blocking()) or plane_t > 0.93 or leaving:
 			_player_jump()
 	for bot in bots:
-		if bot.state == "plane" and plane_t >= float(bot.get_meta("jump_at")):
+		if not bot.puppet and bot.state == "plane" and plane_t >= float(bot.get_meta("jump_at")):
 			_bot_jump(bot)
 	if plane_t >= 1.0:
 		plane_node.queue_free()
 		plane_node = null
 		phase = "match"
 		for bot in bots:
-			if bot.state == "plane": _bot_jump(bot)
+			if not bot.puppet and bot.state == "plane": _bot_jump(bot)
 
 func _player_jump() -> void:
 	player.start_freefall()
@@ -396,12 +435,15 @@ func _start_zone_phase(index: int) -> void:
 		_spawn_airdrop()
 	elif index >= 1 and index <= 4:
 		_spawn_supply_drop()
+	if net.active and net.is_host:
+		net.send({"t": "zone", "ph": index, "fc": [zone.from_center.x, zone.from_center.y], "fr": zone.from_radius,
+			"nc": [c.x, c.y], "nr": new_r, "tm": zone.timer})
 	if index > 0 and not smoke_mode:
 		hud.flash_message("New safe zone marked on the map", 3.0)
 
 func _update_zone(delta: float) -> void:
 	if zone.phase < 0:
-		if phase == "match" or player.state == "ground":
+		if (phase == "match" or player.state == "ground") and (not net.active or net.is_host):
 			zone.center = Vector2.ZERO
 			zone.radius = 600.0
 			_start_zone_phase(0)
@@ -428,7 +470,7 @@ func _update_zone(delta: float) -> void:
 		zone.center = Vector2(zone.from_center).lerp(zone.next_center, t)
 		zone.radius = lerpf(float(zone.from_radius), float(zone.next_radius), t)
 		zone.dps = float(data.dps)
-		if zone.timer <= 0.0 and int(zone.phase) < ZONE_PHASES.size() - 1:
+		if zone.timer <= 0.0 and int(zone.phase) < ZONE_PHASES.size() - 1 and (not net.active or net.is_host):
 			_start_zone_phase(int(zone.phase) + 1)
 	zone_wall.global_position = Vector3(zone.center.x, 150.0, zone.center.y)
 	zone_wall.scale = Vector3(maxf(0.5, float(zone.radius)), 1.0, maxf(0.5, float(zone.radius)))
@@ -482,14 +524,16 @@ func fire_hitscan(shooter: RoyalePlayer, origin: Vector3, dir: Vector3, gun_id: 
 	if not hit.is_empty():
 		end = hit.position
 		var target: Object = hit.collider
-		if target is RoyaleBot and (target as RoyaleBot).is_alive():
-			var bot := target as RoyaleBot
-			var headshot: bool = float(hit.position.y) >= bot.head_y() - 0.22
+		if (target is RoyaleBot or target is RoyaleRemote) and target.is_alive():
+			var victim: Node3D = target
+			var headshot: bool = float(hit.position.y) >= victim.head_y() - 0.22
 			var dmg := Items.damage_at(gun_id, origin.distance_to(hit.position)) * (2.1 if headshot else 1.0)
-			bot.take_damage(dmg, headshot, shooter.combatant_name)
-			hud.hitmarker(not bot.is_alive())
-			sfx.play("kill" if not bot.is_alive() else "hit", 1.3 if headshot else 1.0)
+			victim.take_damage(dmg, headshot, shooter.combatant_name)
+			hud.hitmarker(not victim.is_alive())
+			sfx.play("kill" if not victim.is_alive() else "hit", 1.3 if headshot else 1.0)
 	_tracer(muzzle, end)
+	if net.active:
+		net.send({"t": "shot", "o": RoyaleNet.v3(muzzle), "e": RoyaleNet.v3(end), "g": gun_id})
 	sfx.play(RoyaleSfx.shot_key(gun_id))
 	recent_shots.append({"pos": Vector2(origin.x, origin.z), "t": Time.get_ticks_msec() * 0.001, "mine": true})
 
@@ -498,9 +542,9 @@ func melee(shooter: RoyalePlayer) -> void:
 	var dir := -shooter.camera.global_transform.basis.z
 	var hit := _ray(origin, origin + dir * 2.0, 1 | 4, [shooter.get_rid()])
 	sfx.play("punch")
-	if not hit.is_empty() and hit.collider is RoyaleBot:
-		(hit.collider as RoyaleBot).take_damage(18.0, false, shooter.combatant_name)
-		hud.hitmarker(not (hit.collider as RoyaleBot).is_alive())
+	if not hit.is_empty() and (hit.collider is RoyaleBot or hit.collider is RoyaleRemote):
+		hit.collider.take_damage(18.0, false, shooter.combatant_name)
+		hud.hitmarker(not hit.collider.is_alive())
 
 func bot_shot(bot: RoyaleBot, target: Node3D, hit: bool, dmg: float, headshot: bool, gun_id: String) -> void:
 	var muzzle := bot.global_position + Vector3(0, 1.25, 0) + bot.global_transform.basis.z * 0.6
@@ -515,6 +559,8 @@ func bot_shot(bot: RoyaleBot, target: Node3D, hit: bool, dmg: float, headshot: b
 		target.take_damage(dmg * (0.45 if target is RoyaleBot else 1.0), headshot, bot.combatant_name)
 		if target == player:
 			hud.damage_flash(dmg)
+	if net.active:
+		net.bot_shot(bots.find(bot), aim)
 	var near_player := bot.global_position.distance_to(player.global_position) < 260.0
 	if near_player:
 		_tracer(muzzle, aim)
@@ -544,13 +590,19 @@ func on_combatant_died(victim: Node3D, killer: String) -> void:
 	if not smoke_mode:
 		hud.add_feed("%s ✖ %s" % [killer, victim.combatant_name] if killer != "the zone" else "%s was caught by the zone" % victim.combatant_name, mine)
 		if mine: hud.flash_message("You eliminated %s" % victim.combatant_name, 2.0)
-	_drop_death_loot(victim)
+	var items := _death_items(victim)
+	if net.active and net.is_host and victim is RoyaleBot:
+		net.send({"t": "bdied", "i": bots.find(victim), "by": killer, "items": RoyaleNet.clean_items(items)})
+	_drop_death_loot(victim, items)
 	_check_end()
 
 func _on_player_died(killer: String) -> void:
 	if not smoke_mode:
 		hud.add_feed("%s ✖ You" % killer if killer != "the zone" else "You were caught by the zone", true)
-	_drop_death_loot(player)
+	var items := _death_items(player)
+	if net.active:
+		net.send({"t": "died", "by": killer, "items": RoyaleNet.clean_items(items)})
+	_drop_death_loot(player, items)
 	await get_tree().create_timer(1.8).timeout
 	_finish(false)
 
@@ -595,6 +647,9 @@ func _quit_to_arcade() -> void:
 		get_tree().quit()
 
 func _restart() -> void:
+	if net.active and OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){try{window.parent.classAppRooms.backToRoom();}catch(e){}})()", true)
+		return
 	get_tree().reload_current_scene()
 
 # ── Loot ─────────────────────────────────────────────────────
@@ -641,12 +696,19 @@ func _loot_material(color: Color) -> StandardMaterial3D:
 		_loot_mats[key] = m
 	return _loot_mats[key]
 
-func _add_loot(item: Dictionary, pos: Vector3, path: Array) -> Dictionary:
+func _add_loot(item: Dictionary, pos: Vector3, path: Array, uid := "") -> Dictionary:
+	if uid.is_empty():
+		if _loot_ready and net.active:
+			uid = net.next_drop_id()
+			net.send({"t": "add", "item": RoyaleNet.clean_item(item), "p": RoyaleNet.v3(pos), "u": uid})
+		else:
+			uid = str(_next_loot_id)
+			_next_loot_id += 1
 	item.pos = pos
 	item.path = path
 	item.taken = false
-	item.uid = _next_loot_id
-	_next_loot_id += 1
+	item.uid = uid
+	loot_by_uid[uid] = item
 	if not item.has("count"): item.count = 1
 	if not smoke_mode:
 		item.node = _make_loot_node(item)
@@ -710,7 +772,10 @@ func loot_available(item: Dictionary) -> bool:
 		return crates.has(item.crate) and not (item.crate.items as Array).is_empty()
 	return not bool(item.get("taken", false))
 
-func _remove_loot(item: Dictionary) -> void:
+func _remove_loot(item: Dictionary, sync := true) -> void:
+	if sync and net.active and not bool(item.get("taken", false)):
+		net.send({"t": "take", "u": item.uid})
+	loot_by_uid.erase(item.uid)
 	item.taken = true
 	if item.has("node") and is_instance_valid(item.node):
 		item.node.queue_free()
@@ -796,7 +861,7 @@ func pickup_nearby() -> void:
 		return
 	var door := nearby_door()
 	if not door.is_empty():
-		world.set_door_open(door, not bool(door.open))
+		set_door(door, not bool(door.open))
 		sfx.play("pickup", 0.6)
 
 var _door_clock := 0.0
@@ -807,11 +872,16 @@ func _bots_open_doors(delta: float) -> void:
 		return
 	_door_clock = 0.3
 	for bot in bots:
-		if bot.state != "ground" or not bot.is_alive() or bot.far:
+		if bot.puppet or bot.state != "ground" or not bot.is_alive() or bot.far:
 			continue
 		var door := world.nearest_door(bot.global_position + Vector3(0, 1.0, 0), 1.9)
 		if not door.is_empty() and not bool(door.open):
-			world.set_door_open(door, true)
+			set_door(door, true)
+
+func set_door(door: Dictionary, open: bool) -> void:
+	world.set_door_open(door, open)
+	if net.active:
+		net.send({"t": "door", "i": world.doors.find(door), "o": open})
 
 ## Applies an item to the player. Auto-pickup only takes things that are clearly useful.
 func _player_take(item: Dictionary, manual: bool) -> bool:
@@ -916,7 +986,7 @@ func bot_pickup(bot: RoyaleBot, item: Dictionary) -> void:
 						bot.helmet = int(it.level); bot.helmet_hp = Items.ARMOR_DURABILITY[bot.helmet]; crate.items.erase(it)
 				"med":
 					if bot.meds < 3: bot.meds += 1; crate.items.erase(it)
-		_remove_crate_if_empty(crate)
+		_crate_changed(crate)
 		return
 	if not loot_available(item) or Vector3(item.pos).distance_to(bot.global_position) > 2.5:
 		loot_reserved.erase(item.get("uid", -1))
@@ -933,9 +1003,14 @@ func bot_pickup(bot: RoyaleBot, item: Dictionary) -> void:
 		"grenade": bot.grenades += 1
 	_remove_loot(item)
 
-## PUBG-style death crate: a box holding exactly what the victim carried.
-func _drop_death_loot(victim: Node3D) -> void:
+## What the victim carried. In a room match a classmate's or a host-run bot's list comes
+## with its "died" / "bdied" message.
+func _death_items(victim: Node3D) -> Array:
 	var items: Array = []
+	if victim.has_meta("death_items"):
+		return victim.get_meta("death_items")
+	if victim is RoyaleRemote:
+		return (victim as RoyaleRemote).death_items
 	if victim is RoyaleBot:
 		var b := victim as RoyaleBot
 		if not b.gun_id.is_empty():
@@ -955,13 +1030,21 @@ func _drop_death_loot(victim: Node3D) -> void:
 		if p.helmet > 0: items.append({"type": "helmet", "level": p.helmet, "hp": p.helmet_hp})
 		for m in p.meds: if int(p.meds[m]) > 0: items.append({"type": "med", "id": m, "count": p.meds[m]})
 		if p.grenades > 0: items.append({"type": "grenade", "count": p.grenades})
+	return items
+
+## PUBG-style death crate: a box holding exactly what the victim carried.
+func _drop_death_loot(victim: Node3D, items: Array) -> void:
+	if items.is_empty():
+		return
 	var at := victim.global_position
 	at.y = world.height_at(at.x, at.z) if at.y < world.height_at(at.x, at.z) + 0.5 else at.y
-	_make_crate(at, items, "death", "%s's crate" % victim.combatant_name, true)
+	_make_crate(at, items.duplicate(true), "death", "%s's crate" % victim.combatant_name, true, "d:" + victim.combatant_name)
 
-func _make_crate(pos: Vector3, items: Array, kind: String, label: String, ready: bool) -> Dictionary:
-	var crate := {"pos": pos, "items": items, "kind": kind, "label": label, "ready": ready}
+func _make_crate(pos: Vector3, items: Array, kind: String, label: String, ready: bool, id := "") -> Dictionary:
+	var crate := {"pos": pos, "items": items, "kind": kind, "label": label, "ready": ready, "id": id}
 	crates.append(crate)
+	if not id.is_empty():
+		crates_by_id[id] = crate
 	if smoke_mode:
 		return crate
 	var n := Node3D.new()
@@ -1002,6 +1085,7 @@ func _remove_crate_if_empty(crate: Dictionary) -> void:
 	if not (crate.items as Array).is_empty():
 		return
 	crates.erase(crate)
+	crates_by_id.erase(String(crate.get("id", "")))
 	if crate.has("node") and is_instance_valid(crate.node):
 		var n: Node3D = crate.node
 		n.create_tween().tween_property(n, "scale", Vector3(0.01, 0.01, 0.01), 0.3)
@@ -1041,6 +1125,12 @@ func take_from_crate(crate: Dictionary, index: int) -> void:
 		if _apply_item_to_player(copy, true):
 			items.erase(item)
 	sfx.play("pickup")
+	_crate_changed(crate)
+
+## Someone took from a crate: tell the others what's left, then remove it if empty.
+func _crate_changed(crate: Dictionary) -> void:
+	if net.active and not String(crate.get("id", "")).is_empty():
+		net.send({"t": "crate_set", "c": crate.id, "items": RoyaleNet.clean_items(crate.items)})
 	_remove_crate_if_empty(crate)
 
 # ── Grenades and airdrop ─────────────────────────────────────
@@ -1072,13 +1162,13 @@ func throw_grenade() -> void:
 	hud.flash_message("Grenade out!", 1.2)
 	get_tree().create_timer(3.5).timeout.connect(func():
 		if is_instance_valid(g):
+			if net.active:
+				net.send({"t": "nade", "p": RoyaleNet.v3(g.global_position)})
 			_explode(g.global_position, player.combatant_name)
 			g.queue_free())
 
 func _explode(pos: Vector3, owner_name: String) -> void:
-	sfx.play_at("explosion", pos)
-	if pos.distance_to(player.global_position) < 40.0:
-		player.shake_left = 0.4
+	explosion_effect(pos)
 	for c in combatants:
 		if not c.is_alive():
 			continue
@@ -1087,6 +1177,11 @@ func _explode(pos: Vector3, owner_name: String) -> void:
 			c.take_damage(115.0 * (1.0 - d / 7.5), false, owner_name)
 			if c == player: hud.damage_flash(60.0)
 			elif owner_name == player.combatant_name: hud.hitmarker(not c.is_alive())
+
+func explosion_effect(pos: Vector3) -> void:
+	sfx.play_at("explosion", pos)
+	if pos.distance_to(player.global_position) < 40.0:
+		player.shake_left = 0.4
 	if not smoke_mode:
 		var flash := MeshInstance3D.new()
 		var s := SphereMesh.new()
@@ -1139,7 +1234,14 @@ func _drop_crate_from_sky(items: Array, kind: String, label: String) -> void:
 	if not world.is_land(c.x, c.y):
 		c = zone.next_center
 	var ground := Vector3(c.x, world.height_at(c.x, c.y), c.y)
-	var crate := _make_crate(ground + Vector3(0, 200.0, 0), items, kind, label, false)
+	var id := "s:%d" % _supply_n
+	_supply_n += 1
+	if net.active:
+		net.send({"t": "crate", "id": id, "k": kind, "l": label, "items": RoyaleNet.clean_items(items), "p": RoyaleNet.v3(ground)})
+	_drop_crate_at(ground, items, kind, label, id)
+
+func _drop_crate_at(ground: Vector3, items: Array, kind: String, label: String, id: String) -> void:
+	var crate := _make_crate(ground + Vector3(0, 200.0, 0), items, kind, label, false, id)
 	crate.target = ground
 	if kind == "airdrop":
 		airdrop_pos = ground
@@ -1288,6 +1390,9 @@ func play_sfx(name: String, _pos: Vector3) -> void:
 func _physics_process(delta: float) -> void:
 	if player == null or hud == null:
 		return  # still generating the island
+	net.tick(delta)
+	if _wait_layer:
+		return  # room match: waiting for everyone to load
 	match_time += delta
 	if plane_node != null:
 		_update_plane(delta)
@@ -1313,6 +1418,110 @@ func _process(delta: float) -> void:
 			print("ROYALE_BENCH fps=%.1f" % (_bench_frames / _bench_time))
 			_bench_frames = 0
 			_bench_time = 0.0
+
+# ── Room matches ─────────────────────────────────────────────
+
+func _setup_room_match() -> void:
+	player.combatant_name = net.my_name
+	var humans := net.human_names()
+	for bot in bots:
+		bot.puppet = not net.is_host
+		if humans.has(bot.combatant_name):
+			bot.combatant_name += " (bot)"
+	var index := 0
+	for p in net.players:
+		if String(p.username) == net.me:
+			continue
+		var r := RoyaleRemote.new()
+		r.setup(self, String(p.username), String(p.name), index)
+		index += 1
+		add_child(r)
+		net.remotes[String(p.username)] = r
+		combatants.append(r)
+
+## Distance from a spot to the nearest human (bots run full AI near any of them).
+func nearest_human_distance(pos: Vector3) -> float:
+	var best := pos.distance_to(player.global_position)
+	if net.active:
+		for r: RoyaleRemote in net.remotes.values():
+			if r.is_alive():
+				best = minf(best, pos.distance_to(r.global_position))
+	return best
+
+func remote_shot(from: Vector3, to: Vector3, gun_id: String) -> void:
+	if from.distance_to(player.global_position) < 260.0:
+		_tracer(from, to)
+		sfx.play_at(RoyaleSfx.shot_key(gun_id), from)
+	recent_shots.append({"pos": Vector2(from.x, from.z), "t": Time.get_ticks_msec() * 0.001, "mine": false})
+	if recent_shots.size() > 40:
+		recent_shots.remove_at(0)
+
+func remote_left(r: RoyaleRemote) -> void:
+	if not smoke_mode:
+		hud.add_feed("%s left the match" % r.combatant_name, false)
+	_check_end()
+
+func net_bot_shot(index: int, aim: Vector3) -> void:
+	if index < 0 or index >= bots.size():
+		return
+	var bot := bots[index]
+	var muzzle := bot.global_position + Vector3(0, 1.25, 0) + bot.global_transform.basis.z * 0.6
+	if bot.global_position.distance_to(player.global_position) < 260.0:
+		_tracer(muzzle, aim)
+		sfx.play_at(RoyaleSfx.shot_key(bot.gun_id), muzzle)
+	recent_shots.append({"pos": Vector2(bot.global_position.x, bot.global_position.z), "t": Time.get_ticks_msec() * 0.001, "mine": false})
+	if recent_shots.size() > 40:
+		recent_shots.remove_at(0)
+
+func net_bot_died(index: int, killer: String, items: Array) -> void:
+	if index < 0 or index >= bots.size() or bots[index].state == "dead":
+		return
+	var bot := bots[index]
+	bot.set_meta("death_items", items)
+	bot._die(killer)
+
+func net_take(uid: String) -> void:
+	var item: Dictionary = loot_by_uid.get(uid, {})
+	if not item.is_empty():
+		_remove_loot(item, false)
+
+func net_add(item, pos: Vector3, uid: String) -> void:
+	if typeof(item) != TYPE_DICTIONARY or uid.is_empty() or loot_by_uid.has(uid):
+		return
+	_add_loot(item, pos, [], uid)
+
+func net_crate_set(id: String, items) -> void:
+	var crate: Dictionary = crates_by_id.get(id, {})
+	if crate.is_empty() or typeof(items) != TYPE_ARRAY:
+		return
+	crate.items = items
+	_remove_crate_if_empty(crate)
+
+func net_supply_crate(id: String, kind: String, label: String, items, ground: Vector3) -> void:
+	if crates_by_id.has(id) or typeof(items) != TYPE_ARRAY:
+		return
+	_drop_crate_at(ground, items, kind, label, id)
+	if not smoke_mode:
+		hud.flash_message("Airdrop incoming! (red marker on the map)" if kind == "airdrop" else "Supply crate dropping! (blue marker on the map)", 3.5)
+
+func net_door(index: int, open: bool) -> void:
+	if index >= 0 and index < world.doors.size():
+		world.set_door_open(world.doors[index], open)
+
+func net_zone(m: Dictionary) -> void:
+	var fc: Array = m.get("fc", [0, 0])
+	var nc: Array = m.get("nc", [0, 0])
+	zone.phase = int(m.get("ph", 0))
+	zone.center = Vector2(float(fc[0]), float(fc[1]))
+	zone.radius = float(m.get("fr", 600.0))
+	zone.from_center = zone.center
+	zone.from_radius = zone.radius
+	zone.next_center = Vector2(float(nc[0]), float(nc[1]))
+	zone.next_radius = float(m.get("nr", 600.0))
+	zone.timer = float(m.get("tm", 60.0))
+	zone.shrinking = false
+	if int(zone.phase) > 0 and not smoke_mode:
+		hud.flash_message("New safe zone marked on the map", 3.0)
 
 # ── Developer checks ─────────────────────────────────────────
 
@@ -1447,7 +1656,7 @@ func _run_screenshots(dir: String) -> void:
 	var fake := bots[1]
 	fake.global_position = player.global_position + (-player.global_transform.basis.z) * 1.6
 	fake.set_gun("akm"); fake.vest = 2; fake.vest_hp = 220.0; fake.meds = 2
-	_drop_death_loot(fake)
+	_drop_death_loot(fake, _death_items(fake))
 	await get_tree().create_timer(0.6).timeout
 	await _shot(dir + "/14_crate.png")
 	hud.toggle_backpack()

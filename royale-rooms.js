@@ -21,7 +21,7 @@ module.exports = function setupRoyaleRooms(io) {
   const channel = (room) => `royale-room:${room.id}`;
 
   function publicRoom(room) {
-    return { id: room.id, host: room.host, state: room.state, members: room.members, invited: [...room.invited], max: MAX_PLAYERS };
+    return { id: room.id, host: room.host, state: room.state, members: room.members, invited: [...room.invited], max: room.max || MAX_PLAYERS, mode: room.mode, map: room.map };
   }
 
   function sendUpdate(room) {
@@ -75,6 +75,9 @@ module.exports = function setupRoyaleRooms(io) {
       const room = {
         id: crypto.randomBytes(5).toString('hex'),
         host: username,
+        mode: ['duo', 'squad'].includes(payload.mode) ? payload.mode : 'squad',
+        max: payload.mode === 'duo' ? 2 : Math.max(2, Math.min(5, Number(payload.max) || 5)),
+        map: ['sentinel', 'dunes', 'frost'].includes(payload.map) ? payload.map : 'sentinel',
         members: [{ username, displayName: cleanName(payload.displayName, username) }],
         invited: new Set(),
         state: 'lobby',
@@ -93,7 +96,7 @@ module.exports = function setupRoyaleRooms(io) {
       if (!room) return fail(ack, 'Make a room first.');
       if (!to || to === username) return fail(ack, 'Pick someone else to invite.');
       if (room.members.some((m) => m.username === to)) return fail(ack, 'They are already in your room.');
-      if (room.members.length >= MAX_PLAYERS) return fail(ack, `Rooms hold up to ${MAX_PLAYERS} players.`);
+      if (room.members.length >= (room.max || MAX_PLAYERS)) return fail(ack, `This room holds up to ${room.max || MAX_PLAYERS} players.`);
       const targets = socketsOf(to);
       if (!targets.length) return fail(ack, 'They are not online right now.');
       const key = `${username}>${to}`;
@@ -122,7 +125,7 @@ module.exports = function setupRoyaleRooms(io) {
       if (!room) return fail(ack, 'That room is closed.');
       if (!room.invited.has(username) && !room.members.some((m) => m.username === username)) return fail(ack, 'You need an invite to join this room.');
       if (room.state !== 'lobby') return fail(ack, 'That match already started.');
-      if (room.members.length >= MAX_PLAYERS && !room.members.some((m) => m.username === username)) return fail(ack, 'That room is full.');
+      if (room.members.length >= (room.max || MAX_PLAYERS) && !room.members.some((m) => m.username === username)) return fail(ack, 'That room is full.');
       if (roomOf.get(username) && roomOf.get(username) !== room.id) leaveRoom(username);
       if (!room.members.some((m) => m.username === username)) {
         room.members.push({ username, displayName: cleanName(payload.displayName, username) });
@@ -143,7 +146,7 @@ module.exports = function setupRoyaleRooms(io) {
       if (room.members.length < 2) return fail(ack, 'Invite at least one classmate first.');
       room.state = 'playing';
       room.seed = crypto.randomInt(1, 2147483647);
-      io.to(channel(room)).emit('room:start', { roomId: room.id, seed: room.seed, host: room.host, players: room.members });
+      io.to(channel(room)).emit('room:start', { roomId: room.id, seed: room.seed, host: room.host, players: room.members, mode: room.mode, map: room.map });
       sendUpdate(room);
       if (typeof ack === 'function') ack({ ok: true });
     });

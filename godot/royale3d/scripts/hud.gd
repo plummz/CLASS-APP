@@ -535,7 +535,7 @@ func _build_end() -> void:
 func show_end(won: bool, placement: int, kills: int, coins: int) -> void:
 	end_title.text = "WINNER WINNER\nCHICKEN DINNER!" if won else "#%d of %d" % [placement, game.total_players]
 	end_stats.text = "Kills: %d\nPlace: #%d\nCoins earned: +%d" % [kills, placement, coins]
-	again_button.text = "Back to room" if game.net != null and game.net.active else "Play again"
+	again_button.text = "Back to room" if game.net != null and game.net.active else "Back to lobby"
 	bag_layer.visible = false
 	settings_layer.visible = false
 	pause_layer.visible = false

@@ -402,6 +402,7 @@ func try_fire(trigger_down: bool) -> void:
 		return
 	cancel_heal()
 	g.mag = int(g.mag) - 1
+	if game: game.stats.shots = int(game.stats.shots) + 1
 	fire_cooldown = Items.seconds_per_shot(String(g.id))
 	var forward := -camera.global_transform.basis.z
 	# Aim assist "magnetism": a shot that only just misses the enemy under the crosshair goes to them

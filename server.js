@@ -2066,6 +2066,8 @@ async function supabaseQuery(table, method, body, queryParams = {}) {
   return text ? JSON.parse(text) : [];
 }
 
+require('./royale-stats')(app, { requireAuth, supabaseQuery });   // Battle Royale 3D match history and profiles
+
 // -- Shared Boards API (Announcements, AI Outputs, Reviewers) ----------------
 app.post('/api/shared-announcements', requireAuth, wrap(async (req, res) => {
   const { title, body, schedule, source_type, date_key, date_label } = req.body || {};

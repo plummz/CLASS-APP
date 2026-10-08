@@ -37,6 +37,63 @@ const MK_WIND := {"grass": 0.14, "tall": 0.12, "clover": 0.12, "flower": 0.1, "b
 const WALL_COLORS := [Color("e8dcc4"), Color("cfe3ea"), Color("f1e3a6"), Color("f4f1ea"), Color("c98b74"), Color("b9d4b4")]
 const ROOF_COLORS := [Color("6b4a3a"), Color("4a5568"), Color("7a3b2e"), Color("3f5f4a")]
 
+## Per-map lists (set from the theme in generate)
+var theme := "sentinel"
+var trees_low: Array = TREES_LOW
+var trees_high: Array = TREES_HIGH
+var trees_beach: Array = TREES_BEACH
+var bushes: Array = BUSHES
+var rocks: Array = ROCKS
+var grass: Array = GRASS
+var wall_colors: Array = WALL_COLORS
+var roof_colors: Array = ROOF_COLORS
+var town_names: Array = TOWN_NAMES
+var base_name := "Fort Santiago Base"
+var hill_scale := 34.0
+var mountain_h := 55.0
+var grass_every := 1      ## draw every Nth grass tuft (phones / desert draw fewer)
+
+const THEMES := {
+	"dunes": {
+		"trees_low": ["tree_palmTall", "tree_palm", "mk:dead_tree", "mk:dead_tree_2", "tree_palmTall", "mk:dead_tree_3"],
+		"trees_high": ["mk:dead_tree", "mk:dead_tree_2", "mk:dead_tree_3"],
+		"trees_beach": ["tree_palmTall", "tree_palm"],
+		"bushes": ["mk:bush", "mk:plant_big_2", "mk:fern"],
+		"grass": ["mk:tall_grass", "mk:grass_wispy", "mk:grass_wispy_2"],
+		"wall_colors": [Color("e8c99a"), Color("d9a66b"), Color("f0dcb8"), Color("c97b4a"), Color("efe1c6"), Color("dcb98a")],
+		"roof_colors": [Color("8a4b2e"), Color("6e3a24"), Color("a0603a"), Color("7a5a3a")],
+		"town_names": ["Oasis Central", "Sandy Port", "Mirage Row", "Cactus Farm", "Dune Ridge", "Sunstone Square"],
+		"base": "Camp Sahara", "hills": 22.0, "mountain": 48.0, "grass_every": 3},
+	"frost": {
+		"trees_low": ["mk:pine", "mk:pine_2", "mk:pine_3", "mk:pine_4", "mk:pine_5", "mk:dead_tree_2"],
+		"trees_high": ["mk:pine", "mk:pine_2", "mk:pine_3", "mk:pine_4", "mk:pine_5"],
+		"trees_beach": ["mk:pine_4", "mk:pine_5"],
+		"bushes": ["mk:bush", "mk:fern"],
+		"grass": ["mk:tall_grass"],
+		"wall_colors": [Color("8a5a3a"), Color("6d4c35"), Color("a7a39b"), Color("5a6e7a"), Color("9a3b2e"), Color("d8d2c4")],
+		"roof_colors": [Color("3a3f45"), Color("4a2f25"), Color("2f3a33"), Color("55595e")],
+		"town_names": ["Frostfall", "Icehaven Port", "Pinecrest Row", "Snowmelt Farm", "Glacier Ridge", "Aurora Square"],
+		"base": "Fort Polar", "hills": 46.0, "mountain": 85.0, "grass_every": 0},
+}
+
+func _apply_theme(name: String) -> void:
+	theme = name
+	if not THEMES.has(name):
+		return
+	var t: Dictionary = THEMES[name]
+	trees_low = t.trees_low
+	trees_high = t.trees_high
+	trees_beach = t.trees_beach
+	bushes = t.bushes
+	grass = t.grass
+	wall_colors = t.wall_colors
+	roof_colors = t.roof_colors
+	town_names = t.town_names
+	base_name = t.base
+	hill_scale = t.hills
+	mountain_h = t.mountain
+	grass_every = t.grass_every
+
 var rng := RandomNumberGenerator.new()
 var noise := FastNoiseLite.new()
 var warp := FastNoiseLite.new()
@@ -59,7 +116,8 @@ var features: Array[Dictionary] = []  ## mountain / lake shaping {pos, radius, h
 var island2 := {}                      ## {center: Vector2, heights: PackedFloat32Array, town: Dictionary}
 var vehicle_spawns: Array[Dictionary] = []  ## {kind, model, pos, yaw}
 
-func generate(seed_value: int, low_quality := false) -> void:
+func generate(seed_value: int, low_quality := false, theme_name := "sentinel") -> void:
+	_apply_theme(theme_name)
 	quality_low = low_quality
 	touch_device = RoyalePlayer.is_touch_platform()
 	rng.seed = seed_value
@@ -101,7 +159,7 @@ func _raw_height(x: float, z: float) -> float:
 	d += warp.get_noise_2d(x, z) * 0.14
 	var mask := 1.0 - smoothstep(0.72, 1.0, d)
 	var hills := (noise.get_noise_2d(x, z) * 0.5 + 0.5)
-	var h := hills * hills * 34.0 * mask + mask * 3.5 - (1.0 - mask) * 9.0
+	var h := hills * hills * hill_scale * mask + mask * 3.5 - (1.0 - mask) * 9.0
 	# A mountain and a lake give the island landmarks and high ground to fight over
 	for f in features:
 		var dist := Vector2(x, z).distance_to(f.pos)
@@ -114,24 +172,24 @@ func _raw_height(x: float, z: float) -> float:
 func _place_features() -> void:
 	features.clear()
 	var a := rng.randf() * TAU
-	features.append({"pos": Vector2(cos(a), sin(a)) * 210.0, "radius": 140.0, "height": 55.0, "kind": "mountain"})
+	features.append({"pos": Vector2(cos(a), sin(a)) * 210.0, "radius": 140.0, "height": mountain_h, "kind": "mountain"})
 	var b := a + PI * rng.randf_range(0.7, 1.3)
 	features.append({"pos": Vector2(cos(b), sin(b)) * 160.0, "radius": 70.0, "height": -26.0, "kind": "lake"})
 
 func _place_towns() -> void:
 	towns.clear()
 	var base_angle := rng.randf() * TAU
-	for i in TOWN_NAMES.size():
+	for i in town_names.size():
 		var pos: Vector2
 		if i == 0:
 			pos = Vector2(rng.randf_range(-40, 40), rng.randf_range(-40, 40))
 		else:
-			var a := base_angle + TAU * float(i - 1) / float(TOWN_NAMES.size() - 1) + rng.randf_range(-0.25, 0.25)
+			var a := base_angle + TAU * float(i - 1) / float(town_names.size() - 1) + rng.randf_range(-0.25, 0.25)
 			pos = Vector2(cos(a), sin(a)) * rng.randf_range(230.0, 300.0)
-		towns.append({"name": TOWN_NAMES[i], "pos": pos, "radius": rng.randf_range(48.0, 62.0), "tier": 1 if i == 0 else 0, "military": false})
+		towns.append({"name": town_names[i], "pos": pos, "radius": rng.randf_range(48.0, 62.0), "tier": 1 if i == 0 else 0, "military": false})
 	# Military base on the coast between two towns
-	var a2 := base_angle + TAU * 1.5 / float(TOWN_NAMES.size() - 1)
-	towns.append({"name": "Fort Santiago Base", "pos": Vector2(cos(a2), sin(a2)) * 345.0, "radius": 58.0, "tier": 2, "military": true})
+	var a2 := base_angle + TAU * 1.5 / float(town_names.size() - 1)
+	towns.append({"name": base_name, "pos": Vector2(cos(a2), sin(a2)) * 345.0, "radius": 58.0, "tier": 2, "military": true})
 	for town in towns:
 		for f in features:
 			var away: Vector2 = town.pos - Vector2(f.pos)
@@ -407,8 +465,8 @@ func _build_town(town: Dictionary) -> void:
 		var park := plots[k]
 		for t in 3:
 			var tp := park + Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6))
-			_add_instance(TREES_LOW[rng.randi_range(0, TREES_LOW.size() - 1)], Vector3(tp.x, y, tp.y), rng.randf_range(4.5, 6.5), true, 0.35)
-		_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(park.x, y, park.y), 3.0, false, 0.0)
+			_add_instance(trees_low[rng.randi_range(0, trees_low.size() - 1)], Vector3(tp.x, y, tp.y), rng.randf_range(4.5, 6.5), true, 0.35)
+		_add_instance(bushes[rng.randi_range(0, bushes.size() - 1)], Vector3(park.x, y, park.y), 3.0, false, 0.0)
 	plots = plots.slice(0, keep)
 	for p in plots:
 		var yaw := float(rng.randi_range(0, 3)) * PI * 0.5
@@ -420,8 +478,8 @@ func _build_town(town: Dictionary) -> void:
 				_place_decor("res://assets/survival/structure-metal.glb", pos, yaw, 4.2)
 				_add_loot_point(pos + Vector3(0, 0.3, 0), 2, [])
 			continue
-		var wall: Color = WALL_COLORS[rng.randi_range(0, WALL_COLORS.size() - 1)]
-		var roof: Color = ROOF_COLORS[rng.randi_range(0, ROOF_COLORS.size() - 1)]
+		var wall: Color = wall_colors[rng.randi_range(0, wall_colors.size() - 1)]
+		var roof: Color = roof_colors[rng.randi_range(0, roof_colors.size() - 1)]
 		var roll := rng.randf()
 		if farm and roll < 0.3:
 			buildings.build("barn", pos, yaw, int(town.tier), wall, roof)
@@ -657,20 +715,20 @@ func _scatter_nature() -> void:
 			var roll := rng.randf()
 			var slope := absf(height_at(px + 2.0, pz) - h) + absf(height_at(px, pz + 2.0) - h)
 			if h < 2.2 and roll < 0.12:
-				_add_instance(TREES_BEACH[rng.randi_range(0, 1)], Vector3(px, h, pz), rng.randf_range(4.5, 6.5), true, 0.3)
+				_add_instance(trees_beach[rng.randi_range(0, 1)], Vector3(px, h, pz), rng.randf_range(4.5, 6.5), true, 0.3)
 			elif roll < density * 0.42 and slope < 3.0:
-				var list := TREES_HIGH if h > 18.0 else TREES_LOW
+				var list := trees_high if h > 18.0 else trees_low
 				_add_instance(list[rng.randi_range(0, list.size() - 1)], Vector3(px, h, pz), rng.randf_range(5.0, 8.0), true, 0.35)
 			elif roll < density * 0.42 + 0.06:
-				_add_instance(ROCKS[rng.randi_range(0, ROCKS.size() - 1)], Vector3(px, h - 0.3, pz), rng.randf_range(2.0, 4.5), true, 1.1)
+				_add_instance(rocks[rng.randi_range(0, rocks.size() - 1)], Vector3(px, h - 0.3, pz), rng.randf_range(2.0, 4.5), true, 1.1)
 			elif roll < density * 0.42 + 0.16:
-				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
+				_add_instance(bushes[rng.randi_range(0, bushes.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
 			elif roll < density * 0.42 + 0.45:
 				# A tuft cluster: several blades and the odd flower around one spot
 				for k in rng.randi_range(4, 8):
 					var gx := px + rng.randf_range(-2.5, 2.5)
 					var gz := pz + rng.randf_range(-2.5, 2.5)
-					var model: String = GRASS[rng.randi_range(0, GRASS.size() - 1)]
+					var model: String = grass[rng.randi_range(0, grass.size() - 1)]
 					var sc := rng.randf_range(2.5, 4.0)
 					if _draw_grass(k):
 						_add_grass(model, Vector3(gx, height_at(gx, gz), gz), sc)
@@ -696,9 +754,10 @@ func add_model_instance(path: String, tf: Transform3D, chunk_size: float, vis: f
 ## Grass is decoration only: phones draw half the blades, low quality none (no random draws here).
 var touch_device := false
 func _draw_grass(k: int) -> bool:
-	if quality_low:
+	if quality_low or grass_every <= 0:
 		return false
-	return not touch_device or k % 2 == 0
+	var every := grass_every * (2 if touch_device else 1)
+	return k % every == 0
 
 ## Adds a grass tuft without using the world's random generator (yaw from the position).
 func _add_grass(model: String, pos: Vector3, scale_value: float) -> void:
@@ -802,6 +861,10 @@ func _build_map_texture() -> void:
 				c = Color("1f5f8b").lerp(Color("2b77a8"), clampf((h + 9.0) / 9.0, 0.0, 1.0))
 			elif h < 1.6:
 				c = Color("e8cfa2")
+			elif theme == "dunes":
+				c = Color("e0c08a").lerp(Color("b98c55"), clampf(h / 30.0, 0.0, 1.0))
+			elif theme == "frost":
+				c = Color("eef2f6").lerp(Color("c9d3dc"), clampf(h / 40.0, 0.0, 1.0))
 			else:
 				c = Color("4f9a5a").lerp(Color("2f6f3e"), clampf(h / 34.0, 0.0, 1.0))
 			var t := town_at(x, z)
@@ -926,16 +989,16 @@ func _build_island2() -> void:
 				continue
 			var roll := rng.randf()
 			if h < 2.2 and roll < 0.15:
-				_add_instance(TREES_BEACH[rng.randi_range(0, 1)], Vector3(px, h, pz), rng.randf_range(4.5, 6.5), true, 0.3)
+				_add_instance(trees_beach[rng.randi_range(0, 1)], Vector3(px, h, pz), rng.randf_range(4.5, 6.5), true, 0.3)
 			elif roll < 0.22:
-				_add_instance(TREES_LOW[rng.randi_range(0, TREES_LOW.size() - 1)], Vector3(px, h, pz), rng.randf_range(5.0, 8.0), true, 0.35)
+				_add_instance(trees_low[rng.randi_range(0, trees_low.size() - 1)], Vector3(px, h, pz), rng.randf_range(5.0, 8.0), true, 0.35)
 			elif roll < 0.32:
-				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
+				_add_instance(bushes[rng.randi_range(0, bushes.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
 			elif roll < 0.6:
 				for k in 4:
 					var gx := px + rng.randf_range(-2.0, 2.0)
 					var gz := pz + rng.randf_range(-2.0, 2.0)
-					var model: String = GRASS[rng.randi_range(0, GRASS.size() - 1)]
+					var model: String = grass[rng.randi_range(0, grass.size() - 1)]
 					var sc := rng.randf_range(2.5, 4.0)
 					if _draw_grass(k):
 						_add_grass(model, Vector3(gx, height_at(gx, gz), gz), sc)

@@ -101,4 +101,4 @@ body:has(#page-royale3d.active) #custom-bg-btn { display: none !important; }
 /* "Play with friends" opens the room panel (features/rooms); short label on narrow phones */
 .royale3d-friends { background: rgba(47, 124, 246, 0.35); border-color: rgba(120, 170, 255, 0.5); }
 .royale3d-shop-btn { background: rgba(242, 153, 74, 0.3); border-color: rgba(255, 190, 120, 0.5); }
-@media (max-width: 420px) { .royale3d-friends, .royale3d-shop-btn { font-size: 0; padding: 0 10px; } .royale3d-friends::before { content: '👥'; font-size: 16px; } .royale3d-shop-btn::before { content: '🛒'; font-size: 16px; } }
+@media (max-width: 420px) { .royale3d-friends, .royale3d-shop-btn { font-size: 0; padding: 0 10px; } .royale3d-friends::before { content: '👥'; font-size: 16px; } .royale3d-shop-btn::before { content: '🏠'; font-size: 16px; } }

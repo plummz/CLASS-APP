@@ -1,6 +1,21 @@
 ﻿(function () {
-const APP_VERSION = '1.10.2';
+const APP_VERSION = '1.11.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.11.0',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Lobby, Profiles, Duo & Squad, Two New Maps',
+    summary: 'A lobby before every match with modes, maps, shop, settings, history and your profile — plus Dunas del Sol and Frostpeak.',
+    bullets: [
+      'New: Lobby. Opening Battle Royale 3D shows Play, Shop, Profile, History and Settings instead of starting right away.',
+      'New: Modes. Solo against 29 bots, Duo (you + 1 classmate) or Squad (up to 5 classmates) — room members are one team against the bots, with no friendly fire and green name tags.',
+      'New: Profile for every player: level and XP, matches, wins, win rate, kills, deaths, assists, K/D, KDA, damage, headshot rate, accuracy, top-5s, best place, longest kill, time played and favourite gun.',
+      'New: Match history with map, mode, place, kills, assists, damage and survival time for your last 30 matches.',
+      'New: Two maps. Dunas del Sol (desert dunes, sandstone towns, palms, dusty haze) and Frostpeak (snowfields, pine forests, snowy roofs, falling snow).',
+      'Improved: New sky with drifting clouds and a sun glow, per-map lighting and colour.',
+      'Improved: Settings in the lobby are the same ones the game uses.',
+    ]
+  },
   {
     version: '1.10.2',
     date: 'October 8, 2026',

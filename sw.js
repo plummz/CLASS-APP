@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.6.02-20261008-royale-perf-aim';
+const CACHE_VERSION = 'v1.6.03-20261008-royale-lobby-maps';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=140',
+  '/index.html?v=141',
   '/style.css?v=46',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -46,12 +46,12 @@ const ASSETS = [
   '/features/candy/candy.css?v=12',
   '/features/tetris/tetris.css?v=1',
   '/features/dungeon/dungeon.css?v=1',
-  '/features/royale3d/royale3d.css?v=4',
+  '/features/royale3d/royale3d.css?v=5',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=3',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=29',
+  '/features/updates/changelog.js?v=30',
   '/script.js?v=129',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
@@ -89,13 +89,15 @@ const ASSETS = [
   '/features/tetris/tetris.js?v=1',
   '/features/dungeon/dungeon.js?v=1',
   '/features/dungeon/dungeon-thumb.jpg',
-  '/features/royale3d/royale3d.js?v=7',
+  '/features/royale3d/royale3d.js?v=8',
   '/features/royale3d/shop.js?v=1',
   '/features/royale3d/shop.css?v=1',
+  '/features/royale3d/lobby.js?v=1',
+  '/features/royale3d/lobby.css?v=1',
   '/features/presence/presence.css?v=1',
   '/features/presence/presence.js?v=2',
   '/features/rooms/rooms.css?v=1',
-  '/features/rooms/rooms.js?v=1',
+  '/features/rooms/rooms.js?v=2',
   '/features/royale3d/royale3d-thumb.jpg',
   '/assets/images/code-web-card.svg',
   '/assets/images/code-java-card.svg',

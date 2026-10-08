@@ -28,6 +28,8 @@ var seed_value := 0
 var players: Array = []          ## [{username, name}]
 var remotes := {}                ## username -> RoyaleRemote
 var started := false             ## the plane has left
+var mode := "room"               ## "duo" / "squad" = everyone in the room is one team
+var map_id := "sentinel"
 var _ready_users := {}
 var _wait := 0.0
 var _state_t := 0.0
@@ -50,6 +52,8 @@ func read_match() -> bool:
 	me = String(m.get("me", ""))
 	host = String(m.get("host", ""))
 	seed_value = int(m.get("seed", 1))
+	mode = String(m.get("mode", "room"))
+	map_id = String(m.get("map", "sentinel"))
 	players = m.players
 	is_host = me == host
 	for p in players:

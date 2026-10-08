@@ -57,9 +57,9 @@
   }
 
   // ── Room actions ─────────────────────────────────────────────
-  async function create() {
+  async function create(opts = {}) {
     if (room) return true;
-    const res = await emit('room:create', { displayName: myName() });
+    const res = await emit('room:create', { displayName: myName(), mode: opts.mode || 'squad', max: opts.max || 5, map: opts.map || 'sentinel' });
     if (!res.ok) { toast(res.error || 'Could not make a room.', 'error'); return false; }
     room = res.room;
     render();
@@ -107,18 +107,15 @@
 
   function startMatch(data) {
     if (!data || data.roomId !== room?.id) return;
-    pendingMatch = { roomId: data.roomId, seed: data.seed, host: data.host, me: user()?.username, players: matchPlayers(data.players || []) };
+    pendingMatch = { roomId: data.roomId, seed: data.seed, host: data.host, me: user()?.username, players: matchPlayers(data.players || []),
+      mode: data.mode || 'squad', map: data.map || 'sentinel' };
     activeMatch = null;
     inbox = [];
     closePanel(true);
     hideInvite();
     toast('Match starting!', 'success');
-    if (typeof currentPage !== 'undefined' && currentPage === 'royale3d') {
-      window.royale3dModule?.destroy();
-      window.royale3dModule?.init();
-    } else {
-      window.goToPage?.('royale3d');
-    }
+    if (typeof currentPage !== 'undefined' && currentPage !== 'royale3d') window.goToPage?.('royale3d');
+    window.royale3dModule?.startGame({ map: pendingMatch.map });
   }
 
   // ── Bridge for the game (called from Godot through JavaScriptBridge) ─────
@@ -147,8 +144,17 @@
   function backToRoom() {
     activeMatch = null;
     if (isHost()) sock?.emit('room:back');
-    window.royale3dModule?.destroy();
+    window.royale3dLobby?.backToLobby();
     openPanel();
+  }
+
+  // From the lobby: make a Duo / Squad room and open it to invite classmates
+  async function createRoom(opts) {
+    if (room && room.state === 'lobby' && isHost() && (room.mode !== opts.mode || room.map !== opts.map)) {
+      sock?.emit('room:leave');
+      room = null;
+    }
+    if (await create(opts)) openPanel();
   }
 
   // ── Invite pop-up ────────────────────────────────────────────
@@ -195,12 +201,10 @@
     render();
   }
 
-  // starting = the match is loading, so don't reopen the single-player game behind it
-  function closePanel(starting) {
+  function closePanel() {
     const panel = document.getElementById('room-panel');
     if (!panel || panel.hidden) return;
     panel.hidden = true;
-    if (!starting && typeof currentPage !== 'undefined' && currentPage === 'royale3d') window.royale3dModule?.init();
   }
 
   function onPanelClick(e) {
@@ -243,9 +247,10 @@
         <span class="room-member-name">${esc(u.displayName)}<small>${u.status === 'away' ? 'Away' : esc(window.presenceActivityText?.(u.page) || 'Online')}</small></span>
         <button type="button" class="room-btn small" data-room-invite="${esc(u.username)}" ${invited.has(u.username) || full ? 'disabled' : ''}>${invited.has(u.username) ? 'Invited' : 'Invite'}</button>
       </li>`).join('') : '<li class="room-note">Nobody else is online right now.</li>';
-    const status = room.state === 'playing'
+    const mapNames = { sentinel: 'Isla Sentinel', dunes: 'Dunas del Sol', frost: 'Frostpeak' };
+    const status = '<strong>' + esc(String(room.mode || 'squad').toUpperCase()) + '</strong> · ' + esc(mapNames[room.map] || 'Isla Sentinel') + ' · your team vs the bots<br>' + (room.state === 'playing'
       ? 'A match is in progress.'
-      : (isHost() ? 'You are the host. Invite classmates, then start the match.' : `Waiting for ${esc(nameOf(room.host))} to start the match…`);
+      : (isHost() ? 'You are the host. Invite classmates, then start the match.' : 'Waiting for ' + esc(nameOf(room.host)) + ' to start the match…'));
     const footer = `
       <button type="button" class="room-btn" data-room-leave>Leave room</button>
       ${isHost() ? `<button type="button" class="room-btn primary" data-room-start ${room.members.length < 2 || room.state !== 'lobby' ? 'disabled' : ''}>Start match (${room.members.length})</button>` : ''}`;
@@ -269,7 +274,7 @@
   window.addEventListener('classapp:presence', () => { ensureSocket(); render(); });
 
   window.classAppRooms = {
-    open: openPanel, invite, join, leave, start,
+    open: openPanel, invite, join, leave, start, createRoom,
     takeMatch, send, drain, gameClosed, backToRoom,
     get room() { return room; },
   };

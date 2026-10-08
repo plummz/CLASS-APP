@@ -3,7 +3,7 @@
  * compressed) and is removed on leave to free WebGL memory and stop audio. Coins earned in a
  * match are added to the same balance as the 2D Battle Royale ('rl_coins_v1'). */
 (function () {
-  const GAME_URL = 'features/royale3d/game/index.html?v=7';
+  const GAME_URL = 'features/royale3d/game/index.html?v=8';
 
   let frame = null;
 
@@ -16,9 +16,17 @@
     s.classList.toggle('hidden', !text);
   }
 
+  // Opening the page shows the lobby; a match starts from its Play button (or a room start)
   function init() {
+    if (frame) return;
+    window.royale3dLobby?.show();
+  }
+
+  function startGame(opts = {}) {
     const stage = el('royale3d-stage');
-    if (!stage || frame) return;
+    if (!stage) return;
+    if (frame) destroy();
+    window.royale3dLobby?.hide();
     setStatus('Loading the island… the first time takes a moment, later visits are faster.');
     frame = document.createElement('iframe');
     frame.id = 'royale3d-frame';
@@ -29,7 +37,7 @@
       setStatus('');
       try { frame.focus(); } catch (_) {}
     });
-    frame.src = GAME_URL;
+    frame.src = GAME_URL + (opts.map ? '&map=' + encodeURIComponent(opts.map) : '');
     stage.appendChild(frame);
   }
 
@@ -61,5 +69,5 @@
     if (event.data?.type === 'royale3d-exit') window.goToPage?.('games');
   });
 
-  window.royale3dModule = { init, destroy, toggleFullscreen };
+  window.royale3dModule = { init, startGame, destroy, toggleFullscreen };
 })();

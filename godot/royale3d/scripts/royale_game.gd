@@ -76,6 +76,13 @@ var net: RoyaleNet
 var loadout := {"weapon": "", "outfit": "standard", "level": 1}
 var rockets: Array[Dictionary] = []
 var vehicles: Array = []
+var map_id := "sentinel"
+var game_mode := "solo"          ## solo / duo / squad (room members are one team) / room
+var team_mode := false
+## This match's numbers for the player's profile (sent to the lobby at the end)
+var stats := {"shots": 0, "hits": 0, "damage": 0.0, "headshots": 0, "assists": 0, "longest_kill": 0.0, "weapon_kills": {}}
+var _damaged := {}               ## victim name -> last time the player hurt them (assists)
+var _reported := false
 var bot_count := BOT_COUNT
 var loot_by_uid := {}
 var crates_by_id := {}
@@ -97,6 +104,17 @@ func _ready() -> void:
 		rng.seed = net.seed_value   # same island and starting loot for everyone in the room
 		bot_count = BOT_COUNT + 1 - net.players.size()
 	total_players = bot_count + (net.players.size() if net.active else 1)
+	if net.active:
+		map_id = net.map_id
+		game_mode = net.mode
+	else:
+		var q := _query_flag("map")
+		if not q.is_empty(): map_id = q
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--map="): map_id = a.get_slice("=", 1)
+	if not ["sentinel", "dunes", "frost"].has(map_id): map_id = "sentinel"
+	team_mode = net.active and game_mode in ["duo", "squad"]
+	RoyaleMaterials.theme = map_id
 	_load_settings()
 	if "--quality=low" in args or _query_flag("quality") == "low":
 		settings.low = true
@@ -127,7 +145,7 @@ func _ready() -> void:
 	world.name = "World"
 	add_child(world)
 	var t_gen := Time.get_ticks_msec()
-	world.generate(rng.randi(), bool(settings.low) or smoke_mode)
+	world.generate(rng.randi(), bool(settings.low) or smoke_mode, map_id)
 	var t_loot := Time.get_ticks_msec()
 	_spawn_loot()
 	_loot_ready = true
@@ -151,6 +169,7 @@ func _ready() -> void:
 		combatants.append(bot)
 	if net.active:
 		_setup_room_match()
+	_build_weather()
 	hud = RoyaleHud.new()
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -200,12 +219,24 @@ func _load_settings() -> void:
 	if cfg.load(SETTINGS_PATH) == OK:
 		for k in settings.keys():
 			settings[k] = cfg.get_value("settings", k, settings[k])
+	# The lobby's Settings tab (localStorage) wins over the saved file
+	if OS.has_feature("web"):
+		var raw = JavaScriptBridge.eval("(function(){try{return window.parent.localStorage.getItem('rl3d_settings_v1')||'';}catch(e){return '';}})()", true)
+		var d = JSON.parse_string(String(raw)) if raw != null and String(raw) != "" else null
+		if typeof(d) == TYPE_DICTIONARY:
+			for k in d:
+				if settings.has(k) and k != "layout":
+					settings[k] = d[k]
 
 func _apply_settings() -> void:
 	var cfg := ConfigFile.new()
 	for k in settings.keys():
 		cfg.set_value("settings", k, settings[k])
 	cfg.save(SETTINGS_PATH)
+	if OS.has_feature("web"):
+		var copy := settings.duplicate()
+		copy.erase("layout")
+		JavaScriptBridge.eval("(function(s){try{window.parent.localStorage.setItem('rl3d_settings_v1', JSON.stringify(s));}catch(e){}})(%s)" % JSON.stringify(copy), true)
 	if player:
 		player.touch_sensitivity = float(settings.sensitivity)
 		player.mouse_sensitivity = 0.0022 * float(settings.sensitivity)
@@ -226,34 +257,114 @@ func _apply_settings() -> void:
 func _build_environment() -> void:
 	env = WorldEnvironment.new()
 	var e := Environment.new()
+	var look: Dictionary = MAP_LOOK.get(map_id, MAP_LOOK["sentinel"])
 	var sky := Sky.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("4f8fd6")
-	sky_mat.sky_horizon_color = Color("bcd8ef")
-	sky_mat.ground_horizon_color = Color("bcd8ef")
-	sky_mat.ground_bottom_color = Color("3d6c8f")
+	var sky_mat := ShaderMaterial.new()
+	var sky_shader := Shader.new()
+	sky_shader.code = SKY_SHADER
+	sky_mat.shader = sky_shader
+	sky_mat.set_shader_parameter("top", look.top)
+	sky_mat.set_shader_parameter("horizon", look.horizon)
+	sky_mat.set_shader_parameter("cloud_color", look.cloud)
+	sky_mat.set_shader_parameter("cloudiness", look.cloudiness)
 	sky.sky_material = sky_mat
+	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	e.background_mode = Environment.BG_SKY
 	e.sky = sky
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.66, 0.69, 0.74)
-	e.ambient_light_energy = 0.45
+	e.ambient_light_color = look.ambient
+	e.ambient_light_energy = 0.48
+	# Gentle grade: a little more contrast and colour than the plain linear output
+	e.adjustment_enabled = true
+	e.adjustment_contrast = 1.06
+	e.adjustment_saturation = look.saturation
+	e.adjustment_brightness = 1.0
 	# Linear: the filmic tonemapper washed colours out in the Compatibility renderer
 	e.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	e.fog_enabled = true
-	e.fog_light_color = Color("b9cde0")
+	e.fog_light_color = look.fog
 	e.fog_density = 0.0012
 	e.fog_sky_affect = 0.4
 	if "--nofog" in OS.get_cmdline_user_args(): e.fog_enabled = false
 	env.environment = e
 	add_child(env)
 	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52, 35, 0)
-	sun.light_energy = 1.0
-	sun.light_color = Color("fff1dc")
+	sun.rotation_degrees = look.sun_rot
+	sun.light_energy = look.sun_energy
+	sun.light_color = look.sun
 	sun.shadow_enabled = false
 	sun.directional_shadow_max_distance = 70.0
 	add_child(sun)
+
+## Sky, light and weather for each map.
+const MAP_LOOK := {
+	"sentinel": {"top": Color("3f7fd0"), "horizon": Color("c4dcef"), "cloud": Color("ffffff"), "cloudiness": 0.5, "ambient": Color(0.66, 0.69, 0.74),
+		"fog": Color("b9cde0"), "sun": Color("fff1dc"), "sun_energy": 1.05, "sun_rot": Vector3(-52, 35, 0), "saturation": 1.12, "weather": ""},
+	"dunes": {"top": Color("4a86c9"), "horizon": Color("f0d9b0"), "cloud": Color("fff4e2"), "cloudiness": 0.25, "ambient": Color(0.78, 0.7, 0.6),
+		"fog": Color("e3c9a0"), "sun": Color("ffe2b0"), "sun_energy": 1.25, "sun_rot": Vector3(-62, 120, 0), "saturation": 1.08, "weather": "dust"},
+	"frost": {"top": Color("8a9fb5"), "horizon": Color("dfe6ee"), "cloud": Color("eef2f6"), "cloudiness": 0.85, "ambient": Color(0.72, 0.76, 0.82),
+		"fog": Color("d8e0e8"), "sun": Color("e8eef8"), "sun_energy": 0.8, "sun_rot": Vector3(-34, -40, 0), "saturation": 0.95, "weather": "snow"},
+}
+
+const SKY_SHADER := """
+shader_type sky;
+uniform vec3 top : source_color = vec3(0.25, 0.5, 0.82);
+uniform vec3 horizon : source_color = vec3(0.77, 0.86, 0.94);
+uniform vec3 cloud_color : source_color = vec3(1.0);
+uniform float cloudiness = 0.5;
+float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { v += a * n(p); p *= 2.03; a *= 0.5; } return v; }
+void sky() {
+	float up = clamp(EYEDIR.y, 0.0, 1.0);
+	vec3 col = mix(horizon, top, pow(up, 0.55));
+	if (EYEDIR.y < 0.0) { col = horizon * 0.92; }
+	// Sun glow
+	float sd = max(dot(EYEDIR, LIGHT0_DIRECTION), 0.0);
+	col += LIGHT0_COLOR * (pow(sd, 400.0) * 3.0 + pow(sd, 12.0) * 0.18);
+	// Drifting clouds on a dome
+	if (EYEDIR.y > 0.02) {
+		vec2 uv = EYEDIR.xz / (EYEDIR.y + 0.15) * 1.6 + vec2(TIME * 0.006, TIME * 0.002);
+		float c = smoothstep(1.0 - cloudiness * 0.9, 1.05, fbm(uv) + fbm(uv * 2.7) * 0.35);
+		float shade = 0.82 + 0.18 * fbm(uv * 3.0 + 4.0);
+		col = mix(col, cloud_color * shade + LIGHT0_COLOR * pow(sd, 6.0) * 0.15, c * smoothstep(0.02, 0.2, EYEDIR.y));
+	}
+	COLOR = col;
+}
+"""
+
+## Snow (Frostpeak) or blowing dust (dunes) that follows the camera.
+func _build_weather() -> void:
+	var kind := String(MAP_LOOK.get(map_id, {}).get("weather", ""))
+	if kind.is_empty() or smoke_mode:
+		return
+	var p := CPUParticles3D.new()
+	p.name = "Weather"
+	p.amount = 500 if kind == "snow" else 120
+	if RoyalePlayer.is_touch_platform(): p.amount /= 2
+	p.lifetime = 4.0
+	p.local_coords = false
+	p.preprocess = 4.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(22, 1, 22) if kind == "snow" else Vector3(30, 4, 30)
+	var wind := Vector3(RoyaleMaterials.wind_dir.x, 0, RoyaleMaterials.wind_dir.y)
+	p.direction = (Vector3(0, -1, 0) + wind * 0.4).normalized() if kind == "snow" else wind
+	p.spread = 12.0
+	p.gravity = Vector3(0, -1.2, 0) if kind == "snow" else Vector3(0, 0.05, 0)
+	p.initial_velocity_min = 1.5 if kind == "snow" else 4.0
+	p.initial_velocity_max = 3.0 if kind == "snow" else 7.0
+	var q := QuadMesh.new()
+	q.size = Vector2(0.06, 0.06) if kind == "snow" else Vector2(0.5, 0.18)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(1, 1, 1, 0.85) if kind == "snow" else Color(0.85, 0.72, 0.5, 0.18)
+	q.material = m
+	p.mesh = q
+	p.position = Vector3(0, 9, 0) if kind == "snow" else Vector3(0, 2, 0)
+	player.add_child(p)
 
 func _build_zone_wall() -> void:
 	zone_wall = MeshInstance3D.new()
@@ -545,7 +656,10 @@ func fire_hitscan(shooter: RoyalePlayer, origin: Vector3, dir: Vector3, gun_id: 
 			var victim: Node3D = target
 			var headshot: bool = float(hit.position.y) >= victim.head_y() - 0.22
 			var dmg := Items.damage_at(gun_id, origin.distance_to(hit.position)) * (2.1 if headshot else 1.0)
+			var ally := team_mode and victim is RoyaleRemote
 			victim.take_damage(dmg, headshot, shooter.combatant_name)
+			if shooter == player and not ally:
+				note_damage(victim, dmg, headshot)
 			hud.hitmarker(not victim.is_alive())
 			sfx.play("kill" if not victim.is_alive() else "hit", 1.3 if headshot else 1.0)
 	_tracer(muzzle, end)
@@ -554,6 +668,16 @@ func fire_hitscan(shooter: RoyalePlayer, origin: Vector3, dir: Vector3, gun_id: 
 	sfx.play(RoyaleSfx.shot_key(gun_id))
 	recent_shots.append({"pos": Vector2(origin.x, origin.z), "t": Time.get_ticks_msec() * 0.001, "mine": true})
 
+## The player hurt someone: profile numbers and assist tracking.
+func note_damage(victim: Node3D, amount: float, headshot := false) -> void:
+	stats.hits = int(stats.hits) + 1
+	stats.damage = float(stats.damage) + amount
+	if headshot: stats.headshots = int(stats.headshots) + 1
+	_damaged[String(victim.combatant_name)] = match_time
+
+func is_ally(c: Node3D) -> bool:
+	return team_mode and c is RoyaleRemote
+
 func melee(shooter: RoyalePlayer) -> void:
 	var origin := shooter.camera.global_position
 	var dir := -shooter.camera.global_transform.basis.z
@@ -561,6 +685,7 @@ func melee(shooter: RoyalePlayer) -> void:
 	sfx.play("punch")
 	if not hit.is_empty() and (hit.collider is RoyaleBot or hit.collider is RoyaleRemote):
 		hit.collider.take_damage(18.0, false, shooter.combatant_name)
+		if not is_ally(hit.collider): note_damage(hit.collider, 18.0)
 		hud.hitmarker(not hit.collider.is_alive())
 
 func bot_shot(bot: RoyaleBot, target: Node3D, hit: bool, dmg: float, headshot: bool, gun_id: String) -> void:
@@ -608,6 +733,12 @@ func on_combatant_died(victim: Node3D, killer: String) -> void:
 	if killer_node and killer_node != victim:
 		killer_node.kills += 1
 	var mine := killer_node == player
+	if mine:
+		stats.longest_kill = maxf(float(stats.longest_kill), player.global_position.distance_to(victim.global_position))
+		var gid := String(player.current_gun().get("id", "fists"))
+		stats.weapon_kills[gid] = int(stats.weapon_kills.get(gid, 0)) + 1
+	elif victim != player and match_time - float(_damaged.get(String(victim.combatant_name), -999.0)) < 15.0:
+		stats.assists = int(stats.assists) + 1
 	if not smoke_mode:
 		hud.add_feed("%s ✖ %s" % [killer, victim.combatant_name] if killer != "the zone" else "%s was caught by the zone" % victim.combatant_name, mine)
 		if mine: hud.flash_message("You eliminated %s" % victim.combatant_name, 2.0)
@@ -632,6 +763,13 @@ func _check_end() -> void:
 		return
 	if player.is_alive() and alive_count() == 1 and player.state == "ground":
 		_finish(true)
+	elif team_mode and player.is_alive() and player.state == "ground":
+		var enemies := 0
+		for c in combatants:
+			if c.is_alive() and not (c == player or is_ally(c)):
+				enemies += 1
+		if enemies == 0:
+			_finish(true)
 
 func _finish(won: bool) -> void:
 	if ended:
@@ -646,6 +784,27 @@ func _finish(won: bool) -> void:
 	if won: sfx.play("kill", 0.7)
 	if not smoke_mode:
 		hud.show_end(won, placement, player.kills, coins)
+	_report_match(won, placement, coins)
+
+## Sends this match to the lobby (saved to the player's profile and match history).
+func _report_match(won: bool, placement: int, coins: int) -> void:
+	if _reported or not OS.has_feature("web"):
+		return
+	_reported = true
+	var fav := ""
+	var best := -1
+	for k in stats.weapon_kills:
+		if int(stats.weapon_kills[k]) > best:
+			best = int(stats.weapon_kills[k])
+			fav = String(Items.gun(k).name) if k != "fists" else "Fists"
+	if fav.is_empty():
+		var g := player.current_gun()
+		fav = String(Items.gun(String(g.id)).name) if not g.is_empty() else ""
+	var report := {"mode": game_mode if net.active else "solo", "map": map_id, "place": placement, "players": total_players, "won": won,
+		"kills": player.kills, "assists": int(stats.assists), "deaths": 0 if player.is_alive() else 1, "damage": int(stats.damage),
+		"headshots": int(stats.headshots), "shots": int(stats.shots), "hits": int(stats.hits), "survived_s": int(match_time),
+		"longest_kill": snappedf(float(stats.longest_kill), 0.1), "weapon": fav, "coins": coins}
+	JavaScriptBridge.eval("(function(r){try{window.parent.royale3dLobby&&window.parent.royale3dLobby.reportMatch(r);}catch(e){}})(%s)" % JSON.stringify(report), true)
 
 ## Adds to the same coin balance the 2D Battle Royale uses (localStorage 'rl_coins_v1').
 func _award_coins(amount: int) -> void:
@@ -671,6 +830,10 @@ func _restart() -> void:
 	if net.active and OS.has_feature("web"):
 		JavaScriptBridge.eval("(function(){try{window.parent.classAppRooms.backToRoom();}catch(e){}})()", true)
 		return
+	if OS.has_feature("web"):
+		var back = JavaScriptBridge.eval("(function(){try{if(window.parent.royale3dLobby){window.parent.royale3dLobby.backToLobby();return 1;}}catch(e){}return 0;})()", true)
+		if int(back) == 1:
+			return
 	get_tree().reload_current_scene()
 
 # ── Loot ─────────────────────────────────────────────────────
@@ -1209,7 +1372,11 @@ func _explode(pos: Vector3, owner_name: String, damage := 115.0, radius := 7.5) 
 			continue
 		var d := c.global_position.distance_to(pos)
 		if d < radius and has_line_of_sight(pos + Vector3(0, 0.4, 0), c.global_position + Vector3(0, 1.0, 0), null):
+			if owner_name == player.combatant_name and (c == player or is_ally(c)):
+				if c == player: c.take_damage(damage * (1.0 - d / radius), false, owner_name)
+				continue
 			c.take_damage(damage * (1.0 - d / radius), false, owner_name)
+			if owner_name == player.combatant_name: note_damage(c, damage * (1.0 - d / radius))
 			if c == player: hud.damage_flash(60.0)
 			elif owner_name == player.combatant_name: hud.hitmarker(not c.is_alive())
 
@@ -1574,8 +1741,9 @@ func _update_rockets(delta: float) -> void:
 		rockets.erase(r)
 		node.queue_free()
 		if bool(r.damage):
-			if not hit.is_empty() and (hit.collider is RoyaleBot or hit.collider is RoyaleRemote) and hit.collider.is_alive():
+			if not hit.is_empty() and (hit.collider is RoyaleBot or hit.collider is RoyaleRemote) and hit.collider.is_alive() and not is_ally(hit.collider):
 				hit.collider.take_damage(float(r.direct), false, String(r.owner))
+				if String(r.owner) == player.combatant_name: note_damage(hit.collider, float(r.direct))
 				if String(r.owner) == player.combatant_name: hud.hitmarker(not hit.collider.is_alive())
 			_explode(at, String(r.owner), float(r.splash), float(r.radius))
 		else:

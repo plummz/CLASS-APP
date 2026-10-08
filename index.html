@@ -28,8 +28,9 @@
   <link rel="stylesheet" href="features/candy/candy.css?v=12">
   <link rel="stylesheet" href="features/tetris/tetris.css?v=1">
   <link rel="stylesheet" href="features/dungeon/dungeon.css?v=1">
-  <link rel="stylesheet" href="features/royale3d/royale3d.css?v=4">
+  <link rel="stylesheet" href="features/royale3d/royale3d.css?v=5">
   <link rel="stylesheet" href="features/royale3d/shop.css?v=1">
+  <link rel="stylesheet" href="features/royale3d/lobby.css?v=1">
   <link rel="stylesheet" href="features/presence/presence.css?v=1">
   <link rel="stylesheet" href="features/rooms/rooms.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
@@ -916,8 +917,7 @@
     <div class="royale3d-bar">
       <button class="royale3d-btn" type="button" onclick="goToPage('games')">← Games</button>
       <span class="royale3d-title">BATTLE ROYALE 3D</span>
-      <button class="royale3d-btn royale3d-shop-btn" type="button" onclick="window.royale3dShop?.open()" title="Weapon skins and outfits">🛒 Shop</button>
-      <button class="royale3d-btn royale3d-friends" type="button" onclick="window.classAppRooms?.open()" title="Play with classmates">👥 Play with friends</button>
+      <button class="royale3d-btn royale3d-shop-btn" type="button" onclick="window.royale3dLobby?.backToLobby()" title="Back to the lobby (leaves the match)">🏠 Lobby</button>
       <button class="royale3d-btn" type="button" onclick="window.royale3dModule.toggleFullscreen()" title="Full screen">⛶ Full screen</button>
     </div>
     <div class="royale3d-stage" id="royale3d-stage">
@@ -1775,7 +1775,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/logging-in/loading-components.js?v=3"></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=29"></script>
+  <script src="features/updates/changelog.js?v=30"></script>
   <script src="script.js?v=129"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
@@ -1799,10 +1799,11 @@
   <script src="features/candy/candy.js?v=11"></script>
   <script src="features/tetris/tetris.js?v=1"></script>
   <script src="features/dungeon/dungeon.js?v=1"></script>
-  <script src="features/royale3d/royale3d.js?v=7"></script>
+  <script src="features/royale3d/royale3d.js?v=8"></script>
   <script src="features/royale3d/shop.js?v=1"></script>
+  <script src="features/royale3d/lobby.js?v=1"></script>
   <script src="features/presence/presence.js?v=2"></script>
-  <script src="features/rooms/rooms.js?v=1"></script>
+  <script src="features/rooms/rooms.js?v=2"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
   <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
   <script src="features/personal-tools/notepad.js?v=8" defer></script>

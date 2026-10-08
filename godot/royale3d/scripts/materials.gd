@@ -17,6 +17,22 @@ const CONCRETE := 0.4
 const TILES := 0.5
 
 static var wind_dir := Vector2(1, 0.3).normalized()
+## Map theme: "sentinel" (green island), "dunes" (desert), "frost" (snow)
+static var theme := "sentinel"
+const THEMES := {
+	"sentinel": {"grass": "leafy_grass", "forest": "forest_ground_04", "sand": "coast_sand_01", "rock": "aerial_rocks_02", "asphalt": "asphalt_02",
+		"green_amt": 0.78, "green_a": Color(0.075, 0.13, 0.03), "green_b": Color(0.11, 0.15, 0.04), "snow_line": 60.0, "roof_snow": 0.0,
+		"plaster": "painted_plaster_wall", "brick": "brick_wall_001", "deep": Color(0.05, 0.22, 0.38, 0.93), "shallow": Color(0.12, 0.45, 0.55, 0.85)},
+	"dunes": {"grass": "coast_sand_01", "forest": "leafy_grass", "sand": "red_sand", "rock": "sandstone_cracks", "asphalt": "asphalt_02",
+		"green_amt": 0.0, "green_a": Color(0.4, 0.3, 0.18), "green_b": Color(0.45, 0.34, 0.2), "snow_line": 999.0, "roof_snow": 0.0,
+		"plaster": "painted_plaster_wall", "brick": "sandstone_brick_wall_01", "deep": Color(0.04, 0.3, 0.38, 0.93), "shallow": Color(0.15, 0.6, 0.6, 0.85)},
+	"frost": {"grass": "snow_02", "forest": "forest_ground_04", "sand": "coast_sand_01", "rock": "aerial_rocks_02", "asphalt": "asphalt_snow",
+		"green_amt": 0.0, "green_a": Color(0.8, 0.82, 0.86), "green_b": Color(0.85, 0.87, 0.9), "snow_line": 18.0, "roof_snow": 1.0,
+		"plaster": "painted_plaster_wall", "brick": "brick_wall_001", "deep": Color(0.06, 0.14, 0.22, 0.95), "shallow": Color(0.25, 0.38, 0.48, 0.9)},
+}
+
+static func tdata() -> Dictionary:
+	return THEMES.get(theme, THEMES["sentinel"])
 static var _terrain: ShaderMaterial
 static var _building: ShaderMaterial
 static var _water: ShaderMaterial
@@ -37,6 +53,10 @@ uniform sampler2D t_rock : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_dirt : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_asphalt : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_concrete : source_color, filter_linear_mipmap, repeat_enable;
+uniform float green_amt = 0.78;
+uniform vec3 green_a = vec3(0.075, 0.13, 0.03);
+uniform vec3 green_b = vec3(0.11, 0.15, 0.04);
+uniform float snow_line = 60.0;
 varying vec3 wpos;
 varying vec4 w1;
 varying vec2 w2;
@@ -58,8 +78,8 @@ void fragment() {
 	vec3 grass = mix(texture(t_grass, uv * 0.22).rgb, texture(t_grass, uv * 0.061).rgb, 0.45);
 	// Photo grass is dry and brown; keep its detail but colour it a lush green (varies by patch)
 	float gl = dot(grass, vec3(0.299, 0.587, 0.114));
-	vec3 green = mix(vec3(0.075, 0.13, 0.03), vec3(0.11, 0.15, 0.04), patch);
-	grass = mix(grass, green * clamp(gl / 0.2, 0.5, 1.6), 0.78);
+	vec3 green = mix(green_a, green_b, patch);
+	grass = mix(grass, green * clamp(gl / 0.2, 0.5, 1.6), green_amt);
 	grass = mix(grass, texture(t_forest, uv * 0.2).rgb, smoothstep(0.55, 0.75, patch) * 0.45);
 	vec3 sand = texture(t_sand, uv * 0.2).rgb;
 	vec3 rock = rock_tri(vec2(0.12));
@@ -71,7 +91,7 @@ void fragment() {
 	// Large soft light/dark variation across the island
 	c *= 0.86 + 0.28 * texture(t_grass, uv * 0.0023).g;
 	// Snow on the peak
-	float snow = smoothstep(60.0, 67.0, wpos.y) * smoothstep(0.55, 0.85, wn.y);
+	float snow = smoothstep(snow_line, snow_line + 7.0, wpos.y) * smoothstep(0.55, 0.85, wn.y);
 	c = mix(c, vec3(0.92, 0.94, 0.97), snow);
 	ALBEDO = c;
 	ROUGHNESS = mix(0.95, 0.75, w2.x / total);
@@ -85,9 +105,12 @@ static func terrain_material() -> ShaderMaterial:
 		sh.code = TERRAIN_SHADER
 		_terrain = ShaderMaterial.new()
 		_terrain.shader = sh
-		for pair in [["t_grass", "leafy_grass"], ["t_forest", "forest_ground_04"], ["t_sand", "coast_sand_01"],
-				["t_rock", "aerial_rocks_02"], ["t_dirt", "dirt"], ["t_asphalt", "asphalt_02"], ["t_concrete", "concrete_floor_02"]]:
+		var td := tdata()
+		for pair in [["t_grass", td.grass], ["t_forest", td.forest], ["t_sand", td.sand],
+				["t_rock", td.rock], ["t_dirt", "dirt"], ["t_asphalt", td.asphalt], ["t_concrete", "concrete_floor_02"]]:
 			_terrain.set_shader_parameter(pair[0], _tex(pair[1]))
+		for k in ["green_amt", "green_a", "green_b", "snow_line"]:
+			_terrain.set_shader_parameter(k, td[k])
 	return _terrain
 
 const BUILDING_SHADER := """
@@ -99,6 +122,7 @@ uniform sampler2D t_roof : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_wood : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_concrete : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D t_tiles : source_color, filter_linear_mipmap, repeat_enable;
+uniform float roof_snow = 0.0;
 varying vec3 wpos;
 varying vec3 wn;
 vec3 tri(sampler2D t, float s) {
@@ -115,9 +139,10 @@ void fragment() {
 	float id = COLOR.a;
 	vec3 c;
 	float rough = 0.9;
-	if (id < 0.25) {            // roof tiles, tinted toward the roof colour
+	if (id < 0.25) {            // roof tiles, tinted toward the roof colour (snow on top in winter)
 		vec3 t = tri(t_roof, 0.45);
 		c = mix(t, base * (lum(t) / 0.32), 0.45);
+		c = mix(c, vec3(0.9, 0.92, 0.95), roof_snow * smoothstep(0.3, 0.6, wn.y));
 	} else if (id < 0.35) {     // wood floor
 		c = tri(t_wood, 0.45) * 1.05;
 		rough = 0.6;
@@ -148,9 +173,11 @@ static func building_material() -> ShaderMaterial:
 		sh.code = BUILDING_SHADER
 		_building = ShaderMaterial.new()
 		_building.shader = sh
-		for pair in [["t_plaster", "painted_plaster_wall"], ["t_brick", "brick_wall_001"], ["t_roof", "clay_roof_tiles"],
+		var td := tdata()
+		for pair in [["t_plaster", td.plaster], ["t_brick", td.brick], ["t_roof", "clay_roof_tiles"],
 				["t_wood", "wood_floor"], ["t_concrete", "concrete_floor_02"], ["t_tiles", "floor_tiles_06"]]:
 			_building.set_shader_parameter(pair[0], _tex(pair[1]))
+		_building.set_shader_parameter("roof_snow", td.roof_snow)
 	return _building
 
 const WATER_SHADER := """
@@ -188,6 +215,8 @@ static func water_material() -> ShaderMaterial:
 		_water = ShaderMaterial.new()
 		_water.shader = sh
 		_water.set_shader_parameter("wind", wind_dir)
+		_water.set_shader_parameter("deep", tdata().deep)
+		_water.set_shader_parameter("shallow", tdata().shallow)
 	return _water
 
 const WIND_SHADER := """

@@ -1,0 +1,48 @@
+/* Battle Royale 3D lobby (fills the game stage until a match starts) */
+.rl3d-lobby {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: radial-gradient(circle at 20% 0%, rgba(242, 153, 74, 0.18), transparent 45%), linear-gradient(180deg, #121722, #0a0d14);
+  color: #eef2f7;
+  font: 15px/1.4 system-ui, sans-serif;
+}
+.rl3d-lobby[hidden] { display: none; }
+.lb-top { display: flex; align-items: center; gap: 12px; max-width: 980px; margin: 0 auto; }
+.lb-me { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lb-avatar { flex: 0 0 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #f2994a, #d6336c); font-weight: 800; font-size: 20px; }
+.lb-level { display: flex; align-items: center; gap: 8px; color: #ffd36b; font-size: 13px; font-weight: 700; }
+.lb-xp { width: 120px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.lb-xp i { display: block; height: 100%; background: linear-gradient(90deg, #f2c94c, #f2994a); }
+.lb-coins { padding: 6px 12px; border-radius: 999px; background: rgba(255, 210, 90, 0.15); color: #ffd45a; font-weight: 800; }
+.lb-tabs { display: flex; gap: 6px; max-width: 980px; margin: 12px auto; overflow-x: auto; }
+.lb-tabs button { flex: 1 0 auto; min-height: 42px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: rgba(255, 255, 255, 0.05); color: inherit; font: 700 14px system-ui, sans-serif; cursor: pointer; }
+.lb-tabs button.on { background: #f2994a; color: #1a1209; border-color: transparent; }
+.lb-body { max-width: 980px; margin: 0 auto; }
+.lb-body h3 { margin: 14px 0 8px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: #9fb0c4; }
+.lb-modes, .lb-maps { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.lb-mode, .lb-map { display: flex; flex-direction: column; gap: 4px; padding: 12px; text-align: left; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(255, 255, 255, 0.04); color: inherit; cursor: pointer; font: inherit; }
+.lb-mode small, .lb-map small { color: #9fb0c4; font-size: 12px; }
+.lb-mode.on, .lb-map.on { border-color: #f2994a; background: rgba(242, 153, 74, 0.12); }
+.lb-map-art { height: 70px; border-radius: 10px; margin-bottom: 4px; }
+.lb-play { display: block; width: 100%; min-height: 56px; margin-top: 16px; border: 0; border-radius: 16px; background: linear-gradient(90deg, #f2c94c, #f2994a); color: #1a1209; font: 900 18px system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; box-shadow: 0 10px 24px rgba(242, 153, 74, 0.3); }
+.lb-note { color: #9fb0c4; font-size: 13px; }
+.lb-stats { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.lb-stat { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
+.lb-stat small { display: block; color: #9fb0c4; font-size: 12px; }
+.lb-stat strong { font-size: 20px; }
+.lb-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lb-history li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
+.lb-history li.won { background: rgba(242, 201, 76, 0.15); }
+.lb-place { flex: 0 0 48px; font-size: 20px; font-weight: 900; color: #ffd36b; text-align: center; }
+.lb-hmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lb-hmain small { color: #9fb0c4; font-size: 12px; }
+.lb-hstats { font-size: 13px; color: #cfd8e3; white-space: nowrap; }
+.lb-settings { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
+.lb-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
+.lb-row input[type="range"] { width: 45%; }
+.lb-row input[type="checkbox"] { width: 22px; height: 22px; }
+@media (max-width: 520px) { .lb-hstats { display: none; } .lb-xp { width: 80px; } }

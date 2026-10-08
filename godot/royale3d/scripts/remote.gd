@@ -48,7 +48,7 @@ func setup(game_ref: Node, user: String, display: String, _index: int) -> void:
 	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	tag.font_size = 30
 	tag.outline_size = 10
-	tag.modulate = Color("8fd0ff")
+	tag.modulate = Color("7dff9a") if game_ref.team_mode else Color("8fd0ff")
 	tag.pixel_size = 0.005
 	tag.position.y = 2.2
 	tag.visibility_range_end = 70.0
@@ -80,6 +80,8 @@ func chest_point() -> Vector3:
 func take_damage(amount: float, headshot: bool, attacker: String, zone_damage := false) -> void:
 	if zone_damage or not is_alive() or game == null:
 		return
+	if game.team_mode and game.find_combatant(attacker) == game.player:
+		return   # no friendly fire between teammates
 	game.net.send({"t": "hit", "to": username, "d": snappedf(amount, 0.1), "h": headshot, "by": attacker})
 
 func apply_state(m: Dictionary) -> void:

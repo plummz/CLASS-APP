@@ -95,7 +95,7 @@ static var _bounds_cache := {}
 
 ## A gun ready to hold: barrel pointing -Z, grip at the origin, real size, with a "Muzzle"
 ## marker at the barrel tip. skin = weapon finish id ("" = factory colours).
-static func gun_node(id: String, skin := "", level := 1) -> Node3D:
+static func gun_node(id: String, skin := "", level := 1, fx := false) -> Node3D:
 	var data := gun(id)
 	var holder := Node3D.new()
 	holder.name = "Gun"
@@ -128,6 +128,10 @@ static func gun_node(id: String, skin := "", level := 1) -> Node3D:
 			m.visibility_range_end = 70.0
 		if not skin.is_empty():
 			Skins.apply_weapon(model, skin, level, box.size.x)
+	if model_path.is_empty() and not skin.is_empty():
+		Skins.apply_weapon(holder, skin, level, length)
+	if fx and not skin.is_empty():
+		Skins.add_embers(holder, skin, length)
 	holder.add_child(muzzle)
 	return holder
 

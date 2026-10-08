@@ -183,7 +183,7 @@ func _set_upper(name: String) -> void:
 
 # ── Gun, gear and effects ────────────────────────────────────
 
-func set_gun(id: String, skin := "") -> void:
+func set_gun(id: String, skin := "", fx := false) -> void:
 	if id == gun_id and gun != null and String(gun.get_meta("skin", "")) == skin:
 		return
 	gun_id = id
@@ -194,7 +194,7 @@ func set_gun(id: String, skin := "") -> void:
 	has_gun = not id.is_empty()
 	if id.is_empty():
 		return
-	gun = Items.gun_node(id, skin)
+	gun = Items.gun_node(id, skin, 1, fx)
 	gun.set_meta("skin", skin)
 	gun.transform = Transform3D(Basis.from_euler(gun_rot_deg * (PI / 180.0)), gun_pos)
 	hand.add_child(gun)

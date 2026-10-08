@@ -77,6 +77,11 @@ var view_mode := "tps"             ## "tps" or "fps"
 var weapon_skin := ""
 var weapon_level := 1
 var outfit := "standard"
+var vip_skins := {}               ## gun id -> VIP skin id (equipped in the shop)
+
+## The skin drawn on a gun: its VIP skin if equipped, otherwise the global finish.
+func skin_for(gun_id: String) -> String:
+	return String(vip_skins.get(gun_id, weapon_skin))
 var spin := 0.0                    ## Gatling barrel spin-up 0..1
 var trigger_held := false
 var _throw_t := 0.0
@@ -331,11 +336,11 @@ func _refresh_gun_model() -> void:
 	for c in gun_holder.get_children():
 		c.queue_free()
 	if body:
-		body.set_gun(id, weapon_skin)
+		body.set_gun(id, skin_for(id), true)
 	spin = 0.0
 	if id.is_empty():
 		return
-	var model := Items.gun_node(id, weapon_skin, weapon_level)
+	var model := Items.gun_node(id, skin_for(id), weapon_level, true)
 	# Grip at the right hand, stock near the cheek
 	model.position = Vector3(0, -0.02, 0.12)
 	gun_holder.add_child(model)

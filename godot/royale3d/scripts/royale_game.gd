@@ -158,6 +158,7 @@ func _ready() -> void:
 	add_child(player)
 	player.message.connect(func(t): hud.flash_message(t))
 	loadout = Skins.read_loadout()
+	player.vip_skins = loadout.get("vip", {})
 	player.set_loadout(String(loadout.weapon), int(loadout.level), String(loadout.outfit))
 	player.died.connect(_on_player_died)
 	combatants.append(player)

@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.12.0',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: VIP Skins and Item Pictures',
+    summary: 'Thirteen animated VIP weapon skins, each with its own effect, and pictures instead of text for weapons and items.',
+    bullets: [
+      'New: VIP skins in the shop (👑 VIP tab), one for every weapon, 3000 coins each: Ember Blaze (AKM, flames and embers), Arctic Storm (M416, blowing snow), Hellfire (S686, lava cracks), Thunder God (M249, lightning), Golden Dragon (R1895, gold scales), Solar Flare (RPG-7, sun plasma), Venom (SKS, dripping acid), Cyber Pulse (Vector, neon circuits), Galaxy (UMP45, nebula and stars), Nuclear Core (Gatling, radioactive rings), Void Reaper (AWM, dark matter), Frostbite (P92, ice crystals) and Nature’s Wrath (Kar98k, vines and spores).',
+      'New: Admins own every VIP skin for free.',
+      'Improved: Weapon slots show a picture of the gun, and meds, grenades, vest and helmet show as pictures with counts.',
+      'Improved: Shop finishes are previewed on a real rifle silhouette.',
+      'Fixed: Weapon finishes could fail to show on guns (a shader error).',
+    ]
+  },
   {
     version: '1.11.0',
     date: 'October 8, 2026',

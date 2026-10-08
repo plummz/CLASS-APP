@@ -53,8 +53,8 @@
 .shop-gun {
   height: 58px;
   border-radius: 8px;
-  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60'><path d='M4 30 L30 24 L46 24 L50 18 L120 18 L124 14 L150 14 L152 18 L196 18 L196 24 L150 24 L148 30 L112 30 L106 44 L94 44 L98 30 L70 30 L64 50 L48 50 L52 32 L30 38 L6 40 Z'/></svg>") center / contain no-repeat;
-  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60'><path d='M4 30 L30 24 L46 24 L50 18 L120 18 L124 14 L150 14 L152 18 L196 18 L196 24 L150 24 L148 30 L112 30 L106 44 L94 44 L98 30 L70 30 L64 50 L48 50 L52 32 L30 38 L6 40 Z'/></svg>") center / contain no-repeat;
+  -webkit-mask: url("icons/m416.png") center / contain no-repeat;
+  mask: url("icons/m416.png") center / contain no-repeat;
 }
 .shop-gun.style-flow { background: repeating-linear-gradient(100deg, var(--fa) 0 18px, var(--fb) 24px, var(--fa) 32px); background-size: 200% 100%; animation: shop-flow 2.4s linear infinite; }
 .shop-gun.style-pulse { background: linear-gradient(90deg, var(--fa), var(--fb), var(--fa)); background-size: 300% 100%; animation: shop-flow 1.6s linear infinite, shop-pulse 1.2s ease-in-out infinite; }
@@ -63,4 +63,20 @@
 @keyframes shop-pulse { 50% { filter: brightness(1.6); } }
 @keyframes shop-spin { to { filter: hue-rotate(360deg); } }
 .shop-outfit { height: 58px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; }
-@media (prefers-reduced-motion: reduce) { .shop-gun { animation: none !important; } }
+.shop-tabs button.vip-tab { background: linear-gradient(90deg, rgba(255, 196, 64, 0.25), rgba(255, 90, 40, 0.25)); }
+.shop-tabs button.vip-tab.on { background: linear-gradient(90deg, #ffd45a, #ff6a3d); color: #1a0d05; }
+.shop-card.tier-vip { border-color: rgba(255, 196, 64, 0.8); background: linear-gradient(180deg, rgba(255, 196, 64, 0.08), rgba(255, 255, 255, 0.03)); }
+.tier-vip .shop-meta { color: #ffd45a; font-weight: 700; }
+.shop-vip-art { height: 70px; display: grid; place-items: center; border-radius: 10px; background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.06), transparent 70%); }
+.shop-vip-art img { max-width: 100%; max-height: 66px; animation: vip-glow 1.6s ease-in-out infinite; }
+.fx-fire .shop-vip-art img, .fx-lava .shop-vip-art img { --g: #ff5a1a; }
+.fx-frost .shop-vip-art img { --g: #8fd8ff; }
+.fx-electric .shop-vip-art img, .fx-neon .shop-vip-art img { --g: #ff3cf0; }
+.fx-gold .shop-vip-art img { --g: #ffd45a; }
+.fx-toxic .shop-vip-art img, .fx-nature .shop-vip-art img { --g: #7dff2a; }
+.fx-galaxy .shop-vip-art img, .fx-void .shop-vip-art img { --g: #b45cff; }
+.fx-electric .shop-vip-art img { --g: #7fd4ff; }
+@keyframes vip-glow { 0%, 100% { filter: drop-shadow(0 0 4px var(--g, #ffd45a)); } 50% { filter: drop-shadow(0 0 12px var(--g, #ffd45a)) brightness(1.15); } }
+.shop-vip-note { font-size: 12px; color: #cfd8e3; }
+.shop-btn.buy.vip { background: linear-gradient(90deg, #ffd45a, #ff6a3d); }
+@media (prefers-reduced-motion: reduce) { .shop-gun, .shop-vip-art img { animation: none !important; } }

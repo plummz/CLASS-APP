@@ -28,6 +28,16 @@ var boost_fill: ColorRect
 var gear_label: Label
 var slot_panels: Array[PanelContainer] = []
 var slot_labels: Array[Label] = []
+var slot_icons: Array[TextureRect] = []
+var item_icons := {}          ## "bandage" etc. -> [TextureRect, Label]
+var _icon_cache := {}
+
+## Picture of a gun or item (rendered by tools/render_icons.gd).
+func icon(name: String) -> Texture2D:
+	if not _icon_cache.has(name):
+		var path := "res://assets/icons/%s.png" % name
+		_icon_cache[name] = load(path) if ResourceLoader.exists(path) else null
+	return _icon_cache[name]
 var meds_label: Label
 var vignette: ColorRect
 var zone_tint: ColorRect
@@ -250,9 +260,20 @@ func _build() -> void:
 		panel.add_theme_stylebox_override("panel", _panel_style())
 		panel.custom_minimum_size = Vector2(150, 0) * s
 		panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		var lbl := _label("—", 16)
+		var vb := VBoxContainer.new()
+		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_theme_constant_override("separation", 0)
+		panel.add_child(vb)
+		var pic := TextureRect.new()
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.custom_minimum_size = Vector2(170, 62) * s
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(pic)
+		slot_icons.append(pic)
+		var lbl := _label("—", 15)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		panel.add_child(lbl)
+		vb.add_child(lbl)
 		var idx := i
 		panel.gui_input.connect(func(ev: InputEvent):
 			if (ev is InputEventMouseButton and ev.pressed) or (ev is InputEventScreenTouch and ev.pressed):
@@ -260,11 +281,32 @@ func _build() -> void:
 		slots_row.add_child(panel)
 		slot_panels.append(panel)
 		slot_labels.append(lbl)
+	# Items as pictures with counts: meds, grenades, vest and helmet
+	var items_row := HBoxContainer.new()
+	items_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	items_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	items_row.add_theme_constant_override("separation", int(10 * s))
+	bottom.add_child(items_row)
+	for key in ["bandage", "firstaid", "medkit", "drink", "grenade", "vest", "helmet"]:
+		var cell := HBoxContainer.new()
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_theme_constant_override("separation", int(2 * s))
+		var pic := TextureRect.new()
+		pic.texture = icon(key)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.custom_minimum_size = Vector2(46, 32) * s
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(pic)
+		var count := _label("0", 14)
+		cell.add_child(count)
+		items_row.add_child(cell)
+		item_icons[key] = [pic, count, cell]
 	meds_label = _label("", 14, Color(1, 1, 1, 0.85))
-	meds_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	meds_label.visible = false
 	bottom.add_child(meds_label)
 	gear_label = _label("", 14, Color("cfe8ff"))
-	gear_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gear_label.visible = false
 	bottom.add_child(gear_label)
 	var bars := Control.new()
 	bars.custom_minimum_size = Vector2(440, 22) * s
@@ -614,17 +656,29 @@ func _process(delta: float) -> void:
 	health_fill.color = Color(0.95, 0.95, 0.95, 0.95) if p.health > 50.0 else (Color("ffb347") if p.health > 25.0 else Color("ff4d4d"))
 	boost_fill.size.x = w * clampf(p.boost / 100.0, 0.0, 1.0)
 	gear_label.text = ("Vest Lv%d %d%%" % [p.vest, int(p.vest_hp / Items.ARMOR_DURABILITY[p.vest] * 100.0)] if p.vest > 0 else "No vest") + "   ·   " + ("Helmet Lv%d %d%%" % [p.helmet, int(p.helmet_hp / Items.ARMOR_DURABILITY[p.helmet] * 100.0)] if p.helmet > 0 else "No helmet")
-	meds_label.text = "Bandage %d · First Aid %d · Med Kit %d · Drink %d · Grenade %d" % [p.meds.bandage, p.meds.firstaid, p.meds.medkit, p.meds.drink, p.grenades]
+	var counts := {"bandage": int(p.meds.bandage), "firstaid": int(p.meds.firstaid), "medkit": int(p.meds.medkit), "drink": int(p.meds.drink), "grenade": p.grenades}
+	for key in counts:
+		var ui: Array = item_icons[key]
+		ui[1].text = str(counts[key])
+		ui[2].modulate.a = 1.0 if counts[key] > 0 else 0.35
+	var vest_ui: Array = item_icons["vest"]
+	vest_ui[1].text = ("Lv%d %d%%" % [p.vest, int(p.vest_hp / Items.ARMOR_DURABILITY[p.vest] * 100.0)]) if p.vest > 0 else "–"
+	vest_ui[2].modulate.a = 1.0 if p.vest > 0 else 0.35
+	var helmet_ui: Array = item_icons["helmet"]
+	helmet_ui[1].text = ("Lv%d %d%%" % [p.helmet, int(p.helmet_hp / Items.ARMOR_DURABILITY[p.helmet] * 100.0)]) if p.helmet > 0 else "–"
+	helmet_ui[2].modulate.a = 1.0 if p.helmet > 0 else 0.35
 	for i in 2:
 		var g: Dictionary = p.slots[i]
 		var sb: StyleBoxFlat = slot_panels[i].get_theme_stylebox("panel")
 		sb.border_color = Color("ffd36b")
 		sb.set_border_width_all(2 if i == p.active and not g.is_empty() else 0)
 		if g.is_empty():
+			slot_icons[i].texture = null
 			slot_labels[i].text = "Slot %d — empty" % (i + 1)
 		else:
 			var data := Items.gun(String(g.id))
-			slot_labels[i].text = "%s\n%d / %d" % [data.name, int(g.mag), int(p.ammo[String(data.ammo)])]
+			slot_icons[i].texture = icon(String(p.vip_skins.get(String(g.id), String(g.id))))
+			slot_labels[i].text = "%s  %d / %d" % [data.name, int(g.mag), int(p.ammo[String(data.ammo)])]
 	if p.reloading > 0.0:
 		progress_label.text = "Reloading… %.1fs" % p.reloading
 	elif p.healing > 0.0:

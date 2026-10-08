@@ -52,6 +52,7 @@
   function show() {
     const stage = el('royale3d-stage');
     if (!stage) return;
+    window.royale3dShop?.syncAdmin?.();
     let lobby = el('rl3d-lobby');
     if (!lobby) {
       lobby = document.createElement('div');

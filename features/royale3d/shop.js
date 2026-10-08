@@ -43,12 +43,39 @@
     ['general', 'Golden General', 'legendary', '#d4a62a', '#6b4e12', '#f3d27a', '#ffd45a'],
   ].map(([id, name, tier, a, b, c, glow]) => ({ id, name, tier, a, b, c, glow: glow || '' }));
 
+  // VIP skins: one per weapon, each with its own animated effect (godot/royale3d/scripts/skins.gd)
+  const VIP_PRICE = 3000;
+  const VIP = [
+    ['vip_akm', 'Ember Blaze', 'akm', 'AKM', 'fire', 'Flames race along the gun, constant red glow, drifting embers'],
+    ['vip_m416', 'Arctic Storm', 'm416', 'M416', 'frost', 'Snow blowing across icy blue metal'],
+    ['vip_s686', 'Hellfire', 's686', 'S686', 'lava', 'Black rock split by glowing lava cracks, sparks'],
+    ['vip_m249', 'Thunder God', 'm249', 'M249', 'electric', 'Lightning arcs crawl over the body'],
+    ['vip_r1895', 'Golden Dragon', 'r1895', 'R1895', 'gold', 'Gold dragon scales with a moving shimmer'],
+    ['vip_rpg', 'Solar Flare', 'rpg', 'RPG-7', 'fire', 'Boiling sun plasma with corona waves'],
+    ['vip_sks', 'Venom', 'sks', 'SKS', 'toxic', 'Toxic acid bubbling and dripping'],
+    ['vip_vector', 'Cyber Pulse', 'vector', 'Vector', 'neon', 'Neon circuits with racing data pulses'],
+    ['vip_ump', 'Galaxy', 'ump', 'UMP45', 'galaxy', 'A drifting nebula full of twinkling stars'],
+    ['vip_gatling', 'Nuclear Core', 'gatling', 'Gatling', 'toxic', 'A radioactive core pulsing out in rings'],
+    ['vip_awm', 'Void Reaper', 'awm', 'AWM', 'void', 'Swirling dark matter, violet glow and stars'],
+    ['vip_p92', 'Frostbite', 'p92', 'P92', 'frost', 'Glowing ice crystals with a cold shimmer'],
+    ['vip_kar98k', "Nature's Wrath", 'kar98k', 'Kar98k', 'nature', 'Swaying vines and leaves with glowing spores'],
+  ].map(([id, name, gun, gunName, fx, note]) => ({ id, name, gun, gunName, fx, note }));
+  const ADMINS = ['marquillero', 'johnreymarquillero'];
+  const isAdminUser = () => {
+    const u = (typeof currentUser !== 'undefined' && currentUser) || null;
+    const name = String(u?.username || '').toLowerCase();
+    return Boolean((typeof isAdmin !== 'undefined' && isAdmin) || u?.isAdmin || ADMINS.includes(name) || ADMINS.some((a) => name.startsWith(a + '@')));
+  };
+  // The game can't see the page's login, so the lobby/shop leave a marker for it
+  const syncAdmin = () => { try { localStorage.setItem('rl3d_admin_v1', isAdminUser() ? '1' : '0'); } catch (_) {} };
+
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; } };
   const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} };
   const coins = () => { try { return parseInt(localStorage.getItem(COINS) || '0', 10) || 0; } catch (_) { return 0; } };
   const setCoins = (n) => { try { localStorage.setItem(COINS, String(Math.max(0, n))); } catch (_) {} };
-  const owned = () => { const o = read(OWNED, {}); return { weapon: o.weapon || {}, outfit: Array.isArray(o.outfit) ? o.outfit : [] }; };
-  const equipped = () => ({ weapon: '', outfit: 'standard', ...read(EQUIP, {}) });
+  const owned = () => { const o = read(OWNED, {}); return { weapon: o.weapon || {}, outfit: Array.isArray(o.outfit) ? o.outfit : [], vip: Array.isArray(o.vip) ? o.vip : [] }; };
+  const equipped = () => ({ weapon: '', outfit: 'standard', vip: {}, ...read(EQUIP, {}) });
+  const ownsVip = (id) => isAdminUser() || owned().vip.includes(id);
   const esc = (v) => (typeof escapeHTML === 'function' ? escapeHTML(v) : String(v ?? ''));
   const toast = (m, t) => (typeof showToast === 'function' ? showToast(m, t) : null);
 
@@ -97,9 +124,23 @@
   function render() {
     const panel = document.getElementById('rl3d-shop');
     if (!panel || panel.hidden) return;
+    syncAdmin();
     const own = owned();
     const eq = equipped();
-    const cards = tab === 'weapon'
+    const vipCards = () => VIP.map((v) => {
+      const has = ownsVip(v.id);
+      const on = Boolean(eq.vip?.[v.gun]);
+      const action = has
+        ? `<button type="button" class="shop-btn ${on ? 'on' : ''}" data-vip-equip="${v.gun}">${on ? 'Equipped' : 'Equip'}</button>`
+        : `<button type="button" class="shop-btn buy vip" data-vip-buy="${v.id}">🪙 ${VIP_PRICE}</button>`;
+      return `<li class="shop-card tier-vip fx-${v.fx}">
+        <div class="shop-vip-art"><img src="features/royale3d/icons/${v.id}.png?v=1" alt="${esc(v.name)}" loading="lazy"></div>
+        <div class="shop-name">${esc(v.name)}</div>
+        <div class="shop-meta">VIP · ${esc(v.gunName)}${has && isAdminUser() ? ' · Admin' : ''}</div>
+        <div class="shop-vip-note">${esc(v.note)}</div>
+        <div class="shop-actions">${action}</div></li>`;
+    }).join('');
+    const cards = tab === 'vip' ? vipCards() : tab === 'weapon'
       ? WEAPON.map((s) => {
         const level = own.weapon[s.id] || 0;
         const isEq = eq.weapon === s.id;
@@ -134,8 +175,9 @@
       <div class="shop-tabs" role="tablist">
         <button type="button" role="tab" class="${tab === 'weapon' ? 'on' : ''}" data-tab="weapon">Weapon skins</button>
         <button type="button" role="tab" class="${tab === 'outfit' ? 'on' : ''}" data-tab="outfit">Outfits</button>
+        <button type="button" role="tab" class="vip-tab ${tab === 'vip' ? 'on' : ''}" data-tab="vip">👑 VIP</button>
       </div>
-      <p class="shop-note">${tab === 'weapon' ? 'Finishes go on every gun you carry. Upgrade to Lv 2 for a polished shine and Lv 3 for a moving highlight.' : 'Outfits recolour your uniform, vest, helmet and backpack. Classmates see them in room matches.'} Changes apply to your next match. Earn coins by playing.</p>
+      <p class="shop-note">${tab === 'vip' ? 'VIP skins are made for one weapon each and come alive in the game: fire, ice, lightning, lava, galaxy and more. They show on that gun instead of your finish.' : tab === 'weapon' ? 'Finishes go on every gun you carry. Upgrade to Lv 2 for a polished shine and Lv 3 for a moving highlight.' : 'Outfits recolour your uniform, vest, helmet and backpack. Classmates see them in room matches.'} Changes apply to your next match. Earn coins by playing.</p>
       <ul class="shop-grid">${cards}</ul>
       ${tab === 'weapon' && equipped().weapon ? '<button type="button" class="shop-btn plain" data-equip="">Use factory finish</button>' : ''}
     </div>`;
@@ -190,9 +232,26 @@
       }
       return render();
     }
+    const vbuy = t.closest('[data-vip-buy]');
+    if (vbuy) {
+      const v = VIP.find((x) => x.id === vbuy.dataset.vipBuy);
+      if (v && !ownsVip(v.id) && spend(VIP_PRICE)) {
+        own.vip = [...own.vip, v.id];
+        write(OWNED, own);
+        write(EQUIP, { ...eq, vip: { ...(eq.vip || {}), [v.gun]: true } });
+        toast(`${v.name} unlocked and equipped on the ${v.gunName}`, 'success');
+      }
+      return render();
+    }
+    const vequip = t.closest('[data-vip-equip]');
+    if (vequip) {
+      const g = vequip.dataset.vipEquip;
+      write(EQUIP, { ...eq, vip: { ...(eq.vip || {}), [g]: !eq.vip?.[g] } });
+      return render();
+    }
     const wear = t.closest('[data-wear]');
     if (wear) { write(EQUIP, { ...eq, outfit: wear.dataset.wear }); return render(); }
   }
 
-  window.royale3dShop = { open, close };
+  window.royale3dShop = { open, close, syncAdmin };
 })();

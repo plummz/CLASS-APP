@@ -157,7 +157,7 @@ func _send_my_state() -> void:
 	if p.vehicle and p.vehicle.kind == "car": flags |= 32
 	send({"t": "p", "p": v3(p.global_position), "y": snappedf(p.global_rotation.y + PI, 0.01), "s": p.state, "c": p.stance,
 		"g": String(p.current_gun().get("id", "")), "hp": int(p.health), "f": flags, "ap": snappedf(p.pitch, 0.02),
-		"o": p.outfit, "k": p.weapon_skin})
+		"o": p.outfit, "k": p.skin_for(String(p.current_gun().get("id", "")))})
 
 func _send_bots() -> void:
 	var list := []

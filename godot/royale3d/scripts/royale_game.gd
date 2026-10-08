@@ -2347,6 +2347,7 @@ func _run_bench60() -> void:
 				for n in world.find_children("*", "MultiMeshInstance3D", true, false): (n as Node3D).visible = false
 			"q1", "q2", "q3", "q4": _set_quality(int(v.substr(1)))
 			"scale70": get_viewport().scaling_3d_scale = 0.7
+			"census": _census.call_deferred()
 	if not variant.is_empty(): print("BENCH60 variant=", "+".join(variant))
 	var vrid := get_viewport().get_viewport_rid()
 	RenderingServer.viewport_set_measure_render_time(vrid, true)
@@ -2407,6 +2408,48 @@ func _run_bench60() -> void:
 		n / total, low_n / low_t, sorted[sorted.size() - 1] * 1000.0, over, int(n), sums.draws / n, sums.tris / n / 1000.0,
 		sums.anim / n, sums.render / n, sums.gpu / n, sums.phys / n, sums.script / n])
 	get_tree().quit()
+
+## Rough count of what is drawn: visible geometry in the camera view and in visibility range,
+## surfaces grouped by kind (bench/debug only).
+func _census() -> void:
+	await get_tree().create_timer(3.0).timeout
+	var cam := get_viewport().get_camera_3d()
+	var planes := cam.get_frustum()
+	var groups := {}
+	for gi: GeometryInstance3D in get_tree().root.find_children("*", "GeometryInstance3D", true, false):
+		if not gi.is_visible_in_tree():
+			continue
+		var aabb := gi.global_transform * (gi.get_aabb() if gi is VisualInstance3D else AABB())
+		var d := cam.global_position.distance_to(aabb.get_center())
+		if gi.visibility_range_end > 0.0 and d > gi.visibility_range_end + gi.visibility_range_end_margin: continue
+		if d < gi.visibility_range_begin: continue
+		var inside := true
+		for pl in planes:
+			var c := aabb.get_center()
+			var r := aabb.size.length() * 0.5
+			if pl.distance_to(c) > r: inside = false; break
+		if not inside: continue
+		var surfaces := 1
+		var mesh: Mesh = null
+		if gi is MeshInstance3D: mesh = (gi as MeshInstance3D).mesh
+		elif gi is MultiMeshInstance3D and (gi as MultiMeshInstance3D).multimesh: mesh = (gi as MultiMeshInstance3D).multimesh.mesh
+		if mesh: surfaces = mesh.get_surface_count()
+		var key := gi.get_class()
+		var n: Node = gi
+		for k in 4:
+			n = n.get_parent()
+			if n == null: break
+			if n is RoyaleBot: key = "bot " + key; break
+			if n == world: key = "world " + key + " " + (String(gi.name).rstrip("0123456789") if not (gi is MultiMeshInstance3D) else (mesh.resource_path.get_file() if mesh and mesh.resource_path != "" else "mm"))
+		if key.ends_with("@MeshInstance3D@") or key == "MeshInstance3D":
+			key += " in " + String(gi.get_parent().name).rstrip("0123456789") + "/" + String(gi.get_parent().get_parent().name if gi.get_parent().get_parent() else "").rstrip("0123456789")
+		groups[key] = groups.get(key, 0) + surfaces
+	var keys := groups.keys()
+	keys.sort_custom(func(a, b): return groups[a] > groups[b])
+	var total := 0
+	for k in keys: total += groups[k]
+	print("CENSUS total surfaces=", total, " draws=", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	for k in keys.slice(0, 25): print("CENSUS ", groups[k], "  ", k)
 
 func _shot(path: String) -> void:
 	await RenderingServer.frame_post_draw

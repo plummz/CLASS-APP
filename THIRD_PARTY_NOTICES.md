@@ -17,6 +17,9 @@
   Ultimate Guns Pack, Ultimate House Interior Pack, Stylized Nature MegaKit and Cars Bundle
   (quaternius.com), plus CC0 models from poly.pizza ("Hand Grenade" by CreativeTrio, "Cartoony
   Purple Motorcycle" by AliceCassie). All CC0 1.0.
+- **Battle Royale 3D distant tree cards** (`godot/royale3d/assets/impostors/trees.png`): rendered by
+  `tools/render_impostors.gd` from the Stylized Nature MegaKit (Quaternius) and Kenney Nature Kit
+  trees above. CC0 1.0.
 - **Battle Royale 3D ground, wall, roof and floor textures** (`godot/royale3d/assets/textures/`):
   Poly Haven (polyhaven.com) — leafy_grass, forest_ground_04, coast_sand_01, aerial_rocks_02, dirt,
   asphalt_02, concrete_floor_02, painted_plaster_wall, brick_wall_001, clay_roof_tiles, wood_floor,

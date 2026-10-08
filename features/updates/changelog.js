@@ -1,6 +1,18 @@
 ﻿(function () {
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.12.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.12.2',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Lighter Towns and Forests',
+    summary: 'Fewer things to draw every frame: towns are joined into a few pieces and far-away trees become picture cards.',
+    bullets: [
+      'Improved: Houses in each part of town are joined into one model, so a town draws in a few steps instead of two per house.',
+      'Improved: Trees more than 200 m away are drawn as picture cards that turn to face you, one batch per area instead of every tree model.',
+      'Improved: Furniture is drawn when you are within 45 m (it is only visible through windows and doors), and doors and door handles stop drawing when they are too small to see.',
+      'Improved: On the laptop test route the game now draws about 620 batches instead of about 900, and runs at about 22 frames per second instead of 19 (11.5 two updates ago).',
+    ]
+  },
   {
     version: '1.12.1',
     date: 'October 8, 2026',

@@ -352,7 +352,7 @@ func _furn(node: Node3D, body: StaticBody3D, model: String, local_pos: Vector3, 
 			if r.intersects(foot):
 				return
 	var tf := node.global_transform * Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_v), local_pos)
-	world.add_model_instance(path, tf, 64.0, 70.0)
+	world.add_model_instance(path, tf, 64.0, 45.0)
 	if not collide:
 		return
 	if box.size == Vector3.ZERO:

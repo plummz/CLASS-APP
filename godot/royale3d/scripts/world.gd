@@ -108,6 +108,39 @@ var map_texture: ImageTexture
 var quality_low := false
 
 var _multimesh_buckets := {}   ## "model|chunk" -> {mesh_list, transforms}
+## Distant trees: past IMPOSTOR_FROM a chunk of trees is drawn as camera-facing picture cards
+## (tools/render_impostors.gd) in one draw call instead of one per tree model and material.
+const IMPOSTOR_FROM := 200.0
+const TREE_VIS := 420.0
+var _impostor_buckets := {}    ## chunk -> [[Transform3D card, cell], ...]
+const IMPOSTOR_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, skip_vertex_transform;
+uniform sampler2D atlas : source_color, filter_linear_mipmap, repeat_disable;
+uniform float cols = 4.0;
+uniform vec3 tint : source_color = vec3(1.0);
+void vertex() {
+	// Turn the card around its vertical axis to face the camera
+	vec3 origin = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	float s = length(MODEL_MATRIX[0].xyz);
+	vec3 to_cam = CAMERA_POSITION_WORLD - origin;
+	to_cam.y = 0.0;
+	vec3 fwd = normalize(to_cam + vec3(0.0001, 0.0, 0.0));
+	vec3 right = vec3(fwd.z, 0.0, -fwd.x);
+	vec3 world = origin + right * VERTEX.x * s + vec3(0.0, VERTEX.y * s, 0.0);
+	VERTEX = (VIEW_MATRIX * vec4(world, 1.0)).xyz;
+	NORMAL = normalize((VIEW_MATRIX * vec4(fwd, 0.0)).xyz);
+	float cell = floor(INSTANCE_CUSTOM.r + 0.5);
+	vec2 c = vec2(mod(cell, cols), floor(cell / cols));
+	UV = (c + clamp(UV, vec2(0.004), vec2(0.996))) / cols;
+}
+void fragment() {
+	vec4 t = texture(atlas, UV);
+	ALBEDO = t.rgb * tint;
+	ALPHA = t.a;
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
+}
+"""
 var _scene_cache := {}
 var _static_body: StaticBody3D
 var buildings: RoyaleBuildings
@@ -148,6 +181,7 @@ func generate(seed_value: int, low_quality := false, theme_name := "sentinel") -
 	_build_island2(); marks.append("island2 %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_plan_vehicles()
 	_build_sea_floor()
+	_merge_buildings(); marks.append("merge %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_flush_multimeshes(); marks.append("multimesh %d" % (Time.get_ticks_msec() - t)); t = Time.get_ticks_msec()
 	_build_map_texture(); marks.append("map %d" % (Time.get_ticks_msec() - t))
 	print("ROYALE_TIMING ", ", ".join(marks))
@@ -610,9 +644,12 @@ func _add_door(house: Node3D, doorway_center: Vector3, width: float, height: flo
 	box.material = _door_material()
 	mesh.mesh = box
 	mesh.position = offset
+	mesh.visibility_range_end = 90.0   # a door is a couple of pixels further out
 	body.add_child(mesh)
 	# Handle
 	var knob := MeshInstance3D.new()
+	knob.visibility_range_end = 15.0
+	knob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.04
 	sphere.height = 0.08
@@ -786,7 +823,16 @@ func _add_instance(model: String, pos: Vector3, scale_value: float, collide: boo
 	var shrub := name.begins_with("plant") or name.begins_with("bush") or name.begins_with("fern") or name.begins_with("rock")
 	# Draw distances: grass close, shrubs and rocks medium, trees far (64 m chunks so distant
 	# chunks use the low-detail mesh LODs)
-	var vis := 55.0 if small else (140.0 if shrub else 420.0)
+	var vis := 55.0 if small else (140.0 if shrub else TREE_VIS)
+	if vis == TREE_VIS and RoyaleImpostors.TREES.has(model):
+		# Real tree up close, a picture card further out (same 128 m chunks)
+		vis = IMPOSTOR_FROM
+		var info: Array = RoyaleImpostors.TREES[model]
+		var side := float(info[1]) * scale_value
+		var card := Transform3D(Basis().scaled(Vector3.ONE * side), pos + Vector3(0, float(info[2]) * scale_value, 0))
+		var chunk := Vector2i(floori((pos.x + MAP_SIZE * 0.5) / 128.0), floori((pos.z + MAP_SIZE * 0.5) / 128.0))
+		if not _impostor_buckets.has(chunk): _impostor_buckets[chunk] = []
+		_impostor_buckets[chunk].append([card, int(info[0])])
 	add_model_instance(path, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 96.0 if small else 128.0, vis)
 	if collide:
 		var cs := CollisionShape3D.new()
@@ -813,6 +859,34 @@ func set_view_distance(f: float) -> void:
 		var v := float(mmi.get_meta("vis")) * f
 		mmi.visibility_range_end = v
 		mmi.visibility_range_end_margin = v * 0.1
+		if mmi.name.begins_with("TreeCards"):
+			mmi.visibility_range_begin = IMPOSTOR_FROM * f
+
+## Joins the walls (and the glass) of all houses in each 128 m cell into one mesh, so a town
+## draws in a few calls instead of two per house. Doors, furniture and collision stay as they are.
+func _merge_buildings() -> void:
+	var groups := {}   ## "cell|material id" -> [material, SurfaceTool, cast_shadow]
+	for house in houses:
+		var node: Node3D = house.node
+		var cell := Vector2i(floori(node.position.x / 128.0), floori(node.position.z / 128.0))
+		for mi: MeshInstance3D in node.get_children().filter(func(c): return c is MeshInstance3D):
+			if mi.mesh == null or mi.mesh.get_surface_count() == 0 or mi.material_override == null:
+				continue
+			var key := "%d_%d|%d" % [cell.x, cell.y, mi.material_override.get_instance_id()]
+			if not groups.has(key):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				groups[key] = [mi.material_override, st, mi.cast_shadow]
+			(groups[key][1] as SurfaceTool).append_from(mi.mesh, 0, node.transform * mi.transform)
+			mi.queue_free()
+	for key: String in groups:
+		var g: Array = groups[key]
+		var merged := MeshInstance3D.new()
+		merged.name = "Town"
+		merged.mesh = (g[1] as SurfaceTool).commit()
+		merged.material_override = g[0]
+		merged.cast_shadow = g[2]
+		add_child(merged)
 
 func _flush_multimeshes() -> void:
 	var mesh_cache := {}
@@ -855,6 +929,41 @@ func _flush_multimeshes() -> void:
 				mmi.add_to_group("grass")
 			add_child(mmi)
 	_multimesh_buckets.clear()
+	_flush_impostors()
+
+func _flush_impostors() -> void:
+	if _impostor_buckets.is_empty():
+		return
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = IMPOSTOR_SHADER
+	mat.shader = sh
+	mat.set_shader_parameter("atlas", load("res://assets/impostors/trees.png"))
+	mat.set_shader_parameter("cols", float(RoyaleImpostors.COLS))
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	quad.center_offset = Vector3(0, 0.5, 0)
+	quad.material = mat
+	for chunk: Vector2i in _impostor_buckets:
+		var cards: Array = _impostor_buckets[chunk]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = quad
+		mm.instance_count = cards.size()
+		for i in cards.size():
+			mm.set_instance_transform(i, cards[i][0])
+			mm.set_instance_custom_data(i, Color(float(cards[i][1]), 0, 0, 0))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "TreeCards"
+		mmi.multimesh = mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.extra_cull_margin = 16.0   # the cards turn, the box doesn't
+		mmi.visibility_range_begin = IMPOSTOR_FROM
+		mmi.visibility_range_end = TREE_VIS
+		mmi.visibility_range_end_margin = TREE_VIS * 0.1
+		add_child(mmi)
+	_impostor_buckets.clear()
 
 # ── Minimap texture ──────────────────────────────────────────
 

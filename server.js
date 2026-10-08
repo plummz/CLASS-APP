@@ -59,6 +59,8 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUP
 // Supabase's JWT secret: lets the server sign a short pass saying who the signed-in user is, so the
 // database can trust the name (class_app_username()) instead of a header the browser could fake.
 const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || '';
+// Key ID of that shared-secret key in Supabase (Settings > JWT Keys), so Supabase knows which key to check
+const SUPABASE_JWT_KID = (process.env.SUPABASE_JWT_KID || '').trim();
   if (process.env.NODE_ENV !== 'production' && !process.env.JWT_SECRET) console.warn('[security] JWT_SECRET not set - using insecure default for local development');
 if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_SERVICE_KEY) {
   console.warn('[security] SUPABASE_SERVICE_KEY not set - trusted server-side profile writes will fall back to the anon key.');
@@ -1407,7 +1409,8 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
 const DB_TOKEN_TTL_S = 60 * 60;
 function signDbPass(username, ttl = DB_TOKEN_TTL_S) {
   const now = Math.floor(Date.now() / 1000);
-  return jwt.sign({ role: 'anon', class_username: username, iat: now, exp: now + ttl }, SUPABASE_JWT_SECRET, { algorithm: 'HS256' });
+  return jwt.sign({ role: 'anon', class_username: username, iat: now, exp: now + ttl }, SUPABASE_JWT_SECRET,
+    { algorithm: 'HS256', ...(SUPABASE_JWT_KID ? { keyid: SUPABASE_JWT_KID } : {}) });
 }
 // Passes are only handed out once the database has accepted one: the server signs a test pass and
 // makes a harmless read with it (rechecked every 10 minutes). A rejected pass would make every
@@ -1431,7 +1434,7 @@ async function dbPassAccepted() {
 }
 app.get('/api/db-token/status', wrap(async (req, res) => {
   const accepted = await dbPassAccepted();
-  res.json({ enabled: accepted, configured: Boolean(SUPABASE_JWT_SECRET), check_status: _dbPassCheck.status });
+  res.json({ enabled: accepted, configured: Boolean(SUPABASE_JWT_SECRET), key_id_set: Boolean(SUPABASE_JWT_KID), check_status: _dbPassCheck.status });
 }));
 app.get('/api/db-token', requireAuth, wrap(async (req, res) => {
   if (!(await dbPassAccepted())) return res.status(503).json({ error: 'Database pass not available' });

@@ -1105,3 +1105,90 @@ body.pk-lm .pk-toolbar .pk-shop-fab, body.pk-lm .pk-toolbar .pk-heal-fab, body.p
 
 /* No floating clock over the game */
 body:has(#page-pokemon.active) #live-clock { display: none !important; }
+
+/* ══ Controls sized for the device (v1.13.5) ══ */
+/* Laptops and desktops move with the keyboard: no on-screen d-pad, a small hint instead */
+.pk-key-hint { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  #pk-dpad { display: none !important; }
+  .pk-toolbar .pk-key-hint {
+    display: inline-flex; align-items: center; height: 46px; padding: 0 14px;
+    border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05); color: rgba(225, 235, 250, 0.75);
+    font: 600 12px 'Exo 2', sans-serif; white-space: nowrap;
+  }
+  .pk-key-hint kbd {
+    margin: 0 2px; padding: 1px 6px; border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08);
+    font: 700 11px ui-monospace, monospace; color: #fff;
+  }
+}
+/* Touch screens: a bigger d-pad that is easy to hold down */
+@media (pointer: coarse) {
+  #pk-dpad { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 4px; }
+  #pk-dpad .dpad-btn { font-size: 22px; border-radius: 14px; }
+}
+/* Phone held upright: the game on top, then one row with the d-pad (left) and the buttons (right) */
+@media (pointer: coarse) and (orientation: portrait) {
+  body:not(.pk-lm) .pk-wrapper {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-areas: "screen screen" "dpad tools";
+    justify-content: space-evenly;
+    align-content: start;
+    align-items: center;
+    row-gap: 16px;
+    padding: 6px 8px 0;
+  }
+  body:not(.pk-lm) .pk-game-column { display: contents; }
+  body:not(.pk-lm) .pk-screen { grid-area: screen; justify-self: center; }
+  body:not(.pk-lm) #pk-dpad { grid-area: dpad; margin: 0; }
+  body:not(.pk-lm) .pk-toolbar {
+    grid-area: tools; position: static;
+    display: grid; grid-template-columns: repeat(3, 50px); gap: 10px;
+    justify-content: center; padding: 0;
+  }
+  body:not(.pk-lm) .pk-toolbar .pk-return-btn { grid-column: 1 / -1; width: 100%; height: 44px; padding: 0 10px; }
+  body:not(.pk-lm) .pk-toolbar .pk-dex-fab, body:not(.pk-lm) .pk-toolbar .pk-lb-fab, body:not(.pk-lm) .pk-toolbar .pk-save-fab,
+  body:not(.pk-lm) .pk-toolbar .pk-shop-fab, body:not(.pk-lm) .pk-toolbar .pk-heal-fab, body:not(.pk-lm) .pk-toolbar .pk-landscape-fab {
+    width: 50px !important; height: 50px !important; font-size: 21px;
+  }
+  /* In battle the battle controls take the space below the picture */
+  body:not(.pk-lm) .pk-wrapper:has(.pk-battle:not(.hidden)) .pk-toolbar { display: none; }
+}
+/* Phone held sideways: d-pad on the left, game in the middle, buttons in a column on the right */
+@media (pointer: coarse) and (orientation: landscape) {
+  body:not(.pk-lm) .pk-wrapper { position: fixed; top: 0; z-index: 9990; align-items: center; padding: 0 8px; }
+  body:not(.pk-lm) .pk-game-column { flex-direction: row; align-items: center; height: 100%; }
+  body:not(.pk-lm) #pk-dpad { order: -1; margin: 0 12px 0 max(4px, env(safe-area-inset-left)); }
+  body:not(.pk-lm) .pk-toolbar {
+    position: fixed; left: auto; right: max(8px, env(safe-area-inset-right)); top: 8px; bottom: 8px;
+    z-index: 10000; flex-direction: column; flex-wrap: nowrap; justify-content: center; gap: 8px; padding: 0;
+  }
+  body:not(.pk-lm) .pk-toolbar .pk-return-btn { height: 40px; padding: 0 10px; font-size: 0.72rem; }
+  body:not(.pk-lm) .pk-toolbar .pk-dex-fab, body:not(.pk-lm) .pk-toolbar .pk-lb-fab, body:not(.pk-lm) .pk-toolbar .pk-save-fab,
+  body:not(.pk-lm) .pk-toolbar .pk-shop-fab, body:not(.pk-lm) .pk-toolbar .pk-heal-fab, body:not(.pk-lm) .pk-toolbar .pk-landscape-fab {
+    width: 42px !important; height: 42px !important; font-size: 18px;
+  }
+  /* The landscape button isn't needed when the phone is already sideways */
+  body:not(.pk-lm) .pk-toolbar .pk-landscape-fab { display: none; }
+  /* The game uses the whole screen; "← Games" leaves it */
+  body:has(#page-pokemon.active):not(.pk-lm) #menu-toggle,
+  body:has(#page-pokemon.active):not(.pk-lm) #page-indicator,
+  body:has(#page-pokemon.active):not(.pk-lm) .custom-bg-btn { display: none !important; }
+}
+/* Upright phone battle: same picture size, bigger controls in the space below (JS sets the height) */
+.pk-battle.pk-tall .pk-battle-field { flex: 0 0 620px; }
+.pk-battle.pk-tall .pk-hud { zoom: 1.5; }
+.pk-battle.pk-tall .pk-log { flex: 0 0 120px; padding: 14px 26px; }
+.pk-battle.pk-tall .pk-log-line { font-size: 30px; min-height: 36px; line-height: 1.2; }
+.pk-battle.pk-tall .pk-actions { flex: 1 1 auto; flex-direction: column; justify-content: flex-start; padding: 20px 22px 26px; gap: 18px; }
+.pk-battle.pk-tall .pk-move-grid { flex: 0 0 auto; gap: 16px; grid-auto-rows: 230px; }
+.pk-battle.pk-tall .pk-move-btn { font-size: 32px; padding: 14px 22px; border-width: 3px; border-left-width: 10px; border-radius: 18px; line-height: 1.35; }
+.pk-battle.pk-tall .pk-actions > div:last-child { flex-direction: row !important; flex: 0 0 150px; gap: 16px !important; }
+.pk-battle.pk-tall .pk-ball-btn, .pk-battle.pk-tall .pk-swap-btn, .pk-battle.pk-tall .pk-run-btn {
+  flex: 1; font-size: 32px; border-width: 3px; border-radius: 18px; padding: 10px;
+}
+/* Readable Ball/Swap labels (they were pale on the sand background) */
+.pk-ball-btn { color: #b82020; }
+.pk-swap-btn { color: #1d5fae; }

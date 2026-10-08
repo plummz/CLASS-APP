@@ -1767,7 +1767,8 @@ const pokemonModule = (() => {
   function drawTrainerClassic(tr){
     const now=Date.now();
     {
-      const cx=(tr.tx+0.5)*TSIZE-camX, cy=(tr.ty+0.5)*TSIZE-camY;
+      const off=trainerOffset(tr);
+      const cx=(tr.tx+0.5)*TSIZE+off.x-camX, cy=(tr.ty+0.5)*TSIZE+off.y-camY;
       if(cx<-40||cy<-60||cx>VIEW_W+40||cy>VIEW_H+40) return;
       const col=TRAINER_COLORS[tr.kind]||'#888';
       ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(cx,cy+13,10,3,0,0,Math.PI*2); ctx.fill();
@@ -1779,7 +1780,8 @@ const pokemonModule = (() => {
       const ex=tr.dir==='left'?-2:tr.dir==='right'?2:0;
       if(tr.dir!=='up'){ ctx.fillRect(cx-3+ex,cy-11,2,2); ctx.fillRect(cx+1+ex,cy-11,2,2); }
       if(trainerEvent&&trainerEvent.tr===tr){
-        if(trainerEvent.phase==='alert'){
+        if(trainerEvent.phase==='walk'){ /* walking over */ }
+        else if(trainerEvent.phase==='alert'){
           ctx.fillStyle='#fff'; ctx.fillRect(cx-6,cy-38,12,16);
           ctx.fillStyle='#e02020'; ctx.font='bold 13px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
           ctx.fillText('!',cx,cy-30);
@@ -1971,13 +1973,14 @@ const pokemonModule = (() => {
 
   function drawTrainerArt(tr,ts){
     const A=ART(), key=A.has(tr.kind)?tr.kind:'npc_youngster';
-    const x=Math.round((tr.tx+0.5)*TSIZE-camX), y=Math.round((tr.ty+0.92)*TSIZE-camY);
+    const off=trainerOffset(tr);
+    const x=Math.round((tr.tx+0.5)*TSIZE+off.x-camX), y=Math.round((tr.ty+0.92)*TSIZE+off.y-camY);
     if(A.has(key)){
       groundShadow(x,y,10);
-      const e=A.info(key), rows=e.rows||1;
-      A.drawAnchored(ctx,key,rows>=4?DIR_ROW[tr.dir]*(e.cols||1):0,x,y);
+      const e=A.info(key), rows=e.rows||1, cols=e.cols||1;
+      A.drawAnchored(ctx,key,rows>=4?DIR_ROW[tr.dir]*cols+(cols>=3?walkFrame(off.moving,ts,8):0):0,x,y);
     } else { drawTrainerClassic(tr); return; }
-    if(trainerEvent&&trainerEvent.tr===tr){
+    if(trainerEvent&&trainerEvent.tr===tr&&trainerEvent.phase!=='walk'){
       // "!" bubble, then a short speech bubble
       if(trainerEvent.phase==='alert'){
         ctx.fillStyle='#fff'; ctx.strokeStyle='#222'; ctx.lineWidth=1.5;
@@ -2103,7 +2106,7 @@ const pokemonModule = (() => {
       if(ty<=ty1) for(let tx=tx0;tx<=tx1;tx++) if(getTile(tx,ty)===T.TALL) list.push({kind:'tall',tx,ty,sy:(ty+1)*TSIZE-0.25});
     }
     mapItems.forEach(it=>{ if(!it.collected&&it.tx>=tx0-1&&it.tx<=tx1+1&&it.ty>=ty0-1&&it.ty<=ty1+2) list.push({kind:'item',it,sy:(it.ty+0.75)*TSIZE}); });
-    trainersHere().forEach(tr=>list.push({kind:'trainer',tr,sy:(tr.ty+0.92)*TSIZE}));
+    trainersHere().forEach(tr=>list.push({kind:'trainer',tr,sy:(tr.ty+0.92)*TSIZE+trainerOffset(tr).y}));
     if(currentMapId==='intGym') list.push({kind:'leader',sy:9.95*TSIZE});
     if(team.length) list.push({kind:'partner',sy:partner.y});
     list.push({kind:'player',sy:player.y+CHAR_S+0.1});
@@ -2671,23 +2674,42 @@ const pokemonModule = (() => {
     return lt?'left':rt?'right':up?'up':'down';
   }
 
-  // Trainers spot you when you are in front of them with nothing in between
+  // Trainers spot you when you are close in front of them (3 tiles at most), with nothing in between,
+  // and only while they are on screen. Then they walk up to you before the battle starts.
+  const TRAINER_SIGHT_MAX = 3;
+  const TRAINER_WALK_MS = 230;   // per tile
+  const STEP = {down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]};
+  function trainerOnScreen(tr){
+    const cx=(tr.tx+0.5)*TSIZE-camX, cy=(tr.ty+0.5)*TSIZE-camY;
+    return cx>-8&&cx<VIEW_W+8&&cy>-8&&cy<VIEW_H+8;
+  }
   function checkTrainerSight(ptx,pty){
     if(battle||trainerEvent||battleStarting) return;
     for(const tr of trainersHere()){
-      if(defeatedTrainers.includes(tr.id)) continue;
-      const [dx,dy]={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]}[tr.dir];
-      for(let i=1;i<=tr.sight;i++){
+      if(defeatedTrainers.includes(tr.id)||!trainerOnScreen(tr)) continue;
+      const [dx,dy]=STEP[tr.dir];
+      for(let i=1;i<=Math.min(tr.sight,TRAINER_SIGHT_MAX);i++){
         const x=tr.tx+dx*i, y=tr.ty+dy*i;
         if(isSolid(x,y)) break;
-        if(x===ptx&&y===pty){ startTrainerEncounter(tr); return; }
+        if(x===ptx&&y===pty){ startTrainerEncounter(tr,i); return; }
       }
     }
   }
 
-  function startTrainerEncounter(tr){
+  // Pixel offset of a trainer walking up to the player during an encounter
+  function trainerOffset(tr){
+    if(!trainerEvent||trainerEvent.tr!==tr||!trainerEvent.walkTiles) return {x:0,y:0,moving:false};
+    const [dx,dy]=STEP[tr.dir];
+    let k=1, moving=false;
+    if(trainerEvent.phase==='walk'){ k=Math.min(1,(Date.now()-trainerEvent.walkStart)/(trainerEvent.walkTiles*TRAINER_WALK_MS)); moving=k<1; }
+    else if(trainerEvent.phase==='alert') k=0;
+    const d=k*trainerEvent.walkTiles*TSIZE;
+    return {x:dx*d,y:dy*d,moving};
+  }
+
+  function startTrainerEncounter(tr,dist=1){
     if(team.every(m=>m.hp<=0)) return;      // nothing to battle with: let them pass
-    trainerEvent={tr,phase:'alert',until:Date.now()+800};
+    trainerEvent={tr,phase:'alert',until:Date.now()+800,walkTiles:Math.max(0,dist-1),walkStart:0};
     keys={}; dpad={up:false,down:false,left:false,right:false};
     player.moving=false;
     // face the trainer
@@ -2700,7 +2722,10 @@ const pokemonModule = (() => {
     if(!trainerEvent||battle) return;
     const now=Date.now();
     if(now<trainerEvent.until) return;
-    if(trainerEvent.phase==='alert'){ trainerEvent.phase='talk'; trainerEvent.until=now+1700; return; }
+    if(trainerEvent.phase==='alert'&&trainerEvent.walkTiles>0){
+      trainerEvent.phase='walk'; trainerEvent.walkStart=now; trainerEvent.until=now+trainerEvent.walkTiles*TRAINER_WALK_MS; return;
+    }
+    if(trainerEvent.phase==='alert'||trainerEvent.phase==='walk'){ trainerEvent.phase='talk'; trainerEvent.until=now+1700; return; }
     const tr=trainerEvent.tr;
     trainerEvent=null;
     if(defeatedTrainers.includes(tr.id)) return;
@@ -3315,22 +3340,30 @@ const pokemonModule = (() => {
     init(){
       canvas=document.getElementById('pk-canvas'); if(!canvas)return;
       ctx=canvas.getContext('2d');
+      const coarse=(q)=>Boolean(window.matchMedia?.(`(pointer: coarse) and (orientation: ${q})`).matches);
       const resize=()=>{
-        const isLm=document.body.classList.contains('pk-lm');
+        // Landscape layout: the landscape-mode button, or a phone simply held sideways
+        const isLm=document.body.classList.contains('pk-lm')||coarse('landscape');
+        const pkWrapper=canvas.parentElement?.parentElement?.parentElement;
+        const toolbar=document.getElementById('pk-toolbar');
         let sc;
         if(isLm){
           // In portrait the page is rotated by CSS, so width and height swap
           const rot=window.innerHeight>window.innerWidth;
           const vw=rot?window.innerHeight:window.innerWidth, vh=rot?window.innerWidth:window.innerHeight;
-          const dpadW=(document.getElementById('pk-dpad')?.offsetWidth||140)+20, barW=60;
+          const dpadW=(document.getElementById('pk-dpad')?.offsetWidth||140)+24, barW=(toolbar?.offsetWidth||52)+20;
           sc=Math.min(1,(vw-dpadW-barW)/800,(vh-8)/560);
         } else {
-          const pkWrapper=canvas.parentElement?.parentElement?.parentElement;
           const dpad=document.getElementById('pk-dpad');
-          const dpadHidden=dpad&&dpad.classList.contains('pk-dpad-hidden');
-          const dpadH=dpadHidden?0:(dpad&&dpad.offsetHeight>0?dpad.offsetHeight:138)+8;
-          const maxW=pkWrapper?pkWrapper.clientWidth:800;
-          const maxH=pkWrapper?Math.max(100,pkWrapper.clientHeight-dpadH):560;
+          const dpadShown=dpad&&dpad.offsetParent!==null&&!dpad.classList.contains('pk-dpad-hidden');
+          const dpadH=dpadShown?dpad.offsetHeight:0;
+          const barStatic=toolbar&&getComputedStyle(toolbar).position==='static';
+          const barH=toolbar&&toolbar.offsetParent!==null?toolbar.offsetHeight:0;
+          // Upright phone: d-pad and buttons share one row under the game; otherwise the
+          // buttons float at the bottom and the d-pad (if any) sits under the game
+          const reserve=barStatic?Math.max(dpadH,barH)+28:(dpadShown?dpadH+8:0)+barH+24;
+          const maxW=pkWrapper?pkWrapper.clientWidth-(barStatic?16:0):800;
+          const maxH=pkWrapper?Math.max(100,pkWrapper.clientHeight-reserve):560;
           sc=Math.min(1,maxW/800,maxH/560);
         }
         const cw=Math.round(800*sc), ch=Math.round(560*sc);
@@ -3345,7 +3378,19 @@ const pokemonModule = (() => {
         const screen=canvas.parentElement;
         if(screen){screen.style.width=cw+'px';screen.style.height=ch+'px';}
         const btl=document.getElementById('pk-battle');
-        if(btl) btl.style.transform=`translate(-50%,-50%) scale(${sc})`;
+        if(btl){
+          // Upright phone: the battle keeps the picture's size but its controls grow into the space below
+          const tall=!isLm&&coarse('portrait')&&Boolean(pkWrapper);
+          btl.classList.toggle('pk-tall',tall);
+          if(tall){
+            btl.style.top='0'; btl.style.transformOrigin='top center';
+            btl.style.height=Math.max(560,Math.floor((pkWrapper.clientHeight-12)/sc))+'px';
+            btl.style.transform=`translate(-50%,0) scale(${sc})`;
+          } else {
+            btl.style.top=''; btl.style.transformOrigin=''; btl.style.height='';
+            btl.style.transform=`translate(-50%,-50%) scale(${sc})`;
+          }
+        }
       };
       resize(); window.addEventListener('resize',resize); canvas._pkResize=resize;
       lastFrameTs=0; camReady=false;
@@ -3723,6 +3768,7 @@ const pokemonModule = (() => {
         team:team.length, box:box.length, defeatedTrainers:[...defeatedTrainers], badges:[...badges], artReady, RS,
         partner:{x:Math.round(partner.x),y:Math.round(partner.y),dir:partner.dir} };
     },
+    _wildBattle(sid,lvl){ if(!player||battle||!team.length) return false; startBattle(sid,lvl||5); return true; },
     _teleport(mapId,tx,ty){
       if(!player||battle||!MAPS_DATA[mapId]||MAPS_DATA[mapId].isInterior) return false;
       _interiorReturn=null; loadZone(mapId);

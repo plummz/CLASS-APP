@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.13.4';
+const APP_VERSION = '1.13.5';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.5',
+    date: 'October 9, 2026',
+    title: 'Pokémon: Better Controls and Fair Trainer Battles',
+    summary: 'Buttons made for your phone or laptop, and trainers only challenge you when you are close.',
+    bullets: [
+      'Fixed: Trainers spotted you from far away and the battle started across the map. Now they see you only within 3 tiles and while they are on screen, and they walk up to you before the battle, like in the real games.',
+      'Improved: Phones held upright have a bigger d-pad and the game buttons side by side right under the game, with no empty gap.',
+      'Improved: Phones held sideways get a full-screen layout: d-pad on the left, game in the middle, buttons on the right. Nothing covers the game or the buttons anymore.',
+      'Improved: On phones, battles keep the same picture but get big move buttons and large Ball, Swap and Run buttons, with bigger names and HP bars.',
+      'Improved: On laptops the on-screen d-pad is gone (move with W A S D or the arrow keys, shown in a small hint) and the game is bigger.',
+      'Fixed: The Ball and Swap labels were hard to read on the battle panel.',
+    ]
+  },
   {
     version: '1.13.4',
     date: 'October 9, 2026',

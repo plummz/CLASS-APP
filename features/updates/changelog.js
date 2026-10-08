@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.12.0';
+const APP_VERSION = '1.12.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.12.1',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Faster and Sharper',
+    summary: 'About 65% more frames per second on a school laptop, sharp soldiers on phones, and a built-in performance meter.',
+    bullets: [
+      'Improved: Faster matches. Bots further away think and move less often (staggered so they never all update together), the game uses the faster Jolt physics engine, and a slow frame no longer piles up extra physics work. On an Intel HD 520 laptop the same 60-second test went from 11.5 to about 19 frames per second.',
+      'Improved: The minimap and map draw roads from a picture instead of redrawing every road many times a second.',
+      'Fixed: Blurry soldiers on phones. The 3D view now renders at full resolution, which in this renderer is also faster than the old reduced resolution.',
+      'Improved: Soldiers keep full detail and smooth animation further away.',
+      'Improved: Automatic quality turns off shadows, then grass, then shortens the draw distance when the frame rate drops, and brings them back when it recovers.',
+      'New: Settings, Show FPS now also shows frame time, draw calls, triangles and the quality level.',
+    ]
+  },
   {
     version: '1.12.0',
     date: 'October 8, 2026',

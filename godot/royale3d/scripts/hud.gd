@@ -45,6 +45,8 @@ var zone_banner: Label
 var safe_hint: Label
 var drop_label: Label
 var fps_label: Label
+var _fps_t := 0.0
+var _slow_redraw := false
 var crate_panel: PanelContainer
 var crate_list: VBoxContainer
 var crate_title: Label
@@ -650,7 +652,13 @@ func _process(delta: float) -> void:
 	kills_label.text = "Kills %d" % p.kills
 	zone_label.text = game.zone_text()
 	if fps_label.visible:
-		fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+		_fps_t -= delta
+		if _fps_t <= 0.0:
+			_fps_t = 0.5
+			var fps := Engine.get_frames_per_second()
+			fps_label.text = "%d FPS · %.1f ms\n%d draws · %dk tris · Q%d" % [fps, 1000.0 / maxf(fps, 1.0),
+				Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000,
+				game._q_level]
 	var w := health_back.size.x
 	health_fill.size.x = w * clampf(p.health / 100.0, 0.0, 1.0)
 	health_fill.color = Color(0.95, 0.95, 0.95, 0.95) if p.health > 50.0 else (Color("ffb347") if p.health > 25.0 else Color("ff4d4d"))
@@ -701,8 +709,10 @@ func _process(delta: float) -> void:
 	_redraw_clock -= delta
 	if _redraw_clock <= 0.0:
 		_redraw_clock = 0.05
-		compass.queue_redraw()
-		minimap.queue_redraw()
+		_slow_redraw = not _slow_redraw
+		if _slow_redraw:
+			compass.queue_redraw()
+			minimap.queue_redraw()
 		crosshair.queue_redraw()
 		if scoped: scope.queue_redraw()
 		if map_open: big_map.queue_redraw()
@@ -779,8 +789,6 @@ func _map_draw(target: Control, rect: Rect2, center_world: Vector2, world_span: 
 	var to_screen := func(w: Vector2) -> Vector2:
 		return rect.position + (w - center_world + Vector2.ONE * world_span * 0.5) / world_span * rect.size
 	var scale := rect.size.x / world_span
-	for seg in world.roads:
-		target.draw_line(to_screen.call(seg[0]), to_screen.call(seg[1]), Color(0.75, 0.62, 0.42, 0.8), maxf(1.5, 5.0 * scale))
 	if full:
 		var font := ThemeDB.fallback_font
 		for town in world.towns:

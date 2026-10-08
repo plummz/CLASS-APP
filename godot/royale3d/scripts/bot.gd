@@ -61,8 +61,12 @@ var _snap_pos := Vector3.ZERO
 var _snap_yaw := 0.0
 var _snap_ok := false
 
+var _tick := 0
+var _tick_dt := 0.0
+
 func setup(index: int, game_ref: Node, rng: RandomNumberGenerator) -> void:
 	game = game_ref
+	_tick = index   # spreads the bots' slow ticks over different physics steps
 	combatant_name = NAMES[index % NAMES.size()]
 	skill = clampf(rng.randf_range(0.25, 0.85), 0.0, 1.0)
 	soldier = RoyaleSoldier.new()
@@ -265,8 +269,18 @@ func _physics_process(delta: float) -> void:
 				velocity.y -= GRAVITY * delta
 				move_and_slide()
 			return
-	# Full AI and physics near any human (in a room match the host runs bots for everyone)
-	far = game.nearest_human_distance(global_position) > FAR_DISTANCE
+	# Full AI and physics near any human (in a room match the host runs bots for everyone).
+	# Further away the bot thinks and moves on every 2nd or 4th physics step (staggered across
+	# bots) with the time added up, which is the biggest CPU cost in a match.
+	var human_d: float = game.nearest_human_distance(global_position)
+	far = human_d > FAR_DISTANCE
+	var every := 1 if human_d < 35.0 else (2 if human_d < 90.0 else 4)
+	_tick += 1
+	_tick_dt += delta
+	if _tick % every != 0:
+		return
+	delta = _tick_dt
+	_tick_dt = 0.0
 	think_timer -= delta
 	if think_timer <= 0.0:
 		think_timer = (0.35 if not far else 0.9) + randf() * 0.15
@@ -503,7 +517,7 @@ func _drive_soldier() -> void:
 	soldier.stance = "crouch" if crouched and state == "ground" else "stand"
 	soldier.has_gun = not gun_id.is_empty()
 	var d := global_position.distance_to(game.player.global_position)
-	soldier.detail = 1 if d < 25.0 else (2 if d < 70.0 else (4 if d < 180.0 else 0))
+	soldier.detail = 1 if d < 45.0 else (2 if d < 100.0 else (4 if d < 200.0 else 0))
 	soldier.visible = d < FAR_DISTANCE * 1.6
 	# Crouching lowers the hitbox too
 	var cs: CollisionShape3D = get_node_or_null("Hitbox")

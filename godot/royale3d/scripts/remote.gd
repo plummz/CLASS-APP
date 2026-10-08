@@ -150,4 +150,4 @@ func _physics_process(delta: float) -> void:
 	rotation.y = lerp_angle(rotation.y, _target_yaw, 1.0 - exp(-delta * 12.0))
 	if game and game.player:
 		var d := global_position.distance_to(game.player.global_position)
-		soldier.detail = 1 if d < 40.0 else (2 if d < 100.0 else (4 if d < 220.0 else 0))
+		soldier.detail = 1 if d < 55.0 else (2 if d < 120.0 else (4 if d < 230.0 else 0))

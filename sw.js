@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.6.04-20261008-royale-vip-icons';
+const CACHE_VERSION = 'v1.6.05-20261008-royale-faster';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -51,7 +51,7 @@ const ASSETS = [
   '/features/file-summarizer/file-summarizer.js?v=11',
   '/features/logging-in/loading-components.js?v=3',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=31',
+  '/features/updates/changelog.js?v=32',
   '/script.js?v=129',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
@@ -89,7 +89,7 @@ const ASSETS = [
   '/features/tetris/tetris.js?v=1',
   '/features/dungeon/dungeon.js?v=1',
   '/features/dungeon/dungeon-thumb.jpg',
-  '/features/royale3d/royale3d.js?v=9',
+  '/features/royale3d/royale3d.js?v=10',
   '/features/royale3d/shop.js?v=2',
   '/features/royale3d/shop.css?v=2',
   '/features/royale3d/lobby.js?v=2',

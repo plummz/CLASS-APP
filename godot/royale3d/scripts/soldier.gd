@@ -310,7 +310,7 @@ func _process(delta: float) -> void:
 	_vel = _vel.lerp(raw, 1.0 - exp(-delta * 10.0))
 	_fire_t -= delta
 	_hit_t -= delta
-	# Distant soldiers use the 2k-vertex mesh (every vertex is re-skinned each frame)
+	# Soldiers past full-detail range use the 2k-vertex mesh (every vertex is re-skinned each frame)
 	var want_low := detail >= 2 and _low_mesh != null
 	if want_low != _using_low:
 		_using_low = want_low

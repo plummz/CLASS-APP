@@ -803,6 +803,17 @@ func _add_instance(model: String, pos: Vector3, scale_value: float, collide: boo
 			cs.position = pos + Vector3(0, 2.5, 0)
 		_static_body.add_child(cs)
 
+## Shortens (or restores) the draw distance of all batched nature and decor (auto quality).
+func set_view_distance(f: float) -> void:
+	for mmi: MultiMeshInstance3D in find_children("*", "MultiMeshInstance3D", true, false):
+		if not mmi.has_meta("vis"):
+			if mmi.visibility_range_end <= 0.0:
+				continue
+			mmi.set_meta("vis", mmi.visibility_range_end)
+		var v := float(mmi.get_meta("vis")) * f
+		mmi.visibility_range_end = v
+		mmi.visibility_range_end_margin = v * 0.1
+
 func _flush_multimeshes() -> void:
 	var mesh_cache := {}
 	for key: String in _multimesh_buckets:
@@ -873,6 +884,20 @@ func _build_map_texture() -> void:
 			elif h > 40.0:
 				c = Color("9aa1a6") if h < 60.0 else Color("eef2f4")
 			img.set_pixel(px, py, c)
+	# Roads are painted into the picture once (the minimap used to draw every segment ~20x a second)
+	var road := Color(0.75, 0.62, 0.42)
+	for seg in roads:
+		var a: Vector2 = (Vector2(seg[0]) + Vector2.ONE * MAP_VIEW * 0.5) / step
+		var b: Vector2 = (Vector2(seg[1]) + Vector2.ONE * MAP_VIEW * 0.5) / step
+		var n := maxi(1, int(a.distance_to(b) * 2.0))
+		for i in n + 1:
+			var q := a.lerp(b, float(i) / n)
+			for oy in 2:
+				for ox in 2:
+					var ix := int(q.x) + ox - 1
+					var iy := int(q.y) + oy - 1
+					if ix >= 0 and iy >= 0 and ix < size and iy < size:
+						img.set_pixel(ix, iy, img.get_pixel(ix, iy).lerp(road, 0.8))
 	map_texture = ImageTexture.create_from_image(img)
 
 func world_to_map(p: Vector3) -> Vector2:

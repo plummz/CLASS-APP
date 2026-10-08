@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.03-20261009-new-key-format';
+const CACHE_VERSION = 'v1.7.04-20261009-pass-self-check';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -50,11 +50,11 @@ const ASSETS = [
   '/features/royale3d/royale3d.css?v=5',
   '/features/file-summarizer/file-summarizer.css?v=4',
   '/features/file-summarizer/file-summarizer.js?v=11',
-  '/features/security/db-token.js?v=1',
+  '/features/security/db-token.js?v=2',
   '/features/logging-in/loading-components.js?v=4',
   '/features/logging-in/password-toggle.js?v=1',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=38',
+  '/features/updates/changelog.js?v=39',
   '/script.js?v=132',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

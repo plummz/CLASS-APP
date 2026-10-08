@@ -1,6 +1,16 @@
 ﻿(function () {
-const APP_VERSION = '1.13.3';
+const APP_VERSION = '1.13.4';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.4',
+    date: 'October 9, 2026',
+    title: 'Fixed: Chat, Notes and Saves Failing to Load',
+    summary: 'Chat messages, notes, Pokémon saves and app-open counts could fail to load for a few minutes after a database key change. Fixed.',
+    bullets: [
+      'Fixed: Group chat, notes, Pokémon saves, app opens and the activity log could fail to load or save (the database refused the new signed pass).',
+      'Improved: The server now tests the signed pass with the database before using it, and the app re-checks every 10 minutes, so a key problem can no longer break those features.',
+    ]
+  },
   {
     version: '1.13.3',
     date: 'October 9, 2026',

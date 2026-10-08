@@ -1405,15 +1405,39 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
 
 // Signed database pass for the browser's Supabase requests (role anon + the verified username)
 const DB_TOKEN_TTL_S = 60 * 60;
-app.get('/api/db-token/status', (req, res) => res.json({ enabled: Boolean(SUPABASE_JWT_SECRET) }));
-app.get('/api/db-token', requireAuth, (req, res) => {
-  if (!SUPABASE_JWT_SECRET) return res.status(503).json({ error: 'Database pass not configured' });
+function signDbPass(username, ttl = DB_TOKEN_TTL_S) {
   const now = Math.floor(Date.now() / 1000);
-  const token = jwt.sign({ role: 'anon', class_username: req.user.username, iat: now, exp: now + DB_TOKEN_TTL_S },
-    SUPABASE_JWT_SECRET, { algorithm: 'HS256' });
+  return jwt.sign({ role: 'anon', class_username: username, iat: now, exp: now + ttl }, SUPABASE_JWT_SECRET, { algorithm: 'HS256' });
+}
+// Passes are only handed out once the database has accepted one: the server signs a test pass and
+// makes a harmless read with it (rechecked every 10 minutes). A rejected pass would make every
+// browser request fail, so in that case browsers get none and work exactly as before.
+let _dbPassCheck = { at: 0, ok: false, status: 0 };
+async function dbPassAccepted() {
+  if (!SUPABASE_JWT_SECRET || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  if (Date.now() - _dbPassCheck.at < 10 * 60 * 1000) return _dbPassCheck.ok;
+  _dbPassCheck.at = Date.now();
+  try {
+    const url = new URL('/rest/v1/subjects', SUPABASE_URL);
+    url.searchParams.set('select', 'id');
+    url.searchParams.set('limit', '1');
+    const response = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${signDbPass('class-app-pass-check', 60)}` } });
+    _dbPassCheck = { at: Date.now(), ok: response.ok, status: response.status };
+  } catch (error) {
+    _dbPassCheck = { at: Date.now(), ok: false, status: 0 };
+  }
+  if (!_dbPassCheck.ok) console.warn('[db-pass] Database did not accept the signed pass (HTTP %s); passes are off.', _dbPassCheck.status);
+  return _dbPassCheck.ok;
+}
+app.get('/api/db-token/status', wrap(async (req, res) => {
+  const accepted = await dbPassAccepted();
+  res.json({ enabled: accepted, configured: Boolean(SUPABASE_JWT_SECRET), check_status: _dbPassCheck.status });
+}));
+app.get('/api/db-token', requireAuth, wrap(async (req, res) => {
+  if (!(await dbPassAccepted())) return res.status(503).json({ error: 'Database pass not available' });
   res.set('Cache-Control', 'no-store');
-  res.json({ token, expiresAt: (now + DB_TOKEN_TTL_S) * 1000 });
-});
+  res.json({ token: signDbPass(req.user.username), expiresAt: (Math.floor(Date.now() / 1000) + DB_TOKEN_TTL_S) * 1000 });
+}));
 
 app.get('/api/session', requireAuth, wrap(async (req, res) => {
   res.json({

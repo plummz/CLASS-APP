@@ -557,7 +557,12 @@ app.use('/features/royale3d/game', (req, res, next) => { res.setHeader('Content-
   express.static(path.join(__dirname, 'features', 'royale3d', 'game'), { maxAge: 0, etag: true }));
 app.use('/features', express.static(path.join(__dirname, 'features'), STATIC_CACHE_OPTIONS));
 app.use('/icons', express.static(path.join(__dirname, 'icons'), STATIC_CACHE_OPTIONS));
-app.use(express.static(path.join(__dirname)));
+// Only the app's own front-end files are public from the project root. Everything else there
+// (data.json with users and chats, server code, migrations, Godot sources, notes) must not be.
+const PUBLIC_ROOT_FILES = new Set(['/', '/index.html', '/script.js', '/style.css', '/sw.js', '/manifest.json', '/file-summarizer.css']);
+const rootStatic = express.static(path.join(__dirname));
+app.use('/coding-educational', express.static(path.join(__dirname, 'coding-educational')));
+app.use((req, res, next) => (PUBLIC_ROOT_FILES.has(req.path) ? rootStatic(req, res, next) : next()));
 // Serve uploads â€” local disk fallback then R2 (supports /uploads/filename and subfolders)
 app.get('/uploads/*', async (req, res) => {
   const filename = req.params[0]; // everything after /uploads/

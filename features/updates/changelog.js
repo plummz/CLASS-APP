@@ -1,6 +1,16 @@
 ﻿(function () {
-const APP_VERSION = '1.12.2';
+const APP_VERSION = '1.12.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.12.3',
+    date: 'October 8, 2026',
+    title: 'Security: Private Server Files',
+    summary: 'The server no longer hands out its own files: only the app itself is public.',
+    bullets: [
+      'Security: The server’s saved data file (accounts, chat history, notification sign-ups) could be downloaded by anyone who knew its name. It is now private.',
+      'Security: Server code, database setup files, game source files and notes are no longer downloadable. Only the app’s own pages, scripts, styles, icons and game files are served.',
+    ]
+  },
   {
     version: '1.12.2',
     date: 'October 8, 2026',

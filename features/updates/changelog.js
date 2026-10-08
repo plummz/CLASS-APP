@@ -1,6 +1,15 @@
 ﻿(function () {
-const APP_VERSION = '1.13.2';
+const APP_VERSION = '1.13.3';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.3',
+    date: 'October 9, 2026',
+    title: 'Ready for New Database Keys',
+    summary: 'The server works with Supabase’s new publishable and secret keys as well as the old ones.',
+    bullets: [
+      'Security: Preparation for replacing the database keys. The server now accepts Supabase’s new key format, so the old keys can be switched off.',
+    ]
+  },
   {
     version: '1.13.2',
     date: 'October 9, 2026',

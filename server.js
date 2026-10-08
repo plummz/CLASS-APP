@@ -286,9 +286,10 @@ function getSupabaseApiKey({ preferService = false } = {}) {
 function getSupabaseHeaders(extraHeaders = {}, { preferService = false } = {}) {
   const apiKey = getSupabaseApiKey({ preferService });
   if (!apiKey) throw new Error('Supabase API key is not configured.');
+  // New-style keys (sb_publishable_/sb_secret_) go in apikey only; legacy JWT keys also as the bearer
   return {
     apikey: apiKey,
-    Authorization: `Bearer ${apiKey}`,
+    ...(apiKey.startsWith('sb_') ? {} : { Authorization: `Bearer ${apiKey}` }),
     ...extraHeaders,
   };
 }

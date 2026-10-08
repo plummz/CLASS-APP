@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.02-20261009-lock-password-hashes';
+const CACHE_VERSION = 'v1.7.03-20261009-new-key-format';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -54,7 +54,7 @@ const ASSETS = [
   '/features/logging-in/loading-components.js?v=4',
   '/features/logging-in/password-toggle.js?v=1',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=37',
+  '/features/updates/changelog.js?v=38',
   '/script.js?v=132',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

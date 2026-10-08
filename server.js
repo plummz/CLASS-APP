@@ -56,6 +56,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// Supabase's JWT secret: lets the server sign a short pass saying who the signed-in user is, so the
+// database can trust the name (class_app_username()) instead of a header the browser could fake.
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || '';
   if (process.env.NODE_ENV !== 'production' && !process.env.JWT_SECRET) console.warn('[security] JWT_SECRET not set - using insecure default for local development');
 if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_SERVICE_KEY) {
   console.warn('[security] SUPABASE_SERVICE_KEY not set - trusted server-side profile writes will fall back to the anon key.');
@@ -1398,6 +1401,18 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
     profile: sanitizeAuthProfile(finalProfile),
   });
 }));
+
+// Signed database pass for the browser's Supabase requests (role anon + the verified username)
+const DB_TOKEN_TTL_S = 60 * 60;
+app.get('/api/db-token/status', (req, res) => res.json({ enabled: Boolean(SUPABASE_JWT_SECRET) }));
+app.get('/api/db-token', requireAuth, (req, res) => {
+  if (!SUPABASE_JWT_SECRET) return res.status(503).json({ error: 'Database pass not configured' });
+  const now = Math.floor(Date.now() / 1000);
+  const token = jwt.sign({ role: 'anon', class_username: req.user.username, iat: now, exp: now + DB_TOKEN_TTL_S },
+    SUPABASE_JWT_SECRET, { algorithm: 'HS256' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ token, expiresAt: (now + DB_TOKEN_TTL_S) * 1000 });
+});
 
 app.get('/api/session', requireAuth, wrap(async (req, res) => {
   res.json({

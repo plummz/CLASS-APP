@@ -1,6 +1,16 @@
 ﻿(function () {
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.13.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.1',
+    date: 'October 8, 2026',
+    title: 'Security: Signed Database Pass',
+    summary: 'The app now proves who you are to the database with a pass signed by the server.',
+    bullets: [
+      'Security: After you sign in, the server gives the app a short-lived signed pass, and every database request carries it. This prepares the database to stop trusting a name the browser could change to anyone else’s.',
+      'Nothing changes for you: if the pass is not set up on the server yet, the app works exactly as before.',
+    ]
+  },
   {
     version: '1.13.0',
     date: 'October 8, 2026',

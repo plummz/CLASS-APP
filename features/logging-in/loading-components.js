@@ -40,7 +40,7 @@ async function initSupabase(username = null) {
         fetch: (url, options = {}) => {
           const headers = new Headers(options.headers || {});
           if (resolvedUsername) headers.set('x-class-username', resolvedUsername);
-          return fetch(url, { ...options, headers });
+          return Promise.resolve(window.classAppDbAuth?.(headers)).catch(() => {}).then(() => fetch(url, { ...options, headers }));
         },
       },
     });
@@ -100,7 +100,7 @@ async function waitForSupabaseClient() {
                 const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
                 if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
               } catch (_) {}
-              return fetch(url, { ...options, headers });
+              return Promise.resolve(window.classAppDbAuth?.(headers)).catch(() => {}).then(() => fetch(url, { ...options, headers }));
             },
           },
         });

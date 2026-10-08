@@ -39,7 +39,7 @@ async function initSupabase() {
             const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
             if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
           } catch (_) {}
-          return fetch(url, { ...options, headers });
+          return Promise.resolve(window.classAppDbAuth?.(headers)).catch(() => {}).then(() => fetch(url, { ...options, headers }));
         },
       },
     });
@@ -222,7 +222,7 @@ async function waitForSupabaseClient() {
                 const sessionUser = JSON.parse(localStorage.getItem('classAppUser') || 'null');
                 if (sessionUser?.username) headers.set('x-class-username', sessionUser.username);
               } catch (_) {}
-              return fetch(url, { ...options, headers });
+              return Promise.resolve(window.classAppDbAuth?.(headers)).catch(() => {}).then(() => fetch(url, { ...options, headers }));
             },
           },
         });

@@ -405,7 +405,7 @@ func try_fire(trigger_down: bool) -> void:
 	fire_cooldown = Items.seconds_per_shot(String(g.id))
 	var forward := -camera.global_transform.basis.z
 	# Aim assist "magnetism": a shot that only just misses the enemy under the crosshair goes to them
-	if aim_assist and assist_target != null and _assist_angle < deg_to_rad(2.2):
+	if aim_assist and assist_target != null and _assist_angle < atan(0.55 / maxf(1.0, (assist_target.global_position - camera.global_position).length())) + deg_to_rad(0.8):
 		forward = (assist_target.chest_point() - camera.global_position).normalized()
 	# Shots go where the crosshair points; in third person they start level with the head so
 	# nothing between the camera and the player can block them
@@ -750,28 +750,45 @@ func _drive(delta: float) -> void:
 		body.seated = vehicle.kind != "boat"
 		body.in_car = vehicle.kind == "car"
 		if vehicle.kind != "boat":
-			body.global_basis = Basis(vehicle.visual.global_basis.get_rotation_quaternion())   # models face +Z like the soldier
+			body.global_basis = vehicle.rider_basis()
 
-## Aim assist for human players (bots aim by themselves): finds the enemy nearest the crosshair
-## and, while aiming or shooting, eases the view toward their chest. Stronger on touch screens.
+## Aim assist for human players (bots aim by themselves):
+##   target  — the enemy nearest the crosshair, with a cone that grows for close targets and a
+##             little stickiness so it doesn't flicker between enemies
+##   snap    — pressing aim swings onto a target within ~12°
+##   track   — while locked, the view follows the target's movement (always on touch, while
+##             aiming or shooting with a mouse)
+##   pull    — eases toward the chest, firmer the further off you are
+## Plus "slowdown" in _apply_look and "magnetism" in try_fire.
+var _assist_last_dir := Vector3.ZERO
+var _assist_was_aiming := false
+var _assist_snap := 0.0
+
+func _assist_cone(dist: float) -> float:
+	return deg_to_rad(4.0) + atan(0.9 / maxf(dist, 1.0))
+
 func _update_aim_assist(delta: float) -> void:
+	var prev := assist_target
 	assist_target = null
 	if not aim_assist or game == null or state != "ground" or not controls_enabled or vehicle != null:
+		_assist_last_dir = Vector3.ZERO
 		return
 	var g := current_gun()
 	if g.is_empty():
 		return
-	_assist_frame += 1
 	var reach := float(Items.gun(String(g.id)).range) * 1.6
 	var cam_pos := camera.global_position
 	var fwd := -camera.global_transform.basis.z
-	var cone := deg_to_rad(7.0) / sqrt(current_zoom() if aiming else 1.0)
+	var zoom_div := sqrt(current_zoom()) if aiming else 1.0
+	var just_aimed := aiming and not _assist_was_aiming
+	_assist_was_aiming = aiming
 	var best: Node3D = null
-	var best_angle := cone
+	var best_score := INF
+	var best_angle := 0.0
 	for c in game.combatants:
 		if c == self or not c.is_alive() or not (c is RoyaleBot or c is RoyaleRemote):
 			continue
-		if String(c.get("state")) != "ground":
+		if String(c.get("state")) != "ground" or (game.has_method("is_ally") and game.is_ally(c)):
 			continue
 		var chest: Vector3 = c.chest_point()
 		var to := chest - cam_pos
@@ -779,20 +796,47 @@ func _update_aim_assist(delta: float) -> void:
 		if d > reach or d < 0.5:
 			continue
 		var ang := fwd.angle_to(to / d)
-		if ang < best_angle and game.has_line_of_sight(head.global_position, chest, self):
-			best_angle = ang
+		var cone := _assist_cone(d) / zoom_div
+		if c == prev: cone *= 1.5                      # sticky
+		if just_aimed: cone = maxf(cone, deg_to_rad(12.0))
+		if ang > cone:
+			continue
+		var score := ang / cone + d * 0.002
+		if score < best_score and (game.has_line_of_sight(head.global_position, chest, self) or game.has_line_of_sight(head.global_position, Vector3(chest.x, c.head_y(), chest.z), self)):
+			best_score = score
 			best = c
+			best_angle = ang
 	assist_target = best
 	_assist_angle = best_angle
-	if best == null or not (aiming or trigger_held):
+	if best == null:
+		_assist_last_dir = Vector3.ZERO
 		return
-	# Pull: ease yaw/pitch toward the chest (gentle with a mouse, firmer with touch)
 	var to2: Vector3 = best.chest_point() - cam_pos
+	var dir := to2.normalized()
+	var engaged := aiming or trigger_held
+	var touch := is_touch_platform()
+	# Track: follow the target's angular movement since last frame
+	if _assist_last_dir != Vector3.ZERO and prev == best and (touch or engaged):
+		var dyaw := atan2(-dir.x, -dir.z) - atan2(-_assist_last_dir.x, -_assist_last_dir.z)
+		dyaw = wrapf(dyaw, -PI, PI)
+		var dpitch := asin(clampf(dir.y, -1, 1)) - asin(clampf(_assist_last_dir.y, -1, 1))
+		var follow := 0.85 if touch else 0.6
+		yaw += dyaw * follow
+		pitch += dpitch * follow * 0.8
+	_assist_last_dir = dir
+	if just_aimed:
+		_assist_snap = 0.18
+	_assist_snap -= delta
+	if not engaged and not touch:
+		return
+	# Pull toward the chest (snap right after pressing aim)
 	var want_yaw := atan2(-to2.x, -to2.z)
 	var want_pitch := atan2(to2.y, Vector2(to2.x, to2.z).length())
-	var strength := (5.0 if is_touch_platform() else 1.6) * (1.0 - best_angle / cone)
-	yaw = lerp_angle(yaw, want_yaw, clampf(strength * delta, 0.0, 0.5))
-	pitch = lerpf(pitch, want_pitch, clampf(strength * delta * 0.7, 0.0, 0.4))
+	var strength := (9.0 if touch else 3.5) * (0.4 + best_angle / maxf(0.001, _assist_cone(to2.length())))
+	if not engaged: strength *= 0.35          # touch, just looking: a light pull
+	if _assist_snap > 0.0: strength = 18.0
+	yaw = lerp_angle(yaw, want_yaw, clampf(strength * delta, 0.0, 0.6))
+	pitch = lerpf(pitch, want_pitch, clampf(strength * delta * 0.8, 0.0, 0.5))
 
 func note_throw() -> void:
 	_throw_t = 1.1

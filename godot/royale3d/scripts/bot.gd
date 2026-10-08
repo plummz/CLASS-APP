@@ -503,7 +503,7 @@ func _drive_soldier() -> void:
 	soldier.stance = "crouch" if crouched and state == "ground" else "stand"
 	soldier.has_gun = not gun_id.is_empty()
 	var d := global_position.distance_to(game.player.global_position)
-	soldier.detail = 1 if d < 35.0 else (2 if d < 90.0 else (4 if d < 200.0 else 0))
+	soldier.detail = 1 if d < 25.0 else (2 if d < 70.0 else (4 if d < 180.0 else 0))
 	soldier.visible = d < FAR_DISTANCE * 1.6
 	# Crouching lowers the hitbox too
 	var cs: CollisionShape3D = get_node_or_null("Hitbox")

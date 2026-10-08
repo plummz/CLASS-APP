@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.10.1';
+const APP_VERSION = '1.10.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.10.2',
+    date: 'October 8, 2026',
+    title: 'Battle Royale 3D: Smoother Frame Rate, Better Aim Assist',
+    summary: 'Much lighter scenes for phones and laptops, a stronger and smarter aim assist, and the motorcycle faces the right way.',
+    bullets: [
+      'Improved: Smoother gameplay. Trees and plants use far fewer triangles, models are merged so the browser draws them in one go, soldiers use a light mesh at a distance, and phones render the 3D view at a lower resolution with the HUD kept sharp.',
+      'New: Automatic quality. If the frame rate drops below 30, the game lowers resolution, then shadows and grass, on its own (Settings: Auto quality).',
+      'Improved: Aim assist locks on more reliably (the cone grows for close enemies), sticks to the same enemy, follows moving enemies, snaps on when you press aim, and pulls harder on phones.',
+      'Fixed: The motorcycle was facing backwards under the rider.',
+      'Fixed: In room matches, a phone and a PC could build slightly different islands (grass settings changed the layout).',
+    ]
+  },
   {
     version: '1.10.1',
     date: 'October 8, 2026',

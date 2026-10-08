@@ -54,7 +54,7 @@ var airdrop_done := false
 var total_players := BOT_COUNT + 1
 var bot_accuracy := 0.85
 var settings := {"sensitivity": 1.0, "scope_sensitivity": 0.8, "volume": 0.8, "low": false, "fov": 78.0,
-	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false, "view": "tps", "aim_assist": true,
+	"invert": false, "vibration": true, "lefty": false, "btn_scale": 1.0, "btn_opacity": 0.85, "show_fps": false, "view": "tps", "aim_assist": true, "auto_quality": true,
 	"layout": {}}
 var paused := false
 var map_open := false
@@ -163,6 +163,10 @@ func _ready() -> void:
 	touch.game = self
 	layer.add_child(touch)
 	_apply_settings()
+	# Phones render the 3D view below native resolution (their screens are ~2.5 MP); the HUD stays sharp
+	if RoyalePlayer.is_touch_platform():
+		get_viewport().scaling_3d_scale = 0.7
+		_q_level = 1
 	if net.active:
 		# Wait (behind the loading screen) until everyone's island is ready
 		loading.text = "Waiting for your classmates to load the island…"
@@ -172,7 +176,9 @@ func _ready() -> void:
 		return
 	loading_layer.queue_free()
 	_start_plane()
-	if "--doortest" in args:
+	if "--benchscene" in args:
+		_run_bench_scene.call_deferred()
+	elif "--doortest" in args:
 		_run_door_test.call_deferred()
 	elif smoke_mode:
 		_run_smoke.call_deferred()
@@ -1448,7 +1454,38 @@ func _physics_process(delta: float) -> void:
 		_auto_pickup()
 		_check_end()
 
+## Automatic quality: if the frame rate stays low, render at a lower resolution, then drop
+## shadows and grass. (Integrated GPUs and phones; the HUD stays sharp.)
+var _q_time := 0.0
+var _q_frames := 0
+var _q_level := 0
+
+func _auto_quality(delta: float) -> void:
+	if smoke_mode or _bench or not settings.get("auto_quality", true):
+		return
+	_q_time += delta
+	_q_frames += 1
+	if _q_time < 3.0:
+		return
+	var fps := _q_frames / _q_time
+	_q_time = 0.0
+	_q_frames = 0
+	if fps >= 30.0 or _q_level >= 4:
+		return
+	_q_level += 1
+	var vp := get_viewport()
+	match _q_level:
+		1: vp.scaling_3d_scale = 0.8
+		2: vp.scaling_3d_scale = 0.6
+		3:
+			sun.shadow_enabled = false
+			for g in get_tree().get_nodes_in_group("grass"): (g as Node3D).visible = false
+		4: vp.scaling_3d_scale = 0.55
+	print("ROYALE_QUALITY level=%d fps=%.0f" % [_q_level, fps])
+
 func _process(delta: float) -> void:
+	if player != null and phase == "match":
+		_auto_quality(delta)
 	if _bench:
 		_bench_frames += 1
 		_bench_time += delta
@@ -1980,7 +2017,14 @@ func _run_screenshots(dir: String) -> void:
 	player.global_position = Vector3(house.door_out) - to.normalized() * 2.0 + Vector3(0, 0.3, 0)
 	player.yaw = atan2(-(-to.normalized()).x, -(-to.normalized()).z)
 	fwd_flat = Vector3(-sin(player.yaw), 0, -cos(player.yaw))
-	tgt.global_position = player.global_position + fwd_flat.rotated(Vector3.UP, deg_to_rad(4.0)) * 14.0
+	# Find a direction with a clear view for the test
+	for tries in 16:
+		tgt.global_position = player.global_position + fwd_flat.rotated(Vector3.UP, deg_to_rad(4.0)) * 14.0
+		tgt.global_position.y = world.height_at(tgt.global_position.x, tgt.global_position.z)
+		if has_line_of_sight(player.head.global_position, tgt.chest_point(), player):
+			break
+		player.yaw += TAU / 16.0
+		fwd_flat = Vector3(-sin(player.yaw), 0, -cos(player.yaw))
 	tgt.state = "ground"
 	tgt.mode = "heal"; tgt.heal_timer = 30.0
 	player.pitch = 0.0
@@ -1997,6 +2041,75 @@ func _run_screenshots(dir: String) -> void:
 	await get_tree().create_timer(0.4).timeout
 	await _shot(dir + "/19_end.png")
 	print("ROYALE_SCREENSHOTS_DONE")
+	get_tree().quit()
+
+## Developer check: frame time in a busy town, then with heavy features switched off one at a time.
+func _run_bench_scene() -> void:
+	await get_tree().create_timer(0.5).timeout
+	print("BENCH gpu=%s size=%s" % [RenderingServer.get_video_adapter_name(), get_viewport().get_visible_rect().size])
+	if plane_node: plane_node.queue_free(); plane_node = null
+	phase = "match"
+	var town: Dictionary = world.towns[0]
+	var c := Vector3(town.pos.x, float(town.y) + 0.5, town.pos.y)
+	player.global_position = c
+	player.state = "ground"
+	player.give_gun("m416")
+	player.god = true
+	bot_accuracy = 0.0
+	for i in 14:
+		var b := bots[i]
+		var a := TAU * i / 14.0
+		b.global_position = c + Vector3(cos(a), 0, sin(a)) * (8.0 + i * 3.0)
+		b.state = "ground"
+		b.visible = true
+		b.set_gun(["m416", "akm", "ump"][i % 3])
+	# Time the main per-frame pieces directly
+	for k in 3:
+		await get_tree().process_frame
+	var t0 := Time.get_ticks_usec()
+	for i in 50: hud._process(0.016)
+	var t1 := Time.get_ticks_usec()
+	for i in 50: prompt_text()
+	var t2 := Time.get_ticks_usec()
+	for i in 50: interact_label()
+	var t3 := Time.get_ticks_usec()
+	for i in 50: hud.minimap.queue_redraw(); hud._draw_minimap()
+	var t4 := Time.get_ticks_usec()
+	for i in 50: touch._process(0.016)
+	var t5 := Time.get_ticks_usec()
+	for i in 50: alive_count()
+	var t6 := Time.get_ticks_usec()
+	print("BENCH_MS hud_process=%.2f prompt=%.2f interact=%.2f minimap=%.2f touch=%.2f alive=%.2f" % [(t1 - t0) / 50000.0, (t2 - t1) / 50000.0, (t3 - t2) / 50000.0, (t4 - t3) / 50000.0, (t5 - t4) / 50000.0, (t6 - t5) / 50000.0])
+	var stages := [["all", func(): pass],
+		["bots_no_shadow", func():
+			for bt in bots:
+				for m: GeometryInstance3D in bt.find_children("*", "GeometryInstance3D", true, false): m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF],
+		["bots_frozen", func():
+			for bt in bots: bt.soldier.detail = 0; bt.soldier.set_process(false); bt.set_physics_process(false)],
+		["no_bots", func():
+			for bt in bots: bt.visible = false],
+		["no_shadows", func(): sun.shadow_enabled = false],
+		["no_world", func(): world.visible = false]]
+	var vrid := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vrid, true)
+	for st in stages:
+		st[1].call()
+		var frames := 0
+		var t := 0.0
+		var worst := 0.0
+		var cpu_sum := 0.0
+		while t < 4.0:
+			var d := get_process_delta_time()
+			player.yaw += d * 0.6
+			await get_tree().process_frame
+			frames += 1
+			t += d
+			worst = maxf(worst, d)
+			cpu_sum += RenderingServer.viewport_get_measured_render_time_cpu(vrid)
+		print("BENCH %-16s avg_cpu_render=%5.1fms draws=%d" % [st[0], cpu_sum / frames, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)])
+		print("BENCH %-16s fps=%5.1f worst=%4.0fms draws=%d prims=%dk objs=%d proc=%.1fms phys=%.1fms" % [st[0], frames / t, worst * 1000.0,
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000,
+			Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0])
 	get_tree().quit()
 
 func _shot(path: String) -> void:

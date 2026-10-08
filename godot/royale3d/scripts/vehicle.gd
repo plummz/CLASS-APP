@@ -31,6 +31,7 @@ var _target_yaw := 0.0
 var _bob_t := 0.0
 var _tilt := Quaternion.IDENTITY
 var _scale := 1.0
+var _flip := PI          ## the car models face +Z; the CC0 motorcycle faces -Z
 
 func setup(game_ref: Node, kind_name: String, model: String, idx: int) -> void:
 	game = game_ref
@@ -72,9 +73,10 @@ func _build_road_vehicle(model: String) -> void:
 	if kind == "moto":
 		sc = 2.1 / maxf(0.01, box.size.z)   # the CC0 motorcycle model is tiny; make it ~2.1 m long
 	_scale = sc
+	_flip = 0.0 if kind == "moto" else PI
 	visual.scale = Vector3.ONE * sc
-	# Models face +Z; vehicles drive toward -Z like the player
-	visual.rotation.y = PI
+	# Vehicles drive toward -Z like the player
+	visual.rotation.y = _flip
 	visual.position.y = -box.position.y * sc
 	body.add_child(visual)
 	for m: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
@@ -152,6 +154,13 @@ func place(pos: Vector3, yaw: float) -> void:
 	_target = pos
 	_target_yaw = yaw
 
+## Orientation for a seated rider (the soldier faces +Z; vehicles drive toward -Z).
+func rider_basis() -> Basis:
+	var lean := 0.0
+	if kind == "moto" and driver:
+		lean = Input.get_axis("move_left", "move_right") * clampf(speed / max_speed, 0.0, 1.0) * 0.35
+	return Basis(Vector3.UP, heading) * Basis(_tilt) * Basis(Vector3.FORWARD, lean) * Basis(Vector3.UP, PI)
+
 func is_free() -> bool:
 	return driver == null and remote_driver.is_empty()
 
@@ -194,6 +203,9 @@ func _physics_process(delta: float) -> void:
 
 func _road_step(delta: float) -> void:
 	var cb := body as CharacterBody3D
+	# Parked and settled: nothing to simulate
+	if driver == null and absf(speed) < 0.05 and cb.is_on_floor() and cb.velocity.length() < 1.5:
+		return
 	if driver == null:
 		speed = move_toward(speed, 0.0, 6.0 * delta)
 	var fwd := Vector3(-sin(heading), 0, -cos(heading))
@@ -213,7 +225,7 @@ func _road_step(delta: float) -> void:
 	var lean := 0.0
 	if kind == "moto" and driver:
 		lean = Input.get_axis("move_left", "move_right") * clampf(speed / max_speed, 0.0, 1.0) * 0.35
-	visual.basis = Basis(_tilt) * Basis(Vector3.FORWARD, lean) * Basis(Vector3.UP, PI) * Basis.from_scale(Vector3.ONE * _scale)
+	visual.basis = Basis(_tilt) * Basis(Vector3.FORWARD, lean) * Basis(Vector3.UP, _flip) * Basis.from_scale(Vector3.ONE * _scale)
 	# The sea floor keeps sinking cars; stop at the edge of the map
 	if cb.global_position.y < -3.0:
 		speed = 0.0

@@ -60,16 +60,19 @@ uniform int style = 0;          // 0 none, 1 solid, 2 gradient, 3 camo, 4 flow, 
 uniform float glow = 0.0;
 uniform float level = 1.0;      // 1..3 upgrades
 uniform float len_inv = 0.2;    // 1 / model length along its barrel axis (model X)
+uniform bool use_vertex_color = false;   // merged models keep each part's colour in the vertices
 varying vec3 lp;
 float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
-void vertex() { lp = VERTEX; }
+void vertex() { lp = VERTEX; vcol = pow(COLOR.rgb, vec3(2.2)); }
+varying vec3 vcol;
 void fragment() {
-	float l = dot(base_color, vec3(0.299, 0.587, 0.114));
+	vec3 base = use_vertex_color ? vcol : base_color;
+	float l = dot(base, vec3(0.299, 0.587, 0.114));
 	float shade = 0.42 + l * 1.15;
 	float t = lp.x * len_inv;                 // 0 at the grip .. 1 at the muzzle
-	vec3 c = base_color;
+	vec3 c = base;
 	vec3 e = vec3(0.0);
 	float metal = 0.25;
 	float rough = 0.55;
@@ -86,6 +89,7 @@ void fragment() {
 	else if (style == 6) { vec3 hue = 0.5 + 0.5 * cos(6.2831 * (t * 1.3 + dot(NORMAL, vec3(0.4, 0.6, 0.2)) + TIME * 0.12 + vec3(0.0, 0.33, 0.67)));
 		c = hue * (0.55 + l * 0.6); e = hue * glow * 0.35; metal = 0.85; rough = 0.18; }
 	else if (style == 7) { c = mix(col_b, col_a, 0.35 + l) ; metal = 0.95; rough = 0.22; e = col_a * glow * 0.2; }
+	if (style == 0) { c = base; }
 	// Upgrades: level 2 adds shine, level 3 adds a moving highlight sweep along the gun
 	if (style > 0 && level >= 2.0) { metal = mix(metal, 0.9, 0.35); rough *= 0.7; }
 	if (style > 0 && level >= 3.0) { float s = fract(t - TIME * 0.45); float sweep = smoothstep(0.0, 0.04, s) * (1.0 - smoothstep(0.04, 0.12, s));
@@ -115,8 +119,10 @@ static func apply_weapon(gun_root: Node3D, skin_id: String, level := 1, model_le
 		for i in mi.mesh.get_surface_count():
 			var base := Color(0.5, 0.5, 0.5)
 			var m := mi.mesh.surface_get_material(i)
+			var vcol := false
 			if m is BaseMaterial3D:
 				base = (m as BaseMaterial3D).albedo_color
+				vcol = (m as BaseMaterial3D).vertex_color_use_as_albedo
 			var sm := ShaderMaterial.new()
 			sm.shader = _weapon_shader
 			sm.set_shader_parameter("base_color", base)
@@ -127,6 +133,7 @@ static func apply_weapon(gun_root: Node3D, skin_id: String, level := 1, model_le
 			sm.set_shader_parameter("glow", float(s.get("glow", 0.0)) * (1.0 + 0.35 * (level - 1)))
 			sm.set_shader_parameter("level", float(level))
 			sm.set_shader_parameter("len_inv", 1.0 / maxf(0.1, model_length))
+			sm.set_shader_parameter("use_vertex_color", vcol)
 			mi.set_surface_override_material(i, sm)
 
 # ── Outfit shader ────────────────────────────────────────────
@@ -212,7 +219,8 @@ static func apply_outfit(soldier: Node3D, outfit_id: String) -> void:
 	tint.roughness = 0.9
 	for m: MeshInstance3D in pack.find_children("*", "MeshInstance3D", true, false):
 		m.material_override = tint
-		m.visibility_range_end = 120.0
+		m.visibility_range_end = 60.0
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	back.add_child(pack)
 
 static func weapon_price(skin_id: String) -> int:

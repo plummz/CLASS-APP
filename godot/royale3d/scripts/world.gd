@@ -61,6 +61,7 @@ var vehicle_spawns: Array[Dictionary] = []  ## {kind, model, pos, yaw}
 
 func generate(seed_value: int, low_quality := false) -> void:
 	quality_low = low_quality
+	touch_device = RoyalePlayer.is_touch_platform()
 	rng.seed = seed_value
 	noise.seed = seed_value
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -636,7 +637,9 @@ func _relative_transform(root: Node3D, node: Node3D) -> Transform3D:
 # ── Nature (batched with MultiMesh per model and 256 m chunk) ──
 
 func _scatter_nature() -> void:
-	var cell := 9.0 if not quality_low else 12.0
+	# Same cells and random draws on every device (room matches must build the same island);
+	# low quality / phones only skip drawing some grass
+	var cell := 9.0
 	var half := MAP_SIZE * 0.5
 	var z := -half
 	while z < half:
@@ -662,12 +665,15 @@ func _scatter_nature() -> void:
 				_add_instance(ROCKS[rng.randi_range(0, ROCKS.size() - 1)], Vector3(px, h - 0.3, pz), rng.randf_range(2.0, 4.5), true, 1.1)
 			elif roll < density * 0.42 + 0.16:
 				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
-			elif roll < density * 0.42 + 0.45 and not quality_low:
+			elif roll < density * 0.42 + 0.45:
 				# A tuft cluster: several blades and the odd flower around one spot
 				for k in rng.randi_range(4, 8):
 					var gx := px + rng.randf_range(-2.5, 2.5)
 					var gz := pz + rng.randf_range(-2.5, 2.5)
-					_add_instance(GRASS[rng.randi_range(0, GRASS.size() - 1)], Vector3(gx, height_at(gx, gz), gz), rng.randf_range(2.5, 4.0), false, 0.0)
+					var model: String = GRASS[rng.randi_range(0, GRASS.size() - 1)]
+					var sc := rng.randf_range(2.5, 4.0)
+					if _draw_grass(k):
+						_add_grass(model, Vector3(gx, height_at(gx, gz), gz), sc)
 		z += cell
 	# A handful of outdoor loot caches (campsites)
 	for i in 14:
@@ -687,6 +693,20 @@ func add_model_instance(path: String, tf: Transform3D, chunk_size: float, vis: f
 		_multimesh_buckets[key] = {"path": path, "transforms": [], "vis": vis}
 	_multimesh_buckets[key].transforms.append(tf)
 
+## Grass is decoration only: phones draw half the blades, low quality none (no random draws here).
+var touch_device := false
+func _draw_grass(k: int) -> bool:
+	if quality_low:
+		return false
+	return not touch_device or k % 2 == 0
+
+## Adds a grass tuft without using the world's random generator (yaw from the position).
+func _add_grass(model: String, pos: Vector3, scale_value: float) -> void:
+	var name := model.substr(3)
+	scale_value *= float(MK_SCALE.get(mk_kind(name), 0.2))
+	var yaw := fposmod(pos.x * 12.9898 + pos.z * 78.233, TAU)
+	add_model_instance(MEGAKIT + name + ".scn", Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 96.0, 55.0)
+
 static func mk_kind(name: String) -> String:
 	for k in ["twisted", "tree", "pine", "bush", "plant", "fern", "rock", "grass", "tall", "clover", "flower", "dead"]:
 		if name.begins_with(k):
@@ -704,8 +724,11 @@ func _add_instance(model: String, pos: Vector3, scale_value: float, collide: boo
 		scale_value *= float(MK_SCALE.get(kind, 0.2))
 		if kind == "twisted": radius = 0.9
 	var small := name.begins_with("grass") or name.begins_with("flower") or name.begins_with("crop") or name.begins_with("tall") or name.begins_with("clover")
-	var vis := 65.0 if small else (180.0 if (name.begins_with("plant") or name.begins_with("bush") or name.begins_with("fern")) else 0.0)
-	add_model_instance(path, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 128.0 if small else 256.0, vis)
+	var shrub := name.begins_with("plant") or name.begins_with("bush") or name.begins_with("fern") or name.begins_with("rock")
+	# Draw distances: grass close, shrubs and rocks medium, trees far (64 m chunks so distant
+	# chunks use the low-detail mesh LODs)
+	var vis := 55.0 if small else (140.0 if shrub else 420.0)
+	add_model_instance(path, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale_value), pos), 96.0 if small else 128.0, vis)
 	if collide:
 		var cs := CollisionShape3D.new()
 		if radius > 0.8:
@@ -752,10 +775,14 @@ func _flush_multimeshes() -> void:
 				mm.set_instance_transform(i, Transform3D(tfs[i]) * Transform3D(part[1]))
 			var mmi := MultiMeshInstance3D.new()
 			mmi.multimesh = mm
-			var small := vis > 0.0
+			var small := vis > 0.0 and vis < 200.0
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if (quality_low or small) else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			if vis > 0.0:
 				mmi.visibility_range_end = vis
+				mmi.visibility_range_end_margin = vis * 0.1
+				mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+			if small:
+				mmi.add_to_group("grass")
 			add_child(mmi)
 	_multimesh_buckets.clear()
 
@@ -904,11 +931,14 @@ func _build_island2() -> void:
 				_add_instance(TREES_LOW[rng.randi_range(0, TREES_LOW.size() - 1)], Vector3(px, h, pz), rng.randf_range(5.0, 8.0), true, 0.35)
 			elif roll < 0.32:
 				_add_instance(BUSHES[rng.randi_range(0, BUSHES.size() - 1)], Vector3(px, h, pz), rng.randf_range(2.5, 4.0), false, 0.0)
-			elif roll < 0.6 and not quality_low:
+			elif roll < 0.6:
 				for k in 4:
 					var gx := px + rng.randf_range(-2.0, 2.0)
 					var gz := pz + rng.randf_range(-2.0, 2.0)
-					_add_instance(GRASS[rng.randi_range(0, GRASS.size() - 1)], Vector3(gx, height_at(gx, gz), gz), rng.randf_range(2.5, 4.0), false, 0.0)
+					var model: String = GRASS[rng.randi_range(0, GRASS.size() - 1)]
+					var sc := rng.randf_range(2.5, 4.0)
+					if _draw_grass(k):
+						_add_grass(model, Vector3(gx, height_at(gx, gz), gz), sc)
 		z0 += cell
 
 ## A flat sea floor everywhere (the height grids end at their edges).

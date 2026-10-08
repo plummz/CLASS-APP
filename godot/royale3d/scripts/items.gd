@@ -125,7 +125,7 @@ static func gun_node(id: String, skin := "", level := 1) -> Node3D:
 		muzzle.position = Vector3(0, (box.position.y + box.size.y * 0.72) * sc, -tip * sc)
 		for m: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			m.visibility_range_end = 140.0
+			m.visibility_range_end = 70.0
 		if not skin.is_empty():
 			Skins.apply_weapon(model, skin, level, box.size.x)
 	holder.add_child(muzzle)

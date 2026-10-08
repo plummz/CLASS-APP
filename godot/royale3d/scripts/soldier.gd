@@ -23,6 +23,9 @@ const UPPER_BONES := ["Spine1", "Spine2", "Neck", "Head", "LeftShoulder", "LeftA
 const FINGER_PREFIXES := ["LeftHand", "RightHand"]
 
 static var _packed: PackedScene
+static var _low_mesh: Mesh
+var _hi_mesh: Mesh
+var _using_low := false
 
 ## Inputs (set by the owner every frame)
 var state := "ground"          ## plane, freefall, parachute, ground, dead
@@ -61,6 +64,7 @@ var _frame := 0
 var _dt_acc := 0.0
 var _dead_clip := ""
 var _aim_mod: AimBend
+var _shown_gun_node: Node3D
 
 func _ready() -> void:
 	if _packed == null:
@@ -69,7 +73,10 @@ func _ready() -> void:
 	add_child(model)
 	skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
 	body_mesh = model.find_children("*", "MeshInstance3D", true, false)[0]
-	body_mesh.visibility_range_end = 320.0
+	body_mesh.visibility_range_end = 260.0
+	_hi_mesh = body_mesh.mesh
+	if _low_mesh == null and ResourceLoader.exists("res://assets/soldier/soldier_low.res"):
+		_low_mesh = load("res://assets/soldier/soldier_low.res")
 	_build_tree()
 	hand = BoneAttachment3D.new()
 	hand.bone_name = HAND_BONE
@@ -278,7 +285,12 @@ func die() -> void:
 	_dead_clip = "death_front" if randf() < 0.5 else "death_back"
 
 ## Hide the body (first-person view) but keep its shadow.
+var _body_shown := -1
 func set_body_visible(v: bool) -> void:
+	if _body_shown == int(v) and gun == _shown_gun_node:
+		return
+	_body_shown = int(v)
+	_shown_gun_node = gun
 	var mode := GeometryInstance3D.SHADOW_CASTING_SETTING_ON if v else GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 	for mi: MeshInstance3D in find_children("*", "MeshInstance3D", true, false):
 		if mi == _flash:
@@ -298,6 +310,13 @@ func _process(delta: float) -> void:
 	_vel = _vel.lerp(raw, 1.0 - exp(-delta * 10.0))
 	_fire_t -= delta
 	_hit_t -= delta
+	# Distant soldiers use the 2k-vertex mesh (every vertex is re-skinned each frame)
+	var want_low := detail >= 2 and _low_mesh != null
+	if want_low != _using_low:
+		_using_low = want_low
+		var override := body_mesh.get_surface_override_material(0)
+		body_mesh.mesh = _low_mesh if want_low else _hi_mesh
+		body_mesh.set_surface_override_material(0, override)
 	if detail <= 0:
 		return
 	_frame += 1

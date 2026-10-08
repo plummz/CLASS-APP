@@ -10,7 +10,8 @@
  *   VAPID_PUBLIC_KEY     — base64url uncompressed P-256 point (65 bytes, 04||x||y)
  *   VAPID_SUBJECT        — mailto: or https: URI identifying the sender
  *   SUPABASE_URL         — injected automatically by Supabase
- *   SUPABASE_SERVICE_ROLE_KEY — injected automatically by Supabase
+ *   SUPABASE_SECRET_KEYS — injected automatically by Supabase (new sb_secret_ keys; preferred)
+ *   SUPABASE_SERVICE_ROLE_KEY — injected automatically (legacy key; used only as a fallback)
  *
  * Web Push implemented from scratch with the Web Crypto API (RFC 8291 + RFC 8292).
  * No npm:web-push or any other external library is used.
@@ -252,6 +253,17 @@ function isSubscriptionGone(err: unknown): boolean {
   return status === 410 || status === 404;
 }
 
+// The new secret key (sb_secret_…) if Supabase provides one, else the legacy service-role key,
+// so alarms keep working after the legacy JWT-based keys are switched off.
+function serviceKey(): string {
+  try {
+    const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}") as Record<string, string>;
+    const key = keys["default"] ?? Object.values(keys)[0];
+    if (typeof key === "string" && key) return key;
+  } catch (_) { /* fall through */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+}
+
 // ─── Edge Function handler ────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -268,10 +280,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey());
 
   // Fetch alarms that need to fire right now
   console.log("[check-alarms] Calling get_alarms_to_fire...");

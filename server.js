@@ -1409,14 +1409,31 @@ app.get('/api/session', requireAuth, wrap(async (req, res) => {
   });
 }));
 
+// Admin usernames for the member list (the ADMIN_USERNAME account plus the admins table), cached
+let _adminNames = { at: 0, names: new Set() };
+async function adminUsernames() {
+  if (Date.now() - _adminNames.at < 5 * 60 * 1000) return _adminNames.names;
+  const names = new Set(ADMIN_USERNAME ? [ADMIN_USERNAME.toLowerCase()] : []);
+  try {
+    const rows = await supabaseQuery('admins', 'GET', null, { select: 'username' });
+    (Array.isArray(rows) ? rows : []).forEach((r) => r?.username && names.add(String(r.username).toLowerCase()));
+  } catch (error) {
+    console.warn('[users] Admin list unavailable:', error.message);
+  }
+  _adminNames = { at: Date.now(), names };
+  return names;
+}
+
 app.get('/api/users', requireAuth, wrap(async (req, res) => {
+  const admins = await adminUsernames();
+  const withRoles = (list) => list.map((u) => ({ ...u, is_admin: admins.has(String(u.username).toLowerCase()) }));
   try {
     const rows = await fetchSupabasePublicProfiles();
-    if (rows.length) return res.json(safeDirectoryUsersFromProfiles(rows));
+    if (rows.length) return res.json(withRoles(safeDirectoryUsersFromProfiles(rows)));
   } catch (error) {
     console.warn('[users] Falling back to local state:', error.message);
   }
-  res.json(safeDirectoryUsersFromProfiles(safeUsers()));
+  res.json(withRoles(safeDirectoryUsersFromProfiles(safeUsers())));
 }));
 
 app.put('/api/users/:username', ...requireSelf('username'), async (req, res) => {

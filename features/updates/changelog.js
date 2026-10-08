@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.12.3';
+const APP_VERSION = '1.13.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.0',
+    date: 'October 8, 2026',
+    title: 'A Livelier School Lobby, Class Members and Show Password',
+    summary: 'The lobby welcomes you by name, lists every class member with live online dots, and the sign-in form can show your password.',
+    bullets: [
+      'New: Welcome banner in the lobby with a good-morning/afternoon/evening greeting, your picture, a live clock and how many classmates are online.',
+      'New: Class members dropdown in the lobby with every member and the admin. A green dot means they are online right now (live), grey means offline with when they were last seen. Search by name, and tap someone to chat.',
+      'New: Quick links in the lobby to Announcements, Chat, Games, Calendar, Code Lab and Reviewers.',
+      'New: Eye button in the sign-in password field to show or hide what you typed.',
+      'Improved: The lobby stats are compact cards, the plaza count says who is in the plaza, and fireflies drift over the plaza.',
+      'Improved: The floating clock is hidden in the Pokémon game and in the lobby (the lobby banner shows the time).',
+    ]
+  },
   {
     version: '1.12.3',
     date: 'October 8, 2026',

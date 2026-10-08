@@ -5548,6 +5548,13 @@ const lobbyModule = (() => {
       ctx.fillStyle = '#3e2c18'; ctx.fillRect(bx - 22, by - 5, 44, 8);
       ctx.fillRect(bx - 18, by + 3, 5, 7); ctx.fillRect(bx + 13, by + 3, 5, 7);
     }
+    // Fireflies drifting over the plaza
+    for (let i = 0; i < 14; i++) {
+      const px = 30 + ((i * 97 + t * (6 + i % 5) + Math.sin(t * 0.4 + i) * 40) % (W - 60) + (W - 60)) % (W - 60);
+      const py = 40 + (i * 53) % (H - 80) + Math.cos(t * 0.6 + i * 1.7) * 18;
+      ctx.fillStyle = `rgba(180,255,170,${0.25 + 0.35 * (0.5 + 0.5 * Math.sin(t * 2 + i))})`;
+      ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   function gameLoop(ts) {
@@ -5641,7 +5648,7 @@ const lobbyModule = (() => {
 
   function updateCount() {
     const el = document.getElementById('lobby-online-count');
-    if (el) el.textContent = (players.size + (myPlayer ? 1 : 0)) + ' online';
+    if (el) el.textContent = (players.size + (myPlayer ? 1 : 0)) + ' in the plaza';
     renderLobbyPresence();
   }
 

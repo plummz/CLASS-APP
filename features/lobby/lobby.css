@@ -1,1 +1,311 @@
-/* Lobby-specific styles */
+/* School Lobby (v2): welcome banner, class members dropdown, quick links, livelier plaza and chat */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.lobby-v2 { gap: 14px; }
+
+/* ── Welcome banner ── */
+.lobby-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 20px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(0, 212, 255, 0.22), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(0, 255, 136, 0.18), transparent 55%),
+    linear-gradient(135deg, rgba(12, 22, 42, 0.92), rgba(18, 12, 38, 0.92));
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: lobby-rise 0.5s ease-out both;
+}
+.lobby-hero-orbs span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(18px);
+  opacity: 0.55;
+  pointer-events: none;
+  animation: lobby-drift 14s ease-in-out infinite alternate;
+}
+.lobby-hero-orbs span:nth-child(1) { width: 140px; height: 140px; left: -30px; top: -50px; background: rgba(0, 212, 255, 0.45); }
+.lobby-hero-orbs span:nth-child(2) { width: 110px; height: 110px; right: 18%; bottom: -60px; background: rgba(0, 255, 136, 0.35); animation-duration: 18s; }
+.lobby-hero-orbs span:nth-child(3) { width: 90px; height: 90px; right: -20px; top: -30px; background: rgba(176, 102, 255, 0.4); animation-duration: 11s; }
+.lobby-hero-main { position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; }
+.lobby-hero-text { min-width: 0; }
+.lobby-hero-kicker {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--neon-green, #00ff88);
+}
+.lobby-hero-title {
+  margin: 0;
+  font-family: 'Exo 2', sans-serif;
+  font-size: clamp(1.35rem, 4.6vw, 1.9rem);
+  line-height: 1.15;
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.lobby-hero-sub { margin: 6px 0 0; color: rgba(225, 235, 250, 0.82); font-size: 14px; line-height: 1.4; }
+.lobby-hero-face {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 136, 0.7);
+  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.12), 0 0 22px rgba(0, 255, 136, 0.35);
+  background: hsl(var(--h, 200) 55% 38%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 22px;
+}
+.lobby-hero-face img { width: 100%; height: 100%; object-fit: cover; }
+.lobby-hero-side { position: relative; flex: none; text-align: right; }
+.lobby-clock { font-family: 'Exo 2', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--neon-blue, #00d4ff); text-shadow: 0 0 14px rgba(0, 212, 255, 0.45); }
+.lobby-date { font-size: 12px; color: rgba(225, 235, 250, 0.7); }
+
+/* ── Header: title with the online pill, then three compact stat chips ── */
+.lobby-v2 .lobby-header { flex-direction: column; align-items: stretch; gap: 10px; padding: 0; }
+.lobby-v2 .lobby-title { margin: 0; font-size: 1.05rem; }
+.lobby-v2 .lobby-count-stack { flex-direction: column; align-items: stretch; gap: 10px; }
+.lobby-v2 .lobby-online { align-self: flex-start; }
+.lobby-v2 .lobby-mini-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: stretch; }
+.lobby-v2 .lobby-mini-actions .lobby-open-count-btn {
+  width: auto;
+  min-width: 0;
+  min-height: 62px;
+  flex-direction: column-reverse;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  text-align: center;
+}
+.lobby-v2 .lobby-open-count-btn span { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(184, 243, 255, 0.85); white-space: nowrap; }
+.lobby-v2 .lobby-open-count-btn strong { font-size: 1.15rem; font-family: 'Exo 2', sans-serif; }
+@media (min-width: 640px) {
+  .lobby-v2 .lobby-header { flex-direction: row; align-items: center; justify-content: space-between; }
+  .lobby-v2 .lobby-count-stack { flex-direction: row; align-items: center; }
+  .lobby-v2 .lobby-mini-actions { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+}
+
+/* ── Class members dropdown ── */
+.lobby-members { position: relative; z-index: 40; isolation: isolate; }
+.lobby-members-toggle {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.16));
+  background: var(--glass, rgba(255, 255, 255, 0.07));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.2s, background 0.2s;
+}
+.lobby-members-toggle:hover,
+.lobby-members.open .lobby-members-toggle { border-color: rgba(0, 212, 255, 0.5); background: rgba(0, 212, 255, 0.08); }
+.lobby-members-toggle:focus-visible { outline: 2px solid var(--neon-blue, #00d4ff); outline-offset: 2px; }
+.lobby-members-faces { display: flex; flex: none; }
+.lobby-members-faces:empty { display: none; }
+.lm-face {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  margin-left: -8px;
+  border-radius: 50%;
+  border: 2px solid #0d1626;
+  background: hsl(var(--h, 200) 55% 40%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.lm-face:first-child { margin-left: 0; }
+.lm-face img { width: 100%; height: 100%; object-fit: cover; }
+.lm-more { background: rgba(255, 255, 255, 0.16); }
+.lobby-members-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.lobby-members-text strong { font-size: 15px; color: #fff; }
+.lobby-members-text small { font-size: 12px; color: rgba(225, 235, 250, 0.72); }
+.lobby-members-caret { flex: none; font-size: 14px; color: rgba(225, 235, 250, 0.8); transition: transform 0.2s; }
+.lobby-members.open .lobby-members-caret { transform: rotate(180deg); }
+.lobby-members-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  background: #0a111e;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+  opacity: 1;
+  animation: lobby-drop 0.16s ease-out both;
+}
+.lobby-members-panel[hidden] { display: none; }
+.lobby-members-search {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 16px; /* 16px stops iOS from zooming in */
+  outline: none;
+}
+.lobby-members-search:focus { border-color: var(--neon-blue, #00d4ff); }
+.lobby-members-legend { display: flex; gap: 14px; margin: 8px 4px 6px; font-size: 11px; color: rgba(225, 235, 250, 0.65); }
+.lobby-members-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lobby-members-legend .lm-dot { position: static; }
+.lobby-members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(56vh, 420px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.lobby-member {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.lobby-member:hover:not(:disabled),
+.lobby-member:focus-visible { background: rgba(255, 255, 255, 0.07); outline: none; }
+.lobby-member:disabled { cursor: default; opacity: 1; }
+.lm-avatar-wrap { position: relative; flex: none; }
+.lm-avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: hsl(var(--h, 200) 55% 40%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+.lm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.lobby-member:not(.is-online) .lm-avatar { filter: grayscale(0.65); opacity: 0.75; }
+.lm-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid #0a111e;
+  background: #7d8796;
+}
+.lm-dot.on { background: #22e06b; box-shadow: 0 0 0 0 rgba(34, 224, 107, 0.6); animation: lobby-pulse 2s ease-out infinite; }
+.lm-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lm-name { font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lm-name em { font-style: normal; font-weight: 500; color: rgba(225, 235, 250, 0.6); }
+.lm-admin {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd45a, #ff9f43);
+  color: #1a1207;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+.lm-sub { font-size: 12px; color: rgba(225, 235, 250, 0.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lobby-member.is-online .lm-sub { color: #6ff0a5; }
+.lm-chat { flex: none; font-size: 16px; opacity: 0.55; }
+.lobby-member:hover .lm-chat { opacity: 1; }
+.lobby-members-empty { padding: 16px 8px; text-align: center; font-size: 13px; color: rgba(225, 235, 250, 0.65); }
+
+/* ── Quick links ── */
+.lobby-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.lobby-quick-tile {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.16));
+  background: var(--glass, rgba(255, 255, 255, 0.07));
+  color: rgba(235, 242, 252, 0.92);
+  font: 700 13px system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s, border-color 0.2s, background 0.2s;
+}
+.lobby-quick-tile span { font-size: 22px; line-height: 1; }
+.lobby-quick-tile:hover,
+.lobby-quick-tile:focus-visible { transform: translateY(-2px); border-color: rgba(0, 255, 136, 0.5); background: rgba(0, 255, 136, 0.08); outline: none; }
+.lobby-quick-tile:active { transform: scale(0.97); }
+
+/* ── Plaza and chat ── */
+.lobby-canvas-hint { margin: 0; font-size: 12px; color: rgba(225, 235, 250, 0.6); text-align: center; }
+.lobby-chat-head {
+  padding: 2px 4px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--neon-blue, #00d4ff);
+}
+
+@keyframes lobby-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lobby-drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes lobby-drift { to { transform: translate(24px, 14px) scale(1.15); } }
+@keyframes lobby-pulse { 70% { box-shadow: 0 0 0 7px rgba(34, 224, 107, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 224, 107, 0); } }
+
+@media (max-width: 560px) {
+  .lobby-hero { flex-direction: column; align-items: flex-start; padding: 16px; }
+  .lobby-hero-side { display: flex; align-items: baseline; gap: 10px; text-align: left; }
+  .lobby-clock { font-size: 1.25rem; }
+  .lobby-hero-face { width: 52px; height: 52px; font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-hero, .lobby-hero-orbs span, .lobby-members-panel, .lm-dot.on { animation: none !important; }
+}
+
+body.light-mode .lobby-hero { background: linear-gradient(135deg, #e8f4ff, #eefcf4); border-color: rgba(0, 120, 200, 0.25); }
+body.light-mode .lobby-hero-title { color: #0b1b3d; }
+body.light-mode .lobby-hero-sub, body.light-mode .lobby-date { color: #33476b; }
+body.light-mode .lobby-members-text strong, body.light-mode .lm-name { color: #0b1b3d; }
+body.light-mode .lobby-members-panel { background: #fafcff; border-color: rgba(0, 120, 200, 0.3); }
+body.light-mode .lobby-members-search { color: #0b1b3d; background: #fff; border-color: rgba(0, 60, 120, 0.2); }
+body.light-mode .lm-dot { border-color: #fff; }
+body.light-mode .lobby-quick-tile { color: #0b1b3d; }
+
+/* The banner shows the time; the floating clock would cover the member list on phones */
+body:has(#page-lobby.active) #live-clock { display: none !important; }

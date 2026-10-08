@@ -1102,3 +1102,6 @@ body.pk-lm .pk-toolbar .pk-shop-fab, body.pk-lm .pk-toolbar .pk-heal-fab, body.p
   body.pk-lm .pk-dex-detail-overlay > *,
   body.pk-lm .pk-lb-overlay > * { max-height: calc(100vw - 24px); overflow-y: auto; }
 }
+
+/* No floating clock over the game */
+body:has(#page-pokemon.active) #live-clock { display: none !important; }

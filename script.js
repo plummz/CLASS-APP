@@ -5144,7 +5144,7 @@ async function loadAdminDashboard() {
       { count: totalMsgs   },
       { count: totalFiles  },
     ] = await Promise.all([
-      sb.from('profiles').select('*', { count: 'exact', head: true }),
+      sb.from('profiles').select('username', { count: 'exact', head: true }),
       sb.from('messages').select('*', { count: 'exact', head: true }),
       sb.from('files').select('*',    { count: 'exact', head: true }),
     ]);

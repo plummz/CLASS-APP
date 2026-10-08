@@ -1,6 +1,19 @@
 ﻿(function () {
-const APP_VERSION = '1.13.1';
+const APP_VERSION = '1.13.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.2',
+    date: 'October 9, 2026',
+    title: 'Security: Password Hashes Locked, Member List Fixed',
+    summary: 'Passwords can no longer be read or changed from the browser, and the full class member list loads again.',
+    bullets: [
+      'Security: Stored password hashes could be read (and changed) with the app’s public key. They are now server-only.',
+      'Security: The browser can no longer create, delete or wipe accounts or Pokémon saves; only the server can.',
+      'Fixed: The member list (and the lobby’s Class members dropdown) loads every member from the database again. A missing database column had made it fall back to a partial list.',
+      'Fixed: Saving changes to your profile failed because of the same missing column.',
+      'Fixed: The admin dashboard member count works with the tighter database permissions.',
+    ]
+  },
   {
     version: '1.13.1',
     date: 'October 8, 2026',

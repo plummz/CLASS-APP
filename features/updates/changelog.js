@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.14.0';
+const APP_VERSION = '1.14.1';
 const APP_CHANGELOG = [
+  {
+    version: '1.14.1',
+    date: 'October 9, 2026',
+    title: 'Clear Loading, Helpful Empty Pages, Live Account Rules',
+    summary: 'Lists show their shape while loading, empty pages tell you what to do next, and Create Account shows its rules as you type.',
+    bullets: [
+      'New: Create Account shows its rules live under the password box (username of 3 to 24 letters, numbers or _, password of at least 8 characters). Each rule turns green as you meet it.',
+      'Improved: While lists load you see grey placeholders shaped like the content (members, announcements, folders, files, shared AI output, reviewers, summaries, quizzes, activity, app opens and contributions) instead of a plain Loading line.',
+      'Improved: Empty pages explain why they are empty and offer the next step: New note, New alarm, Write a message, Choose a file, Open Notepad, Open AI, Open Calendar, New folder, or Clear search when a search finds nothing.',
+    ]
+  },
   {
     version: '1.14.0',
     date: 'October 9, 2026',

@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.8.00-20261009-usability-rules';
+const CACHE_VERSION = 'v1.8.01-20261009-skeletons-empty-states';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -31,7 +31,7 @@ const ASSETS = [
   '/features/ai/ai.css?v=1',
   '/features/academics/academics.css?v=1',
   '/features/lobby/lobby.css?v=3',
-  '/features/logging-in/password-toggle.css?v=2',
+  '/features/logging-in/password-toggle.css?v=3',
   '/features/chat/chat.css?v=2',
   '/features/calendar/calendar.css?v=1',
   '/features/music/music.css?v=2',
@@ -48,20 +48,20 @@ const ASSETS = [
   '/features/tetris/tetris.css?v=1',
   '/features/dungeon/dungeon.css?v=1',
   '/features/royale3d/royale3d.css?v=5',
-  '/features/file-summarizer/file-summarizer.css?v=4',
-  '/features/file-summarizer/file-summarizer.js?v=11',
+  '/features/file-summarizer/file-summarizer.css?v=5',
+  '/features/file-summarizer/file-summarizer.js?v=12',
   '/features/security/db-token.js?v=2',
   '/features/logging-in/loading-components.js?v=4',
-  '/features/logging-in/password-toggle.js?v=1',
+  '/features/logging-in/password-toggle.js?v=2',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=42',
-  '/script.js?v=132',
-  '/features/reviewers/reviewers.js?v=15',
-  '/features/reviewers/reviewers.css?v=7',
+  '/features/updates/changelog.js?v=43',
+  '/script.js?v=133',
+  '/features/reviewers/reviewers.js?v=16',
+  '/features/reviewers/reviewers.css?v=8',
   '/features/personal-tools/personal-tools.css?v=2',
   '/features/personal-tools/alarm-clock.css?v=3',
-  '/features/personal-tools/notepad.js?v=8',
-  '/features/personal-tools/notepad.css?v=7',
+  '/features/personal-tools/notepad.js?v=9',
+  '/features/personal-tools/notepad.css?v=8',
   '/features/personal-tools/calculator.css?v=3',
   '/features/personal-tools/personalization.css?v=3',
   '/features/ai/ai.js?v=1',
@@ -70,7 +70,7 @@ const ASSETS = [
   '/features/chat/chat.js?v=1',
   '/features/calendar/calendar.js?v=1',
   '/features/personal-tools/personal-tools.js?v=1',
-  '/features/personal-tools/alarm-clock.js?v=2',
+  '/features/personal-tools/alarm-clock.js?v=3',
   '/features/personal-tools/calculator.js?v=5',
   '/features/personal-tools/personalization.js?v=3',
   '/features/music/music.js?v=1',
@@ -100,8 +100,9 @@ const ASSETS = [
   '/features/presence/presence.css?v=1',
   '/features/presence/presence.js?v=2',
   '/features/rooms/rooms.css?v=1',
-  '/features/ui-rules/ui-rules.css?v=1',
+  '/features/ui-rules/ui-rules.css?v=2',
   '/features/ui-rules/ui-rules.js?v=1',
+  '/features/ui-rules/ui-kit.js?v=1',
   '/features/rooms/rooms.js?v=2',
   '/features/royale3d/royale3d-thumb.jpg',
   '/assets/images/code-web-card.svg',

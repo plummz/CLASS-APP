@@ -519,7 +519,9 @@ window.alarmModule = {
     if (!listEl) return;
 
     if (this.alarms.length === 0) {
-      listEl.innerHTML = '<p style="color:#888;text-align:center;padding:20px;">No alarms set yet.</p>';
+      listEl.innerHTML = window.uiEmpty
+        ? uiEmpty({ icon: '⏰', title: 'No alarms set', text: 'Add an alarm and the app will remind you. Allow notifications to hear it when the app is closed.', action: '+ New alarm', onclick: 'alarmModule.showForm()' })
+        : '<p style="color:#888;text-align:center;padding:20px;">No alarms set yet.</p>';
       return;
     }
 

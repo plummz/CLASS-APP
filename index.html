@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
   <link rel="stylesheet" href="features/academics/academics.css?v=1">
   <link rel="stylesheet" href="features/lobby/lobby.css?v=3">
-  <link rel="stylesheet" href="features/logging-in/password-toggle.css?v=2">
+  <link rel="stylesheet" href="features/logging-in/password-toggle.css?v=3">
   <link rel="stylesheet" href="features/chat/chat.css?v=2">
   <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
   <link rel="stylesheet" href="features/music/music.css?v=2">
@@ -36,13 +36,13 @@
   <link rel="stylesheet" href="features/rooms/rooms.css?v=1">
   <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=2">
   <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=3">
-  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
+  <link rel="stylesheet" href="features/personal-tools/notepad.css?v=8">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=3">
-  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
-  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
-  <link rel="stylesheet" href="features/ui-rules/ui-rules.css?v=1">
+  <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=5">
+  <link rel="stylesheet" href="features/reviewers/reviewers.css?v=8">
+  <link rel="stylesheet" href="features/ui-rules/ui-rules.css?v=2">
   <link rel="manifest" href="manifest.json?v=2">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -317,6 +317,14 @@
           <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
           <svg class="eye-closed" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A9.6 9.6 0 0 1 12 5c6.5 0 10.5 7 10.5 7a17 17 0 0 1-3.3 4.1M6.6 6.7C3.4 8.6 1.5 12 1.5 12S5.5 19 12 19c1.6 0 3-.4 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+      </div>
+      <div class="account-rules" id="account-rules" hidden aria-live="polite">
+        <p class="account-rules-title">New account needs:</p>
+        <ul>
+          <li data-rule="ulen">Username of 3 to 24 characters</li>
+          <li data-rule="uchars">Username with only letters, numbers and&nbsp;_</li>
+          <li data-rule="plen">Password of at least 8 characters</li>
+        </ul>
       </div>
       <div class="modal-btn-group">
         <button id="btn-sign-in" type="button" class="btn-primary flex-1">Sign In</button>
@@ -1855,10 +1863,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="features/security/db-token.js?v=2"></script>
   <script src="features/logging-in/loading-components.js?v=4"></script>
-  <script src="features/logging-in/password-toggle.js?v=1" defer></script>
+  <script src="features/logging-in/password-toggle.js?v=2" defer></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=42"></script>
-  <script src="script.js?v=132"></script>
+  <script src="features/updates/changelog.js?v=43"></script>
+  <script src="features/ui-rules/ui-kit.js?v=1"></script>
+  <script src="script.js?v=133"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
   <script src="features/lobby/lobby.js?v=2" defer></script>
@@ -1888,13 +1897,13 @@
   <script src="features/presence/presence.js?v=2"></script>
   <script src="features/rooms/rooms.js?v=2"></script>
   <script src="features/personal-tools/personal-tools.js?v=1" defer></script>
-  <script src="features/personal-tools/alarm-clock.js?v=2" defer></script>
-  <script src="features/personal-tools/notepad.js?v=8" defer></script>
+  <script src="features/personal-tools/alarm-clock.js?v=3" defer></script>
+  <script src="features/personal-tools/notepad.js?v=9" defer></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="features/personal-tools/calculator.js?v=5" defer></script>
   <script src="features/personal-tools/personalization.js?v=3" defer></script>
-  <script src="features/file-summarizer/file-summarizer.js?v=11" defer></script>
-  <script src="features/reviewers/reviewers.js?v=15" defer></script>
+  <script src="features/file-summarizer/file-summarizer.js?v=12" defer></script>
+  <script src="features/reviewers/reviewers.js?v=16" defer></script>
 
   <!-- Floating YouTube mini-player: shows when navigating away while YT is active -->
   <div id="yt-mini-player" class="yt-mini-player hidden">

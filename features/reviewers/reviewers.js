@@ -160,7 +160,7 @@ window.reviewersModule = {
           </div>
         </div>
         <div class="reviewers-grid" id="reviewers-grid">
-          <div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>
+          ${window.uiSkeleton ? uiSkeleton('cards', 3) : '<div class="reviewer-empty"><div class="reviewer-spinner"></div><p>Loading…</p></div>'}
         </div>
       </div>
     `;
@@ -241,8 +241,10 @@ window.reviewersModule = {
 
     if (this.filtered.length === 0) {
       grid.innerHTML = this.sharedReviewers.length === 0
-        ? '<div class="reviewer-empty"><span>📚</span><p>No shared reviewers yet.</p><p class="reviewer-empty-hint">Share one from your Notepad!</p></div>'
-        : '<div class="reviewer-empty"><span>🔍</span><p>No results found.</p></div>';
+        ? (window.uiEmpty ? uiEmpty({ icon: '📚', title: 'No shared reviewers yet', text: 'Write notes in your Notepad and share them as reviewers for the class.', action: 'Open Notepad', onclick: "goToPage('personal-tools')" })
+            : '<div class="reviewer-empty"><span>📚</span><p>No shared reviewers yet.</p><p class="reviewer-empty-hint">Share one from your Notepad!</p></div>')
+        : (window.uiEmpty ? uiEmpty({ icon: '🔍', title: 'No reviewers match', text: 'Try a different word or subject, or clear the search.', action: 'Clear search', onclick: "var s=document.getElementById('reviewers-search');if(s){s.value='';s.dispatchEvent(new Event('input'))}" })
+            : '<div class="reviewer-empty"><span>🔍</span><p>No results found.</p></div>');
       return;
     }
 

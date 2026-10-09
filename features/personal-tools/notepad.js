@@ -399,7 +399,7 @@ window.notepadModule = {
         </div>
 
         <div class="notepad-list" id="notepad-list">
-          ${this.notes.length === 0 ? '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>' : ''}
+          ${this.notes.length === 0 ? (window.uiEmpty ? uiEmpty({ icon: '🗒️', title: 'No notes yet', text: 'Write reminders, lecture notes or to-dos and find them here anytime.', action: '+ New note', onclick: 'notepadModule.showForm()' }) : '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>') : ''}
         </div>
       </div>
     `;
@@ -422,7 +422,7 @@ window.notepadModule = {
       .filter(({ note }) => !q || (note.title || '').toLowerCase().includes(q) || (note.content || '').toLowerCase().includes(q) || (note.tags || '').toLowerCase().includes(q));
 
     if (this.notes.length === 0) {
-      listEl.innerHTML = '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>';
+      listEl.innerHTML = (window.uiEmpty ? uiEmpty({ icon: '🗒️', title: 'No notes yet', text: 'Write reminders, lecture notes or to-dos and find them here anytime.', action: '+ New note', onclick: 'notepadModule.showForm()' }) : '<div class="notepad-empty"><p>No notes yet. Create your first reminder!</p></div>');
       return;
     }
     if (visible.length === 0) {

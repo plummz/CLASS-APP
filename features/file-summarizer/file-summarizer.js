@@ -805,13 +805,15 @@
 
   async function loadSummaryHistory() {
     if (!listSummary) return;
-    listSummary.innerHTML = '<div class="fs-history-empty">Loading summaries...</div>';
+    listSummary.innerHTML = window.uiSkeleton ? uiSkeleton('rows', 3) : '<div class="fs-history-empty">Loading summaries...</div>';
     try {
       const res = await (window.authFetch ? window.authFetch('/api/summary-history') : fetch('/api/summary-history'));
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       if (!data || !data.length) {
-        listSummary.innerHTML = '<div class="fs-history-empty">No summaries saved yet.</div>';
+        listSummary.innerHTML = window.uiEmpty
+          ? uiEmpty({ icon: '📄', title: 'No summaries yet', text: 'Upload a PDF, Word or PowerPoint file to get your first summary.', action: 'Choose a file', onclick: "document.getElementById('fs-file-input').click()" })
+          : '<div class="fs-history-empty">No summaries saved yet.</div>';
         return;
       }
       listSummary.innerHTML = data.map(item => `
@@ -830,7 +832,7 @@
 
   async function loadQuizHistory() {
     if (!listQuiz) return;
-    listQuiz.innerHTML = '<div class="fs-history-empty">Loading quizzes...</div>';
+    listQuiz.innerHTML = window.uiSkeleton ? uiSkeleton('rows', 3) : '<div class="fs-history-empty">Loading quizzes...</div>';
     let backendQuizzes = [];
     try {
       const res = await (window.authFetch ? window.authFetch('/api/quiz-history') : fetch('/api/quiz-history'));
@@ -860,7 +862,9 @@
     cachedQuizHistory = allQuizzes;
 
     if (!allQuizzes.length) {
-      listQuiz.innerHTML = '<div class="fs-history-empty">No quiz attempts yet.</div>';
+      listQuiz.innerHTML = window.uiEmpty
+        ? uiEmpty({ icon: '📝', title: 'No quizzes yet', text: 'Summarize a file first, then test yourself with a quiz on it.', action: 'Choose a file', onclick: "document.getElementById('fs-file-input').click()" })
+        : '<div class="fs-history-empty">No quiz attempts yet.</div>';
       return;
     }
 

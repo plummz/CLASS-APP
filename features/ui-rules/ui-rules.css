@@ -40,3 +40,45 @@
 }
 .ui-modal-x:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .custom-modal-box:has(> .ui-modal-x) { position: relative; }
+
+/* Loading skeletons (uiSkeleton in ui-kit.js): the shape of what is coming, with a soft shimmer */
+.ui-skeleton { display: grid; gap: 12px; padding: 4px 0; grid-column: 1 / -1; width: 100%; }
+.ui-skeleton-cards { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.ui-sk {
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+.ui-sk-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.ui-sk-avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; }
+.ui-sk-lines { flex: 1; display: grid; gap: 8px; }
+.ui-sk-line { height: 12px; }
+.ui-sk-line.w50 { width: 50%; } .ui-sk-line.w60 { width: 60%; } .ui-sk-line.w75 { width: 75%; }
+.ui-sk-line.w80 { width: 80%; } .ui-sk-line.w90 { width: 90%; }
+.ui-sk-card { display: grid; gap: 12px; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+.ui-sk-card .ui-sk-line:first-child { height: 16px; }
+.ui-sk-row { height: 48px; border-radius: 12px; }
+body.light-mode .ui-sk { background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.06) 75%); background-size: 200% 100%; }
+@media (prefers-reduced-motion: reduce) { .ui-sk { animation: none; } }
+
+/* Empty states (uiEmpty in ui-kit.js): why it is empty, and the next step */
+.ui-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 8px; padding: 32px 16px;
+  border-radius: 16px; border: 1px dashed rgba(255,255,255,0.14);
+  grid-column: 1 / -1; width: 100%; box-sizing: border-box;
+}
+.ui-empty-icon { font-size: 32px; line-height: 1; margin-bottom: 4px; }
+.ui-empty-title { margin: 0; font: 700 16px 'Exo 2', sans-serif; color: rgba(235,240,248,0.95); }
+.ui-empty-text { margin: 0; max-width: 34ch; font: 400 14px/1.5 'Exo 2', sans-serif; color: rgba(205,214,228,0.8); }
+.ui-empty-btn {
+  margin-top: 8px; min-height: 44px; padding: 0 20px;
+  border: 0; border-radius: 12px; cursor: pointer;
+  background: var(--neon-green, #00ff88); color: #04140b;
+  font: 700 15px 'Exo 2', sans-serif;
+}
+.ui-empty-btn:hover { filter: brightness(1.08); }
+body.light-mode .ui-empty { border-color: rgba(0,0,0,0.15); }
+body.light-mode .ui-empty-title { color: #2e2e2e; }
+body.light-mode .ui-empty-text { color: #5a6270; }

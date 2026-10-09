@@ -250,6 +250,8 @@ function showToast(message, type = 'success') {
 }
 
 function createInlineLoader(text = 'Loading...') {
+  // Placeholder shaped like the content that is coming (ui-kit.js); the plain line is a fallback
+  if (window.uiSkeleton) return window.uiSkeleton('list', 3);
   return `<div class="inline-loader"><span></span>${escapeHTML(text)}</div>`;
 }
 
@@ -521,7 +523,7 @@ window.openFolderExplorer = async function(parentName) {
     // Subject-scoped announcements — only for recognised academic subjects
     const annContainer = document.getElementById('subject-ann-container');
     if (annContainer && ACADEMIC_FOLDER_ROOTS.has(parentName)) {
-      annContainer.innerHTML = '<div style="opacity:.4;font-size:12px;padding:10px 0;">Loading announcements…</div>';
+      annContainer.innerHTML = window.uiSkeleton ? uiSkeleton('rows', 2) : '<div style="opacity:.4;font-size:12px;padding:10px 0;">Loading announcements…</div>';
       await fetchSubjectAnnouncements(parentName);
       annContainer.innerHTML = buildSubjectAnnouncementsHTML(parentName);
     } else if (annContainer) {
@@ -580,7 +582,7 @@ function fetchAndRenderFolders() {
     }
     const seq = ++folderListRequestSeq;
     const parent = currentParentContext;
-    if (grid && !grid.children.length) grid.innerHTML = '<p class="empty-state-text small">Loading folders…</p>';
+    if (grid && !grid.children.length) grid.innerHTML = window.uiSkeleton ? uiSkeleton('cards', 3) : '<p class="empty-state-text small">Loading folders…</p>';
     sb.from('folders').select('*').eq('parent', parent)
     .then(({ data: folders, error }) => {
         if (seq !== folderListRequestSeq) return;
@@ -594,7 +596,10 @@ function fetchAndRenderFolders() {
         const visibleFolders = sortByName((folders || []).filter(canViewFolder));
         grid.innerHTML = visibleFolders.length
             ? visibleFolders.map((f) => folderCardHTML(f)).join('')
-            : '<p class="empty-state-text">No folders available yet.</p>';
+            : (window.uiEmpty ? uiEmpty(document.getElementById('folder-create-btn')?.offsetParent
+                ? { icon: '📁', title: 'No folders yet', text: 'Make the first folder for this subject so classmates can share files.', action: '+ New folder', onclick: "document.getElementById('folder-create-btn').click()" }
+                : { icon: '📁', title: 'No folders yet', text: 'Folders for this subject will appear here once they are created.' })
+              : '<p class="empty-state-text">No folders available yet.</p>');
     });
 }
 
@@ -871,7 +876,7 @@ function fetchAndRenderFiles({ keepSearch = false } = {}) {
         currentFolderFiles = [];
         const count = document.getElementById('file-count');
         if (count) count.textContent = '';
-        if (list) list.innerHTML = '<p class="empty-state-text small">Loading files…</p>';
+        if (list) list.innerHTML = window.uiSkeleton ? uiSkeleton('rows', 3) : '<p class="empty-state-text small">Loading files…</p>';
     }
     sb.from('files').select('*').eq('folder_id', folderId)
     .then(({ data: files, error }) => {
@@ -902,7 +907,7 @@ function fetchAndRenderSubFolders() {
     const subfolderSection = document.getElementById('subfolder-section');
     if (subfolderSection) subfolderSection.classList.toggle('read-only-folder', !canEditFolder(currentFolderContext));
     const seq = ++subfolderListRequestSeq;
-    if (grid) grid.innerHTML = '<p class="empty-state-text small">Loading…</p>';
+    if (grid) grid.innerHTML = window.uiSkeleton ? uiSkeleton('cards', 3) : '<p class="empty-state-text small">Loading…</p>';
     sb.from('folders').select('*').eq('parent', parentId)
     .then(({ data: subs, error }) => {
         if (seq !== subfolderListRequestSeq) return;
@@ -2810,7 +2815,7 @@ function renderUserDirectory() {
   if (!grid) return;
   grid.innerHTML = '';
   if (usersLoadState.loading) {
-    grid.innerHTML = '<div class="user-empty-state">Loading users...</div>';
+    grid.innerHTML = window.uiSkeleton ? uiSkeleton('list', 5) : '<div class="user-empty-state">Loading users...</div>';
     return;
   }
   if (usersLoadState.error && !users.length) {
@@ -2842,7 +2847,11 @@ function renderUserDirectory() {
     });
 
   if (!visibleUsers.length) {
-    grid.innerHTML = `<div class="user-empty-state">${users.length ? 'No users match this search.' : 'No users available right now.'}</div>`;
+    grid.innerHTML = !window.uiEmpty
+      ? `<div class="user-empty-state">${users.length ? 'No users match this search.' : 'No users available right now.'}</div>`
+      : users.length
+        ? uiEmpty({ icon: '🔍', title: 'No one matches your search', text: 'Check the spelling, or clear the search to see everyone.', action: 'Clear search', onclick: "document.getElementById('user-search-input').value='';renderUserDirectory()" })
+        : uiEmpty({ icon: '👥', title: 'Members could not load', text: 'Check your connection, then try again.', action: 'Try again', onclick: 'fetchUsers()' });
     return;
   }
 
@@ -3273,7 +3282,12 @@ function renderMessages() {
   container.innerHTML = '';
   const history = getCurrentHistory();
   const visibleMessages = history.filter((message) => !message.deletedFor || !message.deletedFor.includes(currentUser?.username));
-  if (!visibleMessages.length) { container.innerHTML = '<p class="empty-chat">No messages yet.</p>'; return; }
+  if (!visibleMessages.length) {
+    container.innerHTML = window.uiEmpty
+      ? uiEmpty({ icon: '💬', title: 'No messages yet', text: 'Start the conversation. Messages here are saved for everyone in this chat.', action: 'Write a message', onclick: "document.getElementById('message-input').focus()" })
+      : '<p class="empty-chat">No messages yet.</p>';
+    return;
+  }
   
   const pinned = visibleMessages.filter((message) => message.pinned);
   const normal = visibleMessages.filter((message) => !message.pinned);
@@ -5241,14 +5255,19 @@ window.switchAdminTab = function(tab, btn) {
 async function loadActivityLog() {
   const container = document.getElementById('admin-activity-log');
   if (!container || !isAdmin || !sb) return;
-  container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">Loading…</div>';
+  container.innerHTML = window.uiSkeleton ? uiSkeleton('rows', 4) : '<div style="opacity:.5;font-size:13px;padding:10px;">Loading…</div>';
   // Try RPC first; fall back to direct table query if RPC not deployed yet
   let data, error;
   ({ data, error } = await sb.rpc('class_app_admin_activity_log', { p_limit: 100 }));
   if (error) {
     ({ data, error } = await sb.from('activity_log').select('*').order('created_at', { ascending: false }).limit(100));
   }
-  if (error || !data) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">No activity recorded yet.</div>'; return; }
+  if (error || !data) {
+    container.innerHTML = window.uiEmpty
+      ? uiEmpty({ icon: '🕒', title: 'No activity yet', text: 'Sign-ins, uploads and messages will be listed here as they happen.' })
+      : '<div style="opacity:.5;font-size:13px;padding:10px;">No activity recorded yet.</div>';
+    return;
+  }
   if (!data.length) { container.innerHTML = '<div style="opacity:.5;font-size:13px;padding:10px;">No activity yet.</div>'; return; }
   container.innerHTML = data.map(row => {
     const t = new Date(row.created_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -6225,7 +6244,9 @@ function renderSharedAIOutputs() {
   const feed = document.getElementById('output-ai-feed');
   if (!feed) return;
   if (!sharedAIOutputs.length) {
-    feed.innerHTML = '<div class="board-empty">No shared AI output yet.</div>';
+    feed.innerHTML = window.uiEmpty
+      ? uiEmpty({ icon: '🤖', title: 'Nothing shared yet', text: 'Answers shared from the AI page appear here for the whole class.', action: 'Open AI', onclick: "goToPage('ai')" })
+      : '<div class="board-empty">No shared AI output yet.</div>';
     return;
   }
   feed.innerHTML = sharedAIOutputs.map((item) => {
@@ -6312,7 +6333,9 @@ function renderSharedAnnouncements() {
     `;
   }
   if (!sharedAnnouncements.length) {
-    feed.innerHTML = '<div class="board-empty">No shared announcements yet.</div>';
+    feed.innerHTML = window.uiEmpty
+      ? uiEmpty({ icon: '📢', title: 'No announcements yet', text: 'Class-wide posts, reminders and weekly notices will show up here.', action: 'Open Calendar', onclick: "goToPage('calendar')" })
+      : '<div class="board-empty">No shared announcements yet.</div>';
     return;
   }
   if (!filtered.length) {

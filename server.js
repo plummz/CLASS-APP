@@ -1407,9 +1407,22 @@ app.post('/api/register', loginLimiter, wrap(async (req, res) => {
 
 // Signed database pass for the browser's Supabase requests (role anon + the verified username)
 const DB_TOKEN_TTL_S = 60 * 60;
-function signDbPass(username, ttl = DB_TOKEN_TTL_S) {
+// Supabase may keep a shared secret as base64 (and sign with the decoded bytes), so the self-check
+// tries the secret as typed and base64-decoded, and keeps whichever form the database accepts.
+const DB_SECRET_FORMS = (() => {
+  const forms = [{ name: 'text', key: SUPABASE_JWT_SECRET }];
+  const raw = SUPABASE_JWT_SECRET.trim();
+  if (raw && /^[A-Za-z0-9+/_-]+={0,2}$/.test(raw)) {
+    const bytes = Buffer.from(raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+    if (bytes.length >= 16) forms.push({ name: 'base64', key: bytes });
+  }
+  if (raw !== SUPABASE_JWT_SECRET) forms.push({ name: 'trimmed', key: raw });
+  return forms;
+})();
+let _dbSecretForm = DB_SECRET_FORMS[0];
+function signDbPass(username, ttl = DB_TOKEN_TTL_S, form = _dbSecretForm) {
   const now = Math.floor(Date.now() / 1000);
-  return jwt.sign({ role: 'anon', class_username: username, iat: now, exp: now + ttl }, SUPABASE_JWT_SECRET,
+  return jwt.sign({ role: 'anon', class_username: username, iat: now, exp: now + ttl }, form.key,
     { algorithm: 'HS256', ...(SUPABASE_JWT_KID ? { keyid: SUPABASE_JWT_KID } : {}) });
 }
 // Passes are only handed out once the database has accepted one: the server signs a test pass and
@@ -1420,21 +1433,26 @@ async function dbPassAccepted() {
   if (!SUPABASE_JWT_SECRET || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
   if (Date.now() - _dbPassCheck.at < 10 * 60 * 1000) return _dbPassCheck.ok;
   _dbPassCheck.at = Date.now();
-  try {
-    const url = new URL('/rest/v1/subjects', SUPABASE_URL);
-    url.searchParams.set('select', 'id');
-    url.searchParams.set('limit', '1');
-    const response = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${signDbPass('class-app-pass-check', 60)}` } });
-    _dbPassCheck = { at: Date.now(), ok: response.ok, status: response.status };
-  } catch (error) {
-    _dbPassCheck = { at: Date.now(), ok: false, status: 0 };
+  _dbPassCheck = { at: Date.now(), ok: false, status: 0, form: '' };
+  for (const form of DB_SECRET_FORMS) {
+    try {
+      const url = new URL('/rest/v1/subjects', SUPABASE_URL);
+      url.searchParams.set('select', 'id');
+      url.searchParams.set('limit', '1');
+      const response = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${signDbPass('class-app-pass-check', 60, form)}` } });
+      _dbPassCheck = { at: Date.now(), ok: response.ok, status: response.status, form: form.name };
+      if (response.ok) { _dbSecretForm = form; break; }
+    } catch (error) {
+      _dbPassCheck = { at: Date.now(), ok: false, status: 0, form: form.name };
+    }
   }
   if (!_dbPassCheck.ok) console.warn('[db-pass] Database did not accept the signed pass (HTTP %s); passes are off.', _dbPassCheck.status);
   return _dbPassCheck.ok;
 }
 app.get('/api/db-token/status', wrap(async (req, res) => {
   const accepted = await dbPassAccepted();
-  res.json({ enabled: accepted, configured: Boolean(SUPABASE_JWT_SECRET), key_id_set: Boolean(SUPABASE_JWT_KID), check_status: _dbPassCheck.status });
+  res.json({ enabled: accepted, configured: Boolean(SUPABASE_JWT_SECRET), key_id_set: Boolean(SUPABASE_JWT_KID),
+    secret_form: accepted ? _dbPassCheck.form : '', forms_tried: DB_SECRET_FORMS.map((f) => f.name), check_status: _dbPassCheck.status });
 }));
 app.get('/api/db-token', requireAuth, wrap(async (req, res) => {
   if (!(await dbPassAccepted())) return res.status(503).json({ error: 'Database pass not available' });

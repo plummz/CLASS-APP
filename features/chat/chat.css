@@ -1,1 +1,4 @@
 /* Chat-specific styles will move here as the shared stylesheet is reduced. */
+
+/* On the Chat page the floating chat bubble is not needed, and it covered the Send button */
+body:has(#page-chat.active) .chat-bauble { display: none !important; }

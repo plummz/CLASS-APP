@@ -1,6 +1,18 @@
 ﻿(function () {
-const APP_VERSION = '1.13.5';
+const APP_VERSION = '1.13.6';
 const APP_CHANGELOG = [
+  {
+    version: '1.13.6',
+    date: 'October 9, 2026',
+    title: 'Chat Send Fixed, Signed Database Pass Switched On',
+    summary: 'The Send button in Chat works on laptops again, and the database now checks who you are with a signed pass.',
+    bullets: [
+      'Fixed: On laptops the floating chat bubble sat on top of the Send button in Chat, so clicking Send did nothing. The bubble is hidden on the Chat page.',
+      'Security: The signed database pass is on. The database reads your username from a pass the server signs, and you can only change your own profile and your own Pokémon save.',
+      'Security: The admin activity log needs an admin, and the alarm functions can only be used by the server.',
+      'Fixed: The App Opens counter was never recorded because of a database error. It counts again.',
+    ]
+  },
   {
     version: '1.13.5',
     date: 'October 9, 2026',

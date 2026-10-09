@@ -19,7 +19,7 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.05-20261009-pokemon-controls';
+const CACHE_VERSION = 'v1.7.06-20261009-chat-send-db-pass';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
@@ -32,7 +32,7 @@ const ASSETS = [
   '/features/academics/academics.css?v=1',
   '/features/lobby/lobby.css?v=3',
   '/features/logging-in/password-toggle.css?v=1',
-  '/features/chat/chat.css?v=1',
+  '/features/chat/chat.css?v=2',
   '/features/calendar/calendar.css?v=1',
   '/features/music/music.css?v=2',
   '/features/social/social.css?v=2',
@@ -54,7 +54,7 @@ const ASSETS = [
   '/features/logging-in/loading-components.js?v=4',
   '/features/logging-in/password-toggle.js?v=1',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=40',
+  '/features/updates/changelog.js?v=41',
   '/script.js?v=132',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',

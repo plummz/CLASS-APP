@@ -39,6 +39,7 @@ body {
   background: #000;
   overflow-x: hidden;
   min-height: 100vh;
+  min-height: 100dvh;
 }
  
 /* ── STARFIELD CANVAS ── */
@@ -658,6 +659,7 @@ body {
   left: -320px;
   width: 300px;
   height: 100vh;
+  height: 100dvh;
   height: 100dvh;
   z-index: 1999;
   background: rgba(4, 4, 20, 0.97);
@@ -2207,7 +2209,7 @@ body.page-ai .chat-bauble {
   position: fixed;
   top: 92px; right: 20px;
   width: min(420px, calc(100% - 40px));
-  max-height: calc(100vh - 118px); overflow-y: auto;
+  max-height: calc(100vh - 118px); max-height: calc(100dvh - 118px); overflow-y: auto;
   background: var(--menu-bg);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
@@ -2373,7 +2375,7 @@ body.light-mode .music-search-item-meta { color: #2a4a8a; }
   .chat-input { flex-wrap: wrap; gap: 10px; }
   .chat-input input, .chat-input button, .chat-input input[type="file"] { width: 100%; margin: 0; }
   .page { padding: 100px 20px 90px; }
-  .profile-panel { top: 86px; left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); max-height: calc(100vh - 108px); }
+  .profile-panel { top: 86px; left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 420px); max-height: calc(100vh - 108px); max-height: calc(100dvh - 108px); }
 }
 
 @media (max-width: 600px) {
@@ -3048,6 +3050,7 @@ body.light-mode .lobby-online { background: rgba(0,150,80,0.1); }
    ============================================================ */
 .games-hub {
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 32px 20px 60px;
   box-sizing: border-box;
 }
@@ -3711,6 +3714,7 @@ video.ep-photo-thumb { cursor: default; aspect-ratio: 16/9; }
 .ai-chat-wrap {
   display: flex; flex-direction: column;
   height: calc(100vh - 44px); /* minus breadcrumb */
+  height: calc(100dvh - 44px);
 }
 .ai-chat-head {
   display: flex; align-items: center; gap: 12px;

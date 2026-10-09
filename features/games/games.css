@@ -1,1 +1,148 @@
-/* Games hub styles will move here as the shared stylesheet is reduced. */
+/* Games homepage (Arcade) — practical UI rules: 8-point spacing, charcoal text levels instead of
+ * pure white, no thin or all-caps labels, one clear action per card, 44px+ touch targets, 16px
+ * search input (no iOS zoom), left-aligned text, visible focus. Game pages are not touched. */
+.games-hub-v2 {
+  --gh-head: #e6e9ef;      /* headings: soft white, not pure #fff */
+  --gh-text: #b4bccb;      /* body text */
+  --gh-muted: #8a93a6;     /* meta text */
+  --gh-line: rgba(255, 255, 255, 0.12);
+  --gh-surface: rgba(16, 22, 38, 0.82);
+  --gh-surface-2: rgba(28, 36, 58, 0.9);
+  --gh-accent: #4f8cff;
+  max-width: 1104px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  text-align: left;
+}
+
+/* Header: left-aligned, calm */
+.games-hub-v2 .games-hub-header { text-align: left; margin: 0 0 24px; }
+.games-hub-v2 .games-hub-title-row { justify-content: flex-start; gap: 12px; margin-bottom: 4px; }
+.games-hub-v2 .games-hub-icon-large { font-size: 32px; }
+.games-hub-v2 .games-hub-title {
+  font-family: 'Exo 2', 'Rajdhani', sans-serif;
+  font-size: clamp(28px, 6vw, 40px);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+.games-hub-v2 .games-hub-sub {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gh-muted);
+}
+
+/* Toolbar: search + category filters */
+.games-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 24px; }
+.games-search {
+  flex: 1 1 240px;
+  display: flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 0 16px;
+  border-radius: 12px; border: 1px solid var(--gh-line);
+  background: var(--gh-surface);
+  color: var(--gh-muted);
+}
+.games-search:focus-within { border-color: var(--gh-accent); box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.25); }
+.games-search input {
+  flex: 1; min-width: 0; height: 46px;
+  border: 0; outline: none; background: transparent;
+  color: var(--gh-head);
+  font: 500 16px 'Exo 2', sans-serif;   /* 16px: phones don't zoom in on focus */
+}
+.games-search input::placeholder { color: var(--gh-muted); }
+.games-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.games-filter {
+  min-height: 44px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid var(--gh-line);
+  background: transparent; color: var(--gh-text);
+  font: 600 14px 'Exo 2', sans-serif;
+  cursor: pointer; touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.games-filter:hover { border-color: rgba(255, 255, 255, 0.28); color: var(--gh-head); }
+.games-filter[aria-checked="true"] { background: var(--gh-head); border-color: var(--gh-head); color: #111722; }
+.games-filter:focus-visible, .games-recent-card:focus-visible, .games-empty-btn:focus-visible,
+.games-hub-v2 .game-card:focus-visible { outline: 3px solid var(--gh-accent); outline-offset: 2px; }
+
+/* Section titles */
+.games-section-title { margin: 0 0 16px; font: 700 18px 'Exo 2', sans-serif; color: var(--gh-head); }
+
+/* Continue playing */
+.games-recent { margin-bottom: 32px; }
+.games-recent[hidden] { display: none; }
+.games-recent-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 16px; }
+.games-recent-card {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 64px; padding: 8px 16px;
+  border-radius: 16px; border: 1px solid var(--gh-line);
+  background: var(--gh-surface-2); color: inherit; text-align: left;
+  cursor: pointer; touch-action: manipulation;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.games-recent-card:hover { border-color: rgba(255, 255, 255, 0.3); }
+.games-recent-card:active { transform: scale(0.98); }
+.games-recent-icon { font-size: 28px; line-height: 1; }
+.games-recent-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.games-recent-name { font: 700 16px 'Exo 2', sans-serif; color: var(--gh-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.games-recent-meta { font: 500 12px 'Exo 2', sans-serif; color: var(--gh-muted); }
+.games-recent-go { font-size: 18px; color: var(--gh-text); }
+
+/* Grid and cards: one consistent shape everywhere */
+.games-hub-v2 .games-grid { grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 24px; max-width: none; }
+.games-hub-v2 .game-card { border-radius: 16px; border-color: var(--gh-line); background: var(--gh-surface); display: flex; flex-direction: column; }
+.games-hub-v2 .game-card[hidden] { display: none; }
+.games-hub-v2 .game-card-shine { border-radius: 16px; }
+.games-hub-v2 .game-thumb, .games-hub-v2 .royale-mini-canvas { height: 176px; }
+.games-hub-v2 .game-thumb-badge {
+  top: 16px; left: 16px; padding: 4px 8px; border-radius: 8px;
+  font: 700 12px 'Exo 2', sans-serif; letter-spacing: 0.3px; text-transform: none;
+}
+.games-hub-v2 .game-info { flex: 1; display: flex; flex-direction: column; padding: 16px 16px 24px; }
+.games-hub-v2 .game-tags { gap: 8px; margin-bottom: 8px; }
+.games-hub-v2 .game-tag {
+  padding: 4px 8px; border-radius: 8px;
+  font: 600 12px 'Exo 2', sans-serif; letter-spacing: 0; text-transform: none;
+  color: var(--gh-text); background: rgba(255, 255, 255, 0.06); border-color: var(--gh-line);
+}
+.games-hub-v2 .game-name { margin: 0 0 8px; font: 700 18px 'Exo 2', sans-serif; letter-spacing: 0; color: var(--gh-head); }
+.games-hub-v2 .game-desc { margin: 0 0 16px; font: 400 14px/1.55 'Exo 2', sans-serif; color: var(--gh-text); }
+/* One clear action per card, pinned to the bottom so every card lines up */
+.games-hub-v2 .game-play-btn {
+  margin-top: auto; align-self: flex-start;
+  min-height: 48px; padding: 0 24px; gap: 8px;
+  border-radius: 12px;
+  font: 700 16px 'Exo 2', sans-serif; letter-spacing: 0; text-transform: none;
+}
+/* Hover lift only where there is a mouse; a light press on touch screens */
+@media (hover: none) { .games-hub-v2 .game-card:hover { transform: none; box-shadow: none; } }
+.games-hub-v2 .game-card:active { transform: scale(0.99); }
+
+/* Empty state: what happened, and one way forward */
+.games-empty {
+  margin-bottom: 24px; padding: 32px 24px;
+  border-radius: 16px; border: 1px dashed var(--gh-line); background: var(--gh-surface);
+}
+.games-empty[hidden] { display: none; }
+.games-empty-title { margin: 0 0 8px; font: 700 18px 'Exo 2', sans-serif; color: var(--gh-head); }
+.games-empty-text { margin: 0 0 16px; font: 400 14px 'Exo 2', sans-serif; color: var(--gh-text); }
+.games-empty-btn {
+  min-height: 48px; padding: 0 24px; border-radius: 12px; border: 0;
+  background: var(--gh-accent); color: #fff; font: 700 16px 'Exo 2', sans-serif; cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .games-hub-v2 { padding: 16px 16px 64px; }
+  .games-toolbar { gap: 12px; }
+  .games-filters { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
+  .games-filters::-webkit-scrollbar { display: none; }
+  .games-filter { flex: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .games-hub-v2 .game-card, .games-recent-card { transition: none; }
+}
+
+body.light-mode .games-hub-v2 { --gh-head: #2e2e2e; --gh-text: #4a5262; --gh-muted: #6e6e6e; --gh-line: rgba(0, 0, 0, 0.12); --gh-surface: rgba(255, 255, 255, 0.85); --gh-surface-2: #fff; }
+body.light-mode .games-filter[aria-checked="true"] { background: #2e2e2e; border-color: #2e2e2e; color: #fff; }

@@ -19,25 +19,25 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.7.06-20261009-chat-send-db-pass';
+const CACHE_VERSION = 'v1.8.00-20261009-usability-rules';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html?v=142',
-  '/style.css?v=46',
+  '/style.css?v=47',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
   '/features/ai/ai.css?v=1',
   '/features/academics/academics.css?v=1',
   '/features/lobby/lobby.css?v=3',
-  '/features/logging-in/password-toggle.css?v=1',
+  '/features/logging-in/password-toggle.css?v=2',
   '/features/chat/chat.css?v=2',
   '/features/calendar/calendar.css?v=1',
   '/features/music/music.css?v=2',
   '/features/social/social.css?v=2',
   '/features/users/users.css?v=1',
-  '/features/games/games.css?v=1',
+  '/features/games/games.css?v=2',
   '/features/updates/updates.css?v=1',
   '/features/folders/folders.css?v=2',
   '/features/gallery/gallery.css?v=1',
@@ -54,12 +54,12 @@ const ASSETS = [
   '/features/logging-in/loading-components.js?v=4',
   '/features/logging-in/password-toggle.js?v=1',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=41',
+  '/features/updates/changelog.js?v=42',
   '/script.js?v=132',
   '/features/reviewers/reviewers.js?v=15',
   '/features/reviewers/reviewers.css?v=7',
-  '/features/personal-tools/personal-tools.css?v=1',
-  '/features/personal-tools/alarm-clock.css?v=2',
+  '/features/personal-tools/personal-tools.css?v=2',
+  '/features/personal-tools/alarm-clock.css?v=3',
   '/features/personal-tools/notepad.js?v=8',
   '/features/personal-tools/notepad.css?v=7',
   '/features/personal-tools/calculator.css?v=3',
@@ -76,7 +76,7 @@ const ASSETS = [
   '/features/music/music.js?v=1',
   '/features/social/social.js?v=2',
   '/features/users/users.js?v=1',
-  '/features/games/games.js?v=1',
+  '/features/games/games.js?v=2',
   '/features/updates/updates.js?v=2',
   '/features/folders/folders.js?v=1',
   '/features/gallery/gallery.js?v=1',
@@ -100,6 +100,8 @@ const ASSETS = [
   '/features/presence/presence.css?v=1',
   '/features/presence/presence.js?v=2',
   '/features/rooms/rooms.css?v=1',
+  '/features/ui-rules/ui-rules.css?v=1',
+  '/features/ui-rules/ui-rules.js?v=1',
   '/features/rooms/rooms.js?v=2',
   '/features/royale3d/royale3d-thumb.jpg',
   '/assets/images/code-web-card.svg',

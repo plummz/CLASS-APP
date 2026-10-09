@@ -1,6 +1,20 @@
 ﻿(function () {
-const APP_VERSION = '1.13.6';
+const APP_VERSION = '1.14.0';
 const APP_CHANGELOG = [
+  {
+    version: '1.14.0',
+    date: 'October 9, 2026',
+    title: 'Easier to Use Everywhere, and a New Arcade Home',
+    summary: 'Practical usability rules applied across the app: bigger tap targets, no surprise zooming on phones, popups that close the way you expect, and a cleaner Arcade.',
+    bullets: [
+      'New: Arcade home with a Continue playing row (your last 3 games), filters for 3D, Action, Puzzle and Adventure, a search box, and a clear message when nothing matches.',
+      'Improved: Popups can be closed three ways: the X, their Cancel/No/OK button, or tapping outside (and Esc on a keyboard). Notice, Input and Confirm popups got an X. The sign-in screen is not affected.',
+      'Improved: On phones, text boxes and dropdowns no longer make the screen zoom in when you tap them (they are at least 16px).',
+      'Improved: Small tap targets were enlarged: the sign-in fields, Members and Reviewers sort menus, Group/To-Do chat rows, and the Events and Random pictures breadcrumbs.',
+      'Improved: Every page has room at the bottom, so the last items can scroll clear of the clock, the online pill and the chat bubble.',
+      'Improved: The sign-in form shows Username and Password labels above the boxes, game and social buttons use normal capitalization, thin text was made regular weight, and full-height screens fit around the phone address bar.',
+    ]
+  },
   {
     version: '1.13.6',
     date: 'October 9, 2026',

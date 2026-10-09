@@ -1,0 +1,42 @@
+/* App-wide usability rules (from "NO FILTER — Practical Digital Product Design"), applied without
+ * changing the app's look: touch targets of at least 44px on touch screens, nothing hidden under the
+ * floating clock / online pill / chat bubble, no all-caps or thin labels, and full-height screens
+ * that follow the phone's moving address bar. Game screens are not affected. */
+
+/* Touch screens: comfortable hit areas for the controls the audit found too small */
+@media (pointer: coarse) {
+  .modal-input,
+  select,
+  .chat-item { min-height: 44px; }
+  .chat-item { display: flex; align-items: center; padding: 10px 14px; }
+  .ep-bc { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
+}
+@media (pointer: fine) {
+  .ep-bc { display: inline-flex; align-items: center; min-height: 28px; padding: 0 4px; }
+}
+
+/* Room at the bottom of every page so the last items can scroll clear of the floating
+   clock, "online" pill and chat bubble (game screens set their own padding) */
+.page { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 640px) {
+  .page { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Labels read in sentence case; capitals are slower to read */
+.game-play-btn { text-transform: none; letter-spacing: 0.3px; }
+
+/* Visible keyboard focus everywhere (mouse clicks don't show it) */
+:where(button, a[href], [role="button"], select, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--neon-blue, #00d4ff);
+  outline-offset: 2px;
+}
+
+/* Popups: an X close button for the shared Notice / Input / Confirm dialogs (added by ui-rules.js) */
+.ui-modal-x {
+  position: absolute; top: 6px; right: 6px;
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: transparent;
+  color: rgba(255, 255, 255, 0.7); font-size: 26px; line-height: 1; cursor: pointer;
+}
+.ui-modal-x:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.custom-modal-box:has(> .ui-modal-x) { position: relative; }

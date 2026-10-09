@@ -7,19 +7,19 @@
  
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@100;300;400;600;700&display=swap" rel="stylesheet">
   
-<link rel="stylesheet" href="style.css?v=46">
+<link rel="stylesheet" href="style.css?v=47">
   <link rel="stylesheet" href="assets/css/codelab.css?v=4">
   <link rel="stylesheet" href="coding-educational/coding-educational.css?v=8">
   <link rel="stylesheet" href="features/ai/ai.css?v=1">
   <link rel="stylesheet" href="features/academics/academics.css?v=1">
   <link rel="stylesheet" href="features/lobby/lobby.css?v=3">
-  <link rel="stylesheet" href="features/logging-in/password-toggle.css?v=1">
+  <link rel="stylesheet" href="features/logging-in/password-toggle.css?v=2">
   <link rel="stylesheet" href="features/chat/chat.css?v=2">
   <link rel="stylesheet" href="features/calendar/calendar.css?v=1">
   <link rel="stylesheet" href="features/music/music.css?v=2">
   <link rel="stylesheet" href="features/social/social.css?v=2">
   <link rel="stylesheet" href="features/users/users.css?v=1">
-  <link rel="stylesheet" href="features/games/games.css?v=1">
+  <link rel="stylesheet" href="features/games/games.css?v=2">
   <link rel="stylesheet" href="features/updates/updates.css?v=1">
   <link rel="stylesheet" href="features/folders/folders.css?v=2">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
@@ -34,14 +34,15 @@
   <link rel="stylesheet" href="features/royale3d/lobby.css?v=1">
   <link rel="stylesheet" href="features/presence/presence.css?v=1">
   <link rel="stylesheet" href="features/rooms/rooms.css?v=1">
-  <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=1">
-  <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=2">
+  <link rel="stylesheet" href="features/personal-tools/personal-tools.css?v=2">
+  <link rel="stylesheet" href="features/personal-tools/alarm-clock.css?v=3">
   <link rel="stylesheet" href="features/personal-tools/notepad.css?v=7">
   <link rel="stylesheet" href="features/personal-tools/calculator.css?v=3">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="features/personal-tools/personalization.css?v=3">
   <link rel="stylesheet" href="features/file-summarizer/file-summarizer.css?v=4">
   <link rel="stylesheet" href="features/reviewers/reviewers.css?v=7">
+  <link rel="stylesheet" href="features/ui-rules/ui-rules.css?v=1">
   <link rel="manifest" href="manifest.json?v=2">
   <meta name="theme-color" content="#0b1b3d">
   <meta name="mobile-web-app-capable" content="yes">
@@ -306,10 +307,12 @@
     <div class="custom-modal-box small-box auth-modal-box">
       <h2 class="modal-title text-white">CLASS APP PORTAL</h2>
       <div class="input-group">
-        <input type="text" id="username" class="modal-input" placeholder="Username" autocomplete="username">
+        <label class="modal-label" for="username">Username</label>
+        <input type="text" id="username" class="modal-input" placeholder="Your username" autocomplete="username">
       </div>
       <div class="input-group password-group">
-        <input type="password" id="password" class="modal-input" placeholder="Password" autocomplete="current-password">
+        <label class="modal-label" for="password">Password</label>
+        <input type="password" id="password" class="modal-input" placeholder="Your password" autocomplete="current-password">
         <button type="button" id="password-toggle" class="password-toggle" aria-label="Show password" aria-pressed="false" hidden>
           <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
           <svg class="eye-closed" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A9.6 9.6 0 0 1 12 5c6.5 0 10.5 7 10.5 7a17 17 0 0 1-3.3 4.1M6.6 6.7C3.4 8.6 1.5 12 1.5 12S5.5 19 12 19c1.6 0 3-.4 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -690,19 +693,46 @@
 
   <!-- ── GAMES HUB ─────────────────────────────────────────── -->
   <div class="page" id="page-games">
-    <div class="games-hub">
-      <div class="games-hub-header">
+    <div class="games-hub games-hub-v2">
+      <header class="games-hub-header">
         <div class="games-hub-title-row">
-          <span class="games-hub-icon-large">🎮</span>
-          <h1 class="games-hub-title">ARCADE</h1>
+          <span class="games-hub-icon-large" aria-hidden="true">🎮</span>
+          <h1 class="games-hub-title">Arcade</h1>
         </div>
-        <p class="games-hub-sub">Pick a game and start playing</p>
+        <p class="games-hub-sub" id="games-count">Pick a game and start playing</p>
+      </header>
+
+      <div class="games-toolbar">
+        <label class="games-search">
+          <span class="sr-only">Search games</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="search" id="games-search" placeholder="Search games" autocomplete="off" enterkeyhint="search">
+        </label>
+        <div class="games-filters" role="radiogroup" aria-label="Game type">
+          <button type="button" class="games-filter" role="radio" aria-checked="true" data-filter="all">All</button>
+          <button type="button" class="games-filter" role="radio" aria-checked="false" data-filter="3d">3D</button>
+          <button type="button" class="games-filter" role="radio" aria-checked="false" data-filter="action">Action</button>
+          <button type="button" class="games-filter" role="radio" aria-checked="false" data-filter="puzzle">Puzzle</button>
+          <button type="button" class="games-filter" role="radio" aria-checked="false" data-filter="adventure">Adventure</button>
+        </div>
+      </div>
+
+      <section class="games-recent" id="games-recent" hidden aria-labelledby="games-recent-title">
+        <h2 class="games-section-title" id="games-recent-title">Continue playing</h2>
+        <div class="games-recent-row" id="games-recent-row"></div>
+      </section>
+
+      <h2 class="games-section-title games-all-title" id="games-all-title">All games</h2>
+      <div class="games-empty" id="games-empty" hidden>
+        <p class="games-empty-title">No games match your search</p>
+        <p class="games-empty-text">Try a different word, or show every game again.</p>
+        <button type="button" class="games-empty-btn" id="games-empty-reset">Show all games</button>
       </div>
 
       <div class="games-grid">
 
         <!-- Dungeon of Knowledge (3D, from Study Arena) -->
-        <div class="game-card" onclick="goToPage('dungeon')">
+        <div class="game-card" data-game="dungeon" data-cat="3d adventure puzzle" role="button" tabindex="0" aria-label="Play Dungeon of Knowledge" onclick="goToPage('dungeon')">
           <div class="game-thumb dungeon-thumb">
             <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ffb347,#b5651d)">NEW · 3D</div>
           </div>
@@ -710,13 +740,13 @@
             <div class="game-tags"><span class="game-tag">3D MAZE</span><span class="game-tag">STUDY QUIZ</span></div>
             <h3 class="game-name">Dungeon of Knowledge</h3>
             <p class="game-desc">Explore a 3D dungeon, face skeletons and scholars with quiz questions, dodge traps, and reach the Victory Arch.</p>
-            <button class="game-play-btn dungeon-btn-play">▶  PLAY NOW</button>
+            <button class="game-play-btn dungeon-btn-play">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Pokémon -->
-        <div class="game-card" onclick="goToPage('pokemon')">
+        <div class="game-card" data-game="pokemon" data-cat="adventure" role="button" tabindex="0" aria-label="Play Pokémon" onclick="goToPage('pokemon')">
           <div class="game-thumb pokemon-thumb">
             <img
               src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png"
@@ -728,13 +758,13 @@
             <div class="game-tags"><span class="game-tag">TURN-BASED</span><span class="game-tag">ADVENTURE</span></div>
             <h3 class="game-name">Pokémon</h3>
             <p class="game-desc">Explore the overworld, battle wild Pokémon, level up your team, and rise to become champion.</p>
-            <button class="game-play-btn pokemon-btn">▶  PLAY NOW</button>
+            <button class="game-play-btn pokemon-btn">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Battle Royale 3D (first person, Godot) -->
-        <div class="game-card" onclick="goToPage('royale3d')">
+        <div class="game-card" data-game="royale3d" data-cat="3d action" role="button" tabindex="0" aria-label="Play Battle Royale 3D" onclick="goToPage('royale3d')">
           <div class="game-thumb royale3d-thumb">
             <div class="game-thumb-badge" style="background:linear-gradient(90deg,#ff6b3d,#c0262d)">NEW · 3D</div>
           </div>
@@ -742,13 +772,13 @@
             <div class="game-tags"><span class="game-tag">BATTLE ROYALE</span><span class="game-tag">30 PLAYERS</span><span class="game-tag">FPS</span></div>
             <h3 class="game-name">Battle Royale 3D</h3>
             <p class="game-desc">Jump from the plane, loot houses for guns, armor and meds, outlast the shrinking zone and grab the airdrop. Last one standing wins.</p>
-            <button class="game-play-btn royale3d-btn-play">▶  PLAY NOW</button>
+            <button class="game-play-btn royale3d-btn-play">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Battle Royale Classic (2D) -->
-        <div class="game-card" onclick="goToPage('royale')">
+        <div class="game-card" data-game="royale" data-cat="action" role="button" tabindex="0" aria-label="Play Battle Royale Classic" onclick="goToPage('royale')">
           <div class="game-thumb royale-thumb">
             <canvas id="games-royale-preview" class="royale-mini-canvas"></canvas>
             <div class="game-thumb-badge royale-badge">CLASSIC 2D</div>
@@ -757,13 +787,13 @@
             <div class="game-tags"><span class="game-tag">TOP-DOWN</span><span class="game-tag">LIGHT ON PHONES</span></div>
             <h3 class="game-name">Battle Royale Classic</h3>
             <p class="game-desc">The original top-down battle royale. Same coins as the 3D version, and runs well on older phones.</p>
-            <button class="game-play-btn royale-btn">▶  PLAY NOW</button>
+            <button class="game-play-btn royale-btn">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Pac-Man -->
-        <div class="game-card" onclick="goToPage('pacman')">
+        <div class="game-card" data-game="pacman" data-cat="action" role="button" tabindex="0" aria-label="Play Pac-Man" onclick="goToPage('pacman')">
           <div class="game-thumb pacman-thumb">
             <div class="pacman-card-art">
               <span class="pac-dot"></span><span class="pac-dot"></span><span class="pac-dot"></span>
@@ -777,13 +807,13 @@
             <div class="game-tags"><span class="game-tag">MAZE</span><span class="game-tag">CLASSIC</span></div>
             <h3 class="game-name">Pac-Man</h3>
             <p class="game-desc">Eat pellets, dodge ghosts, clear the maze, and chase the high score in landscape arcade mode.</p>
-            <button class="game-play-btn pacman-btn">▶  PLAY NOW</button>
+            <button class="game-play-btn pacman-btn">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Candy Match -->
-        <div class="game-card" onclick="goToPage('candy')">
+        <div class="game-card" data-game="candy" data-cat="puzzle" role="button" tabindex="0" aria-label="Play Candy Match" onclick="goToPage('candy')">
           <div class="game-thumb candy-thumb">
             <div class="candy-card-art">
               <div class="candy-card-gem t0"></div><div class="candy-card-gem t1"></div><div class="candy-card-gem t2"></div><div class="candy-card-gem t3"></div>
@@ -796,13 +826,13 @@
             <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">CASUAL</span></div>
             <h3 class="game-name">Candy Match</h3>
             <p class="game-desc">Swap candies, match 3, and score high!</p>
-            <button class="game-play-btn candy-play-btn">▶  PLAY NOW</button>
+            <button class="game-play-btn candy-play-btn">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
 
         <!-- Tetris -->
-        <div class="game-card" onclick="goToPage('tetris')">
+        <div class="game-card" data-game="tetris" data-cat="puzzle" role="button" tabindex="0" aria-label="Play Tetris" onclick="goToPage('tetris')">
           <div class="game-thumb tetris-thumb">
             <div class="tetris-card-art">
               <div class="tetris-block" style="width:22%;height:9%;bottom:10%;left:4%;background:#c950ff;border-radius:3px"></div>
@@ -821,7 +851,7 @@
             <div class="game-tags"><span class="game-tag">PUZZLE</span><span class="game-tag">LEADERBOARD</span></div>
             <h3 class="game-name">Tetris</h3>
             <p class="game-desc">Stack falling tetrominoes, clear lines, and climb the leaderboard in this timeless puzzle classic.</p>
-            <button class="game-play-btn tetris-btn-play">▶  PLAY NOW</button>
+            <button class="game-play-btn tetris-btn-play">Play <span aria-hidden="true">→</span></button>
           </div>
           <div class="game-card-shine"></div>
         </div>
@@ -1499,7 +1529,7 @@
             <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">WIT</span></div>
             <h3 class="game-name">WIT FB PAGE</h3>
             <p class="game-desc">Western Institute of Technology official Facebook page.</p>
-            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+            <button class="game-play-btn social-play-btn" type="button">Open in app</button>
           </div>
           <div class="game-card-shine"></div>
         </div>
@@ -1512,7 +1542,7 @@
             <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">IT</span></div>
             <h3 class="game-name">WIT-IT page</h3>
             <p class="game-desc">Information Technology department updates and posts.</p>
-            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+            <button class="game-play-btn social-play-btn" type="button">Open in app</button>
           </div>
           <div class="game-card-shine"></div>
         </div>
@@ -1525,7 +1555,7 @@
             <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PSITS</span></div>
             <h3 class="game-name">WIT-PSITS page</h3>
             <p class="game-desc">BSIT PSITS organization announcements and activities.</p>
-            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+            <button class="game-play-btn social-play-btn" type="button">Open in app</button>
           </div>
           <div class="game-card-shine"></div>
         </div>
@@ -1538,7 +1568,7 @@
             <div class="game-tags"><span class="game-tag">FACEBOOK</span><span class="game-tag">PUBLIC</span></div>
             <h3 class="game-name">RAISA TRE&Ntilde;AS page</h3>
             <p class="game-desc">Public page and community updates.</p>
-            <button class="game-play-btn social-play-btn" type="button">OPEN IN APP</button>
+            <button class="game-play-btn social-play-btn" type="button">Open in app</button>
           </div>
           <div class="game-card-shine"></div>
         </div>
@@ -1827,7 +1857,7 @@
   <script src="features/logging-in/loading-components.js?v=4"></script>
   <script src="features/logging-in/password-toggle.js?v=1" defer></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=41"></script>
+  <script src="features/updates/changelog.js?v=42"></script>
   <script src="script.js?v=132"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
   <script src="features/academics/academics.js?v=1" defer></script>
@@ -1837,7 +1867,8 @@
   <script src="features/music/music.js?v=1" defer></script>
   <script src="features/social/social.js?v=2" defer></script>
   <script src="features/users/users.js?v=1" defer></script>
-  <script src="features/games/games.js?v=1" defer></script>
+  <script src="features/games/games.js?v=2" defer></script>
+  <script src="features/ui-rules/ui-rules.js?v=1" defer></script>
   <script src="features/updates/updates.js?v=2" defer></script>
   <script src="features/folders/folders.js?v=1" defer></script>
   <script src="features/gallery/gallery.js?v=1" defer></script>

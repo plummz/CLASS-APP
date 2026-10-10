@@ -1,5 +1,9 @@
 # CLASS APP
 
+> **Developers and AI agents: start with [`WORK-TASK-REPORT.md`](WORK-TASK-REPORT.md).** It has the
+> current state of the app, setup, architecture and change history. Then follow
+> [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md). This README only describes the original chat app.
+
 A school portfolio web app with real-time chat, user profiles, attachments, and live presence.
 
 ## Features

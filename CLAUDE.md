@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+## 📋 STEP 0 — READ THE WORK TASK REPORT FIRST
+
+Before reading anything else or changing any file, open **[`WORK-TASK-REPORT.md`](WORK-TASK-REPORT.md)**.
+It is the current state of the app: setup, hosting, environment variables, architecture, feature map,
+database and security model, change history, and open issues.
+
+After every change, update `WORK-TASK-REPORT.md` in the same commit (snapshot table, change
+history, any section your change made untrue, open issues). See its section 0.
+A change that leaves the report out of date is an INCOMPLETE implementation.
+
 ## ⚠️ CRITICAL RULE
 
 ALWAYS READ THIS FILE FIRST BEFORE MAKING ANY CHANGES.
@@ -359,7 +369,8 @@ For EVERY task:
 7. Check cross-page impact
 8. Update Software Update page
 9. Update cache versions
-10. Report results
+10. Update `WORK-TASK-REPORT.md`
+11. Report results
 
 ## 🧱 ARCHITECTURE RULES
 

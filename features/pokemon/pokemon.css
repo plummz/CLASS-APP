@@ -1125,8 +1125,7 @@ body:has(#page-pokemon.active) #live-clock { display: none !important; }
 }
 /* Touch screens: a bigger d-pad that is easy to hold down */
 @media (pointer: coarse) {
-  #pk-dpad { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 4px; }
-  #pk-dpad .dpad-btn { font-size: 22px; border-radius: 14px; }
+  #pk-dpad { width: 180px; height: 180px; }
 }
 /* Phone held upright: the game on top, then one row with the d-pad (left) and the buttons (right) */
 @media (pointer: coarse) and (orientation: portrait) {
@@ -1192,3 +1191,27 @@ body:has(#page-pokemon.active) #live-clock { display: none !important; }
 /* Readable Ball/Swap labels (they were pale on the sand background) */
 .pk-ball-btn { color: #b82020; }
 .pk-swap-btn { color: #1d5fae; }
+
+/* ══ Movement joystick (v1.14.2) — floating stick like Battle Royale ══ */
+.pk-joy-zone {
+  position: relative; width: 160px; height: 160px; border-radius: 24px;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+}
+.pk-joy-base, .pk-joy-knob {
+  position: absolute; left: 50%; top: 50%; border-radius: 50%; pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.15s;
+}
+.pk-joy-base {
+  width: 100px; height: 100px;
+  background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.35);
+  opacity: 0.55;
+}
+.pk-joy-knob {
+  width: 46px; height: 46px;
+  background: rgba(255,255,255,0.4); border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+  opacity: 0.6;
+}
+.pk-joy-zone.active .pk-joy-base, .pk-joy-zone.active .pk-joy-knob { opacity: 1; }

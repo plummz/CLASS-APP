@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="features/updates/updates.css?v=1">
   <link rel="stylesheet" href="features/folders/folders.css?v=2">
   <link rel="stylesheet" href="features/gallery/gallery.css?v=1">
-  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=9">
+  <link rel="stylesheet" href="features/pokemon/pokemon.css?v=10">
 <link rel="stylesheet" href="features/royale/royale.css?v=18">
   <link rel="stylesheet" href="features/pacman/pacman.css?v=3">
   <link rel="stylesheet" href="features/candy/candy.css?v=12">
@@ -1068,12 +1068,10 @@
         <!-- Coin counter — over the canvas, hidden during battles -->
         <div id="pk-coins" class="pk-coin-display">💰 0</div>
       </div><!-- /pk-screen -->
-      <div class="dpad" id="pk-dpad">
-        <button class="dpad-btn dpad-up"    id="pk-dpad-up">▲</button>
-        <button class="dpad-btn dpad-left"  id="pk-dpad-left">◀</button>
-        <button class="dpad-btn dpad-center" disabled></button>
-        <button class="dpad-btn dpad-right" id="pk-dpad-right">▶</button>
-        <button class="dpad-btn dpad-down"  id="pk-dpad-down">▼</button>
+      <!-- Movement joystick: the base appears where the thumb lands, the knob follows the drag -->
+      <div class="pk-joy-zone" id="pk-dpad" aria-label="Movement joystick">
+        <div class="pk-joy-base" id="pk-joy-base"></div>
+        <div class="pk-joy-knob" id="pk-joy-knob"></div>
       </div>
       </div><!-- /pk-game-column -->
 
@@ -1865,7 +1863,7 @@
   <script src="features/logging-in/loading-components.js?v=4"></script>
   <script src="features/logging-in/password-toggle.js?v=2" defer></script>
   <script src="features/logging-in/shell-controls.js?v=5"></script>
-  <script src="features/updates/changelog.js?v=43"></script>
+  <script src="features/updates/changelog.js?v=44"></script>
   <script src="features/ui-rules/ui-kit.js?v=1"></script>
   <script src="script.js?v=133"></script>
   <script src="features/ai/ai.js?v=1" defer></script>
@@ -1885,7 +1883,7 @@
   <script src="coding-educational/coding-educational-data.js?v=11" defer></script>
   <script src="coding-educational/coding-educational.js?v=10" defer></script>
   <script src="features/pokemon/pokemon-world.js?v=2"></script>
-  <script src="features/pokemon/pokemon.js?v=7"></script>
+  <script src="features/pokemon/pokemon.js?v=8"></script>
   <script src="features/royale/royale.js?v=26"></script>
   <script src="features/pacman/pacman.js?v=3"></script>
   <script src="features/candy/candy.js?v=11"></script>

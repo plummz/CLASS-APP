@@ -1,6 +1,17 @@
 ﻿(function () {
-const APP_VERSION = '1.14.1';
+const APP_VERSION = '1.14.2';
 const APP_CHANGELOG = [
+  {
+    version: '1.14.2',
+    date: 'October 10, 2026',
+    title: 'Pokémon Joystick',
+    summary: 'Pokémon now moves with a floating joystick like Battle Royale instead of four arrow buttons.',
+    bullets: [
+      'New: On phones and tablets, put your thumb anywhere in the joystick area and drag. The stick appears under your thumb and the knob follows it.',
+      'Improved: Diagonal walking is easier. Drag toward a corner to move diagonally, or straight to move in one direction.',
+      'Improved: Letting go stops you right away, including when a battle or trainer interrupts.',
+    ]
+  },
   {
     version: '1.14.1',
     date: 'October 9, 2026',

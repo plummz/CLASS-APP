@@ -19,12 +19,12 @@
 //  node scripts/version-check.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v1.8.01-20261009-skeletons-empty-states';
+const CACHE_VERSION = 'v1.8.02-20261010-pokemon-joystick';
 const CACHE_PREFIX = 'school-portfolio-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
-  '/index.html?v=142',
+  '/index.html?v=143',
   '/style.css?v=47',
   '/assets/css/codelab.css?v=4',
   '/coding-educational/coding-educational.css?v=8',
@@ -41,7 +41,7 @@ const ASSETS = [
   '/features/updates/updates.css?v=1',
   '/features/folders/folders.css?v=2',
   '/features/gallery/gallery.css?v=1',
-  '/features/pokemon/pokemon.css?v=9',
+  '/features/pokemon/pokemon.css?v=10',
   '/features/royale/royale.css?v=18',
   '/features/pacman/pacman.css?v=3',
   '/features/candy/candy.css?v=12',
@@ -54,7 +54,7 @@ const ASSETS = [
   '/features/logging-in/loading-components.js?v=4',
   '/features/logging-in/password-toggle.js?v=2',
   '/features/logging-in/shell-controls.js?v=5',
-  '/features/updates/changelog.js?v=43',
+  '/features/updates/changelog.js?v=44',
   '/script.js?v=133',
   '/features/reviewers/reviewers.js?v=16',
   '/features/reviewers/reviewers.css?v=8',
@@ -85,7 +85,7 @@ const ASSETS = [
   '/coding-educational/coding-educational.js?v=10',
   '/coding-educational/assets/fallback-card.jpg',
   '/features/pokemon/pokemon-world.js?v=2',
-  '/features/pokemon/pokemon.js?v=7',
+  '/features/pokemon/pokemon.js?v=8',
   '/features/royale/royale.js?v=26',
   '/features/pacman/pacman.js?v=3',
   '/features/candy/candy.js?v=11',

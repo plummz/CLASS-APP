@@ -3245,18 +3245,43 @@ const pokemonModule = (() => {
     return remote||localMine;
   }
 
-  /* ── D-PAD ── */
+  /* ── MOVEMENT JOYSTICK ── */
+  // Floating stick like Battle Royale's: touching the zone drops the base under the thumb and
+  // the knob follows the drag. The direction feeds the same dpad flags the keyboard path uses.
   function setupDpad(){
-    const map={'pk-dpad-up':'up','pk-dpad-down':'down','pk-dpad-left':'left','pk-dpad-right':'right'};
-    Object.entries(map).forEach(([id,dir])=>{
-      const btn=document.getElementById(id); if(!btn)return;
-      const on=()=>{dpad[dir]=true;btn.classList.add('pressed');};
-      const off=()=>{dpad[dir]=false;btn.classList.remove('pressed');};
-      btn.addEventListener('mousedown',on); btn.addEventListener('mouseup',off); btn.addEventListener('mouseleave',off);
-      btn.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
-      btn.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
-      btn.addEventListener('touchcancel',e=>{e.preventDefault();off();},{passive:false});
+    const zone=document.getElementById('pk-dpad'), base=document.getElementById('pk-joy-base'), knob=document.getElementById('pk-joy-knob');
+    if(!zone||!base||!knob||zone.dataset.pkBound) return;
+    zone.dataset.pkBound='1';
+    const MAX=42, DEAD=12, AXIS=0.38;   // AXIS = sin(22.5°): diagonals only near 45°
+    let pid=null, sx=0, sy=0;
+    const place=(el,x,y)=>{ el.style.left=x+'px'; el.style.top=y+'px'; };
+    // Resting spot comes from CSS (middle of the zone), so it stays right while the zone is hidden
+    const center=()=>{ [base,knob].forEach(el=>{ el.style.left=''; el.style.top=''; }); };
+    const release=()=>{
+      pid=null; dpad.up=dpad.down=dpad.left=dpad.right=false;
+      zone.classList.remove('active'); center();
+    };
+    const steer=(e)=>{
+      const r=zone.getBoundingClientRect();
+      const dx=e.clientX-r.left-sx, dy=e.clientY-r.top-sy;
+      const len=Math.hypot(dx,dy), k=len>MAX?MAX/len:1;
+      place(knob,sx+dx*k,sy+dy*k);
+      if(len<DEAD){ dpad.up=dpad.down=dpad.left=dpad.right=false; return; }
+      const nx=dx/len, ny=dy/len;
+      dpad.left=nx<-AXIS; dpad.right=nx>AXIS; dpad.up=ny<-AXIS; dpad.down=ny>AXIS;
+    };
+    zone.addEventListener('pointerdown',e=>{
+      if(pid!==null) return;
+      e.preventDefault();
+      pid=e.pointerId;
+      try{ zone.setPointerCapture(pid); }catch(_){}
+      const r=zone.getBoundingClientRect();
+      sx=e.clientX-r.left; sy=e.clientY-r.top;
+      place(base,sx,sy); place(knob,sx,sy);
+      zone.classList.add('active');
     });
+    zone.addEventListener('pointermove',e=>{ if(e.pointerId===pid){ e.preventDefault(); steer(e); } });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(t=>zone.addEventListener(t,e=>{ if(e.pointerId===pid) release(); }));
   }
 
   /* ── STARTER MODAL ── */

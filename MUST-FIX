@@ -1,5 +1,15 @@
 # ⚠️ CRITICAL: BUTTON FUNCTIONALITY BUG - MUST FIX
 
+> **STATUS (checked October 10, 2026): RESOLVED — kept for history only. Nothing here needs fixing.**
+>
+> - Root cause #1 is fixed: `renderAppState()` in `script.js` now sets `pointer-events` to `auto`
+>   for the active page and `none` for the others.
+> - Root cause #2 was settled by the May 2026 button fixes (v1.9.4–v1.9.8) and the startup isolation
+>   in `features/logging-in/shell-controls.js`.
+> - Root cause #3: the "Ana Cruz" demo name was replaced with "Sam Rivera" in the coding lessons.
+>
+> For the current state of the app, read [`WORK-TASK-REPORT.md`](WORK-TASK-REPORT.md).
+
 ## 🔴 BUG ANALYSIS REPORT
 
 ---

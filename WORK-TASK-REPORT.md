@@ -218,7 +218,7 @@ Newest first. Format: `version — date — what changed (agent)`. The full user
 
 ### October 2026 (app revived after ~5 months offline)
 
-- **1.14.2** — Oct 10 — Pokémon: the 4 arrow buttons are replaced by a floating joystick like Battle Royale's. The base appears under the thumb, the knob follows, it allows diagonals with a dead zone, and it ignores a second finger (`setupDpad()` in `pokemon.js`, `.pk-joy-*` in `pokemon.css`; the `#pk-dpad` id is kept for layout/hide logic). Also added this report. (Claude)
+- **1.14.2** — Oct 10 — Pokémon: the 4 arrow buttons are replaced by a floating joystick like Battle Royale's. The base appears under the thumb, the knob follows, it allows diagonals with a dead zone, and it ignores a second finger (`setupDpad()` in `pokemon.js`, `.pk-joy-*` in `pokemon.css`; the `#pk-dpad` id is kept for layout/hide logic). Also added this report. Docs refresh: README rewritten for the current app; `MUST-FIX` marked resolved (history only) and `app-hardening.md` given a status note. (Claude)
 - **1.14.1** — Oct 9 — Loading skeletons, empty states that offer the next step, live password/username rules on Create Account. (Claude)
 - **1.14.0** — Oct 9 — App-wide usability rules (`features/ui-rules/`), new Arcade home with Continue playing, filters and search. (Claude)
 - **1.13.6** — Oct 9 — Chat Send fixed on laptops (the chat bubble covered it). Signed database pass switched on (migrations 031–033). App Opens counter fixed (032). (Claude)
@@ -252,8 +252,6 @@ Newest first. Format: `version — date — what changed (agent)`. The full user
 - **Supabase free-tier pause** is still a risk after ~1 week with no traffic.
 - **Pokémon joystick (1.14.2)** was tested in desktop Chrome with simulated drags only. It still
   needs a check on a real phone (Android and iPhone), portrait and landscape.
-- `MUST-FIX` (old May 2026 button-bug analysis) and `app-hardening.md` are historical notes. Check
-  them against the current code before acting on them.
-- `README.md` is outdated (describes only the original chat app). This report is the
-  up-to-date overview.
+- **CSP tightening (hardening Phase 7)** not started: `index.html` still has 84 inline `onclick`
+  handlers, so `scriptSrcAttr: ['unsafe-inline']` must stay. Plan is in `app-hardening.md`.
 - Server log warning during tests: `[users] Admin list unavailable` (expected without a database; harmless).

@@ -1,5 +1,11 @@
 # CLASS-APP Hardening Roadmap
 
+> **STATUS (checked October 10, 2026):** Phases 1–6 were finished and verified on May 11, 2026
+> (v1.9.16). **Phase 7 (CSP tightening) has not started**: `index.html` still has 84 inline
+> `onclick` handlers, so `server.js` must keep `scriptSrcAttr: ['unsafe-inline']`. Use this file
+> only as the plan for Phase 7. The current state of the app is in
+> [`WORK-TASK-REPORT.md`](WORK-TASK-REPORT.md), not here.
+
 ## Purpose
 
 This file is the single source of truth for future stabilization work on CLASS-APP.

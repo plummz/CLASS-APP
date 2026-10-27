@@ -12,7 +12,7 @@
 | **Repo** | https://github.com/plummz/CLASS-APP (branch `main`) |
 | **Database** | Supabase project `rxpezjhsnqkjydurtayx` ("Class Application"), region ap-southeast-1 |
 | **Last health check** | October 10, 2026 — site up, Supabase ACTIVE_HEALTHY, `npm run check` OK, 31/31 tests pass, `scripts/version-check.js` passes |
-| **Report last updated** | October 10, 2026 by Claude |
+| **Report last updated** | October 27, 2026 by Claude |
 
 ---
 
@@ -63,6 +63,7 @@ Design rules: mobile-first, iOS Safari + Android safe, glassmorphism look, light
 | Battle Royale 3D | Godot 4.7.2 source in `godot/royale3d/` | Web export committed to `features/royale3d/game/`, served with its own CSP and `max-age=0`. Build/test commands in `godot/royale3d/README.md`. |
 | Dungeon of Knowledge | Embedded Godot web build from `plummz.github.io/Study_Arena/dungeon/` | Lives in the separate Study_Arena repo. |
 | Alarm push | Supabase Edge Function `supabase/functions/check-alarms` | Uses the new Supabase secret key, falls back to the legacy service-role key. |
+| Uptime + database keep-alive | Cloudflare Worker `bsit-watchdog` (code `C:\Users\johnr\bsit-watchdog`, outside this repo) | Every 5 min: checks `/api/ping` and reads 1 row from Supabase (public key from `/api/config`), which also stops the free-tier pause. Alerts Discord #moderator-only after 2 failed checks. Notes: `Desktop\FILE UPDATES\UPTIME WATCHDOG.md`. |
 
 ### Environment variables (Render → Environment). Names only — never commit values.
 
@@ -218,6 +219,7 @@ Newest first. Format: `version — date — what changed (agent)`. The full user
 
 ### October 2026 (app revived after ~5 months offline)
 
+- **No app change** — Oct 27 — Added CLASS-APP + its Supabase database to the Cloudflare watchdog (uptime alerts in Discord, Supabase keep-alive). Closes the UptimeRobot and Supabase-pause open issues. (Claude)
 - **1.14.2** — Oct 10 — Pokémon: the 4 arrow buttons are replaced by a floating joystick like Battle Royale's. The base appears under the thumb, the knob follows, it allows diagonals with a dead zone, and it ignores a second finger (`setupDpad()` in `pokemon.js`, `.pk-joy-*` in `pokemon.css`; the `#pk-dpad` id is kept for layout/hide logic). Also added this report. Docs refresh: README rewritten for the current app; `MUST-FIX` marked resolved (history only) and `app-hardening.md` given a status note. (Claude)
 - **1.14.1** — Oct 9 — Loading skeletons, empty states that offer the next step, live password/username rules on Create Account. (Claude)
 - **1.14.0** — Oct 9 — App-wide usability rules (`features/ui-rules/`), new Arcade home with Continue playing, filters and search. (Claude)
@@ -247,9 +249,6 @@ Newest first. Format: `version — date — what changed (agent)`. The full user
 
 ## 7. Open issues and to-dos
 
-- **UptimeRobot monitor** not set up. The user needs to create an account and sign in; then add a
-  monitor on `https://class-app-1.onrender.com/api/ping`.
-- **Supabase free-tier pause** is still a risk after ~1 week with no traffic.
 - **Pokémon joystick (1.14.2)** was tested in desktop Chrome with simulated drags only. It still
   needs a check on a real phone (Android and iPhone), portrait and landscape.
 - **CSP tightening (hardening Phase 7)** not started: `index.html` still has 84 inline `onclick`
